@@ -1,0 +1,1 @@
+export { DataScreenNew } from './DataScreenClean';
