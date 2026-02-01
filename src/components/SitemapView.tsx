@@ -1,15 +1,17 @@
-import { useState } from 'react';
-import { ChevronRight, ChevronDown, FileCode, Zap, Database, Globe } from 'lucide-react';
-import { IFrameScreenRenderer } from './IFrameScreenRenderer';
-import { ScreenshotPreview } from './ScreenshotPreview';
-import { useProject } from '../contexts/ProjectContext';
+import { useState } from "react";
+import clsx from "clsx";
+import { ChevronRight, ChevronDown, FileCode, Zap, Database, Globe } from "lucide-react";
+import { IFrameScreenRenderer } from "./IFrameScreenRenderer";
+import { ScreenshotPreview } from "./ScreenshotPreview";
+import { useProject } from "../contexts/ProjectContext";
+import styles from "./SitemapView.module.css";
 
 interface Screen {
   id: string;
   name: string;
   path: string;
   file: string;
-  type: 'page' | 'screen' | 'view';
+  type: "page" | "screen" | "view";
   flows: string[];
   navigatesTo: string[];
   framework: string;
@@ -18,7 +20,7 @@ interface Screen {
 
 interface CodeFlow {
   id: string;
-  type: 'ui-event' | 'function-call' | 'api-call' | 'db-query';
+  type: "ui-event" | "function-call" | "api-call" | "db-query";
   name: string;
   file: string;
   line: number;
@@ -41,7 +43,6 @@ export function SitemapView({ screens, flows, framework }: SitemapViewProps) {
   const { activeProject } = useProject();
   const [expandedScreens, setExpandedScreens] = useState<Set<string>>(new Set());
   const [selectedScreen, setSelectedScreen] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview'); // NEW: Toggle between preview and code
 
   const toggleScreen = (screenId: string) => {
     const newExpanded = new Set(expandedScreens);
@@ -54,19 +55,19 @@ export function SitemapView({ screens, flows, framework }: SitemapViewProps) {
   };
 
   const getFlowsForScreen = (screen: Screen): CodeFlow[] => {
-    return flows.filter(flow => screen.flows.includes(flow.id));
+    return flows.filter((flow) => screen.flows.includes(flow.id));
   };
 
-  const getFlowTypeIcon = (type: CodeFlow['type']) => {
+  const getFlowTypeIcon = (type: CodeFlow["type"]) => {
     switch (type) {
-      case 'ui-event':
-        return <Zap className="w-4 h-4" style={{ color: '#03ffa3' }} />;
-      case 'api-call':
-        return <Globe className="w-4 h-4" style={{ color: '#3b82f6' }} />;
-      case 'db-query':
-        return <Database className="w-4 h-4" style={{ color: '#ef4444' }} />;
-      case 'function-call':
-        return <FileCode className="w-4 h-4" style={{ color: '#8b5cf6' }} />;
+      case "ui-event":
+        return <Zap className={styles.flowIcon} data-flow-type="ui-event" />;
+      case "api-call":
+        return <Globe className={styles.flowIcon} data-flow-type="api-call" />;
+      case "db-query":
+        return <Database className={styles.flowIcon} data-flow-type="db-query" />;
+      case "function-call":
+        return <FileCode className={styles.flowIcon} data-flow-type="function-call" />;
     }
   };
 
@@ -74,33 +75,31 @@ export function SitemapView({ screens, flows, framework }: SitemapViewProps) {
   const getFlowStats = (screen: Screen) => {
     const screenFlows = getFlowsForScreen(screen);
     return {
-      uiEvents: screenFlows.filter(f => f.type === 'ui-event').length,
-      apiCalls: screenFlows.filter(f => f.type === 'api-call').length,
-      dbQueries: screenFlows.filter(f => f.type === 'db-query').length,
-      functions: screenFlows.filter(f => f.type === 'function-call').length,
-      total: screenFlows.length
+      uiEvents: screenFlows.filter((f) => f.type === "ui-event").length,
+      apiCalls: screenFlows.filter((f) => f.type === "api-call").length,
+      dbQueries: screenFlows.filter((f) => f.type === "db-query").length,
+      functions: screenFlows.filter((f) => f.type === "function-call").length,
+      total: screenFlows.length,
     };
   };
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className={styles.root}>
       {/* Header */}
-      <div className="border-b border-gray-200 p-6">
-        <div className="flex items-center justify-between">
+      <div className={styles.header}>
+        <div className={styles.headerRow}>
           <div>
-            <h2 className="text-2xl mb-2">App Sitemap</h2>
-            <p className="text-sm text-gray-600">
+            <h2 className={styles.headerTitle}>App Sitemap</h2>
+            <p className={styles.headerSubtitle}>
               {screens.length} Screens • {flows.length} Total Flows
             </p>
           </div>
           {framework?.primary && (
-            <div className="flex items-center gap-2">
-              <div className="px-3 py-1.5 bg-primary/10 rounded-lg">
-                <span className="text-sm font-medium text-gray-700">
-                  {framework.primary}
-                </span>
+            <div className={styles.frameworkWrap}>
+              <div className={styles.frameworkPill}>
+                <span className={styles.frameworkLabel}>{framework.primary}</span>
               </div>
-              <div className="text-xs text-gray-500">
+              <div className={styles.frameworkConfidence}>
                 {Math.round(framework.confidence * 100)}% confidence
               </div>
             </div>
@@ -109,94 +108,89 @@ export function SitemapView({ screens, flows, framework }: SitemapViewProps) {
       </div>
 
       {/* Sitemap Tree */}
-      <div className="flex-1 overflow-auto">
-        <div className="p-6">
+      <div className={styles.body}>
+        <div className={styles.container}>
           {screens.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">Keine Screens gefunden</p>
-              <p className="text-sm text-gray-400 mt-2">
+            <div className={styles.emptyState}>
+              <p className={styles.emptyTitle}>Keine Screens gefunden</p>
+              <p className={styles.emptySubtitle}>
                 Das Framework konnte nicht automatisch erkannt werden
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {screens.map(screen => {
+            <div className={styles.list}>
+              {screens.map((screen) => {
                 const isExpanded = expandedScreens.has(screen.id);
                 const isSelected = selectedScreen === screen.id;
                 const stats = getFlowStats(screen);
                 const screenFlows = getFlowsForScreen(screen);
 
                 return (
-                  <div key={screen.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div key={screen.id} className={styles.screenCard}>
                     {/* Screen Header */}
                     <button
                       onClick={() => {
                         toggleScreen(screen.id);
                         setSelectedScreen(screen.id);
                       }}
-                      className={`w-full flex items-center gap-4 p-4 text-left transition-colors ${
-                        isSelected ? 'bg-primary/5' : 'hover:bg-gray-50'
-                      }`}
+                      type="button"
+                      className={clsx(
+                        styles.screenButton,
+                        isSelected && styles.screenButtonSelected,
+                      )}
                     >
                       {/* Expand/Collapse Icon */}
-                      <div className="flex-shrink-0">
+                      <div>
                         {isExpanded ? (
-                          <ChevronDown className="w-5 h-5 text-gray-400" />
+                          <ChevronDown className={styles.chevron} />
                         ) : (
-                          <ChevronRight className="w-5 h-5 text-gray-400" />
+                          <ChevronRight className={styles.chevron} />
                         )}
                       </div>
 
                       {/* Screen Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-1">
-                          <h3 className="font-medium">{screen.name}</h3>
-                          <code className="text-xs bg-gray-100 px-2 py-0.5 rounded text-primary">
-                            {screen.path}
-                          </code>
+                      <div className={styles.screenInfo}>
+                        <div className={styles.screenTitleRow}>
+                          <h3 className={styles.screenTitle}>{screen.name}</h3>
+                          <code className={styles.screenPath}>{screen.path}</code>
                         </div>
-                        <p className="text-xs text-gray-500">{screen.file}</p>
+                        <p className={styles.screenFile}>{screen.file}</p>
                       </div>
 
                       {/* Flow Stats */}
-                      <div className="flex items-center gap-4 flex-shrink-0">
+                      <div className={styles.flowStats}>
                         {stats.uiEvents > 0 && (
-                          <div className="flex items-center gap-1.5">
-                            <Zap className="w-4 h-4" style={{ color: '#03ffa3' }} />
-                            <span className="text-sm text-gray-600">{stats.uiEvents}</span>
+                          <div className={styles.flowStat}>
+                            <Zap className={styles.flowStatIcon} data-flow-type="ui-event" />
+                            <span>{stats.uiEvents}</span>
                           </div>
                         )}
                         {stats.apiCalls > 0 && (
-                          <div className="flex items-center gap-1.5">
-                            <Globe className="w-4 h-4" style={{ color: '#3b82f6' }} />
-                            <span className="text-sm text-gray-600">{stats.apiCalls}</span>
+                          <div className={styles.flowStat}>
+                            <Globe className={styles.flowStatIcon} data-flow-type="api-call" />
+                            <span>{stats.apiCalls}</span>
                           </div>
                         )}
                         {stats.dbQueries > 0 && (
-                          <div className="flex items-center gap-1.5">
-                            <Database className="w-4 h-4" style={{ color: '#ef4444' }} />
-                            <span className="text-sm text-gray-600">{stats.dbQueries}</span>
+                          <div className={styles.flowStat}>
+                            <Database className={styles.flowStatIcon} data-flow-type="db-query" />
+                            <span>{stats.dbQueries}</span>
                           </div>
                         )}
-                        <div className="text-sm text-gray-400">
-                          {stats.total} total
-                        </div>
+                        <div className={styles.flowTotal}>{stats.total} total</div>
                       </div>
                     </button>
 
                     {/* Screen Details (Expanded) */}
                     {isExpanded && (
-                      <div className="border-t border-gray-200 bg-gray-50">
+                      <div className={styles.expanded}>
                         {/* Navigation Links */}
                         {screen.navigatesTo.length > 0 && (
-                          <div className="px-4 py-3 border-b border-gray-200 bg-white">
-                            <p className="text-xs text-gray-500 mb-2">Navigates To:</p>
-                            <div className="flex flex-wrap gap-2">
+                          <div className={styles.section}>
+                            <p className={styles.sectionLabel}>Navigates To:</p>
+                            <div className={styles.navList}>
                               {screen.navigatesTo.map((path, idx) => (
-                                <code 
-                                  key={idx}
-                                  className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded"
-                                >
+                                <code key={idx} className={styles.navItem}>
                                   → {path}
                                 </code>
                               ))}
@@ -205,68 +199,60 @@ export function SitemapView({ screens, flows, framework }: SitemapViewProps) {
                         )}
 
                         {/* Flows in this Screen */}
-                        <div className="p-4 space-y-3">
+                        <div className={styles.previewSection}>
                           {screenFlows.length === 0 ? (
-                            <p className="text-sm text-gray-500">Keine Flows in diesem Screen</p>
+                            <p className={styles.emptyTitle}>Keine Flows in diesem Screen</p>
                           ) : (
-                            screenFlows.map(flow => (
-                              <div 
-                                key={flow.id}
-                                className="bg-white border border-gray-200 rounded-lg p-3 hover:border-primary transition-colors"
-                              >
-                                <div className="flex items-start gap-3">
-                                  {/* Flow Icon */}
-                                  <div className="flex-shrink-0 mt-0.5">
-                                    {getFlowTypeIcon(flow.type)}
-                                  </div>
+                            <div className={styles.flowList}>
+                              {screenFlows.map((flow) => (
+                                <div key={flow.id} className={styles.flowCard}>
+                                  <div className={styles.flowRow}>
+                                    {/* Flow Icon */}
+                                    <div>{getFlowTypeIcon(flow.type)}</div>
 
-                                  {/* Flow Details */}
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <h4 className="text-sm font-medium">{flow.name}</h4>
-                                      <span className="text-xs text-gray-500">
-                                        Line {flow.line}
-                                      </span>
-                                    </div>
-                                    
-                                    {/* Code Preview */}
-                                    <pre className="text-xs bg-gray-50 p-2 rounded border border-gray-200 overflow-x-auto">
-                                      <code className="text-gray-700">{flow.code}</code>
-                                    </pre>
-
-                                    {/* Calls */}
-                                    {flow.calls && flow.calls.length > 0 && (
-                                      <div className="mt-2 flex flex-wrap gap-1">
-                                        {flow.calls.map((call, idx) => (
-                                          <span 
-                                            key={idx}
-                                            className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded"
-                                          >
-                                            {call}()
-                                          </span>
-                                        ))}
+                                    {/* Flow Details */}
+                                    <div className={styles.flowMeta}>
+                                      <div className={styles.flowTitleRow}>
+                                        <h4 className={styles.flowTitle}>{flow.name}</h4>
+                                        <span className={styles.flowLine}>Line {flow.line}</span>
                                       </div>
-                                    )}
+
+                                      {/* Code Preview */}
+                                      <pre className={styles.flowCodeBlock}>
+                                        <code>{flow.code}</code>
+                                      </pre>
+
+                                      {/* Calls */}
+                                      {flow.calls && flow.calls.length > 0 && (
+                                        <div className={styles.calls}>
+                                          {flow.calls.map((call, idx) => (
+                                            <span key={idx} className={styles.callChip}>
+                                              {call}()
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))
+                              ))}
+                            </div>
                           )}
                         </div>
 
                         {/* Screenshot Preview - NEW */}
                         {activeProject && (
-                          <div className="px-4 py-3 border-t border-gray-200 bg-white">
-                            <p className="text-xs text-gray-500 mb-3">Live Screenshot</p>
+                          <div className={styles.previewSection}>
+                            <p className={styles.previewLabel}>Live Screenshot</p>
                             <ScreenshotPreview
                               projectData={{
                                 id: activeProject.id,
-                                deployed_url: activeProject.deployed_url
+                                deployed_url: activeProject.deployed_url,
                               }}
                               screen={{
                                 id: screen.id,
                                 name: screen.name,
-                                path: screen.path
+                                path: screen.path,
                               }}
                             />
                           </div>
@@ -274,10 +260,10 @@ export function SitemapView({ screens, flows, framework }: SitemapViewProps) {
 
                         {/* Component Preview */}
                         {screen.componentCode && (
-                          <div className="px-4 py-3 border-t border-gray-200 bg-white">
-                            <p className="text-xs text-gray-500 mb-3">Code Preview (IFrame)</p>
-                            <IFrameScreenRenderer 
-                              code={screen.componentCode} 
+                          <div className={styles.previewSection}>
+                            <p className={styles.previewLabel}>Code Preview (IFrame)</p>
+                            <IFrameScreenRenderer
+                              code={screen.componentCode}
                               screenName={screen.name}
                             />
                           </div>

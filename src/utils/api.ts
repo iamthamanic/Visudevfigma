@@ -3,27 +3,49 @@
  * Frontend integration for all Edge Functions
  */
 
-import { projectId, publicAnonKey } from './supabase/info';
+import type { AccountPreferencesUpdateInput, AccountUpdateInput } from "../lib/visudev/account";
+import type {
+  IntegrationsState,
+  IntegrationsUpdateInput,
+  GitHubRepo,
+} from "../lib/visudev/integrations";
+import type { Project } from "../lib/visudev/types";
+import type {
+  AppFlowCreateInput,
+  AppFlowRecord,
+  AppFlowUpdateInput,
+} from "../modules/appflow/types";
+import type { BlueprintData, BlueprintUpdateInput } from "../modules/blueprint/types";
+import type {
+  DataSchema,
+  DataSchemaUpdateInput,
+  ERDData,
+  ERDUpdateInput,
+  MigrationEntry,
+} from "../modules/data/types";
+import type { LogCreateInput, LogEntry } from "../modules/logs/types";
+import type { ProjectCreateInput, ProjectUpdateInput } from "../modules/projects/types";
+import { projectId, publicAnonKey } from "./supabase/info";
 
 const BASE_URL = `https://${projectId}.supabase.co/functions/v1`;
 
 // Base fetch wrapper with auth
 async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<{ success: boolean; data?: T; error?: string }> {
   try {
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${publicAnonKey}`,
         ...options.headers,
       },
     });
 
     const result = await response.json();
-    
+
     if (!response.ok) {
       console.error(`API Error [${endpoint}]:`, result.error || response.statusText);
       return { success: false, error: result.error || response.statusText };
@@ -40,29 +62,29 @@ async function apiRequest<T>(
 
 export const projectsAPI = {
   // Get all projects
-  getAll: () => apiRequest('/visudev-projects'),
+  getAll: () => apiRequest<Project[]>("/visudev-projects"),
 
   // Get single project
-  get: (id: string) => apiRequest(`/visudev-projects/${id}`),
+  get: (id: string) => apiRequest<Project>(`/visudev-projects/${id}`),
 
   // Create project
-  create: (data: any) =>
-    apiRequest('/visudev-projects', {
-      method: 'POST',
+  create: (data: ProjectCreateInput) =>
+    apiRequest("/visudev-projects", {
+      method: "POST",
       body: JSON.stringify(data),
     }),
 
   // Update project
-  update: (id: string, data: any) =>
+  update: (id: string, data: ProjectUpdateInput) =>
     apiRequest(`/visudev-projects/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     }),
 
   // Delete project
   delete: (id: string) =>
     apiRequest(`/visudev-projects/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     }),
 };
 
@@ -70,30 +92,30 @@ export const projectsAPI = {
 
 export const appflowAPI = {
   // Get all flows for project
-  getAll: (projectId: string) => apiRequest(`/visudev-appflow/${projectId}`),
+  getAll: (projectId: string) => apiRequest<AppFlowRecord[]>(`/visudev-appflow/${projectId}`),
 
   // Get single flow
   get: (projectId: string, flowId: string) =>
-    apiRequest(`/visudev-appflow/${projectId}/${flowId}`),
+    apiRequest<AppFlowRecord>(`/visudev-appflow/${projectId}/${flowId}`),
 
   // Create flow
-  create: (projectId: string, data: any) =>
+  create: (projectId: string, data: AppFlowCreateInput) =>
     apiRequest(`/visudev-appflow/${projectId}`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(data),
     }),
 
   // Update flow
-  update: (projectId: string, flowId: string, data: any) =>
+  update: (projectId: string, flowId: string, data: AppFlowUpdateInput) =>
     apiRequest(`/visudev-appflow/${projectId}/${flowId}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     }),
 
   // Delete flow
   delete: (projectId: string, flowId: string) =>
     apiRequest(`/visudev-appflow/${projectId}/${flowId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     }),
 };
 
@@ -101,19 +123,19 @@ export const appflowAPI = {
 
 export const blueprintAPI = {
   // Get blueprint for project
-  get: (projectId: string) => apiRequest(`/visudev-blueprint/${projectId}`),
+  get: (projectId: string) => apiRequest<BlueprintData>(`/visudev-blueprint/${projectId}`),
 
   // Update blueprint
-  update: (projectId: string, data: any) =>
+  update: (projectId: string, data: BlueprintUpdateInput) =>
     apiRequest(`/visudev-blueprint/${projectId}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     }),
 
   // Delete blueprint
   delete: (projectId: string) =>
     apiRequest(`/visudev-blueprint/${projectId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     }),
 };
 
@@ -121,32 +143,30 @@ export const blueprintAPI = {
 
 export const dataAPI = {
   // Schema
-  getSchema: (projectId: string) =>
-    apiRequest(`/visudev-data/${projectId}/schema`),
+  getSchema: (projectId: string) => apiRequest<DataSchema>(`/visudev-data/${projectId}/schema`),
 
-  updateSchema: (projectId: string, data: any) =>
+  updateSchema: (projectId: string, data: DataSchemaUpdateInput) =>
     apiRequest(`/visudev-data/${projectId}/schema`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     }),
 
   // Migrations
   getMigrations: (projectId: string) =>
-    apiRequest(`/visudev-data/${projectId}/migrations`),
+    apiRequest<MigrationEntry[]>(`/visudev-data/${projectId}/migrations`),
 
-  updateMigrations: (projectId: string, data: any) =>
+  updateMigrations: (projectId: string, data: MigrationEntry[]) =>
     apiRequest(`/visudev-data/${projectId}/migrations`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     }),
 
   // ERD
-  getERD: (projectId: string) =>
-    apiRequest(`/visudev-data/${projectId}/erd`),
+  getERD: (projectId: string) => apiRequest<ERDData>(`/visudev-data/${projectId}/erd`),
 
-  updateERD: (projectId: string, data: any) =>
+  updateERD: (projectId: string, data: ERDUpdateInput) =>
     apiRequest(`/visudev-data/${projectId}/erd`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     }),
 };
@@ -155,29 +175,29 @@ export const dataAPI = {
 
 export const logsAPI = {
   // Get all logs for project
-  getAll: (projectId: string) => apiRequest(`/visudev-logs/${projectId}`),
+  getAll: (projectId: string) => apiRequest<LogEntry[]>(`/visudev-logs/${projectId}`),
 
   // Get single log
   get: (projectId: string, logId: string) =>
-    apiRequest(`/visudev-logs/${projectId}/${logId}`),
+    apiRequest<LogEntry>(`/visudev-logs/${projectId}/${logId}`),
 
   // Create log entry
-  create: (projectId: string, data: any) =>
+  create: (projectId: string, data: LogCreateInput) =>
     apiRequest(`/visudev-logs/${projectId}`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(data),
     }),
 
   // Delete all logs for project
   deleteAll: (projectId: string) =>
     apiRequest(`/visudev-logs/${projectId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     }),
 
   // Delete single log
   delete: (projectId: string, logId: string) =>
     apiRequest(`/visudev-logs/${projectId}/${logId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     }),
 };
 
@@ -188,20 +208,19 @@ export const accountAPI = {
   get: (userId: string) => apiRequest(`/visudev-account/${userId}`),
 
   // Update account settings
-  update: (userId: string, data: any) =>
+  update: (userId: string, data: AccountUpdateInput) =>
     apiRequest(`/visudev-account/${userId}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     }),
 
   // Get preferences
-  getPreferences: (userId: string) =>
-    apiRequest(`/visudev-account/${userId}/preferences`),
+  getPreferences: (userId: string) => apiRequest(`/visudev-account/${userId}/preferences`),
 
   // Update preferences
-  updatePreferences: (userId: string, data: any) =>
+  updatePreferences: (userId: string, data: AccountPreferencesUpdateInput) =>
     apiRequest(`/visudev-account/${userId}/preferences`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     }),
 };
@@ -210,12 +229,12 @@ export const accountAPI = {
 
 export const integrationsAPI = {
   // Get all integrations
-  get: (projectId: string) => apiRequest(`/visudev-integrations/${projectId}`),
+  get: (projectId: string) => apiRequest<IntegrationsState>(`/visudev-integrations/${projectId}`),
 
   // Update integrations
-  update: (projectId: string, data: any) =>
+  update: (projectId: string, data: IntegrationsUpdateInput) =>
     apiRequest(`/visudev-integrations/${projectId}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     }),
 
@@ -224,36 +243,34 @@ export const integrationsAPI = {
     // Connect GitHub
     connect: (projectId: string, token: string, username?: string) =>
       apiRequest(`/visudev-integrations/${projectId}/github`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({ token, username }),
       }),
 
     // Get repositories
     getRepos: (projectId: string) =>
-      apiRequest(`/visudev-integrations/${projectId}/github/repos`),
+      apiRequest<GitHubRepo[]>(`/visudev-integrations/${projectId}/github/repos`),
 
     // Get branches
     getBranches: (projectId: string, owner: string, repo: string) =>
-      apiRequest(
-        `/visudev-integrations/${projectId}/github/branches?owner=${owner}&repo=${repo}`
-      ),
+      apiRequest(`/visudev-integrations/${projectId}/github/branches?owner=${owner}&repo=${repo}`),
 
     // Get file/directory content
     getContent: (
       projectId: string,
       owner: string,
       repo: string,
-      path: string = '',
-      ref: string = 'main'
+      path: string = "",
+      ref: string = "main",
     ) =>
       apiRequest(
-        `/visudev-integrations/${projectId}/github/content?owner=${owner}&repo=${repo}&path=${path}&ref=${ref}`
+        `/visudev-integrations/${projectId}/github/content?owner=${owner}&repo=${repo}&path=${path}&ref=${ref}`,
       ),
 
     // Disconnect GitHub
     disconnect: (projectId: string) =>
       apiRequest(`/visudev-integrations/${projectId}/github`, {
-        method: 'DELETE',
+        method: "DELETE",
       }),
   },
 
@@ -265,21 +282,20 @@ export const integrationsAPI = {
       url: string,
       anonKey: string,
       serviceKey?: string,
-      projectRef?: string
+      projectRef?: string,
     ) =>
       apiRequest(`/visudev-integrations/${projectId}/supabase`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({ url, anonKey, serviceKey, projectRef }),
       }),
 
     // Get Supabase info
-    getInfo: (projectId: string) =>
-      apiRequest(`/visudev-integrations/${projectId}/supabase`),
+    getInfo: (projectId: string) => apiRequest(`/visudev-integrations/${projectId}/supabase`),
 
     // Disconnect Supabase
     disconnect: (projectId: string) =>
       apiRequest(`/visudev-integrations/${projectId}/supabase`, {
-        method: 'DELETE',
+        method: "DELETE",
       }),
   },
 };

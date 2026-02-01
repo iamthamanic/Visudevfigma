@@ -10,24 +10,24 @@ export interface Screen {
   name: string;
   path: string;
   file: string; // File path in repo
-  type: 'page' | 'screen' | 'view';
+  type: "page" | "screen" | "view";
   flows: string[]; // IDs of flows in this screen
   navigatesTo: string[]; // Paths this screen navigates to
   framework: string; // e.g., "nextjs-app", "react-router", "nuxt"
-  
+
   // Component code for fallback preview
   componentCode?: string;
-  
+
   // NEW: Commit & Screenshot tracking
-  lastAnalyzedCommit?: string;      // Commit SHA for which this screen data was produced
-  screenshotUrl?: string | null;    // Public URL in Supabase Storage
-  lastScreenshotCommit?: string;    // Commit SHA used for the current screenshot
+  lastAnalyzedCommit?: string; // Commit SHA for which this screen data was produced
+  screenshotUrl?: string | null; // Public URL in Supabase Storage
+  lastScreenshotCommit?: string; // Commit SHA used for the current screenshot
   screenshotStatus?: ScreenshotStatus;
 }
 
 export interface CodeFlow {
   id: string;
-  type: 'ui-event' | 'function-call' | 'api-call' | 'db-query';
+  type: "ui-event" | "function-call" | "api-call" | "db-query";
   name: string;
   file: string;
   line: number;
@@ -50,10 +50,10 @@ export interface AnalysisResult {
 }
 
 export interface ScreenshotRequest {
-  repo: string;          // "owner/name"
-  branch: string;        // "main"
-  commitSha: string;     // from analyzer
-  access_token: string;  // GitHub token for private repos
+  repo: string; // "owner/name"
+  branch: string; // "main"
+  commitSha: string; // from analyzer
+  access_token: string; // GitHub token for private repos
   screens: {
     id: string;
     path: string;

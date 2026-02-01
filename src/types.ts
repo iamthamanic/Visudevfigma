@@ -1,9 +1,9 @@
 // Core domain types for VisuDEV
 
-export type NodeKind = 'ui' | 'api' | 'edge' | 'auth' | 'sql' | 'policy' | 'storage' | 'erp';
-export type EdgeKind = 'import' | 'request' | 'sql' | 'policy' | 'relation' | 'deploy';
-export type Layer = 'frontend' | 'compute' | 'data' | 'external' | 'policies';
-export type MemberRole = 'owner' | 'maintainer' | 'viewer';
+export type NodeKind = "ui" | "api" | "edge" | "auth" | "sql" | "policy" | "storage" | "erp";
+export type EdgeKind = "import" | "request" | "sql" | "policy" | "relation" | "deploy";
+export type Layer = "frontend" | "compute" | "data" | "external" | "policies";
+export type MemberRole = "owner" | "maintainer" | "viewer";
 
 export interface NodeMetrics {
   avg_ms?: number;
@@ -84,7 +84,7 @@ export interface WebhookEvent {
   event: string;
   delivery_id: string;
   received_at: string;
-  payload: any;
+  payload: unknown;
 }
 
 export interface Repo {

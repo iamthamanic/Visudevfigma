@@ -1,0 +1,107 @@
+.card {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  text-align: center;
+}
+
+.errorCard {
+  border-color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.iconMuted {
+  width: 32px;
+  height: 32px;
+  color: var(--color-muted-foreground);
+  margin: 0 auto var(--space-sm);
+}
+
+.iconError {
+  color: var(--color-danger);
+}
+
+.titleMuted {
+  font-size: 0.875rem;
+  color: var(--color-muted-foreground);
+  margin-bottom: var(--space-xs);
+}
+
+.titleError {
+  color: var(--color-danger);
+}
+
+.subtitleMuted {
+  font-size: 0.75rem;
+  color: var(--color-subtle);
+}
+
+.subtitleError {
+  color: var(--color-danger);
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  color: var(--color-primary);
+  margin: 0 auto var(--space-sm);
+  animation: spin 1s linear infinite;
+}
+
+.retryButton {
+  margin-top: var(--space-sm);
+  font-size: 0.75rem;
+  color: var(--color-danger);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.retryButton:hover {
+  color: var(--color-danger);
+}
+
+.previewCard {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-card);
+}
+
+.previewFrame {
+  aspect-ratio: 16 / 9;
+  position: relative;
+  background: var(--color-background);
+}
+
+.previewImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.previewMeta {
+  padding: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.previewTitle {
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+
+.previewUrl {
+  font-size: 0.75rem;
+  color: var(--color-subtle);
+  margin-top: var(--space-xs);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

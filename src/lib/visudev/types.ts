@@ -1,22 +1,32 @@
 // VisuDEV Core Types
-export type ScanStatus = 'idle' | 'running' | 'completed' | 'failed';
+export type ScanStatus = "idle" | "running" | "completed" | "failed";
+export type ScreenshotStatus = "none" | "pending" | "ok" | "failed";
 
 export interface Screen {
   id: string;
   name: string;
   path: string;
   screenshotUrl?: string;
+  screenshotStatus?: ScreenshotStatus;
+  filePath?: string;
+  type?: "page" | "screen" | "view";
+  flows?: string[];
+  navigatesTo?: string[];
+  framework?: string;
+  componentCode?: string;
+  lastScreenshotCommit?: string;
   depth?: number;
 }
 
 export interface Flow {
   id: string;
+  type: "ui-event" | "function-call" | "api-call" | "db-query";
   name: string;
-  type: string;
-  source: string;
-  target: string;
-  trigger?: string;
-  description?: string;
+  file: string;
+  line: number;
+  code: string;
+  calls: string[];
+  color: string;
 }
 
 export interface Project {
@@ -25,10 +35,15 @@ export interface Project {
   description?: string;
   github_repo?: string;
   github_branch?: string;
+  github_access_token?: string;
   deployed_url?: string;
+  supabase_project_id?: string;
+  supabase_anon_key?: string;
+  supabase_management_token?: string;
   screens: Screen[];
   flows: Flow[];
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface AnalysisResult {
@@ -44,7 +59,7 @@ export interface AnalysisResult {
 export interface ScanResult {
   id: string;
   projectId: string;
-  scanType: 'appflow' | 'blueprint' | 'data';
+  scanType: "appflow" | "blueprint" | "data";
   status: ScanStatus;
   progress: number;
   result?: AnalysisResult;

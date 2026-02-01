@@ -7,6 +7,7 @@
 **visudev-server wurde komplett entfernt!**
 
 Die App funktioniert jetzt mit:
+
 - ✅ **Frontend Local State** (React Context)
 - ✅ **visudev-analyzer Edge Function** (einziger Remote Call)
 - ✅ **Kein Backend-Polling** mehr
@@ -43,11 +44,13 @@ Die App funktioniert jetzt mit:
 ## Neue Dateien
 
 ### Core Store
+
 - `/lib/visudev/types.ts` - Type Definitions
 - `/lib/visudev/sampleData.ts` - Demo-Daten (Scriptony)
 - `/lib/visudev/store.tsx` - **Zentraler Local Store**
 
 ### Komponenten (Clean Versions)
+
 - `/components/ProjectsOverviewNew.tsx` - Projekt-Verwaltung
 - `/components/AppFlowScreenClean.tsx` - Flow-Visualisierung
 - `/components/BlueprintClean.tsx` - Blueprint-Screen
@@ -55,6 +58,7 @@ Die App funktioniert jetzt mit:
 - `/components/LogsPanelClean.tsx` - Scan-Logs
 
 ### Kompatibilitäts-Layer
+
 - `/contexts/ProjectContext.tsx` - Legacy Wrapper (für backward compatibility)
 
 ---
@@ -62,16 +66,18 @@ Die App funktioniert jetzt mit:
 ## API-Änderungen
 
 ### Alt (visudev-server)
+
 ```typescript
 // ❌ Viele Backend-Calls mit 404 Errors
-GET  /visudev-server/projects
-POST /visudev-server/projects
-GET  /visudev-server/scans/{id}/status
-POST /visudev-server/scans/{id}/appflow
-GET  /visudev-server/appflow/{projectId}
+GET / visudev - server / projects;
+POST / visudev - server / projects;
+GET / visudev - server / scans / { id } / status;
+POST / visudev - server / scans / { id } / appflow;
+GET / visudev - server / appflow / { projectId };
 ```
 
 ### Neu (Local State)
+
 ```typescript
 // ✅ Nur noch ein Edge Function Call
 POST /visudev-analyzer/analyze
@@ -91,23 +97,23 @@ Alle CRUD-Operationen (Create, Read, Update, Delete) für Projekte passieren **l
 ### Hook: `useVisudev()`
 
 ```typescript
-import { useVisudev } from './lib/visudev/store';
+import { useVisudev } from "./lib/visudev/store";
 
 function MyComponent() {
   const {
     // Projects
-    projects,           // alle Projekte
-    activeProject,      // aktuelles Projekt
-    setActiveProject,   // Projekt aktivieren
-    addProject,         // neues Projekt erstellen
-    updateProject,      // Projekt updaten
-    deleteProject,      // Projekt löschen
-    
+    projects, // alle Projekte
+    activeProject, // aktuelles Projekt
+    setActiveProject, // Projekt aktivieren
+    addProject, // neues Projekt erstellen
+    updateProject, // Projekt updaten
+    deleteProject, // Projekt löschen
+
     // Scans
-    scans,              // alle Scans
-    scanStatuses,       // Status für appflow/blueprint/data
-    startScan,          // Scan starten
-    refreshScanStatus,  // Status aktualisieren (no-op in local mode)
+    scans, // alle Scans
+    scanStatuses, // Status für appflow/blueprint/data
+    startScan, // Scan starten
+    refreshScanStatus, // Status aktualisieren (no-op in local mode)
   } = useVisudev();
 
   // Beispiel: Projekt erstellen
@@ -122,7 +128,7 @@ function MyComponent() {
 
   // Beispiel: Scan starten
   const handleScan = async () => {
-    await startScan('appflow');
+    await startScan("appflow");
     // Calls visudev-analyzer, updates local state
   };
 }
@@ -133,12 +139,14 @@ function MyComponent() {
 ## Tradeoffs
 
 ### ❌ Was wir VERLIEREN
+
 - Kein Shared State zwischen Browsern/Tabs
 - Keine Backend-Persistenz (alles nur im RAM)
 - Keine History/Versionen von Scans
 - Keine Multi-User-Collaboration
 
 ### ✅ Was wir GEWINNEN
+
 - **Keine 404-Errors** mehr
 - **Extrem schnell** (kein Network-Roundtrip für CRUD)
 - **Einfache Architektur** (nur 1 Edge Function)
@@ -152,14 +160,16 @@ function MyComponent() {
 Wenn du später wieder Backend-Persistenz willst:
 
 ### Option A: localStorage
+
 ```typescript
 // In store.tsx
 useEffect(() => {
-  localStorage.setItem('visudev_projects', JSON.stringify(projects));
+  localStorage.setItem("visudev_projects", JSON.stringify(projects));
 }, [projects]);
 ```
 
 ### Option B: Supabase Tabellen
+
 ```sql
 CREATE TABLE projects (
   id UUID PRIMARY KEY,
@@ -178,9 +188,11 @@ Dann im Store die `addProject`/`updateProject` Functions anpassen um zusätzlich
 ## Deployment
 
 ### Was muss deployed sein?
+
 ✅ **visudev-analyzer** Edge Function (für Code-Analyse)
 
 ### Was NICHT deployed sein muss?
+
 ❌ **visudev-server** (komplett entfernt)
 ❌ **visudev-projects** (nicht mehr nötig)
 ❌ **visudev-screenshots** (noch nicht integriert, wird später über visudev-analyzer gemacht)
@@ -191,12 +203,12 @@ Dann im Store die `addProject`/`updateProject` Functions anpassen um zusätzlich
 
 ```typescript
 // Alt
-import { useProject } from './contexts/ProjectContext';
+import { useProject } from "./contexts/ProjectContext";
 
 const { activeProject, startScan } = useProject();
 
 // Neu (empfohlen)
-import { useVisudev } from './lib/visudev/store';
+import { useVisudev } from "./lib/visudev/store";
 
 const { activeProject, startScan } = useVisudev();
 ```
@@ -208,6 +220,7 @@ Der alte `useProject()` Hook funktioniert noch (Kompatibilitäts-Layer), aber ne
 ## Debugging
 
 ### Console-Logs aktiviert
+
 ```
 ✅ [VisuDEV] Loaded 5 Scriptony screens with 9 flows
 🔄 [VisuDEV] Starting appflow scan for project ...
@@ -216,6 +229,7 @@ Der alte `useProject()` Hook funktioniert noch (Kompatibilitäts-Layer), aber ne
 ```
 
 ### Typische Probleme
+
 - **"useVisudev must be used within VisudevProvider"** → Provider fehlt in App.tsx
 - **"Cannot read property 'screens' of null"** → activeProject ist null, Projekt erst auswählen
 
@@ -224,6 +238,7 @@ Der alte `useProject()` Hook funktioniert noch (Kompatibilitäts-Layer), aber ne
 ## Fazit
 
 Du hast jetzt einen **cleanen, Backend-freien Prototyp** mit:
+
 - ✅ Schnellem Local State
 - ✅ Code-Analyse via visudev-analyzer
 - ✅ Kein visudev-server Müll

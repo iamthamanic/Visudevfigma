@@ -1,0 +1,200 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 16rem;
+}
+
+.loadingIcon {
+  width: 32px;
+  height: 32px;
+  color: var(--color-primary);
+  animation: spin 1s linear infinite;
+}
+
+.emptyState {
+  padding: var(--space-xl);
+  text-align: center;
+  color: var(--color-muted-foreground);
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.headerIcon {
+  width: 24px;
+  height: 24px;
+  color: var(--color-primary);
+}
+
+.cardTitle {
+  color: var(--color-foreground);
+}
+
+.cardDescription {
+  color: var(--color-muted-foreground);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  padding: 4px 8px;
+  font-size: 0.75rem;
+}
+
+.badgeConnected {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.badgeDisconnected {
+  border-color: var(--color-border);
+  color: var(--color-muted-foreground);
+}
+
+.badgeIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.fieldLabel {
+  font-size: 0.875rem;
+  color: var(--color-muted-foreground);
+}
+
+.input {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  color: var(--color-foreground);
+}
+
+.primaryButton {
+  width: 100%;
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+}
+
+.metaList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.metaItem {
+  font-size: 0.875rem;
+  color: var(--color-muted-foreground);
+}
+
+.metaValue {
+  color: var(--color-foreground);
+}
+
+.separator {
+  background: var(--color-border);
+}
+
+.actionRow {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.outlineButton {
+  flex: 1;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.buttonSpinner {
+  width: 16px;
+  height: 16px;
+  margin-right: var(--space-xs);
+  animation: spin 1s linear infinite;
+}
+
+.dangerButton {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.dangerButtonFull {
+  width: 100%;
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.repoList {
+  margin-top: var(--space-md);
+  max-height: 12rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.repoItem {
+  padding: var(--space-xs);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+}
+
+.repoName {
+  color: var(--color-foreground);
+}
+
+.repoBadge {
+  margin-left: var(--space-xs);
+  background: var(--color-hover);
+  color: var(--color-muted-foreground);
+}
+
+.repoMore {
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+  text-align: center;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

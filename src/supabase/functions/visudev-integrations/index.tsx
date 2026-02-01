@@ -1,41 +1,27 @@
 /**
- * VisuDEV Edge Function: Integrations
- * 
- * @version 1.0.0
- * @created 2025-11-06T12:00:00.000Z
- * @updated 2025-11-06T12:00:00.000Z
- * 
+ * VisuDEV Edge Function: Integrations (DDD/DI Refactor)
+ *
+ * @version 2.0.0
  * @description Platform integrations (GitHub, Supabase, GitLab, etc.) API
  */
 
-import { Hono } from "npm:hono";
-import { cors } from "npm:hono/cors";
-import { logger } from "npm:hono/logger";
-import { createClient } from "jsr:@supabase/supabase-js@2.49.8";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { createClient } from "@jsr/supabase__supabase-js";
+import { createIntegrationsModule } from "./module/index.ts";
+import type { LoggerLike } from "./module/interfaces/module.interface.ts";
+import { ModuleException } from "./module/internal/exceptions/index.ts";
+import type { ErrorResponse } from "./module/types/index.ts";
 
-// KV Store Implementation (inline for Dashboard compatibility)
-const kvClient = () => createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-);
+interface EnvConfig {
+  supabaseUrl: string;
+  supabaseServiceRoleKey: string;
+  kvTableName: string;
+  githubApiBaseUrl: string;
+}
 
-const kvSet = async (key: string, value: any): Promise<void> => {
-  const supabase = kvClient();
-  const { error } = await supabase.from("kv_store_edf036ef").upsert({ key, value });
-  if (error) throw new Error(error.message);
-};
-
-const kvGet = async (key: string): Promise<any> => {
-  const supabase = kvClient();
-  const { data, error } = await supabase.from("kv_store_edf036ef").select("value").eq("key", key).maybeSingle();
-  if (error) throw new Error(error.message);
-  return data?.value;
-};
-
-// API Implementation
 const app = new Hono();
 
-app.use('*', logger(console.log));
 app.use(
   "/*",
   cors({
@@ -47,263 +33,124 @@ app.use(
   }),
 );
 
-// Get integrations for project
-app.get("/:projectId", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const integrations = await kvGet(`integrations:${projectId}`);
-    return c.json({ success: true, data: integrations || {} });
-  } catch (error) {
-    console.log(`Error fetching integrations: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
+const logger: LoggerLike = createLogger();
+const env = loadEnvConfig(logger);
+
+const supabase = createClient(env.supabaseUrl, env.supabaseServiceRoleKey);
+
+const integrationsModule = createIntegrationsModule({
+  supabase,
+  logger,
+  config: {
+    kvTableName: env.kvTableName,
+    githubApiBaseUrl: env.githubApiBaseUrl,
+  },
 });
 
-// Update integrations (GitHub, Supabase, etc.)
-app.put("/:projectId", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const body = await c.req.json();
-    const integrations = {
-      ...body,
-      projectId,
-      updatedAt: new Date().toISOString(),
-    };
-    await kvSet(`integrations:${projectId}`, integrations);
-    return c.json({ success: true, data: integrations });
-  } catch (error) {
-    console.log(`Error updating integrations: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
-});
+integrationsModule.registerRoutes(app);
 
-// ==================== GITHUB ====================
-
-// Connect GitHub (save token)
-app.post("/:projectId/github", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const body = await c.req.json();
-    const { token, username } = body;
-
-    if (!token) {
-      return c.json({ success: false, error: "Token required" }, 400);
-    }
-
-    const integrations = await kvGet(`integrations:${projectId}`) || {};
-    integrations.github = {
-      token,
-      username,
-      connectedAt: new Date().toISOString(),
-    };
-    integrations.updatedAt = new Date().toISOString();
-
-    await kvSet(`integrations:${projectId}`, integrations);
-    return c.json({ success: true, data: { connected: true, username } });
-  } catch (error) {
-    console.log(`Error connecting GitHub: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
-});
-
-// Get GitHub repositories
-app.get("/:projectId/github/repos", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const integrations = await kvGet(`integrations:${projectId}`);
-    
-    if (!integrations?.github?.token) {
-      return c.json({ success: false, error: "GitHub not connected" }, 400);
-    }
-
-    const response = await fetch("https://api.github.com/user/repos?per_page=100", {
-      headers: {
-        Authorization: `token ${integrations.github.token}`,
-        Accept: "application/vnd.github.v3+json",
+app.onError((err, c) => {
+  if (err instanceof ModuleException) {
+    logger.warn("Request failed", { code: err.code, message: err.message });
+    const payload: ErrorResponse = {
+      success: false,
+      error: {
+        code: err.code,
+        message: err.message,
+        details: err.details,
       },
-    });
-
-    if (!response.ok) {
-      throw new Error(`GitHub API error: ${response.statusText}`);
-    }
-
-    const repos = await response.json();
-    return c.json({ success: true, data: repos });
-  } catch (error) {
-    console.log(`Error fetching GitHub repos: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
-});
-
-// Get GitHub branches
-app.get("/:projectId/github/branches", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const owner = c.req.query("owner");
-    const repo = c.req.query("repo");
-
-    if (!owner || !repo) {
-      return c.json({ success: false, error: "Missing owner or repo" }, 400);
-    }
-
-    const integrations = await kvGet(`integrations:${projectId}`);
-    
-    if (!integrations?.github?.token) {
-      return c.json({ success: false, error: "GitHub not connected" }, 400);
-    }
-
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/branches`,
-      {
-        headers: {
-          Authorization: `token ${integrations.github.token}`,
-          Accept: "application/vnd.github.v3+json",
-        },
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`GitHub API error: ${response.statusText}`);
-    }
-
-    const branches = await response.json();
-    return c.json({ success: true, data: branches });
-  } catch (error) {
-    console.log(`Error fetching GitHub branches: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
-});
-
-// Get GitHub file/directory content
-app.get("/:projectId/github/content", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const owner = c.req.query("owner");
-    const repo = c.req.query("repo");
-    const path = c.req.query("path") || "";
-    const ref = c.req.query("ref") || "main";
-
-    if (!owner || !repo) {
-      return c.json({ success: false, error: "Missing owner or repo" }, 400);
-    }
-
-    const integrations = await kvGet(`integrations:${projectId}`);
-    
-    if (!integrations?.github?.token) {
-      return c.json({ success: false, error: "GitHub not connected" }, 400);
-    }
-
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${ref}`,
-      {
-        headers: {
-          Authorization: `token ${integrations.github.token}`,
-          Accept: "application/vnd.github.v3+json",
-        },
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`GitHub API error: ${response.statusText}`);
-    }
-
-    const content = await response.json();
-    return c.json({ success: true, data: content });
-  } catch (error) {
-    console.log(`Error fetching GitHub content: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
-});
-
-// Disconnect GitHub
-app.delete("/:projectId/github", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const integrations = await kvGet(`integrations:${projectId}`) || {};
-    
-    delete integrations.github;
-    integrations.updatedAt = new Date().toISOString();
-
-    await kvSet(`integrations:${projectId}`, integrations);
-    return c.json({ success: true });
-  } catch (error) {
-    console.log(`Error disconnecting GitHub: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
-});
-
-// ==================== SUPABASE ====================
-
-// Connect Supabase
-app.post("/:projectId/supabase", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const body = await c.req.json();
-    const { url, anonKey, serviceKey, projectRef } = body;
-
-    if (!url || !anonKey) {
-      return c.json({ success: false, error: "URL and anon key required" }, 400);
-    }
-
-    const integrations = await kvGet(`integrations:${projectId}`) || {};
-    integrations.supabase = {
-      url,
-      anonKey,
-      serviceKey,
-      projectRef,
-      connectedAt: new Date().toISOString(),
     };
-    integrations.updatedAt = new Date().toISOString();
-
-    await kvSet(`integrations:${projectId}`, integrations);
-    return c.json({ success: true, data: { connected: true, url, projectRef } });
-  } catch (error) {
-    console.log(`Error connecting Supabase: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
+    return c.json(payload, err.statusCode);
   }
-});
 
-// Get Supabase info
-app.get("/:projectId/supabase", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const integrations = await kvGet(`integrations:${projectId}`);
-    
-    if (!integrations?.supabase?.url) {
-      return c.json({ success: false, error: "Supabase not connected" }, 400);
-    }
-
-    // Return info without exposing service key
-    return c.json({ 
-      success: true, 
-      data: {
-        url: integrations.supabase.url,
-        projectRef: integrations.supabase.projectRef,
-        connected: true,
-        connectedAt: integrations.supabase.connectedAt,
-      }
-    });
-  } catch (error) {
-    console.log(`Error fetching Supabase info: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
-});
-
-// Disconnect Supabase
-app.delete("/:projectId/supabase", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const integrations = await kvGet(`integrations:${projectId}`) || {};
-    
-    delete integrations.supabase;
-    integrations.updatedAt = new Date().toISOString();
-
-    await kvSet(`integrations:${projectId}`, integrations);
-    return c.json({ success: true });
-  } catch (error) {
-    console.log(`Error disconnecting Supabase: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
+  const message = err instanceof Error ? err.message : "Unknown error";
+  logger.error("Unhandled error", { message });
+  const payload: ErrorResponse = {
+    success: false,
+    error: {
+      code: "INTERNAL_ERROR",
+      message,
+    },
+  };
+  return c.json(payload, 500);
 });
 
 Deno.serve(app.fetch);
+
+function createLogger(): LoggerLike {
+  const encoder = new TextEncoder();
+  const write = (
+    stream: "stdout" | "stderr",
+    payload: Record<string, unknown>,
+  ): void => {
+    const line = JSON.stringify(payload);
+    const data = encoder.encode(`${line}\n`);
+    if (stream === "stderr") {
+      Deno.stderr.writeSync(data);
+      return;
+    }
+    Deno.stdout.writeSync(data);
+  };
+
+  return {
+    info: (message: string, meta?: Record<string, unknown>): void => {
+      write("stdout", {
+        level: "info",
+        message,
+        meta,
+        ts: new Date().toISOString(),
+      });
+    },
+    warn: (message: string, meta?: Record<string, unknown>): void => {
+      write("stderr", {
+        level: "warn",
+        message,
+        meta,
+        ts: new Date().toISOString(),
+      });
+    },
+    error: (message: string, meta?: Record<string, unknown>): void => {
+      write("stderr", {
+        level: "error",
+        message,
+        meta,
+        ts: new Date().toISOString(),
+      });
+    },
+    debug: (message: string, meta?: Record<string, unknown>): void => {
+      write("stdout", {
+        level: "debug",
+        message,
+        meta,
+        ts: new Date().toISOString(),
+      });
+    },
+  };
+}
+
+function loadEnvConfig(loggerInstance: LoggerLike): EnvConfig {
+  const supabaseUrl = getRequiredEnv("SUPABASE_URL");
+  const supabaseServiceRoleKey = getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+
+  const kvTableName = Deno.env.get("VISUDEV_KV_TABLE") ??
+    Deno.env.get("KV_TABLE_NAME") ?? "kv_store_edf036ef";
+
+  if (!Deno.env.get("VISUDEV_KV_TABLE") && !Deno.env.get("KV_TABLE_NAME")) {
+    loggerInstance.warn("KV table env not set. Falling back to default.", {
+      defaultValue: kvTableName,
+    });
+  }
+
+  const githubApiBaseUrl = Deno.env.get("GITHUB_API_BASE_URL") ??
+    "https://api.github.com";
+
+  return { supabaseUrl, supabaseServiceRoleKey, kvTableName, githubApiBaseUrl };
+}
+
+function getRequiredEnv(key: string): string {
+  const value = Deno.env.get(key);
+  if (!value) {
+    throw new Error(`${key} environment variable is required`);
+  }
+  return value;
+}

@@ -16,19 +16,22 @@ VisuDEV benötigt ein konsistentes Design System basierend auf dem minimalistisc
 **Problem:**  
 Ohne einheitliches Design System werden Komponenten inkonsistent gestaltet, was zu schlechter UX und Maintenance-Problemen führt.
 
-**Lösung:**  
+**Lösung:**
+
 - Implementierung aller Farbtokens aus dem Styleguide in `/styles/globals.css`
 - Definition von wiederverwendbaren Tailwind-Klassen für Buttons, Cards, Inputs
 - Einrichtung von Typography-System mit Inter und JetBrains Mono
 - 4px-Grid-basiertes Spacing System
 
-**User Journey:**  
+**User Journey:**
+
 1. Designer öffnet Styleguide (`/STYLEGUIDE.md`)
 2. Entwickler implementiert Design-Tokens in CSS
 3. Alle Komponenten nutzen konsistente Styles
 4. User erlebt durchgängig cleanes, professionelles Design
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Alle Farben aus Styleguide in CSS definiert
 - [ ] Primary Color #03ffa3 korrekt verwendet
 - [ ] Hover/Active States implementiert (#02e591, #02cc80)
@@ -47,19 +50,22 @@ VisuDEV ist primär für Desktop (1440px+) optimiert, sollte aber auf verschiede
 **Problem:**  
 Ohne responsives Layout ist die Anwendung auf kleineren Screens oder größeren Monitoren nicht optimal nutzbar.
 
-**Lösung:**  
+**Lösung:**
+
 - Implementierung eines 12-Column Grid Systems
 - Breakpoints: Mobile (<640px), Tablet (640-1024px), Desktop (1024-1440px), Large Desktop (>1440px)
 - Max-Width von 1600px für Hauptinhalt
 - Flexible Sidebar (240px fixed)
 
-**User Journey:**  
+**User Journey:**
+
 1. User öffnet VisuDEV auf verschiedenen Geräten
 2. Layout passt sich automatisch an Bildschirmgröße an
 3. Alle Inhalte bleiben lesbar und zugänglich
 4. Optimale Nutzung auf Desktop-Monitoren
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Layout funktioniert auf allen definierten Breakpoints
 - [ ] Sidebar bleibt auf Desktop fixed (240px)
 - [ ] Main Content Area hat korrekten Margin Left (240px)
@@ -79,14 +85,16 @@ Die Sidebar ist die Hauptnavigation von VisuDEV und muss alle Screens zugänglic
 **Problem:**  
 User müssen schnell zwischen verschiedenen Views (Projekte, App/Flow, Blueprint, Data, Logs, Settings) navigieren können.
 
-**Lösung:**  
+**Lösung:**
+
 - Fixed Sidebar links mit 240px Breite
 - Header mit Logo und "VisuDEV - Visualize Code" Branding
 - Navigation Items für alle Screens
 - Active State Highlighting mit türkiser Farbe
 - Footer mit "Neues Projekt" Button
 
-**User Journey:**  
+**User Journey:**
+
 1. User öffnet VisuDEV
 2. Sieht Logo und Branding im Sidebar Header
 3. Klickt auf Navigation Item (z.B. "App/Flow")
@@ -94,7 +102,8 @@ User müssen schnell zwischen verschiedenen Views (Projekte, App/Flow, Blueprint
 5. Entsprechender Screen wird geladen
 6. User kann jederzeit neues Projekt über Footer-Button erstellen
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Sidebar fixed left mit 240px Breite
 - [ ] Background #000000, Border Right #222222
 - [ ] VisuDEV Logo korrekt angezeigt (40x40px, rund)
@@ -115,20 +124,23 @@ User müssen immer sehen, welches Projekt aktuell aktiv ist.
 **Problem:**  
 Bei mehreren Projekten verliert man schnell den Überblick über das aktuelle Arbeitsprojekt.
 
-**Lösung:**  
+**Lösung:**
+
 - Einblendung des aktiven Projektnamens zwischen "Projekte" und "App/Flow"
 - Türkise Farbe (#03ffa3) für Hervorhebung
 - Truncate bei langen Projektnamen (max-w-180px)
 - Nur sichtbar wenn Projekt aktiv
 
-**User Journey:**  
+**User Journey:**
+
 1. User erstellt oder wählt Projekt aus
 2. Projektname erscheint in Sidebar
 3. User sieht immer, welches Projekt aktiv ist
 4. Bei langem Namen wird Text mit "..." gekürzt
 5. Projekt bleibt während Navigation sichtbar
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Projektname zwischen "Projekte" und "App/Flow" angezeigt
 - [ ] Textfarbe #03ffa3 (türkis)
 - [ ] Max-Width 180px mit Truncate
@@ -146,20 +158,23 @@ Bei laufenden Scans (App/Flow, Blueprint, Data) muss User Fortschritt sehen.
 **Problem:**  
 Lange Scan-Vorgänge ohne Feedback führen zu Unsicherheit und schlechter UX.
 
-**Lösung:**  
+**Lösung:**
+
 - Spinner-Icon rechts neben Navigation Item
 - Prozentanzeige neben Spinner
 - Türkise Farbe (#03ffa3) für Spinner und Text
 - Auto-Hide wenn Scan beendet
 
-**User Journey:**  
+**User Journey:**
+
 1. User startet Scan (z.B. "App/Flow Scan")
 2. Spinner und "0%" erscheinen rechts im Nav Item
 3. Prozent-Zahl updated kontinuierlich (z.B. "45%")
 4. Nach Completion verschwinden Spinner und Prozent
 5. User kann andere Screens nutzen während Scan läuft
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Loader2 Icon von lucide-react verwendet
 - [ ] Spinner animiert sich (animate-spin)
 - [ ] Farbe #03ffa3 für Icon und Prozent-Text
@@ -180,19 +195,22 @@ Der Projects Screen ist der Einstiegspunkt für alle Projekte und muss übersich
 **Problem:**  
 User brauchen klare Überschrift und Kontext, was auf diesem Screen passiert.
 
-**Lösung:**  
+**Lösung:**
+
 - Großer Title "Projekte" (32px, Bold)
 - Subtitle "Verbundene GitHub Repositories" (14px, #a0a0a0)
 - Background #0a0a0a mit 32px Padding
 - Clean, minimalistisch ohne Ablenkung
 
-**User Journey:**  
+**User Journey:**
+
 1. User navigiert zu "Projekte"
 2. Sieht sofort "Projekte" als Hauptüberschrift
 3. Versteht durch Subtitle, dass GitHub Repos angezeigt werden
 4. Screen lädt Projektliste
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Title "Projekte" mit 32px Font Size, Bold
 - [ ] Subtitle "Verbundene GitHub Repositories" mit 14px, Farbe #a0a0a0
 - [ ] Background #0a0a0a
@@ -210,13 +228,15 @@ User müssen GitHub Account verbinden, um Repositories zu scannen.
 **Problem:**  
 Ohne GitHub-Verbindung kann VisuDEV keine Repos analysieren - User muss zur Connection geleitet werden.
 
-**Lösung:**  
+**Lösung:**
+
 - Card mit GitHub Icon und Text "GitHub verbinden"
 - Grüner "Verbinden" Button
 - Info-Text über OAuth-Flow
 - Card nur sichtbar wenn nicht verbunden
 
-**User Journey:**  
+**User Journey:**
+
 1. User öffnet Projects Screen (noch nicht verbunden)
 2. Sieht GitHub Connection Card
 3. Klickt auf "Verbinden" Button
@@ -224,7 +244,8 @@ Ohne GitHub-Verbindung kann VisuDEV keine Repos analysieren - User muss zur Conn
 5. Nach erfolgreicher Verbindung verschwindet Card
 6. Repository-Liste wird angezeigt
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Card Background #111111, Border #222222
 - [ ] Border Radius 8px, Padding 24px
 - [ ] GitHub Icon (24x24px) von lucide-react
@@ -244,20 +265,23 @@ User müssen alle verfügbaren GitHub Repositories in übersichtlicher Grid-Ansi
 **Problem:**  
 Viele Repositories unstrukturiert aufgelistet führt zu Unübersichtlichkeit.
 
-**Lösung:**  
+**Lösung:**
+
 - Grid Layout mit 3 Columns auf Desktop
 - Responsive auf 2 Columns (Tablet) und 1 Column (Mobile)
 - Gap von 24px zwischen Cards
 - Jede Card zeigt Repo-Name, Owner, Stats
 
-**User Journey:**  
+**User Journey:**
+
 1. User hat GitHub verbunden
 2. Sieht Grid mit allen verfügbaren Repositories
 3. Kann schnell Repo finden durch visuelle Struktur
 4. Klickt auf Repo-Card zum Öffnen
 5. Card zeigt Hover-Effect für Feedback
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Grid mit 3 Columns (Desktop 1024px+)
 - [ ] 2 Columns auf Tablet (640-1024px)
 - [ ] 1 Column auf Mobile (<640px)
@@ -276,7 +300,8 @@ Jede Repository-Card muss wichtige Infos auf einen Blick zeigen.
 **Problem:**  
 User muss schnell Repo-Details erfassen können ohne klicken zu müssen.
 
-**Lösung:**  
+**Lösung:**
+
 - Card mit Repo-Name als Headline
 - Owner/Organization unter Name
 - Stats: Stars, Forks, Last Update
@@ -284,7 +309,8 @@ User muss schnell Repo-Details erfassen können ohne klicken zu müssen.
 - Hover-Effect: Border color change + translateY
 - Click-Action: Projekt auswählen und zu App/Flow navigieren
 
-**User Journey:**  
+**User Journey:**
+
 1. User sieht Repository-Card in Grid
 2. Liest Repo-Name (z.B. "visudev-main")
 3. Sieht Owner (z.B. "johndoe")
@@ -293,7 +319,8 @@ User muss schnell Repo-Details erfassen können ohne klicken zu müssen.
 6. Hovert über Card → Border wird türkis
 7. Klickt → Projekt wird aktiviert → Navigation zu App/Flow
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Card Background #111111, Border #222222
 - [ ] Border Radius 8px, Padding 24px
 - [ ] Hover: Border #03ffa3, translateY(-2px)
@@ -315,13 +342,15 @@ Wenn User GitHub verbunden hat, aber keine Repos verfügbar sind.
 **Problem:**  
 Leerer Screen ohne Feedback ist verwirrend und frustrierend.
 
-**Lösung:**  
+**Lösung:**
+
 - Zentrierte Message "Keine Repositories gefunden"
 - Icon (FolderX) zur Visualisierung
 - Hilfetext mit nächsten Schritten
 - Link zu GitHub zum Repo erstellen
 
-**User Journey:**  
+**User Journey:**
+
 1. User verbindet GitHub Account
 2. API liefert leere Liste
 3. Sieht zentrierten Empty State mit Icon
@@ -330,7 +359,8 @@ Leerer Screen ohne Feedback ist verwirrend und frustrierend.
 6. Erstellt neues Repo
 7. Refreshed VisuDEV → Repo erscheint
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] FolderX Icon (48x48px) von lucide-react
 - [ ] Farbe #666666
 - [ ] "Keine Repositories gefunden" (20px, Bold)
@@ -350,20 +380,23 @@ Während GitHub Repositories geladen werden, braucht User Feedback.
 **Problem:**  
 Ohne Loading-Indikator weiß User nicht, ob App arbeitet oder frozen ist.
 
-**Lösung:**  
+**Lösung:**
+
 - Spinner mit türkiser Farbe (#03ffa3)
 - "Lade Repositories..." Text
 - Zentriert im Content-Bereich
 - Smooth Animation
 
-**User Journey:**  
+**User Journey:**
+
 1. User klickt "Verbinden" oder refreshed Projects Screen
 2. API-Call startet
 3. Sofort erscheint Spinner + Text
 4. User sieht, dass geladen wird
 5. Nach 1-3 Sekunden erscheinen Repositories
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Loader2 Icon von lucide-react
 - [ ] Icon Size 32x32px
 - [ ] Farbe #03ffa3
@@ -385,13 +418,15 @@ Der App/Flow Screen zeigt alle UI-Flows eines Projekts und bietet Scan-Funktiona
 **Problem:**  
 User muss Flow-Liste sehen und neue Scans triggern können.
 
-**Lösung:**  
+**Lösung:**
+
 - Header mit "App/Flow" Title (32px)
 - Subtitle mit Flow-Count (z.B. "434 Flows analysiert")
 - "Scan starten" Button rechts oben
 - Stats: Screens, Components, Events
 
-**User Journey:**  
+**User Journey:**
+
 1. User navigiert zu App/Flow (Projekt muss aktiv sein)
 2. Sieht Header mit Flow-Count
 3. Checkt Stats (z.B. "45 Screens, 234 Components")
@@ -399,7 +434,8 @@ User muss Flow-Liste sehen und neue Scans triggern können.
 5. Scan-Progress wird in Sidebar angezeigt
 6. Flow-Liste updated automatisch
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Title "App/Flow" (32px, Bold)
 - [ ] Subtitle mit Flow-Count (14px, #a0a0a0)
 - [ ] "Scan starten" Button Primary Style (#03ffa3)
@@ -419,13 +455,15 @@ User muss alle analysierten Flows in übersichtlicher Tabelle sehen.
 **Problem:**  
 434 Flows ohne Struktur sind nicht navigierbar oder durchsuchbar.
 
-**Lösung:**  
+**Lösung:**
+
 - Tabelle mit Columns: Screen, Flow Name, Layers, Actions, Screenshot
 - Hover-Effect auf Rows
 - Click öffnet Flow-Detail-View
 - Alternating Row Colors für bessere Lesbarkeit
 
-**User Journey:**  
+**User Journey:**
+
 1. User sieht Flow-Tabelle
 2. Scrollt durch Liste
 3. Liest Flow-Details (Screen, Name, Layer-Count)
@@ -433,7 +471,8 @@ User muss alle analysierten Flows in übersichtlicher Tabelle sehen.
 5. Klickt auf Row → Flow-Detail-View öffnet sich
 6. Kann zurück zur Liste navigieren
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Table Header: Background #111111, Border #222222
 - [ ] Header Text: 12px, Bold, #a0a0a0, Uppercase
 - [ ] Row Height: 64px
@@ -453,14 +492,16 @@ Jede Flow-Row muss aussagekräftige Informationen darstellen.
 **Problem:**  
 User muss Flow schnell identifizieren und verstehen können.
 
-**Lösung:**  
+**Lösung:**
+
 - Screen Name mit Icon
 - Flow Name in White (#ffffff)
 - Layer Count mit farbigen Badges
 - Action Count als Zahl
 - Screenshot Thumbnail (100x60px)
 
-**User Journey:**  
+**User Journey:**
+
 1. User sieht Row in Tabelle
 2. Identifiziert Screen (z.B. "LoginScreen")
 3. Liest Flow-Name (z.B. "User Login Flow")
@@ -469,7 +510,8 @@ User muss Flow schnell identifizieren und verstehen können.
 6. Thumbnail zeigt Screenshot-Preview
 7. Klickt für Details
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Screen Name: 14px, Medium, White
 - [ ] Screen Icon (Monitor) türkis (#03ffa3)
 - [ ] Flow Name: 14px, Regular, White
@@ -489,7 +531,8 @@ User klickt auf Flow-Row und braucht detaillierte Visualisierung.
 **Problem:**  
 Flow-Details in Tabelle zu zeigen ist zu komplex - Modal notwendig.
 
-**Lösung:**  
+**Lösung:**
+
 - Full-Screen Modal (Overlay #000000 80% opacity)
 - Content Card zentriert (Max-Width 1200px)
 - Header mit Flow-Name und Close-Button
@@ -497,7 +540,8 @@ Flow-Details in Tabelle zu zeigen ist zu komplex - Modal notwendig.
 - Flow-Graph mit Layer-Knoten
 - Layer-Details expandierbar
 
-**User Journey:**  
+**User Journey:**
+
 1. User klickt Flow-Row
 2. Modal faded in (0.3s)
 3. Sieht Flow-Name im Header
@@ -506,7 +550,8 @@ Flow-Details in Tabelle zu zeigen ist zu komplex - Modal notwendig.
 6. Kann Layer-Knoten anklicken für Details
 7. Schließt Modal mit X oder ESC
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Overlay Background rgba(0,0,0,0.8)
 - [ ] Modal zentriert: flex justify-center items-center
 - [ ] Content Max-Width 1200px, Max-Height 90vh
@@ -527,7 +572,8 @@ Flow-Graph muss Layer-Knoten visuell darstellen mit Connections.
 **Problem:**  
 Komplexe Flows mit vielen Layers sind schwer zu verstehen ohne visuelle Darstellung.
 
-**Lösung:**  
+**Lösung:**
+
 - SVG-basierter Graph mit React-Flow oder Custom SVG
 - Layer-Knoten farbkodiert (UI: türkis, Code: cyan, API: orange, DB: lila, RLS: rot)
 - Vertikale Anordnung (Top-Down: UI → Code → API → DB → RLS)
@@ -535,7 +581,8 @@ Komplexe Flows mit vielen Layers sind schwer zu verstehen ohne visuelle Darstell
 - Hover-Effect auf Knoten
 - Click öffnet Layer-Details
 
-**User Journey:**  
+**User Journey:**
+
 1. User öffnet Flow-Detail-Modal
 2. Sieht Flow-Graph unter Screenshot
 3. Identifiziert Layers durch Farben
@@ -544,7 +591,8 @@ Komplexe Flows mit vielen Layers sind schwer zu verstehen ohne visuelle Darstell
 6. Klickt Knoten → Layer-Details expandieren
 7. Kann zwischen Layers navigieren
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Layer-Knoten: Min-Width 160px, Min-Height 80px
 - [ ] Border Radius 8px, Border 2px solid [Layer-Color]
 - [ ] Background rgba([Layer-Color], 0.05)
@@ -566,14 +614,16 @@ Bei 434 Flows muss User schnell filtern können.
 **Problem:**  
 Ohne Search/Filter ist gesuchter Flow schwer zu finden.
 
-**Lösung:**  
+**Lösung:**
+
 - Search Input über Tabelle
 - Real-time Filtering beim Tippen
 - Filter-Buttons für Layer-Types (UI, API, DB)
 - Filter-Count Badge
 - Clear-Button
 
-**User Journey:**  
+**User Journey:**
+
 1. User sieht 434 Flows in Tabelle
 2. Tippt "login" in Search-Input
 3. Tabelle filtert sofort auf Login-Flows (z.B. 12 Ergebnisse)
@@ -582,7 +632,8 @@ Ohne Search/Filter ist gesuchter Flow schwer zu finden.
 6. Klickt Clear-Button
 7. Alle Flows wieder sichtbar
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Search Input: Width 100%, Max-Width 400px
 - [ ] Background #0a0a0a, Border #222222
 - [ ] Padding 10px 16px, Border Radius 6px
@@ -604,13 +655,15 @@ Neues Projekt hat noch keine Flows analysiert.
 **Problem:**  
 Leerer Flow-Screen ohne Anleitung ist verwirrend.
 
-**Lösung:**  
+**Lösung:**
+
 - Zentrierte Message "Noch keine Flows analysiert"
 - Icon (Workflow)
 - "Scan starten" Call-to-Action Button
 - Info-Text über Scan-Process
 
-**User Journey:**  
+**User Journey:**
+
 1. User wählt neues Projekt
 2. Navigiert zu App/Flow
 3. Sieht Empty State
@@ -619,7 +672,8 @@ Leerer Flow-Screen ohne Anleitung ist verwirrend.
 6. Scan läuft → Progress in Sidebar
 7. Nach Completion erscheinen Flows
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Workflow Icon (48x48px) #666666
 - [ ] "Noch keine Flows analysiert" (20px Bold)
 - [ ] Info-Text (14px #a0a0a0)
@@ -640,13 +694,15 @@ Blueprint zeigt Projekt-Architektur auf Komponenten-Ebene.
 **Problem:**  
 User muss Projekt-Struktur verstehen ohne Code zu lesen.
 
-**Lösung:**  
+**Lösung:**
+
 - Tree-View der Ordnerstruktur
 - Component-Count pro Ordner
 - Dependency-Graph
 - Architecture-Metrics (Complexity, Coupling)
 
-**User Journey:**  
+**User Journey:**
+
 1. User navigiert zu Blueprint
 2. Sieht Folder-Tree links
 3. Klickt Ordner zum Expandieren
@@ -655,7 +711,8 @@ User muss Projekt-Struktur verstehen ohne Code zu lesen.
 6. Versteht Component-Dependencies
 7. Checkt Metrics für Code-Quality
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] 2-Column Layout: Tree (30%) + Graph (70%)
 - [ ] Tree: Expandierbare Folder mit Chevron Icons
 - [ ] Component Count Badge an jedem Ordner
@@ -674,13 +731,15 @@ User klickt Component im Tree und braucht Details.
 **Problem:**  
 Component-Infos (Props, Dependencies, Usage) ohne Panel schwer darstellbar.
 
-**Lösung:**  
+**Lösung:**
+
 - Sliding Panel von rechts
 - Component-Name als Header
 - Tabs: Props, Dependencies, Used By
 - Code-Preview mit Syntax Highlighting
 
-**User Journey:**  
+**User Journey:**
+
 1. User klickt Component in Tree
 2. Panel slide in von rechts (0.3s)
 3. Sieht Component-Name im Header
@@ -690,7 +749,8 @@ Component-Infos (Props, Dependencies, Usage) ohne Panel schwer darstellbar.
 7. Code-Preview zeigt Component-Code
 8. Schließt Panel mit X oder ESC
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Panel Width 400px, Full-Height
 - [ ] Slide-in Animation from right (0.3s ease-out)
 - [ ] Background #111111, Border-Left #222222
@@ -710,14 +770,16 @@ Component-Dependencies müssen visuell dargestellt werden.
 **Problem:**  
 Text-Listen von Dependencies sind schwer zu verstehen bei komplexen Projekten.
 
-**Lösung:**  
+**Lösung:**
+
 - Interactive Graph mit D3.js oder React-Flow
 - Nodes für Components
 - Edges für Import-Dependencies
 - Zoom & Pan Funktionalität
 - Highlight beim Hover
 
-**User Journey:**  
+**User Journey:**
+
 1. User wählt Component in Tree
 2. Dependency-Graph zeigt Component als zentralen Node
 3. Dependencies als verbundene Nodes
@@ -726,7 +788,8 @@ Text-Listen von Dependencies sind schwer zu verstehen bei komplexen Projekten.
 6. Zoomed mit Scroll-Wheel
 7. Panned mit Drag
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] D3.js Force Layout oder React-Flow
 - [ ] Node Size: 80px Durchmesser
 - [ ] Node Color: #03ffa3 für aktiv, #666666 für Dependencies
@@ -748,14 +811,16 @@ User muss Supabase-Datenbank-Schema verstehen.
 **Problem:**  
 SQL-Tables und Relationships sind ohne Visualisierung komplex.
 
-**Lösung:**  
+**Lösung:**
+
 - ER-Diagram mit Tables als Boxes
 - Columns mit Data-Types
 - Foreign Key Relationships als Connections
 - RLS-Policies als Badges
 - Zoom & Pan
 
-**User Journey:**  
+**User Journey:**
+
 1. User navigiert zu Data
 2. Sieht ER-Diagram mit allen Tables
 3. Jede Table zeigt Columns und Types
@@ -764,7 +829,8 @@ SQL-Tables und Relationships sind ohne Visualisierung komplex.
 6. Klickt Table → Table-Detail Panel
 7. Zoomed & Panned für große Schemas
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Table Boxes: Background #111111, Border #222222
 - [ ] Header: Table-Name (16px Bold), Record-Count Badge
 - [ ] Columns: Column-Name + Data-Type (12px #a0a0a0)
@@ -784,13 +850,15 @@ User klickt Table in ER-Diagram für Details.
 **Problem:**  
 Table-Details (Columns, Indexes, RLS, Sample-Data) ohne Panel nicht darstellbar.
 
-**Lösung:**  
+**Lösung:**
+
 - Sliding Panel von rechts
 - Tabs: Columns, Indexes, RLS Policies, Sample Data
 - Query-Builder für Custom Queries
 - Export-Button für CSV
 
-**User Journey:**  
+**User Journey:**
+
 1. User klickt Table-Box im ER-Diagram
 2. Panel slide in von rechts
 3. Sieht Table-Name im Header
@@ -801,7 +869,8 @@ Table-Details (Columns, Indexes, RLS, Sample-Data) ohne Panel nicht darstellbar.
 8. Query-Builder ermöglicht Custom Queries
 9. Export-Button downloaded CSV
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Panel Width 500px, Full-Height
 - [ ] Slide-in Animation (0.3s ease-out)
 - [ ] Background #111111, Border-Left #222222
@@ -822,14 +891,16 @@ Row-Level-Security Policies sind kritisch für Sicherheit.
 **Problem:**  
 RLS-Policies als Text schwer verständlich - visuelle Darstellung nötig.
 
-**Lösung:**  
+**Lösung:**
+
 - Policy-Liste mit Color-Coding
 - Policy-Name, Type (SELECT, INSERT, UPDATE, DELETE)
 - USING-Clause als Code-Block
 - WITH CHECK-Clause als Code-Block
 - Test-Button zum Testen von Policies
 
-**User Journey:**  
+**User Journey:**
+
 1. User öffnet Table-Detail-Panel
 2. Klickt "RLS Policies" Tab
 3. Sieht Liste aller Policies
@@ -840,7 +911,8 @@ RLS-Policies als Text schwer verständlich - visuelle Darstellung nötig.
 8. Gibt Test-User-ID ein
 9. Sieht Policy-Result (Allow/Deny)
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Policy-Card: Background #0a0a0a, Border #222222
 - [ ] Type Badge color-coded (SELECT: #34c759, INSERT: #00d4ff, UPDATE: #ff9500, DELETE: #ff3b30)
 - [ ] USING-Clause: JetBrains Mono, Background #000000
@@ -861,14 +933,16 @@ User muss Supabase Edge Function Logs live sehen.
 **Problem:**  
 Ohne Logs kann User Errors nicht debuggen oder System-Status nicht verstehen.
 
-**Lösung:**  
+**Lösung:**
+
 - Real-time Log-Stream
 - Filter nach Log-Level (INFO, WARN, ERROR)
 - Search-Funktion
 - Auto-scroll Toggle
 - Timestamp für jeden Log-Entry
 
-**User Journey:**  
+**User Journey:**
+
 1. User navigiert zu Logs
 2. Sieht Live-Log-Stream
 3. Neue Logs erscheinen automatisch oben
@@ -879,7 +953,8 @@ Ohne Logs kann User Errors nicht debuggen oder System-Status nicht verstehen.
 8. Deaktiviert Auto-scroll für genaues Lesen
 9. Kopiert Log-Entry mit Copy-Button
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Log-Entry: Background #0a0a0a, Border-Bottom #222222
 - [ ] Timestamp: 12px, #666666, Monospace
 - [ ] Log-Level Badge color-coded (INFO: #00d4ff, WARN: #ff9500, ERROR: #ff3b30)
@@ -901,13 +976,15 @@ User klickt Log-Entry für vollständige Details.
 **Problem:**  
 Lange Logs oder Stack-Traces nicht vollständig in List-View darstellbar.
 
-**Lösung:**  
+**Lösung:**
+
 - Modal mit Full-Log-Content
 - JSON-Formatter für strukturierte Logs
 - Stack-Trace mit Syntax-Highlighting
 - Copy-Button für gesamten Log
 
-**User Journey:**  
+**User Journey:**
+
 1. User sieht Log-Entry in Liste
 2. Log ist abgeschnitten "Error: Database connection..."
 3. Klickt auf Log-Entry
@@ -918,7 +995,8 @@ Lange Logs oder Stack-Traces nicht vollständig in List-View darstellbar.
 8. Klickt Copy-Button → Gesamter Log in Clipboard
 9. Schließt Modal
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Modal: Max-Width 900px, Max-Height 80vh
 - [ ] Background #111111, Border #222222
 - [ ] Header: Timestamp + Log-Level Badge
@@ -940,14 +1018,16 @@ User muss GitHub-Connection verwalten können.
 **Problem:**  
 Keine Möglichkeit, GitHub zu disconnecten oder Permissions zu ändern.
 
-**Lösung:**  
+**Lösung:**
+
 - GitHub-Card mit Connection-Status
 - "Disconnect" Button wenn verbunden
 - "Reconnect" Button um Permissions zu aktualisieren
 - OAuth-Scopes anzeigen
 - Last Sync Timestamp
 
-**User Journey:**  
+**User Journey:**
+
 1. User navigiert zu Settings
 2. Sieht GitHub-Card mit Status "Verbunden"
 3. Checkt OAuth-Scopes (repo, read:user)
@@ -957,7 +1037,8 @@ Keine Möglichkeit, GitHub zu disconnecten oder Permissions zu ändern.
 7. Bestätigt → GitHub disconnected
 8. Kann "Verbinden" klicken um neu zu verbinden
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] GitHub-Card: Background #111111, Border #222222
 - [ ] Status Badge: Verbunden (#34c759) / Nicht verbunden (#666666)
 - [ ] Scopes-Liste: Chips mit Background rgba(3,255,163,0.1)
@@ -976,14 +1057,16 @@ User muss Supabase-Settings einsehen (nicht editieren).
 **Problem:**  
 User weiß nicht, welches Supabase-Projekt verbunden ist.
 
-**Lösung:**  
+**Lösung:**
+
 - Supabase-Card mit Project-ID
 - Region anzeigen
 - Database Connection Status
 - Edge Function Status
 - Read-only (keine Edits möglich)
 
-**User Journey:**  
+**User Journey:**
+
 1. User öffnet Settings
 2. Sieht Supabase-Card
 3. Checkt Project-ID (z.B. "abc123xyz")
@@ -992,7 +1075,8 @@ User weiß nicht, welches Supabase-Projekt verbunden ist.
 6. Edge Function Status: "Active" (grün)
 7. Weiß, dass alles funktioniert
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Supabase-Card: Background #111111, Border #222222
 - [ ] Project-ID: Monospace Font, Copy-Button
 - [ ] Region: 14px, #a0a0a0
@@ -1010,26 +1094,29 @@ User muss ScreenshotOne API-Key verwalten.
 **Problem:**  
 Ohne gültigen API-Key funktioniert Screenshot-Feature nicht.
 
-**Lösung:**  
+**Lösung:**
+
 - ScreenshotOne-Card mit API-Key Input
-- Masked Input (***) mit Show/Hide Toggle
+- Masked Input (\*\*\*) mit Show/Hide Toggle
 - "Testen" Button zum Validieren
 - Test-Status: Success/Error
 - "Speichern" Button
 
-**User Journey:**  
+**User Journey:**
+
 1. User öffnet Settings
 2. Sieht ScreenshotOne-Card
-3. API-Key ist masked (********)
+3. API-Key ist masked (**\*\*\*\***)
 4. Klickt Eye-Icon zum Anzeigen
-5: Sieht vollständigen Key
-6. Klickt "Testen"
-7. Test-Request an ScreenshotOne-API
-8. Sieht "API-Key gültig" (grün)
-9. Klickt "Speichern"
-10. Key wird in Supabase Secrets gespeichert
+   5: Sieht vollständigen Key
+5. Klickt "Testen"
+6. Test-Request an ScreenshotOne-API
+7. Sieht "API-Key gültig" (grün)
+8. Klickt "Speichern"
+9. Key wird in Supabase Secrets gespeichert
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Card: Background #111111, Border #222222
 - [ ] Input: Type "password", Monospace Font
 - [ ] Eye-Icon Toggle zum Show/Hide
@@ -1049,13 +1136,15 @@ Placeholder für zukünftige Theme-Settings.
 **Problem:**  
 User könnte verschiedene Themes wollen (z.B. Light Mode).
 
-**Lösung:**  
+**Lösung:**
+
 - Theme-Card mit "Coming Soon" Badge
 - Info-Text: "Light Mode und Custom Themes kommen bald"
 - Newsletter-Anmeldung für Updates
 - Disabled State für alle Inputs
 
-**User Journey:**  
+**User Journey:**
+
 1. User öffnet Settings
 2. Sieht Theme-Card
 3. "Coming Soon" Badge signalisiert Future-Feature
@@ -1063,7 +1152,8 @@ User könnte verschiedene Themes wollen (z.B. Light Mode).
 5. Kann Email für Updates hinterlassen
 6. Alle Theme-Options sind disabled
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Card: Background #111111, Border #222222
 - [ ] "Coming Soon" Badge: Background #ff9500, Color #000000
 - [ ] Info-Text: 14px, #a0a0a0
@@ -1083,14 +1173,16 @@ User muss GitHub-Account sicher verbinden.
 **Problem:**  
 Ohne OAuth können keine Repos geladen werden.
 
-**Lösung:**  
+**Lösung:**
+
 - OAuth-Flow mit GitHub App
 - Supabase Auth für Token-Management
 - Scopes: `repo`, `read:user`
 - Token-Refresh automatisch
 - Error-Handling für Failed Auth
 
-**User Journey:**  
+**User Journey:**
+
 1. User klickt "GitHub verbinden"
 2. Redirect zu GitHub OAuth-Page
 3. Authorized VisuDEV App
@@ -1099,7 +1191,8 @@ Ohne OAuth können keine Repos geladen werden.
 6. User ist verbunden
 7. Repositories werden geladen
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] GitHub App erstellt mit OAuth
 - [ ] Client-ID und Secret in Supabase Secrets
 - [ ] OAuth-Scopes: `repo`, `read:user`
@@ -1119,14 +1212,16 @@ Nach GitHub-Connection müssen Repos geladen werden.
 **Problem:**  
 GitHub-API muss aufgerufen und Daten verarbeitet werden.
 
-**Lösung:**  
+**Lösung:**
+
 - Edge Function `visudev-github-repos`
 - GET `/repos` Endpoint
 - GitHub API v3 Integration
 - Pagination für viele Repos
 - Caching für Performance
 
-**User Journey:**  
+**User Journey:**
+
 1. User verbindet GitHub
 2. Frontend called Edge Function `/repos`
 3. Edge Function called GitHub API mit OAuth Token
@@ -1135,7 +1230,8 @@ GitHub-API muss aufgerufen und Daten verarbeitet werden.
 6. Frontend speichert in State
 7. Repos werden in Grid angezeigt
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Edge Function `visudev-github-repos` deployed
 - [ ] Route: `/make-server-edf036ef/repos`
 - [ ] Authorization: Bearer Token required
@@ -1155,14 +1251,16 @@ Für Blueprint-Screen muss File-Tree von Repo geladen werden.
 **Problem:**  
 GitHub-API gibt nur einzelne Files, nicht ganzen Tree.
 
-**Lösung:**  
+**Lösung:**
+
 - Edge Function `visudev-github-tree`
 - GET `/tree/:owner/:repo` Endpoint
 - Recursive Tree-Building
 - Filter auf React/TypeScript Files
 - Return als nested JSON
 
-**User Journey:**  
+**User Journey:**
+
 1. User wählt Projekt aus
 2. Navigiert zu Blueprint
 3. Frontend called `/tree/:owner/:repo`
@@ -1171,7 +1269,8 @@ GitHub-API gibt nur einzelne Files, nicht ganzen Tree.
 6. Returned nested Tree-Structure
 7. Frontend rendered Tree-View
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Edge Function `visudev-github-tree` deployed
 - [ ] Route: `/make-server-edf036ef/tree/:owner/:repo`
 - [ ] GitHub API: `GET /repos/:owner/:repo/git/trees/:sha?recursive=1`
@@ -1191,7 +1290,8 @@ VisuDEV muss Code analysieren, um Flows zu extrahieren.
 **Problem:**  
 React-Code muss geparst werden, um UI-Events, API-Calls, DB-Queries zu identifizieren.
 
-**Lösung:**  
+**Lösung:**
+
 - Edge Function `visudev-scan-appflow`
 - POST `/scan/appflow/:owner/:repo` Endpoint
 - AST-Parsing mit Babel/TypeScript Compiler
@@ -1199,7 +1299,8 @@ React-Code muss geparst werden, um UI-Events, API-Calls, DB-Queries zu identifiz
 - Pattern-Detection für API-Calls (fetch, axios, supabase)
 - Flow-Storage in KV-Store
 
-**User Journey:**  
+**User Journey:**
+
 1. User klickt "Scan starten" im App/Flow-Screen
 2. Frontend POST zu `/scan/appflow/:owner/:repo`
 3. Edge Function lädt alle React-Files
@@ -1212,7 +1313,8 @@ React-Code muss geparst werden, um UI-Events, API-Calls, DB-Queries zu identifiz
 10. Returned Flow-Count
 11. Frontend refreshed Flow-Liste
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Edge Function `visudev-scan-appflow` deployed
 - [ ] Route: `/make-server-edf036ef/scan/appflow/:owner/:repo`
 - [ ] AST-Parsing: @babel/parser oder TypeScript Compiler API
@@ -1234,14 +1336,16 @@ Für jeden Screen muss Screenshot erstellt werden.
 **Problem:**  
 Screenshots müssen von URLs oder Local-Servers gemacht werden.
 
-**Lösung:**  
+**Lösung:**
+
 - Edge Function `visudev-screenshot`
 - POST `/screenshot` Endpoint mit URL
 - Integration mit ScreenshotOne API
 - Storage in Supabase Storage Bucket
 - Signed URLs für Frontend
 
-**User Journey:**  
+**User Journey:**
+
 1. Flow-Scan identifiziert Screen-URL
 2. Edge Function called `/screenshot` mit URL
 3. Edge Function called ScreenshotOne API
@@ -1252,7 +1356,8 @@ Screenshots müssen von URLs oder Local-Servers gemacht werden.
 8. URL saved in Flow-Object
 9. Screenshot im Frontend angezeigt
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Edge Function `visudev-screenshot` deployed
 - [ ] Route: `/make-server-edf036ef/screenshot`
 - [ ] Body: `{ url, flowId }`
@@ -1274,13 +1379,15 @@ Data-Screen muss Supabase-Schema laden.
 **Problem:**  
 Postgres-Schema muss via Supabase API introspected werden.
 
-**Lösung:**  
+**Lösung:**
+
 - Edge Function `visudev-data-schema`
 - GET `/data/schema` Endpoint
 - Supabase Management API oder Direct DB-Query
 - Return Tables, Columns, Foreign-Keys, RLS-Policies
 
-**User Journey:**  
+**User Journey:**
+
 1. User navigiert zu Data-Screen
 2. Frontend called `/data/schema`
 3. Edge Function queried Postgres Information Schema
@@ -1290,7 +1397,8 @@ Postgres-Schema muss via Supabase API introspected werden.
 7. Returned JSON mit Schema
 8. Frontend rendered ER-Diagram
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Edge Function `visudev-data-schema` deployed
 - [ ] Route: `/make-server-edf036ef/data/schema`
 - [ ] SQL-Query: `SELECT * FROM information_schema.tables WHERE table_schema = 'public'`
@@ -1310,14 +1418,16 @@ Logs-Screen muss Edge Function Logs anzeigen.
 **Problem:**  
 Supabase Logs müssen via Management API geladen werden.
 
-**Lösung:**  
+**Lösung:**
+
 - Edge Function `visudev-logs`
 - GET `/logs` Endpoint
 - Query-Params: level, limit, offset
 - Supabase Management API Integration
 - Return Logs als JSON-Array
 
-**User Journey:**  
+**User Journey:**
+
 1. User navigiert zu Logs-Screen
 2. Frontend called `/logs?level=ERROR&limit=100`
 3. Edge Function called Supabase Management API
@@ -1327,7 +1437,8 @@ Supabase Logs müssen via Management API geladen werden.
 7. Frontend rendered Log-Liste
 8. Auto-refresh alle 5 Sekunden
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Edge Function `visudev-logs` deployed
 - [ ] Route: `/make-server-edf036ef/logs`
 - [ ] Query-Params: level (INFO/WARN/ERROR), limit, offset
@@ -1349,13 +1460,15 @@ Alle API-Calls brauchen Loading-States.
 **Problem:**  
 Ohne Loading-Feedback wirkt App frozen oder kaputt.
 
-**Lösung:**  
+**Lösung:**
+
 - Skeleton-Screens für alle Listen/Grids
 - Spinner für Buttons mit laufenden Actions
 - Progress-Bars für lange Operations (Scans)
 - Smooth Transitions zwischen States
 
-**User Journey:**  
+**User Journey:**
+
 1. User triggered Action (z.B. "Scan starten")
 2. Button zeigt Spinner
 3. Button disabled während Action
@@ -1364,7 +1477,8 @@ Ohne Loading-Feedback wirkt App frozen oder kaputt.
 6. Nach Load → Smooth Fade-in von echten Daten
 7. User erhält konstantes Feedback
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Skeleton-Component für Cards: Background #111111, Animated Shimmer
 - [ ] Skeleton für Table-Rows: 64px Höhe, gleicher Shimmer
 - [ ] Spinner in Buttons: Loader2 Icon, 16x16px
@@ -1383,13 +1497,15 @@ Alle API-Errors müssen user-friendly kommuniziert werden.
 **Problem:**  
 Raw API-Errors (500, 404) sind verwirrend für User.
 
-**Lösung:**  
+**Lösung:**
+
 - Toast-Notifications für Errors
 - Error-Messages user-friendly formuliert
 - Retry-Button für transiente Errors
 - Error-Boundary für Critical Errors
 
-**User Journey:**  
+**User Journey:**
+
 1. User triggered Action (z.B. Projekt öffnen)
 2. API-Call failed (Network Error)
 3. Toast erscheint: "Projekt konnte nicht geladen werden. Bitte erneut versuchen."
@@ -1398,7 +1514,8 @@ Raw API-Errors (500, 404) sind verwirrend für User.
 6. Action wird wiederholt
 7. Bei Success: Toast verschwindet
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Toast-Library: Sonner (sonner@2.0.3)
 - [ ] Error-Toast: Background #111111, Border #ff3b30
 - [ ] Icon: XCircle (lucide-react)
@@ -1418,14 +1535,16 @@ Power-User wollen mit Keyboard navigieren.
 **Problem:**  
 Maus-only Navigation ist langsam für häufige Actions.
 
-**Lösung:**  
+**Lösung:**
+
 - Global Keyboard-Shortcuts
 - Cmd/Ctrl + K für Command-Palette
 - Cmd/Ctrl + P für Projekte
 - Cmd/Ctrl + F für Search
 - ESC für Modal-Close
 
-**User Journey:**  
+**User Journey:**
+
 1. User drückt Cmd+K
 2. Command-Palette öffnet sich
 3. User tippt "app" → "App/Flow" wird vorgeschlagen
@@ -1433,7 +1552,8 @@ Maus-only Navigation ist langsam für häufige Actions.
 5. User drückt Cmd+F → Search-Input focused
 6. User drückt ESC → Modal/Panel schließt
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Keyboard-Event-Listener global registriert
 - [ ] Cmd+K / Ctrl+K: Command-Palette Toggle
 - [ ] Cmd+P / Ctrl+P: Projects-Screen
@@ -1452,13 +1572,15 @@ VisuDEV sollte auf Mobile devices grundlegend nutzbar sein.
 **Problem:**  
 Desktop-Layout bricht auf Mobile komplett zusammen.
 
-**Lösung:**  
+**Lösung:**
+
 - Collapsible Sidebar (Hamburger-Menu)
 - Stacked Layout statt Grid
 - Touch-optimierte Buttons (44x44px)
 - Bottom-Navigation für Mobile
 
-**User Journey:**  
+**User Journey:**
+
 1. User öffnet VisuDEV auf iPhone
 2. Sidebar ist collapsed (nur Icons)
 3. Hamburger-Icon links oben
@@ -1468,7 +1590,8 @@ Desktop-Layout bricht auf Mobile komplett zusammen.
 7. Content full-width
 8. Bottom-Navigation zeigt häufigste Screens
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Breakpoint Mobile: <640px
 - [ ] Sidebar collapsed: Width 60px (nur Icons)
 - [ ] Hamburger-Menu: Icon (Menu) türkis
@@ -1488,14 +1611,16 @@ VisuDEV muss grundlegende Accessibility-Standards erfüllen.
 **Problem:**  
 Ohne a11y sind Screen-Reader-User und Keyboard-User ausgeschlossen.
 
-**Lösung:**  
+**Lösung:**
+
 - Semantic HTML (nav, main, article)
 - ARIA-Labels für Icons
 - Focus-Indicators (2px solid #03ffa3)
 - Skip-Links für Navigation
 - Alt-Texts für Screenshots
 
-**User Journey:**  
+**User Journey:**
+
 1. Screen-Reader-User öffnet VisuDEV
 2. Screen-Reader announced: "VisuDEV - Visualize Code"
 3. User navigiert mit Tab durch Sidebar
@@ -1504,7 +1629,8 @@ Ohne a11y sind Screen-Reader-User und Keyboard-User ausgeschlossen.
 6. User aktiviert "Skip to Content" Link
 7. Springt direkt zum Hauptinhalt
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Semantic HTML: <nav>, <main>, <article>, <section>
 - [ ] ARIA-Labels: aria-label für alle Icon-Buttons
 - [ ] Focus-Indicator: 2px solid #03ffa3, offset 2px
@@ -1523,13 +1649,15 @@ VisuDEV Bundle-Size muss klein bleiben für schnelle Ladezeiten.
 **Problem:**  
 Alle Screens im Initial-Bundle laden langsam.
 
-**Lösung:**  
+**Lösung:**
+
 - React.lazy für Screen-Components
 - Route-based Code-Splitting
 - Dynamic Imports für Libraries (D3, React-Flow)
 - Preload Critical Resources
 
-**User Journey:**  
+**User Journey:**
+
 1. User öffnet VisuDEV
 2. Initial Load: Nur Sidebar + Projects-Screen (klein)
 3. Load-Time: <2 Sekunden
@@ -1538,7 +1666,8 @@ Alle Screens im Initial-Bundle laden langsam.
 6. Loading-Spinner kurz sichtbar
 7. Screen rendered
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] React.lazy für alle Screen-Components
 - [ ] Suspense mit Loading-Fallback (Spinner)
 - [ ] Dynamic Import für D3: `const d3 = await import('d3')`
@@ -1557,13 +1686,15 @@ Alle Screens im Initial-Bundle laden langsam.
 **Problem:**  
 Alle Rows auf einmal rendern ist langsam und scrollt nicht smooth.
 
-**Lösung:**  
+**Lösung:**
+
 - Virtual Scrolling mit react-window
 - Nur sichtbare Rows rendered
 - Fixed Row-Height (64px)
 - Smooth Scrolling
 
-**User Journey:**  
+**User Journey:**
+
 1. User öffnet App/Flow mit 434 Flows
 2. Nur erste 20 Rows rendered (sichtbarer Bereich)
 3. User scrolled → Neue Rows werden dynamisch rendered
@@ -1571,7 +1702,8 @@ Alle Rows auf einmal rendern ist langsam und scrollt nicht smooth.
 5. Alte Rows werden unmounted
 6. Memory bleibt konstant
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] react-window Library installiert
 - [ ] FixedSizeList Component verwendet
 - [ ] Row-Height: 64px
@@ -1592,13 +1724,15 @@ Kritische User-Flows müssen automatisch getestet werden.
 **Problem:**  
 Manuelle Tests sind fehleranfällig und zeitaufwändig.
 
-**Lösung:**  
+**Lösung:**
+
 - Playwright für E2E-Tests
 - Test-Scenarios: GitHub-Connect, Projekt-Auswahl, Flow-Scan
 - CI-Integration
 - Screenshot-Diffing
 
-**User Journey:**  
+**User Journey:**
+
 1. Developer pusht Code
 2. CI triggered Playwright-Tests
 3. Test: User connects GitHub
@@ -1608,7 +1742,8 @@ Manuelle Tests sind fehleranfällig und zeitaufwändig.
 7. Alle Tests passed → Deployment
 8. Test failed → PR blocked
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Playwright installiert und konfiguriert
 - [ ] Test: GitHub-OAuth-Flow (Mocked)
 - [ ] Test: Repository-Grid angezeigt
@@ -1628,13 +1763,15 @@ Business-Logic (Flow-Parsing, Data-Transformation) muss getestet werden.
 **Problem:**  
 Ohne Unit-Tests sind Bugs schwer zu finden und Refactoring riskant.
 
-**Lösung:**  
+**Lösung:**
+
 - Vitest für Unit-Tests
 - Test-Coverage: Flow-Parser, Schema-Transformer
 - Mocking von API-Calls
 - TDD für neue Features
 
-**User Journey:**  
+**User Journey:**
+
 1. Developer implementiert Flow-Parser
 2. Schreibt Tests parallel (TDD)
 3. Test: Event-Detection erkennt onClick
@@ -1643,7 +1780,8 @@ Ohne Unit-Tests sind Bugs schwer zu finden und Refactoring riskant.
 6. Alle Tests passed
 7. Code wird committed
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Vitest installiert und konfiguriert
 - [ ] Test: Flow-Parser erkennt UI-Events
 - [ ] Test: API-Call-Detection funktioniert
@@ -1664,13 +1802,15 @@ Neue Developer müssen schnell onboarden können.
 **Problem:**  
 Ohne Docs ist Setup und Development komplex.
 
-**Lösung:**  
+**Lösung:**
+
 - README.md mit Setup-Instructions
 - ARCHITECTURE.md mit System-Overview
 - CONTRIBUTING.md mit Development-Guidelines
 - API.md mit Edge-Function-Docs
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] README.md: Project-Description, Setup, Running
 - [ ] ARCHITECTURE.md: System-Diagram, Tech-Stack, Data-Flow
 - [ ] CONTRIBUTING.md: Code-Style, PR-Process, Testing
@@ -1688,13 +1828,15 @@ User müssen VisuDEV verstehen und effektiv nutzen können.
 **Problem:**  
 Komplexe Features ohne Anleitung sind nicht nutzbar.
 
-**Lösung:**  
+**Lösung:**
+
 - USER_GUIDE.md mit Screen-by-Screen Erklärungen
 - Video-Tutorials (optional)
 - In-App-Tooltips für Features
 - FAQ-Section
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] USER_GUIDE.md: Intro, GitHub-Setup, Screens, Features
 - [ ] Screenshots mit Annotations
 - [ ] Step-by-Step Tutorials
@@ -1714,13 +1856,15 @@ Deployment muss automatisiert und fehlerfrei sein.
 **Problem:**  
 Manuelle Deployments sind fehleranfällig und langsam.
 
-**Lösung:**  
+**Lösung:**
+
 - GitHub Actions Workflow
 - Stages: Lint → Test → Build → Deploy
 - Auto-Deploy von main-Branch
 - Deployment zu Figma Make (automatisch)
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] GitHub Actions Workflow: `.github/workflows/deploy.yml`
 - [ ] Stage 1: ESLint + TypeScript Check
 - [ ] Stage 2: Vitest Unit-Tests
@@ -1739,13 +1883,15 @@ Alle Edge Functions müssen über Dashboard deployed werden.
 **Problem:**  
 Figma Make hat keinen CLI-Zugriff - nur Dashboard-Deployment möglich.
 
-**Lösung:**  
+**Lösung:**
+
 - Manuelle Deployment-Checkliste
 - README mit Deployment-Instructions
 - Naming-Convention: Alle Functions mit `visudev-` Prefix
 - Version-Tagging für Tracking
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] DEPLOYMENT.md mit Step-by-Step Instructions
 - [ ] Checklist: Function-Name, Code-Upload, Secrets-Config
 - [ ] Naming-Convention documented: `visudev-{feature}`
@@ -1765,14 +1911,16 @@ Subtle Animationen verbessern UX und machen App "alive".
 **Problem:**  
 Statische UI ohne Transitions wirkt tot.
 
-**Lösung:**  
+**Lösung:**
+
 - Hover-Animations für Buttons und Cards
 - Fade-in für Modal/Panel
 - Slide-in für Sidebar auf Mobile
 - Skeleton Shimmer-Effect
 - Success-Checkmarks mit Animation
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Button Hover: scale(1.02), 0.2s ease
 - [ ] Card Hover: translateY(-2px), 0.2s ease
 - [ ] Modal Fade-in: opacity 0→1, 0.3s ease-in
@@ -1791,13 +1939,15 @@ Alle leeren Zustände brauchen hilfreiche Placeholder.
 **Problem:**  
 Leere Screens ohne Guidance sind verwirrend.
 
-**Lösung:**  
+**Lösung:**
+
 - Illustrative Icons (lucide-react)
 - Hilfreiche Messages
 - Call-to-Action Buttons
 - Konsistentes Design für alle Empty-States
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Alle Screens haben Empty-State
 - [ ] Icon: 48x48px, Color #666666
 - [ ] Message: 20px Bold, White
@@ -1815,13 +1965,15 @@ Alle Screens müssen Styleguide 1:1 folgen.
 **Problem:**  
 Inkonsistenzen in Spacing, Colors, Typography.
 
-**Lösung:**  
+**Lösung:**
+
 - Manual-Review aller Screens
 - Styleguide-Checklist durchgehen
 - Design-Tokens validieren
 - Cross-Browser-Testing
 
-**Akzeptanzkriterien:**  
+**Akzeptanzkriterien:**
+
 - [ ] Alle Colors matchen Styleguide
 - [ ] Spacing: 4px-Grid überall
 - [ ] Typography: Inter + JetBrains Mono
@@ -1837,6 +1989,7 @@ Inkonsistenzen in Spacing, Colors, Typography.
 
 **Total Tickets**: 53  
 **Categories**:
+
 - Foundation: 2
 - Navigation: 5
 - Projects: 6

@@ -1,56 +1,31 @@
 # 🚨 WICHTIG: Screenshots funktionieren nicht
 
 ## **Problem:**
-Die Screenshot-API gibt `400 Bad Request` zurück.
+
+Die Screenshot-API gibt `400 Bad Request` zurück (oder Screenshots fehlen).
 
 ## **Ursache:**
-Der `SCREENSHOT_API_KEY` in deinem Supabase Dashboard ist entweder:
-- ❌ **Nicht gesetzt**
-- ❌ **Ungültig**
-- ❌ **Falsch konfiguriert**
+
+Der `SCREENSHOT_API_KEY` in Supabase ist nicht gesetzt oder ungültig.
 
 ## **Temporäre Lösung:**
-Ich habe Placeholder-Bilder aktiviert:
+
+Placeholder-Bilder werden automatisch verwendet, wenn die API fehlschlägt:
+
 ```
 https://placehold.co/1200x800/1a1a1a/03ffa3?text=Home
 ```
 
-## **Permanente Lösung:**
+## **Permanente Lösung**
 
-### **Option 1: screenshotone.com reparieren**
-1. Gehe zu https://screenshotone.com
-2. Erstelle einen Account (falls nicht vorhanden)
-3. Kopiere deinen API Key
-4. Öffne Supabase Dashboard → Project Settings → Edge Functions → Secrets
-5. Setze `SCREENSHOT_API_KEY` = dein screenshotone.com API Key
-6. Deploy die visudev-analyzer Function neu
-7. Deaktiviere Placeholder in `/lib/visudev/store.tsx`:
-   ```ts
-   // ✅ RE-ENABLE: Uncomment this block
-   if (activeProject.deployed_url && screensWithScreenshots.length > 0) {
-     console.log(`📸 [VisuDEV] Capturing screenshots for ${screensWithScreenshots.length} screens...`);
-     // ... screenshot code
-   }
-   ```
+→ **Siehe [SCREENSHOTS_SETUP.md](../../SCREENSHOTS_SETUP.md)** im Repo-Root für die genauen Schritte:
 
-### **Option 2: Anderen Screenshot-Service nutzen**
-Falls screenshotone.com zu teuer ist:
+1. API-Key besorgen (screenshotone.com, apiflash.com, …)
+2. In Supabase: **Project Settings → Edge Functions → Secrets** → `SCREENSHOT_API_KEY` setzen
+3. `visudev-analyzer` neu deployen
+4. Erneut **Analyze** in der App ausführen
 
-**Alternativen:**
-- https://apiflash.com (3000 free screenshots/month)
-- https://screenshotapi.net (100 free/month)
-- https://urlbox.io (free tier)
-
-Ändere in `/supabase/functions/visudev-analyzer/index.tsx`:
-```ts
-async function captureScreenshot(url: string, apiKey: string): Promise<string> {
-  // Beispiel: apiflash.com
-  const screenshotApiUrl = new URL('https://api.apiflash.com/v1/urltoimage');
-  screenshotApiUrl.searchParams.set('access_key', apiKey);
-  screenshotApiUrl.searchParams.set('url', url);
-  // ... rest bleibt gleich
-}
-```
+**Kein Frontend-Change nötig** – sobald die API erfolgreich antwortet, zeigt die App automatisch echte Screenshots.
 
 ---
 

@@ -1,1 +1,0 @@
-export { LogsPanelNew } from './LogsPanelClean';

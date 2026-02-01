@@ -1,29 +1,34 @@
-import { Hono } from "npm:hono";
-import { cors } from "npm:hono/cors";
-import { logger } from "npm:hono/logger";
-import { createClient } from "jsr:@supabase/supabase-js@2.49.8";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { logger } from "hono/logger";
+import { createClient } from "@jsr/supabase__supabase-js";
 
 // ==================== KV STORE ====================
-const kvClient = () => createClient(
-  Deno.env.get("SUPABASE_URL"),
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
-);
+const kvClient = () =>
+  createClient(
+    Deno.env.get("SUPABASE_URL"),
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+  );
 
 const kv = {
-  set: async (key: string, value: any): Promise<void> => {
+  set: async (key: string, value: unknown): Promise<void> => {
     const supabase = kvClient();
     const { error } = await supabase.from("kv_store_edf036ef").upsert({
       key,
-      value
+      value,
     });
     if (error) {
       throw new Error(error.message);
     }
   },
 
-  get: async (key: string): Promise<any> => {
+  get: async (key: string): Promise<unknown> => {
     const supabase = kvClient();
-    const { data, error } = await supabase.from("kv_store_edf036ef").select("value").eq("key", key).maybeSingle();
+    const { data, error } = await supabase
+      .from("kv_store_edf036ef")
+      .select("value")
+      .eq("key", key)
+      .maybeSingle();
     if (error) {
       throw new Error(error.message);
     }
@@ -32,23 +37,31 @@ const kv = {
 
   del: async (key: string): Promise<void> => {
     const supabase = kvClient();
-    const { error } = await supabase.from("kv_store_edf036ef").delete().eq("key", key);
+    const { error } = await supabase.from("kv_store_edf036ef").delete().eq(
+      "key",
+      key,
+    );
     if (error) {
       throw new Error(error.message);
     }
   },
 
-  mset: async (keys: string[], values: any[]): Promise<void> => {
+  mset: async (keys: string[], values: unknown[]): Promise<void> => {
     const supabase = kvClient();
-    const { error } = await supabase.from("kv_store_edf036ef").upsert(keys.map((k, i) => ({ key: k, value: values[i] })));
+    const { error } = await supabase
+      .from("kv_store_edf036ef")
+      .upsert(keys.map((k, i) => ({ key: k, value: values[i] })));
     if (error) {
       throw new Error(error.message);
     }
   },
 
-  mget: async (keys: string[]): Promise<any[]> => {
+  mget: async (keys: string[]): Promise<unknown[]> => {
     const supabase = kvClient();
-    const { data, error } = await supabase.from("kv_store_edf036ef").select("value").in("key", keys);
+    const { data, error } = await supabase
+      .from("kv_store_edf036ef")
+      .select("value")
+      .in("key", keys);
     if (error) {
       throw new Error(error.message);
     }
@@ -57,26 +70,32 @@ const kv = {
 
   mdel: async (keys: string[]): Promise<void> => {
     const supabase = kvClient();
-    const { error } = await supabase.from("kv_store_edf036ef").delete().in("key", keys);
+    const { error } = await supabase.from("kv_store_edf036ef").delete().in(
+      "key",
+      keys,
+    );
     if (error) {
       throw new Error(error.message);
     }
   },
 
-  getByPrefix: async (prefix: string): Promise<any[]> => {
+  getByPrefix: async (prefix: string): Promise<unknown[]> => {
     const supabase = kvClient();
-    const { data, error } = await supabase.from("kv_store_edf036ef").select("key, value").like("key", prefix + "%");
+    const { data, error } = await supabase
+      .from("kv_store_edf036ef")
+      .select("key, value")
+      .like("key", prefix + "%");
     if (error) {
       throw new Error(error.message);
     }
     return data?.map((d) => d.value) ?? [];
-  }
+  },
 };
 
 const app = new Hono();
 
 // Enable logger
-app.use('*', logger(console.log));
+app.use("*", logger(console.log));
 
 // Enable CORS for all routes and methods
 app.use(
@@ -363,7 +382,9 @@ app.delete("/logs/:projectId", async (c) => {
   try {
     const projectId = c.req.param("projectId");
     const logs = await kv.getByPrefix(`logs:${projectId}:`);
-    const keys = logs.map((log: any) => `logs:${projectId}:${log.timestamp}:${log.id}`);
+    const keys = logs.map((log: { timestamp?: string; id?: string }) =>
+      `logs:${projectId}:${log.timestamp}:${log.id}`
+    );
     if (keys.length > 0) {
       await kv.mdel(keys);
     }
@@ -441,7 +462,7 @@ app.get("/integrations/:projectId/github/repos", async (c) => {
   try {
     const projectId = c.req.param("projectId");
     const integrations = await kv.get(`integrations:${projectId}`);
-    
+
     if (!integrations?.github?.token) {
       return c.json({ success: false, error: "GitHub not connected" }, 400);
     }
@@ -479,7 +500,7 @@ app.get("/integrations/:projectId/github/content", async (c) => {
     }
 
     const integrations = await kv.get(`integrations:${projectId}`);
-    
+
     if (!integrations?.github?.token) {
       return c.json({ success: false, error: "GitHub not connected" }, 400);
     }
@@ -491,7 +512,7 @@ app.get("/integrations/:projectId/github/content", async (c) => {
           Authorization: `token ${integrations.github.token}`,
           Accept: "application/vnd.github.v3+json",
         },
-      }
+      },
     );
 
     if (!response.ok) {
@@ -511,19 +532,19 @@ app.get("/integrations/:projectId/supabase/info", async (c) => {
   try {
     const projectId = c.req.param("projectId");
     const integrations = await kv.get(`integrations:${projectId}`);
-    
+
     if (!integrations?.supabase?.url || !integrations?.supabase?.serviceKey) {
       return c.json({ success: false, error: "Supabase not connected" }, 400);
     }
 
     // Return configured Supabase info (without exposing service key)
-    return c.json({ 
-      success: true, 
+    return c.json({
+      success: true,
       data: {
         url: integrations.supabase.url,
         projectRef: integrations.supabase.projectRef,
         connected: true,
-      }
+      },
     });
   } catch (error) {
     console.log(`Error fetching Supabase info: ${error}`);
@@ -539,14 +560,14 @@ app.get("/scans/:projectId/status", async (c) => {
     const appflowStatus = await kv.get(`scan:${projectId}:appflow`);
     const blueprintStatus = await kv.get(`scan:${projectId}:blueprint`);
     const dataStatus = await kv.get(`scan:${projectId}:data`);
-    
-    return c.json({ 
-      success: true, 
+
+    return c.json({
+      success: true,
       data: {
-        appflow: appflowStatus || { status: 'idle', progress: 0 },
-        blueprint: blueprintStatus || { status: 'idle', progress: 0 },
-        data: dataStatus || { status: 'idle', progress: 0 },
-      }
+        appflow: appflowStatus || { status: "idle", progress: 0 },
+        blueprint: blueprintStatus || { status: "idle", progress: 0 },
+        data: dataStatus || { status: "idle", progress: 0 },
+      },
     });
   } catch (error) {
     console.log(`Error fetching scan status: ${error}`);
@@ -559,10 +580,10 @@ app.post("/scans/:projectId/appflow", async (c) => {
   try {
     const projectId = c.req.param("projectId");
     console.log(`[AppFlow Scan] Starting scan for project: ${projectId}`);
-    
+
     const project = await kv.get(`project:${projectId}`);
     console.log(`[AppFlow Scan] Project data:`, project);
-    
+
     if (!project) {
       console.log(`[AppFlow Scan] Project not found: ${projectId}`);
       return c.json({ success: false, error: "Project not found" }, 404);
@@ -570,49 +591,51 @@ app.post("/scans/:projectId/appflow", async (c) => {
 
     // For now, allow scan even without github_repo (we'll use sample data)
     if (!project.github_repo) {
-      console.log(`[AppFlow Scan] No GitHub repo configured, using sample data`);
+      console.log(
+        `[AppFlow Scan] No GitHub repo configured, using sample data`,
+      );
     }
 
     // Set initial status
     await kv.set(`scan:${projectId}:appflow`, {
-      status: 'running',
+      status: "running",
       progress: 0,
       startedAt: new Date().toISOString(),
     });
 
     console.log(`[AppFlow Scan] Scan started, generating sample data...`);
-    
+
     // Start async scan (simulated for now - in production this would analyze the repo)
     setTimeout(async () => {
       try {
         // Simulate progress updates
         await kv.set(`scan:${projectId}:appflow`, {
-          status: 'running',
+          status: "running",
           progress: 30,
-          message: 'Analyzing repository structure...',
+          message: "Analyzing repository structure...",
         });
 
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
 
         await kv.set(`scan:${projectId}:appflow`, {
-          status: 'running',
+          status: "running",
           progress: 60,
-          message: 'Detecting UI components...',
+          message: "Detecting UI components...",
         });
 
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
 
         await kv.set(`scan:${projectId}:appflow`, {
-          status: 'running',
+          status: "running",
           progress: 90,
-          message: 'Generating flow maps...',
+          message: "Generating flow maps...",
         });
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         // Complete scan with sample data
         await kv.set(`scan:${projectId}:appflow`, {
-          status: 'completed',
+          status: "completed",
           progress: 100,
           completedAt: new Date().toISOString(),
         });
@@ -624,115 +647,118 @@ app.post("/scans/:projectId/appflow", async (c) => {
           projectId,
           screens: [
             {
-              id: 'screen-home',
-              name: 'Home',
-              path: '/',
-              file: '/src/pages/Home.tsx',
-              type: 'page',
-              flows: ['flow-1', 'flow-2'],
-              navigatesTo: ['/dashboard', '/login'],
-              framework: 'react',
-              componentCode: '<div className="flex items-center justify-center h-screen"><h1>Welcome Home</h1></div>',
+              id: "screen-home",
+              name: "Home",
+              path: "/",
+              file: "/src/pages/Home.tsx",
+              type: "page",
+              flows: ["flow-1", "flow-2"],
+              navigatesTo: ["/dashboard", "/login"],
+              framework: "react",
+              componentCode: "<div><h1>Welcome Home</h1></div>",
               screenshotUrl: null,
-              screenshotStatus: 'none'
+              screenshotStatus: "none",
             },
             {
-              id: 'screen-dashboard',
-              name: 'Dashboard',
-              path: '/dashboard',
-              file: '/src/pages/Dashboard.tsx',
-              type: 'page',
-              flows: ['flow-2', 'flow-3'],
-              navigatesTo: ['/settings', '/profile'],
-              framework: 'react',
-              componentCode: '<div className="p-6"><h1>Dashboard</h1><div>Welcome back!</div></div>',
+              id: "screen-dashboard",
+              name: "Dashboard",
+              path: "/dashboard",
+              file: "/src/pages/Dashboard.tsx",
+              type: "page",
+              flows: ["flow-2", "flow-3"],
+              navigatesTo: ["/settings", "/profile"],
+              framework: "react",
+              componentCode:
+                "<div><h1>Dashboard</h1><div>Welcome back!</div></div>",
               screenshotUrl: null,
-              screenshotStatus: 'none'
+              screenshotStatus: "none",
             },
             {
-              id: 'screen-login',
-              name: 'Login',
-              path: '/login',
-              file: '/src/pages/Login.tsx',
-              type: 'page',
-              flows: ['flow-1'],
-              navigatesTo: ['/dashboard'],
-              framework: 'react',
-              componentCode: '<div className="flex items-center justify-center h-screen"><form><input type="email" /><button>Login</button></form></div>',
+              id: "screen-login",
+              name: "Login",
+              path: "/login",
+              file: "/src/pages/Login.tsx",
+              type: "page",
+              flows: ["flow-1"],
+              navigatesTo: ["/dashboard"],
+              framework: "react",
+              componentCode:
+                '<div><form><input type="email" /><button>Login</button></form></div>',
               screenshotUrl: null,
-              screenshotStatus: 'none'
+              screenshotStatus: "none",
             },
             {
-              id: 'screen-settings',
-              name: 'Settings',
-              path: '/settings',
-              file: '/src/pages/Settings.tsx',
-              type: 'page',
-              flows: ['flow-3'],
-              navigatesTo: ['/dashboard'],
-              framework: 'react',
-              componentCode: '<div className="p-6"><h1>Settings</h1><div>Configure your app</div></div>',
+              id: "screen-settings",
+              name: "Settings",
+              path: "/settings",
+              file: "/src/pages/Settings.tsx",
+              type: "page",
+              flows: ["flow-3"],
+              navigatesTo: ["/dashboard"],
+              framework: "react",
+              componentCode:
+                "<div><h1>Settings</h1><div>Configure your app</div></div>",
               screenshotUrl: null,
-              screenshotStatus: 'none'
+              screenshotStatus: "none",
             },
             {
-              id: 'screen-profile',
-              name: 'Profile',
-              path: '/profile',
-              file: '/src/pages/Profile.tsx',
-              type: 'page',
+              id: "screen-profile",
+              name: "Profile",
+              path: "/profile",
+              file: "/src/pages/Profile.tsx",
+              type: "page",
               flows: [],
-              navigatesTo: ['/settings'],
-              framework: 'react',
-              componentCode: '<div className="p-6"><h1>Profile</h1><div>Your profile information</div></div>',
+              navigatesTo: ["/settings"],
+              framework: "react",
+              componentCode:
+                "<div><h1>Profile</h1><div>Your profile information</div></div>",
               screenshotUrl: null,
-              screenshotStatus: 'none'
-            }
+              screenshotStatus: "none",
+            },
           ],
           flows: [
             {
-              id: 'flow-1',
-              type: 'ui-event',
-              name: 'handleLogin',
-              file: '/src/pages/Login.tsx',
+              id: "flow-1",
+              type: "ui-event",
+              name: "handleLogin",
+              file: "/src/pages/Login.tsx",
               line: 42,
-              code: 'const handleLogin = async () => { ... }',
-              calls: ['flow-2'],
-              color: '#03ffa3'
+              code: "const handleLogin = async () => { ... }",
+              calls: ["flow-2"],
+              color: "#03ffa3",
             },
             {
-              id: 'flow-2',
-              type: 'api-call',
-              name: 'POST /api/auth/login',
-              file: '/src/api/auth.ts',
+              id: "flow-2",
+              type: "api-call",
+              name: "POST /api/auth/login",
+              file: "/src/api/auth.ts",
               line: 12,
               code: 'await fetch("/api/auth/login", { method: "POST" })',
-              calls: ['flow-3'],
-              color: '#00bcd4'
+              calls: ["flow-3"],
+              color: "#00bcd4",
             },
             {
-              id: 'flow-3',
-              type: 'db-query',
-              name: 'SELECT * FROM users',
-              file: '/src/db/queries.ts',
+              id: "flow-3",
+              type: "db-query",
+              name: "SELECT * FROM users",
+              file: "/src/db/queries.ts",
               line: 8,
               code: 'await supabase.from("users").select("*")',
               calls: [],
-              color: '#ff6b6b'
-            }
+              color: "#ff6b6b",
+            },
           ],
           framework: {
-            detected: ['react', 'typescript', 'tailwind'],
-            primary: 'react',
-            confidence: 0.95
+            detected: ["react", "typescript", "tailwind"],
+            primary: "react",
+            confidence: 0.95,
           },
           createdAt: new Date().toISOString(),
         });
-
       } catch (error) {
         console.log(`Error during AppFlow scan: ${error}`);
         await kv.set(`scan:${projectId}:appflow`, {
-          status: 'failed',
+          status: "failed",
           progress: 0,
           error: String(error),
           failedAt: new Date().toISOString(),
@@ -752,17 +778,20 @@ app.post("/scans/:projectId/blueprint", async (c) => {
   try {
     const projectId = c.req.param("projectId");
     const project = await kv.get(`project:${projectId}`);
-    
+
     if (!project) {
       return c.json({ success: false, error: "Project not found" }, 404);
     }
 
     if (!project.github_repo) {
-      return c.json({ success: false, error: "GitHub repo not configured" }, 400);
+      return c.json(
+        { success: false, error: "GitHub repo not configured" },
+        400,
+      );
     }
 
     await kv.set(`scan:${projectId}:blueprint`, {
-      status: 'running',
+      status: "running",
       progress: 0,
       startedAt: new Date().toISOString(),
     });
@@ -770,23 +799,23 @@ app.post("/scans/:projectId/blueprint", async (c) => {
     setTimeout(async () => {
       try {
         await kv.set(`scan:${projectId}:blueprint`, {
-          status: 'running',
+          status: "running",
           progress: 40,
-          message: 'Analyzing code structure...',
+          message: "Analyzing code structure...",
         });
 
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
 
         await kv.set(`scan:${projectId}:blueprint`, {
-          status: 'running',
+          status: "running",
           progress: 80,
-          message: 'Mapping dependencies...',
+          message: "Mapping dependencies...",
         });
 
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
 
         await kv.set(`scan:${projectId}:blueprint`, {
-          status: 'completed',
+          status: "completed",
           progress: 100,
           completedAt: new Date().toISOString(),
         });
@@ -795,16 +824,19 @@ app.post("/scans/:projectId/blueprint", async (c) => {
         await kv.set(`blueprint:${projectId}`, {
           projectId,
           components: [
-            { name: 'App', type: 'component', path: '/src/App.tsx' },
-            { name: 'LoginForm', type: 'component', path: '/src/components/LoginForm.tsx' },
+            { name: "App", type: "component", path: "/src/App.tsx" },
+            {
+              name: "LoginForm",
+              type: "component",
+              path: "/src/components/LoginForm.tsx",
+            },
           ],
           updatedAt: new Date().toISOString(),
         });
-
       } catch (error) {
         console.log(`Error during Blueprint scan: ${error}`);
         await kv.set(`scan:${projectId}:blueprint`, {
-          status: 'failed',
+          status: "failed",
           progress: 0,
           error: String(error),
           failedAt: new Date().toISOString(),
@@ -824,17 +856,20 @@ app.post("/scans/:projectId/data", async (c) => {
   try {
     const projectId = c.req.param("projectId");
     const project = await kv.get(`project:${projectId}`);
-    
+
     if (!project) {
       return c.json({ success: false, error: "Project not found" }, 404);
     }
 
     if (!project.supabase_project_id) {
-      return c.json({ success: false, error: "Supabase project not configured" }, 400);
+      return c.json({
+        success: false,
+        error: "Supabase project not configured",
+      }, 400);
     }
 
     await kv.set(`scan:${projectId}:data`, {
-      status: 'running',
+      status: "running",
       progress: 0,
       startedAt: new Date().toISOString(),
     });
@@ -842,23 +877,23 @@ app.post("/scans/:projectId/data", async (c) => {
     setTimeout(async () => {
       try {
         await kv.set(`scan:${projectId}:data`, {
-          status: 'running',
+          status: "running",
           progress: 35,
-          message: 'Connecting to database...',
+          message: "Connecting to database...",
         });
 
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
 
         await kv.set(`scan:${projectId}:data`, {
-          status: 'running',
+          status: "running",
           progress: 70,
-          message: 'Scanning tables and RLS policies...',
+          message: "Scanning tables and RLS policies...",
         });
 
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
 
         await kv.set(`scan:${projectId}:data`, {
-          status: 'completed',
+          status: "completed",
           progress: 100,
           completedAt: new Date().toISOString(),
         });
@@ -867,16 +902,15 @@ app.post("/scans/:projectId/data", async (c) => {
         await kv.set(`data:${projectId}:schema`, {
           projectId,
           tables: [
-            { name: 'users', columns: ['id', 'email', 'created_at'] },
-            { name: 'projects', columns: ['id', 'name', 'user_id'] },
+            { name: "users", columns: ["id", "email", "created_at"] },
+            { name: "projects", columns: ["id", "name", "user_id"] },
           ],
           updatedAt: new Date().toISOString(),
         });
-
       } catch (error) {
         console.log(`Error during Data scan: ${error}`);
         await kv.set(`scan:${projectId}:data`, {
-          status: 'failed',
+          status: "failed",
           progress: 0,
           error: String(error),
           failedAt: new Date().toISOString(),
@@ -896,7 +930,7 @@ app.post("/scans/:projectId/all", async (c) => {
   try {
     const projectId = c.req.param("projectId");
     const project = await kv.get(`project:${projectId}`);
-    
+
     if (!project) {
       return c.json({ success: false, error: "Project not found" }, 404);
     }
@@ -909,22 +943,28 @@ app.post("/scans/:projectId/all", async (c) => {
 
     // Start AppFlow scan if GitHub is configured
     if (project.github_repo) {
-      const appflowUrl = `${c.req.url.split('/scans/')[0]}/scans/${projectId}/appflow`;
-      const appflowResponse = await fetch(appflowUrl, { method: 'POST' });
+      const appflowUrl = `${
+        c.req.url.split("/scans/")[0]
+      }/scans/${projectId}/appflow`;
+      const appflowResponse = await fetch(appflowUrl, { method: "POST" });
       results.appflow = appflowResponse.ok;
     }
 
     // Start Blueprint scan if GitHub is configured
     if (project.github_repo) {
-      const blueprintUrl = `${c.req.url.split('/scans/')[0]}/scans/${projectId}/blueprint`;
-      const blueprintResponse = await fetch(blueprintUrl, { method: 'POST' });
+      const blueprintUrl = `${
+        c.req.url.split("/scans/")[0]
+      }/scans/${projectId}/blueprint`;
+      const blueprintResponse = await fetch(blueprintUrl, { method: "POST" });
       results.blueprint = blueprintResponse.ok;
     }
 
     // Start Data scan if Supabase is configured
     if (project.supabase_project_id) {
-      const dataUrl = `${c.req.url.split('/scans/')[0]}/scans/${projectId}/data`;
-      const dataResponse = await fetch(dataUrl, { method: 'POST' });
+      const dataUrl = `${
+        c.req.url.split("/scans/")[0]
+      }/scans/${projectId}/data`;
+      const dataResponse = await fetch(dataUrl, { method: "POST" });
       results.data = dataResponse.ok;
     }
 

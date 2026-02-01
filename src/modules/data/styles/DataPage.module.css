@@ -1,0 +1,108 @@
+.root {
+  background-color: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.header {
+  background-color: var(--color-card);
+  border-bottom: 1px solid var(--color-border);
+  padding: 1rem 1.5rem;
+}
+
+.headerRow {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.title {
+  color: var(--color-foreground);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.subtitle {
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.primaryButton {
+  align-items: center;
+  background-color: var(--color-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-primary-foreground);
+  cursor: pointer;
+  display: inline-flex;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  transition: filter 0.2s ease;
+}
+
+.primaryButton:hover {
+  filter: brightness(0.95);
+}
+
+.primaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.inlineIcon {
+  height: 1rem;
+  width: 1rem;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+.content {
+  flex: 1;
+  overflow: auto;
+  padding: 1.5rem;
+}
+
+.centerState {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+}
+
+.emptyCard {
+  text-align: center;
+}
+
+.emptyIcon {
+  color: var(--color-subtle);
+  height: 3rem;
+  margin: 0 auto 1rem;
+  width: 3rem;
+}
+
+.emptyTitle {
+  color: var(--color-muted-foreground);
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.emptyHint {
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+}
+
+.errorIcon {
+  color: var(--color-danger);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

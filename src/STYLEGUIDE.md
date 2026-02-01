@@ -3,13 +3,15 @@
 ## 🎨 Farbpalette
 
 ### Primärfarben
-- **Primary (Türkis/Grün)**: `#03ffa3` 
+
+- **Primary (Türkis/Grün)**: `#03ffa3`
   - Hover: `#02e591`
   - Active: `#02cc80`
   - Light: `#33ffb8`
   - Lighter: `#99ffd9`
 
 ### UI Hintergrundfarben
+
 - **Background**: `#000000` (Schwarz)
 - **Surface**: `#0a0a0a` (Fast-Schwarz)
 - **Card Background**: `#111111`
@@ -17,17 +19,20 @@
 - **Hover State**: `#1a1a1a`
 
 ### Textfarben
+
 - **Primary Text**: `#ffffff`
 - **Secondary Text**: `#a0a0a0`
 - **Muted Text**: `#666666`
 - **Disabled Text**: `#404040`
 
 ### Border/Divider
+
 - **Border**: `#222222`
 - **Border Hover**: `#333333`
 - **Divider**: `#1a1a1a`
 
 ### Flow-Knoten Farbkodierung
+
 - **UI Layer**: `#03ffa3` (Primary Türkis)
 - **Code Layer**: `#00d4ff` (Cyan)
 - **API Layer**: `#ff9500` (Orange)
@@ -43,10 +48,12 @@
 ## 📝 Typografie
 
 ### Font Family
+
 - **Primary**: `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`
 - **Monospace**: `'JetBrains Mono', 'Fira Code', 'Consolas', monospace`
 
 ### Font Sizes
+
 - **Heading 1**: `32px` / `2rem` - Line Height: `1.2`
 - **Heading 2**: `24px` / `1.5rem` - Line Height: `1.3`
 - **Heading 3**: `20px` / `1.25rem` - Line Height: `1.4`
@@ -57,6 +64,7 @@
 - **Caption**: `11px` / `0.6875rem` - Line Height: `1.4`
 
 ### Font Weights
+
 - **Regular**: `400`
 - **Medium**: `500`
 - **Semibold**: `600`
@@ -81,6 +89,7 @@ Basierend auf 4px Grid:
 ## 🔲 Layout
 
 ### Sidebar Navigation
+
 - **Width**: `240px`
 - **Background**: `#000000`
 - **Border Right**: `1px solid #222222`
@@ -88,12 +97,14 @@ Basierend auf 4px Grid:
 - **Position**: Fixed Left
 
 ### Main Content Area
+
 - **Margin Left**: `240px` (Sidebar Width)
 - **Padding**: `32px 48px`
 - **Max Width**: `1600px`
 - **Background**: `#0a0a0a`
 
 ### Grid System
+
 - **Container Max Width**: `1600px`
 - **Gutter**: `24px`
 - **Columns**: 12
@@ -103,6 +114,7 @@ Basierend auf 4px Grid:
 ## 🎴 Komponenten
 
 ### Cards
+
 ```
 Background: #111111
 Border: 1px solid #222222
@@ -119,6 +131,7 @@ Transition: all 0.2s ease
 ### Buttons
 
 **Primary Button**
+
 ```
 Background: #03ffa3
 Color: #000000
@@ -133,6 +146,7 @@ Disabled: Background #1a1a1a, Color #404040
 ```
 
 **Secondary Button**
+
 ```
 Background: transparent
 Border: 1px solid #03ffa3
@@ -144,6 +158,7 @@ Hover: Background #03ffa3, Color #000000
 ```
 
 **Ghost Button**
+
 ```
 Background: transparent
 Color: #a0a0a0
@@ -153,6 +168,7 @@ Hover: Background #1a1a1a, Color #ffffff
 ```
 
 ### Input Fields
+
 ```
 Background: #0a0a0a
 Border: 1px solid #222222
@@ -170,6 +186,7 @@ Placeholder: #666666
 ```
 
 ### Navigation Items
+
 ```
 Padding: 12px 16px
 Border Radius: 6px
@@ -188,6 +205,7 @@ Border Left: 3px solid #03ffa3
 ```
 
 ### Badges/Tags
+
 ```
 Background: rgba(3, 255, 163, 0.1)
 Color: #03ffa3
@@ -198,6 +216,7 @@ Font Weight: 600
 ```
 
 ### Code Blocks
+
 ```
 Background: #0a0a0a
 Border: 1px solid #222222
@@ -214,6 +233,7 @@ Color: #ffffff
 ## 🌊 Flow Visualisierung
 
 ### Flow Knoten
+
 ```
 Width: 160px (min)
 Height: 80px (min)
@@ -230,6 +250,7 @@ Transition: all 0.2s ease
 ```
 
 ### Flow Verbindungen
+
 ```
 Stroke Width: 2px
 Stroke Color: #333333
@@ -242,6 +263,7 @@ Animation: dash 1s linear infinite
 ```
 
 ### Knoten Label
+
 ```
 Font Size: 12px
 Font Weight: 600
@@ -250,6 +272,7 @@ Margin Bottom: 4px
 ```
 
 ### Knoten Description
+
 ```
 Font Size: 11px
 Color: #a0a0a0
@@ -267,6 +290,7 @@ Line Height: 1.4
 - **Level 4**: `0 16px 48px rgba(0, 0, 0, 0.7)`
 
 **Glow Effect** (für Primary Color):
+
 ```
 box-shadow: 0 0 20px rgba(3, 255, 163, 0.3)
 ```
@@ -276,17 +300,20 @@ box-shadow: 0 0 20px rgba(3, 255, 163, 0.3)
 ## 🔄 Transitions & Animations
 
 ### Standard Transition
+
 ```
 transition: all 0.2s ease
 ```
 
 ### Easing Functions
+
 - **Default**: `cubic-bezier(0.4, 0.0, 0.2, 1)`
 - **Enter**: `cubic-bezier(0.0, 0.0, 0.2, 1)`
 - **Exit**: `cubic-bezier(0.4, 0.0, 1, 1)`
 - **Bounce**: `cubic-bezier(0.68, -0.55, 0.265, 1.55)`
 
 ### Loading Spinner
+
 ```
 Animation: spin 1s linear infinite
 Border: 2px solid #1a1a1a
@@ -300,6 +327,7 @@ Size: 20px
 ## 📊 Data Visualization
 
 ### Progress Bars
+
 ```
 Background: #1a1a1a
 Height: 8px
@@ -311,6 +339,7 @@ Border Radius: 4px
 ```
 
 ### Charts
+
 - **Stroke Color**: `#03ffa3`
 - **Grid Lines**: `#222222`
 - **Axis Labels**: `#666666`
@@ -323,6 +352,7 @@ Border Radius: 4px
 ## 🎯 States & Feedback
 
 ### Success State
+
 ```
 Background: rgba(52, 199, 89, 0.1)
 Border: 1px solid #34c759
@@ -331,6 +361,7 @@ Icon: CheckCircle
 ```
 
 ### Warning State
+
 ```
 Background: rgba(255, 149, 0, 0.1)
 Border: 1px solid #ff9500
@@ -339,6 +370,7 @@ Icon: AlertTriangle
 ```
 
 ### Error State
+
 ```
 Background: rgba(255, 59, 48, 0.1)
 Border: 1px solid #ff3b30
@@ -347,6 +379,7 @@ Icon: XCircle
 ```
 
 ### Info State
+
 ```
 Background: rgba(0, 212, 255, 0.1)
 Border: 1px solid #00d4ff

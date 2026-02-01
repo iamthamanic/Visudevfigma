@@ -1,0 +1,39 @@
+# Supabase config (workdir: src)
+# https://supabase.com/docs/guides/functions/function-configuration
+# Alle Functions nutzen index.tsx als Entrypoint.
+
+[functions.visudev-analyzer]
+entrypoint = "./functions/visudev-analyzer/index.tsx"
+
+[functions.visudev-integrations]
+entrypoint = "./functions/visudev-integrations/index.tsx"
+
+[functions.visudev-data]
+entrypoint = "./functions/visudev-data/index.tsx"
+
+[functions.visudev-logs]
+entrypoint = "./functions/visudev-logs/index.tsx"
+
+[functions.visudev-projects]
+entrypoint = "./functions/visudev-projects/index.tsx"
+
+[functions.visudev-screenshots]
+entrypoint = "./functions/visudev-screenshots/index.tsx"
+
+[functions.visudev-auth]
+entrypoint = "./functions/visudev-auth/index.tsx"
+
+[functions.visudev-appflow]
+entrypoint = "./functions/visudev-appflow/index.tsx"
+
+[functions.visudev-blueprint]
+entrypoint = "./functions/visudev-blueprint/index.tsx"
+
+[functions.visudev-account]
+entrypoint = "./functions/visudev-account/index.tsx"
+
+[functions.visudev-server]
+entrypoint = "./functions/visudev-server/index.tsx"
+
+[functions.server]
+entrypoint = "./functions/server/index.tsx"

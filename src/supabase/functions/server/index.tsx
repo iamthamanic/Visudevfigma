@@ -1,13 +1,13 @@
-import { Hono } from "npm:hono";
-import { cors } from "npm:hono/cors";
-import { logger } from "npm:hono/logger";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { logger } from "hono/logger";
 import * as kv from "./kv_store.tsx";
 import { scanRepository } from "./appflow_scanner.tsx";
 
 const app = new Hono();
 
 // Enable logger
-app.use('*', logger(console.log));
+app.use("*", logger(console.log));
 
 // Enable CORS for all routes and methods
 app.use(
@@ -294,7 +294,9 @@ app.delete("/logs/:projectId", async (c) => {
   try {
     const projectId = c.req.param("projectId");
     const logs = await kv.getByPrefix(`logs:${projectId}:`);
-    const keys = logs.map((log: any) => `logs:${projectId}:${log.timestamp}:${log.id}`);
+    const keys = logs.map((log: { timestamp?: string; id?: string }) =>
+      `logs:${projectId}:${log.timestamp}:${log.id}`
+    );
     if (keys.length > 0) {
       await kv.mdel(keys);
     }
@@ -372,7 +374,7 @@ app.get("/integrations/:projectId/github/repos", async (c) => {
   try {
     const projectId = c.req.param("projectId");
     const integrations = await kv.get(`integrations:${projectId}`);
-    
+
     if (!integrations?.github?.token) {
       return c.json({ success: false, error: "GitHub not connected" }, 400);
     }
@@ -410,7 +412,7 @@ app.get("/integrations/:projectId/github/content", async (c) => {
     }
 
     const integrations = await kv.get(`integrations:${projectId}`);
-    
+
     if (!integrations?.github?.token) {
       return c.json({ success: false, error: "GitHub not connected" }, 400);
     }
@@ -422,7 +424,7 @@ app.get("/integrations/:projectId/github/content", async (c) => {
           Authorization: `token ${integrations.github.token}`,
           Accept: "application/vnd.github.v3+json",
         },
-      }
+      },
     );
 
     if (!response.ok) {
@@ -442,19 +444,19 @@ app.get("/integrations/:projectId/supabase/info", async (c) => {
   try {
     const projectId = c.req.param("projectId");
     const integrations = await kv.get(`integrations:${projectId}`);
-    
+
     if (!integrations?.supabase?.url || !integrations?.supabase?.serviceKey) {
       return c.json({ success: false, error: "Supabase not connected" }, 400);
     }
 
     // Return configured Supabase info (without exposing service key)
-    return c.json({ 
-      success: true, 
+    return c.json({
+      success: true,
       data: {
         url: integrations.supabase.url,
         projectRef: integrations.supabase.projectRef,
         connected: true,
-      }
+      },
     });
   } catch (error) {
     console.log(`Error fetching Supabase info: ${error}`);
@@ -470,14 +472,14 @@ app.get("/scans/:projectId/status", async (c) => {
     const appflowStatus = await kv.get(`scan:${projectId}:appflow`);
     const blueprintStatus = await kv.get(`scan:${projectId}:blueprint`);
     const dataStatus = await kv.get(`scan:${projectId}:data`);
-    
-    return c.json({ 
-      success: true, 
+
+    return c.json({
+      success: true,
       data: {
-        appflow: appflowStatus || { status: 'idle', progress: 0 },
-        blueprint: blueprintStatus || { status: 'idle', progress: 0 },
-        data: dataStatus || { status: 'idle', progress: 0 },
-      }
+        appflow: appflowStatus || { status: "idle", progress: 0 },
+        blueprint: blueprintStatus || { status: "idle", progress: 0 },
+        data: dataStatus || { status: "idle", progress: 0 },
+      },
     });
   } catch (error) {
     console.log(`Error fetching scan status: ${error}`);
@@ -490,13 +492,16 @@ app.post("/scans/:projectId/appflow", async (c) => {
   try {
     const projectId = c.req.param("projectId");
     const project = await kv.get(`project:${projectId}`);
-    
+
     if (!project) {
       return c.json({ success: false, error: "Project not found" }, 404);
     }
 
     if (!project.github_repo) {
-      return c.json({ success: false, error: "GitHub repo not configured" }, 400);
+      return c.json(
+        { success: false, error: "GitHub repo not configured" },
+        400,
+      );
     }
 
     // Get GitHub integration
@@ -507,44 +512,48 @@ app.post("/scans/:projectId/appflow", async (c) => {
 
     // Set initial status
     await kv.set(`scan:${projectId}:appflow`, {
-      status: 'running',
+      status: "running",
       progress: 0,
       startedAt: new Date().toISOString(),
-      message: 'Starting scan...'
+      message: "Starting scan...",
     });
 
     // Start async scan with REAL code analysis
     setTimeout(async () => {
       try {
-        console.log(`[AppFlow Scan] Starting real code analysis for ${project.github_repo}`);
+        console.log(
+          `[AppFlow Scan] Starting real code analysis for ${project.github_repo}`,
+        );
 
         // Parse owner/repo from github_repo (format: "owner/repo")
-        const [owner, repo] = project.github_repo.split('/');
-        const branch = project.github_branch || 'main';
+        const [owner, repo] = project.github_repo.split("/");
+        const branch = project.github_branch || "main";
         const token = integrations.github.token;
 
         // Step 1: Fetch repository (10%)
         await kv.set(`scan:${projectId}:appflow`, {
-          status: 'running',
+          status: "running",
           progress: 10,
-          message: 'Fetching repository files...',
+          message: "Fetching repository files...",
         });
 
         // Step 2: Analyze code with real scanner (20-80%)
         await kv.set(`scan:${projectId}:appflow`, {
-          status: 'running',
+          status: "running",
           progress: 20,
-          message: 'Analyzing TypeScript/React code...',
+          message: "Analyzing TypeScript/React code...",
         });
 
         const scanResult = await scanRepository(owner, repo, branch, token);
-        console.log(`[AppFlow Scan] Scan complete: ${scanResult.screens.length} screens, ${scanResult.flows.length} flows`);
+        console.log(
+          `[AppFlow Scan] Scan complete: ${scanResult.screens.length} screens, ${scanResult.flows.length} flows`,
+        );
 
         // Step 3: Save results (90%)
         await kv.set(`scan:${projectId}:appflow`, {
-          status: 'running',
+          status: "running",
           progress: 90,
-          message: 'Saving scan results...',
+          message: "Saving scan results...",
         });
 
         // Store the complete scan result
@@ -560,18 +569,18 @@ app.post("/scans/:projectId/appflow", async (c) => {
 
         // Complete scan (100%)
         await kv.set(`scan:${projectId}:appflow`, {
-          status: 'completed',
+          status: "completed",
           progress: 100,
           completedAt: new Date().toISOString(),
-          message: `Found ${scanResult.screens.length} screens and ${scanResult.flows.length} flows`,
+          message:
+            `Found ${scanResult.screens.length} screens and ${scanResult.flows.length} flows`,
         });
 
         console.log(`[AppFlow Scan] ✅ Scan completed successfully`);
-
       } catch (error) {
         console.log(`[AppFlow Scan] ❌ Error during scan: ${error}`);
         await kv.set(`scan:${projectId}:appflow`, {
-          status: 'failed',
+          status: "failed",
           progress: 0,
           error: String(error),
           failedAt: new Date().toISOString(),
@@ -591,17 +600,20 @@ app.post("/scans/:projectId/blueprint", async (c) => {
   try {
     const projectId = c.req.param("projectId");
     const project = await kv.get(`project:${projectId}`);
-    
+
     if (!project) {
       return c.json({ success: false, error: "Project not found" }, 404);
     }
 
     if (!project.github_repo) {
-      return c.json({ success: false, error: "GitHub repo not configured" }, 400);
+      return c.json(
+        { success: false, error: "GitHub repo not configured" },
+        400,
+      );
     }
 
     await kv.set(`scan:${projectId}:blueprint`, {
-      status: 'running',
+      status: "running",
       progress: 0,
       startedAt: new Date().toISOString(),
     });
@@ -609,23 +621,23 @@ app.post("/scans/:projectId/blueprint", async (c) => {
     setTimeout(async () => {
       try {
         await kv.set(`scan:${projectId}:blueprint`, {
-          status: 'running',
+          status: "running",
           progress: 40,
-          message: 'Analyzing code structure...',
+          message: "Analyzing code structure...",
         });
 
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
 
         await kv.set(`scan:${projectId}:blueprint`, {
-          status: 'running',
+          status: "running",
           progress: 80,
-          message: 'Mapping dependencies...',
+          message: "Mapping dependencies...",
         });
 
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
 
         await kv.set(`scan:${projectId}:blueprint`, {
-          status: 'completed',
+          status: "completed",
           progress: 100,
           completedAt: new Date().toISOString(),
         });
@@ -634,16 +646,19 @@ app.post("/scans/:projectId/blueprint", async (c) => {
         await kv.set(`blueprint:${projectId}`, {
           projectId,
           components: [
-            { name: 'App', type: 'component', path: '/src/App.tsx' },
-            { name: 'LoginForm', type: 'component', path: '/src/components/LoginForm.tsx' },
+            { name: "App", type: "component", path: "/src/App.tsx" },
+            {
+              name: "LoginForm",
+              type: "component",
+              path: "/src/components/LoginForm.tsx",
+            },
           ],
           updatedAt: new Date().toISOString(),
         });
-
       } catch (error) {
         console.log(`Error during Blueprint scan: ${error}`);
         await kv.set(`scan:${projectId}:blueprint`, {
-          status: 'failed',
+          status: "failed",
           progress: 0,
           error: String(error),
           failedAt: new Date().toISOString(),
@@ -663,17 +678,20 @@ app.post("/scans/:projectId/data", async (c) => {
   try {
     const projectId = c.req.param("projectId");
     const project = await kv.get(`project:${projectId}`);
-    
+
     if (!project) {
       return c.json({ success: false, error: "Project not found" }, 404);
     }
 
     if (!project.supabase_project_id) {
-      return c.json({ success: false, error: "Supabase project not configured" }, 400);
+      return c.json({
+        success: false,
+        error: "Supabase project not configured",
+      }, 400);
     }
 
     await kv.set(`scan:${projectId}:data`, {
-      status: 'running',
+      status: "running",
       progress: 0,
       startedAt: new Date().toISOString(),
     });
@@ -681,23 +699,23 @@ app.post("/scans/:projectId/data", async (c) => {
     setTimeout(async () => {
       try {
         await kv.set(`scan:${projectId}:data`, {
-          status: 'running',
+          status: "running",
           progress: 35,
-          message: 'Connecting to database...',
+          message: "Connecting to database...",
         });
 
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
 
         await kv.set(`scan:${projectId}:data`, {
-          status: 'running',
+          status: "running",
           progress: 70,
-          message: 'Scanning tables and RLS policies...',
+          message: "Scanning tables and RLS policies...",
         });
 
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
 
         await kv.set(`scan:${projectId}:data`, {
-          status: 'completed',
+          status: "completed",
           progress: 100,
           completedAt: new Date().toISOString(),
         });
@@ -706,16 +724,15 @@ app.post("/scans/:projectId/data", async (c) => {
         await kv.set(`data:${projectId}:schema`, {
           projectId,
           tables: [
-            { name: 'users', columns: ['id', 'email', 'created_at'] },
-            { name: 'projects', columns: ['id', 'name', 'user_id'] },
+            { name: "users", columns: ["id", "email", "created_at"] },
+            { name: "projects", columns: ["id", "name", "user_id"] },
           ],
           updatedAt: new Date().toISOString(),
         });
-
       } catch (error) {
         console.log(`Error during Data scan: ${error}`);
         await kv.set(`scan:${projectId}:data`, {
-          status: 'failed',
+          status: "failed",
           progress: 0,
           error: String(error),
           failedAt: new Date().toISOString(),
@@ -735,7 +752,7 @@ app.post("/scans/:projectId/all", async (c) => {
   try {
     const projectId = c.req.param("projectId");
     const project = await kv.get(`project:${projectId}`);
-    
+
     if (!project) {
       return c.json({ success: false, error: "Project not found" }, 404);
     }
@@ -748,22 +765,28 @@ app.post("/scans/:projectId/all", async (c) => {
 
     // Start AppFlow scan if GitHub is configured
     if (project.github_repo) {
-      const appflowUrl = `${c.req.url.split('/scans/')[0]}/scans/${projectId}/appflow`;
-      const appflowResponse = await fetch(appflowUrl, { method: 'POST' });
+      const appflowUrl = `${
+        c.req.url.split("/scans/")[0]
+      }/scans/${projectId}/appflow`;
+      const appflowResponse = await fetch(appflowUrl, { method: "POST" });
       results.appflow = appflowResponse.ok;
     }
 
     // Start Blueprint scan if GitHub is configured
     if (project.github_repo) {
-      const blueprintUrl = `${c.req.url.split('/scans/')[0]}/scans/${projectId}/blueprint`;
-      const blueprintResponse = await fetch(blueprintUrl, { method: 'POST' });
+      const blueprintUrl = `${
+        c.req.url.split("/scans/")[0]
+      }/scans/${projectId}/blueprint`;
+      const blueprintResponse = await fetch(blueprintUrl, { method: "POST" });
       results.blueprint = blueprintResponse.ok;
     }
 
     // Start Data scan if Supabase is configured
     if (project.supabase_project_id) {
-      const dataUrl = `${c.req.url.split('/scans/')[0]}/scans/${projectId}/data`;
-      const dataResponse = await fetch(dataUrl, { method: 'POST' });
+      const dataUrl = `${
+        c.req.url.split("/scans/")[0]
+      }/scans/${projectId}/data`;
+      const dataResponse = await fetch(dataUrl, { method: "POST" });
       results.data = dataResponse.ok;
     }
 

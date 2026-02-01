@@ -1,0 +1,102 @@
+.trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.trigger[data-size="sm"] {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.triggerIcon {
+  width: 16px;
+  height: 16px;
+  color: var(--color-muted-foreground);
+}
+
+.content {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+  z-index: 50;
+}
+
+.viewport {
+  padding: var(--space-xs);
+}
+
+.label {
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+  padding: 6px 8px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  color: var(--color-foreground);
+  cursor: pointer;
+}
+
+.item[data-disabled="true"] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.item:focus {
+  background: var(--color-hover);
+}
+
+.itemIndicator {
+  position: absolute;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.itemCheck {
+  width: 16px;
+  height: 16px;
+  color: var(--color-primary);
+}
+
+.separator {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 0;
+}
+
+.scrollButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  color: var(--color-muted-foreground);
+}
+
+.scrollIcon {
+  width: 16px;
+  height: 16px;
+}

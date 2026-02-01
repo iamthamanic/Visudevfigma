@@ -1,46 +1,60 @@
 /**
  * VisuDEV Edge Function: AppFlow
- * 
+ *
  * @version 1.0.0
  * @created 2025-11-06T12:00:00.000Z
  * @updated 2025-11-06T12:00:00.000Z
- * 
+ *
  * @description Flow trace visualization and UI-to-code mapping API
  */
 
-import { Hono } from "npm:hono";
-import { cors } from "npm:hono/cors";
-import { logger } from "npm:hono/logger";
-import { createClient } from "jsr:@supabase/supabase-js@2.49.8";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { logger } from "hono/logger";
+import { createClient } from "@jsr/supabase__supabase-js";
 
 // KV Store Implementation (inline for Dashboard compatibility)
-const kvClient = () => createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-);
+const kvClient = () =>
+  createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
 
-const kvSet = async (key: string, value: any): Promise<void> => {
+const kvSet = async (key: string, value: unknown): Promise<void> => {
   const supabase = kvClient();
-  const { error } = await supabase.from("kv_store_edf036ef").upsert({ key, value });
+  const { error } = await supabase.from("kv_store_edf036ef").upsert({
+    key,
+    value,
+  });
   if (error) throw new Error(error.message);
 };
 
-const kvGet = async (key: string): Promise<any> => {
+const kvGet = async (key: string): Promise<unknown> => {
   const supabase = kvClient();
-  const { data, error } = await supabase.from("kv_store_edf036ef").select("value").eq("key", key).maybeSingle();
+  const { data, error } = await supabase
+    .from("kv_store_edf036ef")
+    .select("value")
+    .eq("key", key)
+    .maybeSingle();
   if (error) throw new Error(error.message);
   return data?.value;
 };
 
 const kvDel = async (key: string): Promise<void> => {
   const supabase = kvClient();
-  const { error } = await supabase.from("kv_store_edf036ef").delete().eq("key", key);
+  const { error } = await supabase.from("kv_store_edf036ef").delete().eq(
+    "key",
+    key,
+  );
   if (error) throw new Error(error.message);
 };
 
-const kvGetByPrefix = async (prefix: string): Promise<any[]> => {
+const kvGetByPrefix = async (prefix: string): Promise<unknown[]> => {
   const supabase = kvClient();
-  const { data, error } = await supabase.from("kv_store_edf036ef").select("key, value").like("key", prefix + "%");
+  const { data, error } = await supabase
+    .from("kv_store_edf036ef")
+    .select("key, value")
+    .like("key", prefix + "%");
   if (error) throw new Error(error.message);
   return data?.map((d) => d.value) ?? [];
 };
@@ -48,7 +62,7 @@ const kvGetByPrefix = async (prefix: string): Promise<any[]> => {
 // API Implementation
 const app = new Hono();
 
-app.use('*', logger(console.log));
+app.use("*", logger(console.log));
 app.use(
   "/*",
   cors({

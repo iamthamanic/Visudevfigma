@@ -1,41 +1,26 @@
 /**
- * VisuDEV Edge Function: Data
- * 
- * @version 1.0.0
- * @created 2025-11-06T12:00:00.000Z
- * @updated 2025-11-06T12:00:00.000Z
- * 
+ * VisuDEV Edge Function: Data (DDD/DI Refactor)
+ *
+ * @version 2.0.0
  * @description Database schema, ERD, and migrations management API
  */
 
-import { Hono } from "npm:hono";
-import { cors } from "npm:hono/cors";
-import { logger } from "npm:hono/logger";
-import { createClient } from "jsr:@supabase/supabase-js@2.49.8";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { createClient } from "@jsr/supabase__supabase-js";
+import { createDataModule } from "./module/index.ts";
+import type { LoggerLike } from "./module/interfaces/module.interface.ts";
+import { ModuleException } from "./module/internal/exceptions/index.ts";
+import type { ErrorResponse } from "./module/types/index.ts";
 
-// KV Store Implementation (inline for Dashboard compatibility)
-const kvClient = () => createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-);
+interface EnvConfig {
+  supabaseUrl: string;
+  supabaseServiceRoleKey: string;
+  kvTableName: string;
+}
 
-const kvSet = async (key: string, value: any): Promise<void> => {
-  const supabase = kvClient();
-  const { error } = await supabase.from("kv_store_edf036ef").upsert({ key, value });
-  if (error) throw new Error(error.message);
-};
-
-const kvGet = async (key: string): Promise<any> => {
-  const supabase = kvClient();
-  const { data, error } = await supabase.from("kv_store_edf036ef").select("value").eq("key", key).maybeSingle();
-  if (error) throw new Error(error.message);
-  return data?.value;
-};
-
-// API Implementation
 const app = new Hono();
 
-app.use('*', logger(console.log));
 app.use(
   "/*",
   cors({
@@ -47,89 +32,118 @@ app.use(
   }),
 );
 
-// Get schema for project
-app.get("/:projectId/schema", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const schema = await kvGet(`data:${projectId}:schema`);
-    return c.json({ success: true, data: schema || {} });
-  } catch (error) {
-    console.log(`Error fetching schema: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
+const logger: LoggerLike = createLogger();
+const env = loadEnvConfig(logger);
+
+const supabase = createClient(env.supabaseUrl, env.supabaseServiceRoleKey);
+
+const dataModule = createDataModule({
+  supabase,
+  logger,
+  config: { kvTableName: env.kvTableName },
 });
 
-// Update schema
-app.put("/:projectId/schema", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const body = await c.req.json();
-    const schema = {
-      ...body,
-      projectId,
-      updatedAt: new Date().toISOString(),
+dataModule.registerRoutes(app);
+
+app.onError((err, c) => {
+  if (err instanceof ModuleException) {
+    logger.warn("Request failed", { code: err.code, message: err.message });
+    const payload: ErrorResponse = {
+      success: false,
+      error: {
+        code: err.code,
+        message: err.message,
+        details: err.details,
+      },
     };
-    await kvSet(`data:${projectId}:schema`, schema);
-    return c.json({ success: true, data: schema });
-  } catch (error) {
-    console.log(`Error updating schema: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
+    return c.json(payload, err.statusCode);
   }
-});
 
-// Get migrations for project
-app.get("/:projectId/migrations", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const migrations = await kvGet(`data:${projectId}:migrations`);
-    return c.json({ success: true, data: migrations || [] });
-  } catch (error) {
-    console.log(`Error fetching migrations: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
-});
-
-// Update migrations
-app.put("/:projectId/migrations", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const body = await c.req.json();
-    await kvSet(`data:${projectId}:migrations`, body);
-    return c.json({ success: true, data: body });
-  } catch (error) {
-    console.log(`Error updating migrations: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
-});
-
-// Get ERD data
-app.get("/:projectId/erd", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const erd = await kvGet(`data:${projectId}:erd`);
-    return c.json({ success: true, data: erd || {} });
-  } catch (error) {
-    console.log(`Error fetching ERD: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
-});
-
-// Update ERD data
-app.put("/:projectId/erd", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const body = await c.req.json();
-    const erd = {
-      ...body,
-      projectId,
-      updatedAt: new Date().toISOString(),
-    };
-    await kvSet(`data:${projectId}:erd`, erd);
-    return c.json({ success: true, data: erd });
-  } catch (error) {
-    console.log(`Error updating ERD: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
+  const message = err instanceof Error ? err.message : "Unknown error";
+  logger.error("Unhandled error", { message });
+  const payload: ErrorResponse = {
+    success: false,
+    error: {
+      code: "INTERNAL_ERROR",
+      message,
+    },
+  };
+  return c.json(payload, 500);
 });
 
 Deno.serve(app.fetch);
+
+function createLogger(): LoggerLike {
+  const encoder = new TextEncoder();
+  const write = (
+    stream: "stdout" | "stderr",
+    payload: Record<string, unknown>,
+  ): void => {
+    const line = JSON.stringify(payload);
+    const data = encoder.encode(`${line}\n`);
+    if (stream === "stderr") {
+      Deno.stderr.writeSync(data);
+      return;
+    }
+    Deno.stdout.writeSync(data);
+  };
+
+  return {
+    info: (message: string, meta?: Record<string, unknown>): void => {
+      write("stdout", {
+        level: "info",
+        message,
+        meta,
+        ts: new Date().toISOString(),
+      });
+    },
+    warn: (message: string, meta?: Record<string, unknown>): void => {
+      write("stderr", {
+        level: "warn",
+        message,
+        meta,
+        ts: new Date().toISOString(),
+      });
+    },
+    error: (message: string, meta?: Record<string, unknown>): void => {
+      write("stderr", {
+        level: "error",
+        message,
+        meta,
+        ts: new Date().toISOString(),
+      });
+    },
+    debug: (message: string, meta?: Record<string, unknown>): void => {
+      write("stdout", {
+        level: "debug",
+        message,
+        meta,
+        ts: new Date().toISOString(),
+      });
+    },
+  };
+}
+
+function loadEnvConfig(loggerInstance: LoggerLike): EnvConfig {
+  const supabaseUrl = getRequiredEnv("SUPABASE_URL");
+  const supabaseServiceRoleKey = getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+
+  const kvTableName = Deno.env.get("VISUDEV_KV_TABLE") ??
+    Deno.env.get("KV_TABLE_NAME") ?? "kv_store_edf036ef";
+
+  if (!Deno.env.get("VISUDEV_KV_TABLE") && !Deno.env.get("KV_TABLE_NAME")) {
+    loggerInstance.warn("KV table env not set. Falling back to default.", {
+      defaultValue: kvTableName,
+    });
+  }
+
+  return { supabaseUrl, supabaseServiceRoleKey, kvTableName };
+}
+
+function getRequiredEnv(key: string): string {
+  const value = Deno.env.get(key);
+  if (!value) {
+    throw new Error(`${key} environment variable is required`);
+  }
+  return value;
+}

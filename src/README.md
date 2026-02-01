@@ -15,12 +15,14 @@ VisuDEV is a professional platform for development teams that provides:
 ## 🏗️ Architecture
 
 ### Stack
+
 - **Frontend**: React + TypeScript + Tailwind CSS (via Figma Make)
 - **Backend**: Supabase (PostgreSQL, PostgREST, Edge Functions, Auth, Realtime)
 - **Source Control**: GitHub (webhooks, permalinks, code introspection)
 - **CI/CD**: GitHub Actions
 
 ### Data Flow
+
 ```
 GitHub (source of truth)
   ↓ webhooks
@@ -34,27 +36,32 @@ Frontend (Make UI)
 ## 📋 Features (MVP)
 
 ### 1. App/Flow Lens
+
 - **Left Panel**: Live preview of app screen (Make-Publish/CI-Preview URL)
-- **Right Panel**: 
+- **Right Panel**:
   - Vertical step graph (fan-out/fan-in)
   - Node inspector with code snippets, metrics, and GitHub permalinks
 
 ### 2. Blueprint
+
 - Code dependency graph (Routes → Components → Imports → API calls)
 - Node-link visualization colored by layer
 - Search and filter capabilities
 
 ### 3. Data
+
 - **ERD Tab**: Entity-Relationship Diagram with tables and foreign keys
 - **Policies Tab**: RLS policy matrix (table × role) with warnings for missing policies
 - **Migrations Tab**: Complete migration history with commit SHAs
 
 ### 4. Logs & Tech Stack
+
 - Real-time webhook events from GitHub
 - Tech stack analysis from package.json
 - Event timeline with delivery IDs
 
 ### 5. Settings
+
 - GitHub integration status
 - Supabase connection
 - Webhook configuration
@@ -63,6 +70,7 @@ Frontend (Make UI)
 ## 🎨 UI/UX Design
 
 ### Layer Colors
+
 - **Frontend** (UI): Blue `rgb(59, 130, 246)`
 - **Compute** (API/Edge): Violet `rgb(139, 92, 246)`
 - **Data** (SQL/Storage): Green `rgb(34, 197, 94)`
@@ -70,7 +78,9 @@ Frontend (Make UI)
 - **Policies** (RLS): Gray `rgb(107, 114, 128)`
 
 ### Node Card Structure
+
 Each node displays:
+
 - Title, type icon, and description
 - File path with line numbers
 - Commit SHA (7 chars)
@@ -81,13 +91,15 @@ Each node displays:
 ## 🔗 Integrations
 
 ### GitHub
+
 - **App Installation**: GitHub App with webhooks (push, pull_request)
 - **Deep Links**: `https://github.com/{owner}/{repo}/blob/{sha}/{path}#L{start}-L{end}`
 - **Source of Truth**: All code, commits, and files
 
 ### Supabase
+
 - **PostgreSQL**: Multi-tenant data model with RLS
-- **Edge Functions**: 
+- **Edge Functions**:
   - `github/webhook` - Ingest GitHub events
   - `graph/build` - AST parsing and graph construction
   - `supabase/introspect` - Database metadata extraction
@@ -98,6 +110,7 @@ Each node displays:
 ## 📊 Data Model
 
 ### Core Tables
+
 - `projects` - VisuDEV projects
 - `members` - Project team members with roles
 - `repos` - GitHub repositories
@@ -105,22 +118,26 @@ Each node displays:
 - `files` - Tracked source files
 
 ### Graph Tables
+
 - `nodes` - Flow nodes (UI, API, SQL, Policy, ERP, etc.)
 - `edges` - Connections between nodes (import, request, sql, policy)
 
 ### Database Metadata
+
 - `db_tables` - Introspected database tables
 - `db_policies` - RLS policies with SQL expressions
 - `db_relations` - Foreign key relationships
 - `db_migrations` - Applied migrations with SHAs
 
 ### Observability
+
 - `webhook_events` - GitHub webhook deliveries
 - `runs` - Node execution metrics
 
 ## 🚀 Example Flows
 
 ### Login Flow
+
 ```
 UI: Login Button (#login)
   ↓ validate
@@ -138,6 +155,7 @@ ERP: ensureContact()
 ```
 
 ### Order Flow
+
 ```
 UI: Order Submit Button (#order-submit)
   ↓ POST
@@ -157,12 +175,14 @@ Storage: invoice.pdf
 ## 🔒 Security
 
 ### Row-Level Security (RLS)
+
 - All tables have RLS enabled
 - `is_project_member(project_id)` helper function
 - Policies enforce user can only access their projects
 - Service role key never exposed to frontend
 
 ### GitHub Integration
+
 - Webhook signature validation (X-Hub-Signature-256)
 - Installation tokens with repository scope
 - Deep links always use commit SHA (immutable)
@@ -176,18 +196,23 @@ Storage: invoice.pdf
 ## 🛠️ Implementation Notes
 
 ### Manifest-Driven
+
 The `visudev.manifest.json` file defines:
+
 - Screens and routes
 - UI elements with selectors
 - Bindings between steps (reads, writes, calls)
 
 ### GitHub Permalinks
+
 Always use SHA-based permalinks, never branch names:
+
 ```
 https://github.com/{owner}/{repo}/blob/{sha}/{path}#L{start}-L{end}
 ```
 
 ### Edge Function Architecture
+
 - Bootstrap with Supabase client (service role)
 - CORS enabled for frontend access
 - Prefix all routes with `/make-server-edf036ef/`

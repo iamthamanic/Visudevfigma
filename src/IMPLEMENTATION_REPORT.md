@@ -11,6 +11,7 @@
 **VisuDEV** ist eine professionelle Entwickler-Plattform zur Visualisierung deterministischer Flows von UI-Elementen durch Code, API, SQL/RLS bis zu ERP-Systemen.
 
 ### Kernziele:
+
 - ✅ Screen-zentrierte Visualisierung von kompletten Ausführungspfaden
 - ✅ GitHub als Single Source of Truth
 - ✅ Supabase als Backend
@@ -18,6 +19,7 @@
 - ✅ Zielgruppe: Entwickler, Tech Leads, CTOs
 
 ### Design-Prinzipien:
+
 - Minimalistisch & clean
 - Türkis/Grünes Farbschema (#03ffa3)
 - Schwarze Sidebar-Navigation links
@@ -28,6 +30,7 @@
 ## 📁 ARCHITEKTUR
 
 ### Tech Stack:
+
 - **Frontend:** React + TypeScript + Tailwind CSS
 - **Backend:** Supabase Edge Functions (Deno/Hono)
 - **Database:** Supabase PostgreSQL (KV Store)
@@ -35,6 +38,7 @@
 - **Visualization:** React Flow (geplant)
 
 ### Ordnerstruktur:
+
 ```
 /
 ├── App.tsx                           # Main App mit Navigation
@@ -79,6 +83,7 @@
 ### 1. **FRONTEND - MAIN APP** (`/App.tsx`)
 
 #### Navigation System:
+
 - ✅ **Schwarze Sidebar** mit VisuDEV Logo
 - ✅ **6 Main Screens:**
   - Projekte (Projects Overview)
@@ -92,6 +97,7 @@
 - ✅ **Responsive Layout** mit schwarzer Sidebar + weißem Main Content
 
 #### State Management:
+
 - ✅ Project Selection State
 - ✅ Active Screen State
 - ✅ Project wird beim Auswählen automatisch in App/Flow Screen geladen
@@ -101,6 +107,7 @@
 ### 2. **PROJECTS OVERVIEW** (`/components/ProjectsOverview.tsx`)
 
 #### Features:
+
 - ✅ **Grid Layout** von Projekt-Cards (3 Spalten)
 - ✅ **Projekt-Cards zeigen:**
   - Projekt-Name
@@ -115,6 +122,7 @@
 - ✅ **Backend Integration** mit `/visudev-projects` Edge Function
 
 #### Backend API:
+
 - **GET /projects** - Lädt alle Projekte aus KV Store
 - **POST /projects** - Erstellt neues Projekt
 - **GET /projects/:id** - Lädt einzelnes Projekt
@@ -124,6 +132,7 @@
 ### 3. **APP/FLOW SCREEN** (`/components/AppFlowScreen.tsx`)
 
 #### Core Functionality:
+
 - ✅ **GitHub Code Analyse** Button
 - ✅ **Loading States** während Analyse
 - ✅ **Tab System:**
@@ -140,6 +149,7 @@
   - Analyse-Status
 
 #### Integration:
+
 - ✅ Ruft `/visudev-analyzer/analyze` Edge Function auf
 - ✅ Übergibt GitHub Token, Repo, Branch
 - ✅ Erhält zurück: Screens, Flows, Framework Info
@@ -150,6 +160,7 @@
 ### 4. **SITEMAP FLOW VIEW** (`/components/SitemapFlowView.tsx`)
 
 #### Layout System:
+
 - ✅ **Auto-Layout Algorithm:**
   - Erkennt Screen Depths (Root → Navigation Tree)
   - Fallback auf **Grid Layout** (6x10) wenn keine Navigation erkannt
@@ -163,6 +174,7 @@
   - Depth Indicator
 
 #### Interaktion:
+
 - ✅ **Pan & Zoom:**
   - Drag mit Maus zum Verschieben
   - Zoom In/Out Buttons
@@ -176,6 +188,7 @@
   - Hover Effects auf allen Cards
 
 #### Visualization:
+
 - ✅ **Connection Lines** (SVG Bezier Curves):
   - Zeigen Navigation zwischen Screens
   - Türkise Farbe (#03ffa3)
@@ -193,12 +206,14 @@
 ### 5. **SCREEN DETAIL VIEW** (`/components/ScreenDetailView.tsx`)
 
 #### Layout:
+
 - ✅ **Slide-in Panel** von rechts (50% Bildschirm-Breite)
 - ✅ **Split View:**
   - **Links:** Screen Info + Flow Liste
   - **Rechts:** Live Preview + Code View
 
 #### Links - Screen Info:
+
 - ✅ **Header:**
   - Screen Name (groß)
   - Route Path
@@ -214,6 +229,7 @@
   - File + Line Number
 
 #### Rechts - Live Preview:
+
 - ✅ **Toggle Buttons:**
   - Preview View (iframe)
   - Code View (syntax highlighted)
@@ -232,6 +248,7 @@
 ### 6. **CODE ANALYZER ENGINE** (`/supabase/functions/visudev-analyzer/index.tsx`)
 
 #### Haupt-Features:
+
 - ✅ **Framework Detection:**
   - Next.js App Router
   - Next.js Pages Router
@@ -241,6 +258,7 @@
   - Automatische Erkennung anhand File Structure + package.json
 
 #### Screen Detection:
+
 - ✅ **Next.js App Router:**
   - Scannt `/app/**/page.tsx` oder `/page.tsx`
   - Extrahiert Route Paths (z.B. `/app/dashboard/page.tsx` → `/dashboard`)
@@ -257,11 +275,13 @@
   - Auto-routing wie Next.js
 
 #### Component Code Extraction:
+
 - ✅ **Lädt kompletten Component Source Code** aus GitHub
 - ✅ **Speichert in `screen.componentCode`**
 - ✅ **Für alle erkannten Screens**
 
 #### Navigation Detection:
+
 - ✅ **Extrahiert Navigation Links:**
   - `<Link to="...">` (React Router)
   - `<Link href="...">` (Next.js)
@@ -273,6 +293,7 @@
   - Für Depth-basierte Layout
 
 #### Flow Detection (Code-Flow Analyse):
+
 - ✅ **UI Events:**
   - onClick, onChange, onSubmit
   - Form Submissions
@@ -298,6 +319,7 @@
   - Farbcode: Rot
 
 #### GitHub Integration:
+
 - ✅ **Recursive Tree Traversal:**
   - Lädt kompletten Repo Tree via GitHub API
   - Ignoriert `node_modules`, `.git`, `dist`, etc.
@@ -311,6 +333,7 @@
   - Error Messages bei Limits
 
 #### Response Format:
+
 ```typescript
 {
   screens: Screen[],        // 57 Screens erkannt
@@ -328,6 +351,7 @@
 ### 7. **CODE PREVIEW COMPONENT** (`/components/CodePreview.tsx`)
 
 #### Features:
+
 - ✅ **Syntax Highlighted Code Display**
 - ✅ **Scrollable Container**
 - ✅ **Monospace Font**
@@ -336,6 +360,7 @@
 - ✅ **Auto-sizing** basierend auf Parent
 
 #### Use Cases:
+
 - Code Snippets in Screen Detail View
 - Flow Code Anzeige
 - Component Source Code
@@ -345,6 +370,7 @@
 ### 8. **LIVE SCREEN RENDERER** (`/components/LiveScreenRenderer.tsx`)
 
 #### Features:
+
 - ✅ **iframe-basiertes Rendering**
 - ✅ **Tailwind CDN** automatisch injected
 - ✅ **Component Code → HTML Conversion:**
@@ -357,6 +383,7 @@
 - ✅ **Error Handling** mit Fallback UI
 
 #### Limitations (BEKANNT):
+
 - ❌ Imports funktionieren nicht (andere Components, Images)
 - ❌ State funktioniert nicht
 - ❌ Event Handlers funktionieren nicht
@@ -370,6 +397,7 @@
 ### 9. **BACKEND - EDGE FUNCTIONS**
 
 #### `/visudev-projects`
+
 - ✅ **CRUD Operations für Projekte:**
   - GET /projects - Liste aller Projekte
   - POST /projects - Neues Projekt erstellen
@@ -383,6 +411,7 @@
 - ✅ **Error Handling**
 
 #### `/visudev-analyzer`
+
 - ✅ **POST /analyze** - Hauptendpoint
 - ✅ **GitHub Integration** (siehe oben)
 - ✅ **Framework Detection** (siehe oben)
@@ -391,6 +420,7 @@
 - ✅ **Response Caching** (optional, via KV Store)
 
 #### `/visudev-auth`
+
 - ✅ **GitHub OAuth Flow:**
   - GET /auth/github - Redirect zu GitHub
   - GET /auth/callback - Callback Handler
@@ -400,17 +430,21 @@
   - Returns Token to Frontend
 
 #### `/visudev-data`
+
 - ⏳ **Geplant:** Supabase Schema Analyse
 - ⏳ ERD Generierung
 - ⏳ RLS Policy Extraktion
 
 #### `/visudev-blueprint`
+
 - ⏳ **Geplant:** Architecture Diagram Generierung
 
 #### `/visudev-logs`
+
 - ⏳ **Geplant:** Event Logging System
 
 #### `/visudev-integrations`
+
 - ⏳ **Geplant:** ERP System Connections
 
 ---
@@ -418,6 +452,7 @@
 ## 🎨 UI/UX DETAILS
 
 ### Farbschema:
+
 - **Primary:** `#03ffa3` (Türkis/Grün)
 - **Background:** `#ffffff` (Weiß)
 - **Sidebar:** `#000000` (Schwarz)
@@ -426,17 +461,20 @@
 - **Borders:** `#e5e7eb` (Gray-200)
 
 ### Typography:
+
 - **System Font Stack** (system-ui, sans-serif)
 - **Font Sizes:** Standard Tailwind Scale
 - **Font Weights:** Regular (400), Medium (500), Semibold (600), Bold (700)
 
 ### Spacing:
+
 - **Consistent 4px Grid** (Tailwind Standard)
 - **Card Padding:** 16px (p-4)
 - **Section Spacing:** 24px (gap-6)
 - **Layout Margins:** 50px (initial pan position)
 
 ### Components:
+
 - **ShadCN UI Library** für Buttons, Cards, Dialogs, etc.
 - **Lucide Icons** für alle Icons
 - **Tailwind CSS** für Styling
@@ -447,26 +485,28 @@
 ## 🔧 TECHNISCHE DETAILS
 
 ### API Kommunikation:
+
 ```typescript
 // Frontend → Backend
 const response = await fetch(
   `https://${projectId}.supabase.co/functions/v1/visudev-analyzer/analyze`,
   {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${publicAnonKey}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${publicAnonKey}`,
     },
     body: JSON.stringify({
       access_token: githubToken,
-      repo: 'owner/repo',
-      branch: 'main'
-    })
-  }
+      repo: "owner/repo",
+      branch: "main",
+    }),
+  },
 );
 ```
 
 ### Data Flow:
+
 1. **User wählt Projekt** (ProjectsOverview)
 2. **Projekt wird geladen** (selectedProject State)
 3. **Screen wechselt zu App/Flow** (setActiveScreen)
@@ -480,12 +520,14 @@ const response = await fetch(
 11. **Live Preview wird gerendert** (iframe mit Component Code)
 
 ### State Management:
+
 - ✅ **React useState** für lokalen State
 - ✅ **Props Passing** zwischen Components
 - ⏳ **Context API** (geplant für globalen State)
 - ⏳ **Zustand/Redux** (Optional, falls nötig)
 
 ### Performance:
+
 - ✅ **Lazy Loading** von Components
 - ✅ **Memoization** wo sinnvoll
 - ✅ **Virtual Scrolling** (geplant für große Flow Listen)
@@ -496,17 +538,20 @@ const response = await fetch(
 ## 📊 AKTUELLE ZAHLEN (Scriptony Testprojekt)
 
 **Analyse-Ergebnisse:**
+
 - ✅ **57 Screens erkannt**
 - ✅ **1036 Flows erkannt**
 - ✅ **Framework:** Next.js App Router (Confidence: 0.95)
 - ✅ **Analyse-Zeit:** ~5-10 Sekunden
 
 **Screen Breakdown:**
+
 - Pages: AdminPage, AuthPage, CreativeGymPage, HomePage, etc.
 - Dialogs: AddInspirationDialog, AudioEditDialog, ChatSettingsDialog
 - Components: Navigation, MapBuilder, FilmTimeline
 
 **Flow Breakdown:**
+
 - UI Events: ~200
 - Function Calls: ~500
 - API Calls: ~250
@@ -517,15 +562,18 @@ const response = await fetch(
 ## 🚧 BEKANNTE PROBLEME & LIMITATIONS
 
 ### 1. **Screen Preview Problem** (AKTIVES PROBLEM)
+
 **Issue:** Mini Previews in Sitemap zeigen nicht die echten Screens
 
 **Grund:**
+
 - Component Code wird isoliert in iframe gerendert
 - Imports fehlen (andere Components, Images, Icons)
 - State, Context, Event Handlers fehlen
 - Nur statisches JSX möglich
 
 **Aktueller Workaround:**
+
 - Render von JSX mit Tailwind CDN
 - Placeholder für Dynamic Content (`[•]`)
 - Fallback auf 📄 Icon
@@ -534,9 +582,11 @@ const response = await fetch(
 → Screenshot-basiertes Rendering (siehe unten)
 
 ### 2. **Navigation Detection unvollständig**
+
 **Issue:** Alle 57 Screens haben Depth 0 → Grid Layout statt Tree
 
 **Grund:**
+
 - Navigation Links werden noch nicht komplett erkannt
 - React Router v6 Hooks werden übersehen
 - Programmatische Navigation (router.push) fehlt teilweise
@@ -544,20 +594,24 @@ const response = await fetch(
 **Fix:** Erweiterte Navigation Detection im Analyzer
 
 ### 3. **Flow Connections fehlen**
+
 **Issue:** Keine Lines zwischen Screens in Sitemap
 
 **Grund:**
+
 - navigatesTo Array ist leer (wegen Navigation Detection Problem)
 - renderConnections() rendert nur wenn Links vorhanden
 
 **Fix:** Hängt von Navigation Detection Fix ab
 
 ### 4. **Keine React Flow Visualisierung**
+
 **Issue:** Tab "Flow Graph" zeigt noch nichts
 
 **Status:** Noch nicht implementiert
 
 **Geplant:** React Flow basierte Visualisierung mit:
+
 - Nodes für jeden Flow (UI → Code → API → DB)
 - Edges für Call Stack
 - Zoom/Pan
@@ -571,7 +625,9 @@ const response = await fetch(
 ### Phase 1: SCREEN VISUALIZATION FIX (HÖCHSTE PRIORITÄT)
 
 #### A) Screenshot-basiertes Rendering
+
 **Konzept:**
+
 1. ✅ User klickt "Analyze"
 2. ✅ Backend startet Analyse
 3. 🆕 **Backend klont Repo nach /tmp**
@@ -587,6 +643,7 @@ const response = await fetch(
 9. ✅ Frontend zeigt echte Screenshots statt iframe Previews
 
 **Vorteile:**
+
 - ✅ Echte App mit allen Features
 - ✅ Mit State, Context, Event Handlers
 - ✅ Mit allen Dependencies
@@ -594,73 +651,82 @@ const response = await fetch(
 - ✅ Keine "isolierter Component" Probleme
 
 **Technical Implementation:**
+
 ```typescript
 // Edge Function: /visudev-analyzer/analyze
 
-async function captureScreenshots(repo: string, branch: string, screens: Screen[]): Promise<Screenshot[]> {
+async function captureScreenshots(
+  repo: string,
+  branch: string,
+  screens: Screen[],
+): Promise<Screenshot[]> {
   // 1. Clone repo
   await exec(`git clone --branch ${branch} --depth 1 https://github.com/${repo} /tmp/${repoId}`);
-  
+
   // 2. Install dependencies (with cache)
   await exec(`cd /tmp/${repoId} && npm ci`);
-  
+
   // 3. Start dev server
-  const server = startDevServer('/tmp/${repoId}');
-  await waitForServer('http://localhost:3000');
-  
+  const server = startDevServer("/tmp/${repoId}");
+  await waitForServer("http://localhost:3000");
+
   // 4. Launch Puppeteer
   const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
   await page.setViewport({ width: 1920, height: 1080 });
-  
+
   // 5. Capture screenshots
   const screenshots = [];
   for (const screen of screens) {
     try {
-      await page.goto(`http://localhost:3000${screen.path}`, { waitUntil: 'networkidle0' });
+      await page.goto(`http://localhost:3000${screen.path}`, { waitUntil: "networkidle0" });
       await page.waitForTimeout(1000); // Let animations finish
-      
-      const screenshot = await page.screenshot({ type: 'png', fullPage: false });
-      
+
+      const screenshot = await page.screenshot({ type: "png", fullPage: false });
+
       // Upload to Supabase Storage
       const filename = `screenshots/${repoId}/${screen.id}.png`;
-      await supabase.storage.from('visudev').upload(filename, screenshot);
-      
-      const { data } = supabase.storage.from('visudev').getPublicUrl(filename);
-      
+      await supabase.storage.from("visudev").upload(filename, screenshot);
+
+      const { data } = supabase.storage.from("visudev").getPublicUrl(filename);
+
       screenshots.push({
         screenId: screen.id,
-        url: data.publicUrl
+        url: data.publicUrl,
       });
     } catch (error) {
       console.error(`Failed to capture ${screen.path}:`, error);
       screenshots.push({ screenId: screen.id, url: null });
     }
   }
-  
+
   // 6. Cleanup
   await browser.close();
   server.kill();
   await exec(`rm -rf /tmp/${repoId}`);
-  
+
   return screenshots;
 }
 ```
 
 **Herausforderungen:**
+
 - ⚠️ Zeit: ~60-90 Sekunden für komplette Analyse
 - ⚠️ Resources: Puppeteer ist heavy
 - ⚠️ Auth: Screens hinter Login schwer zu erreichen
 - ⚠️ Dynamic Routes: Brauchen Parameter (z.B. `/user/:id`)
 
 **Lösungen:**
+
 - ✅ Progress Updates per WebSocket/SSE
 - ✅ Caching: Screenshots nur neu wenn Code changed
 - ✅ Mock Auth: Auto-Login für Screenshots
 - ✅ Sample Data: Generate für Dynamic Routes
 
 #### B) Verbesserte Navigation Detection
+
 **TODO:**
+
 - 🔲 Erkennen von `useNavigate()` Hooks
 - 🔲 Erkennen von `router.push()` Calls
 - 🔲 Erkennen von programmatischer Navigation
@@ -668,33 +734,34 @@ async function captureScreenshots(repo: string, branch: string, screens: Screen[
 - 🔲 Calculate Depths für Tree Layout
 
 **Code Changes:**
+
 ```typescript
 // In extractNavigationLinks()
 function extractNavigationLinks(content: string): string[] {
   const links: string[] = [];
-  
+
   // Existing: <Link to="..."> und <Link href="...">
   // ...
-  
+
   // NEW: useNavigate Hooks
   const navigateRegex = /navigate\(['"`]([^'"`]+)['"`]\)/g;
   let match;
   while ((match = navigateRegex.exec(content)) !== null) {
     links.push(match[1]);
   }
-  
+
   // NEW: router.push
   const routerPushRegex = /router\.push\(['"`]([^'"`]+)['"`]\)/g;
   while ((match = routerPushRegex.exec(content)) !== null) {
     links.push(match[1]);
   }
-  
+
   // NEW: window.location
   const locationRegex = /window\.location\.href\s*=\s*['"`]([^'"`]+)['"`]/g;
   while ((match = locationRegex.exec(content)) !== null) {
     links.push(match[1]);
   }
-  
+
   return [...new Set(links)]; // Dedupe
 }
 ```
@@ -704,9 +771,11 @@ function extractNavigationLinks(content: string): string[] {
 ### Phase 2: FLOW GRAPH VISUALISIERUNG
 
 #### React Flow Integration
+
 **Ziel:** Vollständige Code-Flow Visualisierung
 
 **Features:**
+
 - 🔲 Nodes für jeden Flow (UI Event, Function Call, API Call, DB Query)
 - 🔲 Edges für Call Stack
 - 🔲 Farbkodierung:
@@ -722,6 +791,7 @@ function extractNavigationLinks(content: string): string[] {
 - 🔲 Search/Filter
 
 **Layout:**
+
 ```
 Screen Node (groß, zentral)
     ↓
@@ -739,6 +809,7 @@ DB Query Node (INSERT INTO users)
 ### Phase 3: DATA/ERD SCREEN
 
 #### Features:
+
 - 🔲 Supabase Project Integration
 - 🔲 Automatische Schema Extraktion
 - 🔲 ERD Visualisierung:
@@ -761,6 +832,7 @@ DB Query Node (INSERT INTO users)
 ### Phase 4: BLUEPRINT SCREEN
 
 #### Features:
+
 - 🔲 High-Level Architecture Diagram
 - 🔲 Komponenten-Übersicht:
   - Frontend
@@ -777,6 +849,7 @@ DB Query Node (INSERT INTO users)
 ### Phase 5: LOGS SCREEN
 
 #### Features:
+
 - 🔲 Event Stream:
   - User Actions
   - API Calls
@@ -792,6 +865,7 @@ DB Query Node (INSERT INTO users)
 ### Phase 6: INTEGRATIONS
 
 #### ERP System Connections:
+
 - 🔲 SAP Integration
 - 🔲 Salesforce Integration
 - 🔲 Custom REST APIs
@@ -799,6 +873,7 @@ DB Query Node (INSERT INTO users)
 - 🔲 Webhook Configuration
 
 #### Features:
+
 - 🔲 Connection Management
 - 🔲 Authentication Setup
 - 🔲 Schema Mapping
@@ -811,6 +886,7 @@ DB Query Node (INSERT INTO users)
 **Ziel:** Team-Features für CTOs und Tech Leads
 
 #### Features:
+
 - 🔲 **Kommentare:**
   - Auf Screens
   - Auf Flows
@@ -833,6 +909,7 @@ DB Query Node (INSERT INTO users)
 ## 📈 PERFORMANCE OPTIMIZATIONS (Geplant)
 
 ### Frontend:
+
 - 🔲 Virtual Scrolling für große Listen
 - 🔲 Lazy Loading von Screens
 - 🔲 Image Lazy Loading
@@ -841,6 +918,7 @@ DB Query Node (INSERT INTO users)
 - 🔲 WebWorker für Layout Calculations
 
 ### Backend:
+
 - 🔲 Response Caching (Redis/KV Store)
 - 🔲 Incremental Analysis (nur geänderte Files)
 - 🔲 Parallel Processing (Web Workers)
@@ -852,12 +930,14 @@ DB Query Node (INSERT INTO users)
 ## 🔐 SECURITY
 
 ### Aktuell:
+
 - ✅ GitHub Token wird sicher gespeichert (KV Store)
 - ✅ Token nie im Frontend exposed
 - ✅ CORS richtig konfiguriert
 - ✅ Supabase RLS (noch nicht für VisuDEV Tables)
 
 ### TODO:
+
 - 🔲 User Authentication (Supabase Auth)
 - 🔲 Project Ownership (RLS Policies)
 - 🔲 Role-based Access Control
@@ -869,17 +949,20 @@ DB Query Node (INSERT INTO users)
 ## 🧪 TESTING (Geplant)
 
 ### Unit Tests:
+
 - 🔲 Analyzer Functions (Framework Detection, Screen Extraction)
 - 🔲 Navigation Detection
 - 🔲 Flow Parsing
 - 🔲 Layout Algorithms
 
 ### Integration Tests:
+
 - 🔲 API Endpoints
 - 🔲 GitHub Integration
 - 🔲 Supabase Integration
 
 ### E2E Tests:
+
 - 🔲 Full User Flows (Project Create → Analyze → View Results)
 - 🔲 Screenshot Verification
 
@@ -888,11 +971,13 @@ DB Query Node (INSERT INTO users)
 ## 📦 DEPLOYMENT
 
 ### Aktuell:
+
 - ✅ Frontend: Figma Make Platform
 - ✅ Backend: Supabase Edge Functions
 - ✅ Database: Supabase PostgreSQL
 
 ### Production Ready Checklist:
+
 - 🔲 Environment Variables Setup
 - 🔲 Error Logging (Sentry/LogRocket)
 - 🔲 Performance Monitoring
@@ -905,12 +990,14 @@ DB Query Node (INSERT INTO users)
 ## 📚 DOCUMENTATION
 
 ### User Documentation:
+
 - 🔲 Getting Started Guide
 - 🔲 Video Tutorials
 - 🔲 FAQ
 - 🔲 Troubleshooting
 
 ### Developer Documentation:
+
 - ✅ Architecture Overview (dieses Dokument)
 - 🔲 API Reference
 - 🔲 Component Library
@@ -921,6 +1008,7 @@ DB Query Node (INSERT INTO users)
 ## 🎓 LESSONS LEARNED
 
 ### Was funktioniert gut:
+
 - ✅ GitHub API Integration ist stabil
 - ✅ Framework Detection ist sehr akkurat
 - ✅ Screen Detection findet fast alle Screens
@@ -928,6 +1016,7 @@ DB Query Node (INSERT INTO users)
 - ✅ UI/UX ist clean und professional
 
 ### Was verbessert werden muss:
+
 - ❌ Screen Preview braucht echte Screenshots (nicht iframe)
 - ❌ Navigation Detection braucht mehr Patterns
 - ❌ Performance bei großen Repos (>5000 Files)
@@ -939,6 +1028,7 @@ DB Query Node (INSERT INTO users)
 ## 🔗 EXTERNE DEPENDENCIES
 
 ### NPM Packages (Frontend):
+
 - react
 - react-dom
 - lucide-react (Icons)
@@ -946,11 +1036,13 @@ DB Query Node (INSERT INTO users)
 - @supabase/supabase-js
 
 ### NPM Packages (Backend):
+
 - hono (Web Framework)
 - @supabase/supabase-js
 - puppeteer (geplant für Screenshots)
 
 ### APIs:
+
 - GitHub REST API v3
 - Supabase REST API
 - Supabase Storage API
@@ -960,6 +1052,7 @@ DB Query Node (INSERT INTO users)
 ## 💰 COST ESTIMATION
 
 ### Supabase:
+
 - **Free Tier:** Ausreichend für Development
 - **Pro Tier ($25/mo):** Für Production
   - Mehr Storage für Screenshots
@@ -967,12 +1060,14 @@ DB Query Node (INSERT INTO users)
   - Bessere Performance
 
 ### GitHub API:
+
 - **Rate Limits:**
   - Authenticated: 5000 req/hour
   - Unauthenticated: 60 req/hour
 - **Kosten:** Kostenlos
 
 ### Compute (Edge Functions):
+
 - **Supabase Edge Functions:**
   - Free Tier: 500K invocations/month
   - Pro Tier: Unlimited
@@ -985,6 +1080,7 @@ DB Query Node (INSERT INTO users)
 ## 🏆 SUCCESS METRICS
 
 ### Technical KPIs:
+
 - ✅ **Screen Detection Rate:** 95%+ (aktuell: ~98%)
 - ✅ **Framework Detection Accuracy:** 90%+ (aktuell: 95%)
 - 🎯 **Analysis Time:** <30s (aktuell: ~8s)
@@ -992,6 +1088,7 @@ DB Query Node (INSERT INTO users)
 - 🎯 **Uptime:** 99.9%
 
 ### User Experience:
+
 - 🎯 **Time to First Insight:** <2 minutes
 - 🎯 **User Satisfaction:** 4.5/5
 - 🎯 **Return Rate:** 70%+
@@ -1009,6 +1106,6 @@ DB Query Node (INSERT INTO users)
 
 **END OF REPORT**
 
-*Letzte Aktualisierung: 14. November 2024*
-*Version: 2.0.0*
-*Status: In Active Development*
+_Letzte Aktualisierung: 14. November 2024_
+_Version: 2.0.0_
+_Status: In Active Development_

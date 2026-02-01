@@ -1,0 +1,199 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin: 0 auto;
+  max-width: 64rem;
+  padding: 1.5rem;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sectionTitle {
+  align-items: center;
+  color: var(--color-foreground);
+  display: flex;
+  font-size: 1.25rem;
+  font-weight: 600;
+  gap: 0.5rem;
+}
+
+.card {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+}
+
+.infoGrid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.infoLabel {
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.inlineCode {
+  background-color: var(--color-muted);
+  border-radius: var(--radius-sm);
+  display: inline-block;
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.statusRow {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.statusText {
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+}
+
+.statusSuccess {
+  color: var(--color-success);
+}
+
+.statusError {
+  color: var(--color-danger);
+}
+
+.primaryButton {
+  align-items: center;
+  background-color: var(--color-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-primary-foreground);
+  cursor: pointer;
+  display: inline-flex;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  transition: filter 0.2s ease;
+}
+
+.primaryButton:hover {
+  filter: brightness(0.95);
+}
+
+.primaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.secondaryButton {
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-foreground);
+  cursor: pointer;
+  display: inline-flex;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: transparent;
+}
+
+.secondaryButton:hover {
+  background-color: var(--color-muted);
+}
+
+.inlineIcon {
+  height: 1rem;
+  width: 1rem;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+.splitRow {
+  align-items: center;
+  display: flex;
+  gap: 1.5rem;
+}
+
+.shortInput {
+  max-width: 8rem;
+}
+
+.caption {
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+}
+
+.memberRow {
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+}
+
+.memberBadge {
+  background-color: var(--color-info-soft);
+  border-radius: 9999px;
+  color: var(--color-info);
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+}
+
+.testButton {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.testResult {
+  border: 1px solid;
+  border-radius: var(--radius-md);
+  padding: 1rem;
+}
+
+.testSuccess {
+  background-color: var(--color-success-soft);
+  border-color: var(--color-success);
+}
+
+.testError {
+  background-color: var(--color-danger-soft);
+  border-color: var(--color-danger);
+}
+
+.resultHeader {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.resultLabel {
+  font-weight: 600;
+}
+
+.resultBody {
+  background-color: var(--color-hover);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  max-height: 16rem;
+  overflow: auto;
+  padding: 0.75rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

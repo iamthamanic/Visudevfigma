@@ -1,0 +1,55 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.label {
+  font-size: 0.875rem;
+  color: var(--color-muted-foreground);
+  margin-right: var(--space-xs);
+}
+
+.button {
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-subtle);
+  opacity: 0.7;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.buttonSelected {
+  opacity: 1;
+  border-color: transparent;
+  color: var(--color-foreground);
+}
+
+.button[data-layer="frontend"].buttonSelected {
+  background: var(--color-layer-frontend);
+  color: var(--color-primary-foreground);
+}
+
+.button[data-layer="compute"].buttonSelected {
+  background: var(--color-layer-compute);
+}
+
+.button[data-layer="data"].buttonSelected {
+  background: var(--color-layer-data);
+}
+
+.button[data-layer="external"].buttonSelected {
+  background: var(--color-layer-external);
+}
+
+.button[data-layer="policies"].buttonSelected {
+  background: var(--color-layer-policies);
+}

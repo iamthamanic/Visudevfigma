@@ -3,33 +3,50 @@
  * Custom hooks for Edge Function integration
  */
 
-import { useState, useEffect } from 'react';
-import { api } from './api';
+import { useState, useEffect, useCallback } from "react";
+import type { IntegrationsState } from "../lib/visudev/integrations";
+import type { Project } from "../lib/visudev/types";
+import type {
+  AppFlowCreateInput,
+  AppFlowRecord,
+  AppFlowUpdateInput,
+} from "../modules/appflow/types";
+import type { BlueprintData, BlueprintUpdateInput } from "../modules/blueprint/types";
+import type {
+  DataSchema,
+  DataSchemaUpdateInput,
+  ERDData,
+  ERDUpdateInput,
+  MigrationEntry,
+} from "../modules/data/types";
+import type { LogCreateInput, LogEntry } from "../modules/logs/types";
+import type { ProjectCreateInput, ProjectUpdateInput } from "../modules/projects/types";
+import { api } from "./api";
 
 // ==================== PROJECTS ====================
 
 export function useProjects() {
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     setLoading(true);
     const result = await api.projects.getAll();
     if (result.success) {
       setProjects(result.data || []);
       setError(null);
     } else {
-      setError(result.error || 'Failed to fetch projects');
+      setError(result.error || "Failed to fetch projects");
     }
     setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchProjects();
   }, []);
 
-  const createProject = async (data: any) => {
+  useEffect(() => {
+    void fetchProjects();
+  }, [fetchProjects]);
+
+  const createProject = async (data: ProjectCreateInput) => {
     const result = await api.projects.create(data);
     if (result.success) {
       await fetchProjects();
@@ -37,7 +54,7 @@ export function useProjects() {
     return result;
   };
 
-  const updateProject = async (id: string, data: any) => {
+  const updateProject = async (id: string, data: ProjectUpdateInput) => {
     const result = await api.projects.update(id, data);
     if (result.success) {
       await fetchProjects();
@@ -65,7 +82,7 @@ export function useProjects() {
 }
 
 export function useProject(projectId: string | null) {
-  const [project, setProject] = useState<any>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,11 +95,12 @@ export function useProject(projectId: string | null) {
     const fetchProject = async () => {
       setLoading(true);
       const result = await api.projects.get(projectId);
-      if (result.success) {
+      if (result.success && result.data) {
         setProject(result.data);
         setError(null);
       } else {
-        setError(result.error || 'Failed to fetch project');
+        setProject(null);
+        setError(result.error || "Failed to fetch project");
       }
       setLoading(false);
     };
@@ -96,11 +114,11 @@ export function useProject(projectId: string | null) {
 // ==================== APPFLOW ====================
 
 export function useFlows(projectId: string | null) {
-  const [flows, setFlows] = useState<any[]>([]);
+  const [flows, setFlows] = useState<AppFlowRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchFlows = async () => {
+  const fetchFlows = useCallback(async () => {
     if (!projectId) return;
     setLoading(true);
     const result = await api.appflow.getAll(projectId);
@@ -108,17 +126,17 @@ export function useFlows(projectId: string | null) {
       setFlows(result.data || []);
       setError(null);
     } else {
-      setError(result.error || 'Failed to fetch flows');
+      setError(result.error || "Failed to fetch flows");
     }
     setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchFlows();
   }, [projectId]);
 
-  const createFlow = async (data: any) => {
-    if (!projectId) return { success: false, error: 'No project ID' };
+  useEffect(() => {
+    void fetchFlows();
+  }, [fetchFlows]);
+
+  const createFlow = async (data: AppFlowCreateInput) => {
+    if (!projectId) return { success: false, error: "No project ID" };
     const result = await api.appflow.create(projectId, data);
     if (result.success) {
       await fetchFlows();
@@ -126,8 +144,8 @@ export function useFlows(projectId: string | null) {
     return result;
   };
 
-  const updateFlow = async (flowId: string, data: any) => {
-    if (!projectId) return { success: false, error: 'No project ID' };
+  const updateFlow = async (flowId: string, data: AppFlowUpdateInput) => {
+    if (!projectId) return { success: false, error: "No project ID" };
     const result = await api.appflow.update(projectId, flowId, data);
     if (result.success) {
       await fetchFlows();
@@ -136,7 +154,7 @@ export function useFlows(projectId: string | null) {
   };
 
   const deleteFlow = async (flowId: string) => {
-    if (!projectId) return { success: false, error: 'No project ID' };
+    if (!projectId) return { success: false, error: "No project ID" };
     const result = await api.appflow.delete(projectId, flowId);
     if (result.success) {
       await fetchFlows();
@@ -158,29 +176,30 @@ export function useFlows(projectId: string | null) {
 // ==================== BLUEPRINT ====================
 
 export function useBlueprint(projectId: string | null) {
-  const [blueprint, setBlueprint] = useState<any>(null);
+  const [blueprint, setBlueprint] = useState<BlueprintData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchBlueprint = async () => {
+  const fetchBlueprint = useCallback(async () => {
     if (!projectId) return;
     setLoading(true);
     const result = await api.blueprint.get(projectId);
-    if (result.success) {
+    if (result.success && result.data) {
       setBlueprint(result.data);
       setError(null);
     } else {
-      setError(result.error || 'Failed to fetch blueprint');
+      setBlueprint(null);
+      setError(result.error || "Failed to fetch blueprint");
     }
     setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchBlueprint();
   }, [projectId]);
 
-  const updateBlueprint = async (data: any) => {
-    if (!projectId) return { success: false, error: 'No project ID' };
+  useEffect(() => {
+    void fetchBlueprint();
+  }, [fetchBlueprint]);
+
+  const updateBlueprint = async (data: BlueprintUpdateInput) => {
+    if (!projectId) return { success: false, error: "No project ID" };
     const result = await api.blueprint.update(projectId, data);
     if (result.success) {
       await fetchBlueprint();
@@ -200,29 +219,30 @@ export function useBlueprint(projectId: string | null) {
 // ==================== DATA ====================
 
 export function useSchema(projectId: string | null) {
-  const [schema, setSchema] = useState<any>(null);
+  const [schema, setSchema] = useState<DataSchema | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSchema = async () => {
+  const fetchSchema = useCallback(async () => {
     if (!projectId) return;
     setLoading(true);
     const result = await api.data.getSchema(projectId);
-    if (result.success) {
+    if (result.success && result.data) {
       setSchema(result.data);
       setError(null);
     } else {
-      setError(result.error || 'Failed to fetch schema');
+      setSchema(null);
+      setError(result.error || "Failed to fetch schema");
     }
     setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchSchema();
   }, [projectId]);
 
-  const updateSchema = async (data: any) => {
-    if (!projectId) return { success: false, error: 'No project ID' };
+  useEffect(() => {
+    void fetchSchema();
+  }, [fetchSchema]);
+
+  const updateSchema = async (data: DataSchemaUpdateInput) => {
+    if (!projectId) return { success: false, error: "No project ID" };
     const result = await api.data.updateSchema(projectId, data);
     if (result.success) {
       await fetchSchema();
@@ -240,11 +260,11 @@ export function useSchema(projectId: string | null) {
 }
 
 export function useMigrations(projectId: string | null) {
-  const [migrations, setMigrations] = useState<any[]>([]);
+  const [migrations, setMigrations] = useState<MigrationEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMigrations = async () => {
+  const fetchMigrations = useCallback(async () => {
     if (!projectId) return;
     setLoading(true);
     const result = await api.data.getMigrations(projectId);
@@ -252,14 +272,14 @@ export function useMigrations(projectId: string | null) {
       setMigrations(result.data || []);
       setError(null);
     } else {
-      setError(result.error || 'Failed to fetch migrations');
+      setError(result.error || "Failed to fetch migrations");
     }
     setLoading(false);
-  };
+  }, [projectId]);
 
   useEffect(() => {
-    fetchMigrations();
-  }, [projectId]);
+    void fetchMigrations();
+  }, [fetchMigrations]);
 
   return {
     migrations,
@@ -270,29 +290,30 @@ export function useMigrations(projectId: string | null) {
 }
 
 export function useERD(projectId: string | null) {
-  const [erd, setERD] = useState<any>(null);
+  const [erd, setERD] = useState<ERDData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchERD = async () => {
+  const fetchERD = useCallback(async () => {
     if (!projectId) return;
     setLoading(true);
     const result = await api.data.getERD(projectId);
-    if (result.success) {
+    if (result.success && result.data) {
       setERD(result.data);
       setError(null);
     } else {
-      setError(result.error || 'Failed to fetch ERD');
+      setERD(null);
+      setError(result.error || "Failed to fetch ERD");
     }
     setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchERD();
   }, [projectId]);
 
-  const updateERD = async (data: any) => {
-    if (!projectId) return { success: false, error: 'No project ID' };
+  useEffect(() => {
+    void fetchERD();
+  }, [fetchERD]);
+
+  const updateERD = async (data: ERDUpdateInput) => {
+    if (!projectId) return { success: false, error: "No project ID" };
     const result = await api.data.updateERD(projectId, data);
     if (result.success) {
       await fetchERD();
@@ -312,11 +333,11 @@ export function useERD(projectId: string | null) {
 // ==================== LOGS ====================
 
 export function useLogs(projectId: string | null) {
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     if (!projectId) return;
     setLoading(true);
     const result = await api.logs.getAll(projectId);
@@ -324,17 +345,17 @@ export function useLogs(projectId: string | null) {
       setLogs(result.data || []);
       setError(null);
     } else {
-      setError(result.error || 'Failed to fetch logs');
+      setError(result.error || "Failed to fetch logs");
     }
     setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchLogs();
   }, [projectId]);
 
-  const createLog = async (data: any) => {
-    if (!projectId) return { success: false, error: 'No project ID' };
+  useEffect(() => {
+    void fetchLogs();
+  }, [fetchLogs]);
+
+  const createLog = async (data: LogCreateInput) => {
+    if (!projectId) return { success: false, error: "No project ID" };
     const result = await api.logs.create(projectId, data);
     if (result.success) {
       await fetchLogs();
@@ -343,7 +364,7 @@ export function useLogs(projectId: string | null) {
   };
 
   const deleteAllLogs = async () => {
-    if (!projectId) return { success: false, error: 'No project ID' };
+    if (!projectId) return { success: false, error: "No project ID" };
     const result = await api.logs.deleteAll(projectId);
     if (result.success) {
       await fetchLogs();
@@ -364,29 +385,30 @@ export function useLogs(projectId: string | null) {
 // ==================== INTEGRATIONS ====================
 
 export function useIntegrations(projectId: string | null) {
-  const [integrations, setIntegrations] = useState<any>(null);
+  const [integrations, setIntegrations] = useState<IntegrationsState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchIntegrations = async () => {
+  const fetchIntegrations = useCallback(async () => {
     if (!projectId) return;
     setLoading(true);
     const result = await api.integrations.get(projectId);
-    if (result.success) {
+    if (result.success && result.data) {
       setIntegrations(result.data);
       setError(null);
     } else {
-      setError(result.error || 'Failed to fetch integrations');
+      setIntegrations(null);
+      setError(result.error || "Failed to fetch integrations");
     }
     setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchIntegrations();
   }, [projectId]);
 
+  useEffect(() => {
+    void fetchIntegrations();
+  }, [fetchIntegrations]);
+
   const connectGitHub = async (token: string, username?: string) => {
-    if (!projectId) return { success: false, error: 'No project ID' };
+    if (!projectId) return { success: false, error: "No project ID" };
     const result = await api.integrations.github.connect(projectId, token, username);
     if (result.success) {
       await fetchIntegrations();
@@ -395,7 +417,7 @@ export function useIntegrations(projectId: string | null) {
   };
 
   const disconnectGitHub = async () => {
-    if (!projectId) return { success: false, error: 'No project ID' };
+    if (!projectId) return { success: false, error: "No project ID" };
     const result = await api.integrations.github.disconnect(projectId);
     if (result.success) {
       await fetchIntegrations();
@@ -407,15 +429,15 @@ export function useIntegrations(projectId: string | null) {
     url: string,
     anonKey: string,
     serviceKey?: string,
-    projectRef?: string
+    projectRef?: string,
   ) => {
-    if (!projectId) return { success: false, error: 'No project ID' };
+    if (!projectId) return { success: false, error: "No project ID" };
     const result = await api.integrations.supabase.connect(
       projectId,
       url,
       anonKey,
       serviceKey,
-      projectRef
+      projectRef,
     );
     if (result.success) {
       await fetchIntegrations();
@@ -424,7 +446,7 @@ export function useIntegrations(projectId: string | null) {
   };
 
   const disconnectSupabase = async () => {
-    if (!projectId) return { success: false, error: 'No project ID' };
+    if (!projectId) return { success: false, error: "No project ID" };
     const result = await api.integrations.supabase.disconnect(projectId);
     if (result.success) {
       await fetchIntegrations();

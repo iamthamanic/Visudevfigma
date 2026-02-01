@@ -1,29 +1,31 @@
 /**
  * CodePreview Component
- * 
+ *
  * Renders React/JSX code in an isolated iframe
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import { Eye, Code2, AlertCircle } from 'lucide-react';
+import React, { useEffect, useRef, useState } from "react";
+import clsx from "clsx";
+import { Eye, Code2, AlertCircle } from "lucide-react";
+import styles from "./CodePreview.module.css";
 
 interface CodePreviewProps {
   code: string;
   className?: string;
 }
 
-export function CodePreview({ code, className = '' }: CodePreviewProps) {
+export function CodePreview({ code, className = "" }: CodePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
+  const [viewMode, setViewMode] = useState<"preview" | "code">("preview");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!code || viewMode !== 'preview') return;
+    if (!code || viewMode !== "preview") return;
 
     try {
       // Extract JSX from component code
       const jsxContent = extractJSX(code);
-      
+
       // Generate iframe HTML
       const html = `
         <!DOCTYPE html>
@@ -43,8 +45,6 @@ export function CodePreview({ code, className = '' }: CodePreviewProps) {
                 sans-serif;
               -webkit-font-smoothing: antialiased;
               -moz-osx-font-smoothing: grayscale;
-              background: white;
-              color: #000;
             }
             
             /* Reset common styles */
@@ -88,11 +88,11 @@ export function CodePreview({ code, className = '' }: CodePreviewProps) {
           iframeDoc.close();
         }
       }
-      
+
       setError(null);
     } catch (err) {
-      console.error('[CodePreview] Error rendering preview:', err);
-      setError(err instanceof Error ? err.message : 'Failed to render preview');
+      console.error("[CodePreview] Error rendering preview:", err);
+      setError(err instanceof Error ? err.message : "Failed to render preview");
     }
   }, [code, viewMode]);
 
@@ -100,7 +100,7 @@ export function CodePreview({ code, className = '' }: CodePreviewProps) {
   const extractJSX = (code: string): string => {
     // Try to find the return statement
     let jsx = code;
-    
+
     // Look for return ( ... )
     const returnMatch = jsx.match(/return\s*\(([\s\S]*?)\);?\s*$/m);
     if (returnMatch) {
@@ -112,73 +112,67 @@ export function CodePreview({ code, className = '' }: CodePreviewProps) {
         jsx = returnSimpleMatch[1];
       }
     }
-    
+
     // Clean up JSX to make it more HTML-like
     jsx = jsx
       // Convert className to class
-      .replace(/className=/g, 'class=')
+      .replace(/className=/g, "class=")
       // Remove event handlers
-      .replace(/on\w+?=\{[^}]*\}/g, '')
+      .replace(/on\w+?=\{[^}]*\}/g, "")
       // Replace simple expressions with placeholders
-      .replace(/\{(['"`])(.*?)\1\}/g, '$2')
+      .replace(/\{(['"`])(.*?)\1\}/g, "$2")
       // Replace complex expressions with bullet point
-      .replace(/\{([^}]+)\}/g, '[•]')
+      .replace(/\{([^}]+)\}/g, "[•]")
       // Remove fragments
-      .replace(/<>\s*/g, '')
-      .replace(/\s*<\/>/g, '');
-    
+      .replace(/<>\s*/g, "")
+      .replace(/\s*<\/>/g, "");
+
     return jsx;
   };
 
   return (
-    <div className={`flex flex-col h-full ${className}`}>
+    <div className={clsx(styles.root, className)}>
       {/* Toggle */}
-      <div className="flex items-center gap-2 p-2 border-b border-white/10 bg-black/20">
+      <div className={styles.toolbar}>
         <button
-          onClick={() => setViewMode('preview')}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors ${
-            viewMode === 'preview'
-              ? 'bg-[#03ffa3]/10 text-[#03ffa3] border border-[#03ffa3]/20'
-              : 'text-white/60 hover:text-white/80 hover:bg-white/5'
-          }`}
+          type="button"
+          onClick={() => setViewMode("preview")}
+          className={clsx(styles.toggleButton, viewMode === "preview" && styles.toggleButtonActive)}
         >
-          <Eye className="w-3 h-3" />
+          <Eye className={styles.toggleIcon} />
           Preview
         </button>
         <button
-          onClick={() => setViewMode('code')}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors ${
-            viewMode === 'code'
-              ? 'bg-[#03ffa3]/10 text-[#03ffa3] border border-[#03ffa3]/20'
-              : 'text-white/60 hover:text-white/80 hover:bg-white/5'
-          }`}
+          type="button"
+          onClick={() => setViewMode("code")}
+          className={clsx(styles.toggleButton, viewMode === "code" && styles.toggleButtonActive)}
         >
-          <Code2 className="w-3 h-3" />
+          <Code2 className={styles.toggleIcon} />
           Code
         </button>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto">
-        {viewMode === 'preview' ? (
+      <div className={styles.content}>
+        {viewMode === "preview" ? (
           error ? (
-            <div className="flex items-center justify-center h-full p-4">
-              <div className="text-center max-w-md">
-                <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
-                <h3 className="text-sm font-semibold text-white/80 mb-2">Preview Error</h3>
-                <p className="text-xs text-white/50">{error}</p>
+            <div className={styles.errorState}>
+              <div className={styles.errorCard}>
+                <AlertCircle className={styles.errorIcon} />
+                <h3 className={styles.errorTitle}>Preview Error</h3>
+                <p className={styles.errorText}>{error}</p>
               </div>
             </div>
           ) : (
             <iframe
               ref={iframeRef}
-              className="w-full h-full border-0 bg-white"
+              className={styles.previewFrame}
               sandbox="allow-scripts"
               title="Component Preview"
             />
           )
         ) : (
-          <pre className="p-4 text-xs font-mono text-white/80 bg-black/40 h-full overflow-auto">
+          <pre className={styles.codePane}>
             <code>{code}</code>
           </pre>
         )}

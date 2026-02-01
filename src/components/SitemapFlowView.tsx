@@ -1,26 +1,28 @@
-import { useState, useRef, useEffect } from 'react';
-import { ZoomIn, ZoomOut, Maximize2, Home } from 'lucide-react';
-import { ScreenDetailView } from './ScreenDetailView';
+import { useState, useRef, useEffect } from "react";
+import clsx from "clsx";
+import { ZoomIn, ZoomOut, Home } from "lucide-react";
+import { ScreenDetailView } from "./ScreenDetailView";
+import styles from "./SitemapFlowView.module.css";
 
 interface Screen {
   id: string;
   name: string;
   path: string;
   filePath?: string;
-  type?: 'page' | 'screen' | 'view';
+  type?: "page" | "screen" | "view";
   flows?: string[];
   navigatesTo?: string[];
   framework?: string;
   componentCode?: string;
   screenshotUrl?: string;
-  screenshotStatus?: 'none' | 'pending' | 'ok' | 'failed';
+  screenshotStatus?: "none" | "pending" | "ok" | "failed";
   lastScreenshotCommit?: string;
   depth?: number;
 }
 
 interface CodeFlow {
   id: string;
-  type: 'ui-event' | 'function-call' | 'api-call' | 'db-query' | 'navigation' | 'api';
+  type: "ui-event" | "function-call" | "api-call" | "db-query" | "navigation" | "api";
   name: string;
   file?: string;
   line?: number;
@@ -49,6 +51,12 @@ interface ScreenPosition {
   depth: number;
 }
 
+const CARD_WIDTH = 480;
+const CARD_HEIGHT = 360;
+const HORIZONTAL_SPACING = 100;
+const VERTICAL_SPACING = 80;
+const SCREENS_PER_ROW = 4;
+
 export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewProps) {
   const [selectedScreen, setSelectedScreen] = useState<string | null>(null);
   const [detailViewScreen, setDetailViewScreen] = useState<Screen | null>(null);
@@ -57,52 +65,40 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
+  const graphRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [screenPositions, setScreenPositions] = useState<Map<string, ScreenPosition>>(new Map());
 
   // Auto-layout screens
   useEffect(() => {
     if (screens.length === 0) return;
 
-    console.log('[SitemapFlowView] 🎨 Layout screens:', screens.length);
-    console.log('[SitemapFlowView] 📋 Screens:', screens.map(s => ({ name: s.name, path: s.path, navigatesTo: s.navigatesTo })));
-
     const positions = new Map<string, ScreenPosition>();
-    const CARD_WIDTH = 480;
-    const CARD_HEIGHT = 360;
-    const HORIZONTAL_SPACING = 100;
-    const VERTICAL_SPACING = 80;
-    const SCREENS_PER_ROW = 4; // Grid layout: 4 screens per row (larger cards)
 
     // Calculate depths
     const screenDepths = calculateScreenDepths(screens);
-    console.log('[SitemapFlowView] 📊 Screen depths:', Array.from(screenDepths.entries()));
-    
+
     // Group by depth
     const columns: Screen[][] = [];
-    screens.forEach(screen => {
+    screens.forEach((screen) => {
       const depth = screenDepths.get(screen.id) || 0;
       if (!columns[depth]) columns[depth] = [];
       columns[depth].push(screen);
     });
 
-    console.log('[SitemapFlowView] 📐 Columns:', columns.map((col, idx) => `Depth ${idx}: ${col.length} screens`));
-
     // If all screens are in depth 0 (no navigation detected), use GRID layout
     if (columns.length === 1 || screens.length === columns[0]?.length) {
-      console.log('[SitemapFlowView] ⚠️ All screens at depth 0 - using GRID layout instead');
-      
       // Grid layout
       let currentX = 100;
       let currentY = 100;
       let screensInRow = 0;
 
-      screens.forEach((screen, index) => {
+      screens.forEach((screen) => {
         positions.set(screen.id, {
           x: currentX,
           y: currentY,
-          depth: 0
+          depth: 0,
         });
-        console.log(`[SitemapFlowView] 📍 Grid position ${screen.name} at (${currentX}, ${currentY})`);
 
         screensInRow++;
         if (screensInRow >= SCREENS_PER_ROW) {
@@ -120,25 +116,46 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
       let currentX = 100;
       columns.forEach((column) => {
         column.sort((a, b) => a.name.localeCompare(b.name));
-        
+
         let currentY = 100;
         column.forEach((screen) => {
           const depth = screenDepths.get(screen.id) || 0;
           positions.set(screen.id, {
             x: currentX,
             y: currentY,
-            depth
+            depth,
           });
-          console.log(`[SitemapFlowView] 📍 Position ${screen.name} at (${currentX}, ${currentY})`);
           currentY += CARD_HEIGHT + VERTICAL_SPACING;
         });
         currentX += CARD_WIDTH + HORIZONTAL_SPACING;
       });
     }
 
-    console.log('[SitemapFlowView] ✓ Total positions calculated:', positions.size);
     setScreenPositions(positions);
   }, [screens]);
+
+  const setCardRef = (id: string) => (node: HTMLDivElement | null) => {
+    if (node) {
+      cardRefs.current.set(id, node);
+    } else {
+      cardRefs.current.delete(id);
+    }
+  };
+
+  useEffect(() => {
+    screenPositions.forEach((position, id) => {
+      const node = cardRefs.current.get(id);
+      if (!node) return;
+      node.style.left = `${position.x}px`;
+      node.style.top = `${position.y}px`;
+      node.style.width = `${CARD_WIDTH}px`;
+    });
+  }, [screenPositions]);
+
+  useEffect(() => {
+    if (!graphRef.current) return;
+    graphRef.current.style.transform = `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`;
+  }, [pan, zoom]);
 
   // Calculate screen depths
   const calculateScreenDepths = (screens: Screen[]): Map<string, number> => {
@@ -146,33 +163,39 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
     const visited = new Set<string>();
 
     // Find root screens
-    const rootScreens = screens.filter(s => 
-      s.path === '/' || 
-      s.path === '/home' || 
-      s.path === '/login' ||
-      s.path === '/index' ||
-      s.name.toLowerCase().includes('home') ||
-      s.name.toLowerCase().includes('index')
+    const rootScreens = screens.filter(
+      (s) =>
+        s.path === "/" ||
+        s.path === "/home" ||
+        s.path === "/login" ||
+        s.path === "/index" ||
+        s.name.toLowerCase().includes("home") ||
+        s.name.toLowerCase().includes("index"),
     );
-    
+
     if (rootScreens.length === 0 && screens.length > 0) {
       rootScreens.push(screens[0]);
     }
 
     // BFS
-    const queue: Array<{ screen: Screen; depth: number }> = rootScreens.map(s => ({ screen: s, depth: 0 }));
-    
+    const queue: Array<{ screen: Screen; depth: number }> = rootScreens.map((s) => ({
+      screen: s,
+      depth: 0,
+    }));
+
     while (queue.length > 0) {
       const { screen, depth } = queue.shift()!;
-      
+
       if (visited.has(screen.id)) continue;
       visited.add(screen.id);
       depths.set(screen.id, depth);
 
       // Safe access to navigatesTo (might be undefined in our new store)
       const navigatesTo = screen.navigatesTo || [];
-      navigatesTo.forEach(targetPath => {
-        const targetScreen = screens.find(s => s.path === targetPath || s.path.includes(targetPath));
+      navigatesTo.forEach((targetPath) => {
+        const targetScreen = screens.find(
+          (s) => s.path === targetPath || s.path.includes(targetPath),
+        );
         if (targetScreen && !visited.has(targetScreen.id)) {
           queue.push({ screen: targetScreen, depth: depth + 1 });
         }
@@ -180,7 +203,7 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
     }
 
     // Set depth 0 for remaining
-    screens.forEach(screen => {
+    screens.forEach((screen) => {
       if (!depths.has(screen.id)) {
         depths.set(screen.id, 0);
       }
@@ -200,10 +223,10 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
     }
 
     jsx = jsx
-      .replace(/className=/g, 'class=')
-      .replace(/onClick=\{[^}]*\}/g, '')
-      .replace(/on\w+?=\{[^}]*\}/g, '')
-      .replace(/\{([^}]+)\}/g, '[•]');
+      .replace(/className=/g, "class=")
+      .replace(/onClick=\{[^}]*\}/g, "")
+      .replace(/on\w+?=\{[^}]*\}/g, "")
+      .replace(/\{([^}]+)\}/g, "[•]");
 
     return jsx.substring(0, 500); // Limit length
   };
@@ -212,13 +235,15 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
   const renderConnections = () => {
     const connections: JSX.Element[] = [];
 
-    screens.forEach(sourceScreen => {
+    screens.forEach((sourceScreen) => {
       const sourcePos = screenPositions.get(sourceScreen.id);
       if (!sourcePos) return;
 
       const navigatesTo = sourceScreen.navigatesTo || [];
       navigatesTo.forEach((targetPath, index) => {
-        const targetScreen = screens.find(s => s.path === targetPath || s.path.includes(targetPath));
+        const targetScreen = screens.find(
+          (s) => s.path === targetPath || s.path.includes(targetPath),
+        );
         if (!targetScreen) return;
 
         const targetPos = screenPositions.get(targetScreen.id);
@@ -236,18 +261,7 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
         const pathD = `M ${startX} ${startY} C ${controlX} ${startY}, ${controlX} ${endY}, ${endX} ${endY}`;
 
         connections.push(
-          <svg
-            key={connectionId}
-            className="absolute pointer-events-none"
-            style={{
-              left: 0,
-              top: 0,
-              width: '100%',
-              height: '100%',
-              zIndex: 1,
-              overflow: 'visible'
-            }}
-          >
+          <svg key={connectionId} className={styles.connectionSvg}>
             <defs>
               <marker
                 id={`arrow-${connectionId}`}
@@ -257,18 +271,15 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
                 refY="4"
                 orient="auto"
               >
-                <polygon points="0 0, 8 4, 0 8" fill="#03ffa3" opacity="0.6" />
+                <polygon className={styles.connectionMarker} points="0 0, 8 4, 0 8" />
               </marker>
             </defs>
             <path
               d={pathD}
-              stroke="#03ffa3"
-              strokeWidth="1.5"
-              fill="none"
+              className={styles.connectionPath}
               markerEnd={`url(#arrow-${connectionId})`}
-              opacity="0.4"
             />
-          </svg>
+          </svg>,
         );
       });
     });
@@ -278,18 +289,19 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
 
   // Get flow stats
   const getFlowStats = (screen: Screen) => {
-    const screenFlows = flows.filter(flow => screen.flows?.includes(flow.id));
+    const screenFlows = flows.filter((flow) => screen.flows?.includes(flow.id));
     return {
-      uiEvents: screenFlows.filter(f => f.type === 'ui-event').length,
-      apiCalls: screenFlows.filter(f => f.type === 'api-call').length,
-      dbQueries: screenFlows.filter(f => f.type === 'db-query').length,
-      total: screenFlows.length
+      uiEvents: screenFlows.filter((f) => f.type === "ui-event").length,
+      apiCalls: screenFlows.filter((f) => f.type === "api-call").length,
+      dbQueries: screenFlows.filter((f) => f.type === "db-query").length,
+      total: screenFlows.length,
     };
   };
 
   // Pan handlers
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0) { // Left click
+    if (e.button === 0) {
+      // Left click
       setIsDragging(true);
       setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
     }
@@ -299,7 +311,7 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
     if (isDragging) {
       setPan({
         x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
+        y: e.clientY - dragStart.y,
       });
     }
   };
@@ -318,51 +330,52 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
 
   if (screens.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center bg-white">
-        <div className="text-center">
-          <p className="text-gray-500">Keine Screens gefunden</p>
+      <div className={styles.emptyState}>
+        <div>
+          <p className={styles.emptyText}>Keine Screens gefunden</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className={styles.root}>
       {/* Header */}
-      <div className="border-b border-gray-200 p-4 flex items-center justify-between flex-shrink-0">
+      <div className={styles.header}>
         <div>
-          <h2 className="text-xl mb-1">App Sitemap</h2>
-          <p className="text-xs text-gray-600">
+          <h2 className={styles.headerTitle}>App Sitemap</h2>
+          <p className={styles.headerSubtitle}>
             {screens.length} Screens • {flows.length} Flows
             {framework?.primary && <> • {framework.primary}</>}
           </p>
         </div>
 
         {/* Zoom Controls */}
-        <div className="flex items-center gap-2">
+        <div className={styles.controls}>
           <button
             onClick={handleZoomOut}
-            className="p-2 hover:bg-gray-100 rounded transition-colors"
+            type="button"
+            className={styles.zoomButton}
             title="Zoom Out"
           >
-            <ZoomOut className="w-4 h-4" />
+            <ZoomOut className={styles.controlIcon} />
           </button>
-          <span className="text-xs text-gray-600 w-12 text-center">
-            {Math.round(zoom * 100)}%
-          </span>
+          <span className={styles.zoomValue}>{Math.round(zoom * 100)}%</span>
           <button
             onClick={handleZoomIn}
-            className="p-2 hover:bg-gray-100 rounded transition-colors"
+            type="button"
+            className={styles.zoomButton}
             title="Zoom In"
           >
-            <ZoomIn className="w-4 h-4" />
+            <ZoomIn className={styles.controlIcon} />
           </button>
           <button
             onClick={handleZoomReset}
-            className="p-2 hover:bg-gray-100 rounded transition-colors ml-2"
+            type="button"
+            className={styles.zoomButton}
             title="Reset View"
           >
-            <Home className="w-4 h-4" />
+            <Home className={styles.controlIcon} />
           </button>
         </div>
       </div>
@@ -370,30 +383,18 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
       {/* Canvas */}
       <div
         ref={canvasRef}
-        className="flex-1 overflow-hidden bg-gray-50 relative cursor-grab active:cursor-grabbing"
+        className={clsx(styles.canvas, isDragging && styles.canvasDragging)}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        style={{
-          backgroundImage: 'radial-gradient(circle, #d1d5db 1px, transparent 1px)',
-          backgroundSize: '24px 24px'
-        }}
       >
-        <div
-          style={{
-            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-            transformOrigin: '0 0',
-            position: 'relative',
-            width: 'fit-content',
-            height: 'fit-content'
-          }}
-        >
+        <div ref={graphRef} className={styles.graph}>
           {/* Connection Lines */}
           {renderConnections()}
 
           {/* Screen Cards */}
-          {screens.map(screen => {
+          {screens.map((screen) => {
             const position = screenPositions.get(screen.id);
             if (!position) return null;
 
@@ -403,16 +404,8 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
             return (
               <div
                 key={screen.id}
-                className={`absolute bg-white rounded-lg shadow-md border transition-all cursor-pointer ${
-                  isSelected 
-                    ? 'border-primary ring-2 ring-primary/30 z-20' 
-                    : 'border-gray-200 hover:border-primary/50 hover:shadow-lg z-10'
-                }`}
-                style={{
-                  left: position.x,
-                  top: position.y,
-                  width: '480px'
-                }}
+                ref={setCardRef(screen.id)}
+                className={clsx(styles.card, isSelected && styles.cardSelected)}
                 onClick={(e) => {
                   e.stopPropagation();
                   setSelectedScreen(screen.id);
@@ -420,23 +413,21 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
                 }}
               >
                 {/* Header */}
-                <div className="p-3 border-b border-gray-200 bg-gray-50">
-                  <h3 className="text-sm font-medium truncate mb-1" title={screen.name}>
+                <div className={styles.cardHeader}>
+                  <h3 className={styles.cardTitle} title={screen.name}>
                     {screen.name}
                   </h3>
-                  <code className="text-xs bg-primary/10 text-primary px-2 py-1 rounded truncate block">
-                    {screen.path}
-                  </code>
+                  <code className={styles.cardPath}>{screen.path}</code>
                 </div>
 
                 {/* Mini Preview */}
-                <div className="h-64 bg-gray-100 border-b border-gray-200 overflow-hidden relative">
+                <div className={styles.preview}>
                   {screen.screenshotUrl ? (
                     // Use screenshot if available
-                    <img 
-                      src={screen.screenshotUrl} 
+                    <img
+                      src={screen.screenshotUrl}
                       alt={screen.name}
-                      className="w-full h-full object-contain bg-gray-900"
+                      className={styles.previewImage}
                     />
                   ) : screen.componentCode ? (
                     // Fallback to iframe preview (keep smaller scale)
@@ -462,64 +453,75 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
                         <body>${generateMiniPreview(screen.componentCode)}</body>
                         </html>
                       `}
-                      className="w-full h-full border-0 pointer-events-none"
+                      className={styles.previewIframe}
                       sandbox="allow-scripts"
                       title={screen.name}
                     />
                   ) : (
                     // Default placeholder
-                    <div className="flex items-center justify-center h-full text-gray-400">
-                      <div className="text-center">
-                        <span className="text-5xl mb-2 block">📄</span>
-                        <span className="text-xs">No preview</span>
+                    <div className={styles.previewPlaceholder}>
+                      <div>
+                        <span className={styles.previewPlaceholderIcon}>📄</span>
+                        <span>No preview</span>
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Screenshot status badge */}
-                  {screen.screenshotStatus && screen.screenshotStatus !== 'none' && (
-                    <div className="absolute top-2 right-2">
-                      <span className={`text-xs px-2 py-1 rounded font-medium shadow-sm ${
-                        screen.screenshotStatus === 'ok' ? 'bg-green-500/90 text-white' :
-                        screen.screenshotStatus === 'pending' ? 'bg-yellow-500/90 text-white' :
-                        'bg-red-500/90 text-white'
-                      }`}>
-                        {screen.screenshotStatus === 'ok' ? '✓ Screenshot' : 
-                         screen.screenshotStatus === 'pending' ? '⏳ Pending' : 
-                         '⚠ Screenshot failed'}
+                  {screen.screenshotStatus && screen.screenshotStatus !== "none" && (
+                    <div className={styles.statusBadgeWrap}>
+                      <span
+                        className={clsx(
+                          styles.statusBadge,
+                          screen.screenshotStatus === "ok" && styles.statusOk,
+                          screen.screenshotStatus === "pending" && styles.statusPending,
+                          screen.screenshotStatus === "failed" && styles.statusFailed,
+                        )}
+                      >
+                        {screen.screenshotStatus === "ok"
+                          ? "✓ Screenshot"
+                          : screen.screenshotStatus === "pending"
+                            ? "⏳ Pending"
+                            : "⚠ Screenshot failed"}
                       </span>
                     </div>
                   )}
                 </div>
 
                 {/* Footer Stats */}
-                <div className="p-3 bg-white">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-3">
+                <div className={styles.cardFooter}>
+                  <div className={styles.statsRow}>
+                    <div className={styles.statsGroup}>
                       {stats.uiEvents > 0 && (
-                        <span className="text-gray-600" title="UI Events">⚡ {stats.uiEvents}</span>
+                        <span className={styles.statItem} title="UI Events">
+                          ⚡ {stats.uiEvents}
+                        </span>
                       )}
                       {stats.apiCalls > 0 && (
-                        <span className="text-gray-600" title="API Calls">🌐 {stats.apiCalls}</span>
+                        <span className={styles.statItem} title="API Calls">
+                          🌐 {stats.apiCalls}
+                        </span>
                       )}
                       {stats.dbQueries > 0 && (
-                        <span className="text-gray-600" title="DB Queries">🗄️ {stats.dbQueries}</span>
+                        <span className={styles.statItem} title="DB Queries">
+                          🗄️ {stats.dbQueries}
+                        </span>
                       )}
                     </div>
-                    {screen.navigatesTo?.length > 0 && (
-                      <span className="text-primary font-medium">{screen.navigatesTo.length} →</span>
+                    {screen.navigatesTo && screen.navigatesTo.length > 0 && (
+                      <span className={styles.navCount}>{screen.navigatesTo.length} →</span>
                     )}
                   </div>
-                  
+
                   {/* Screenshot failed feedback */}
-                  {screen.screenshotStatus === 'failed' && (
-                    <div className="mt-2 text-[10px] text-red-600 bg-red-50 px-2 py-1 rounded">
+                  {screen.screenshotStatus === "failed" && (
+                    <div className={styles.failedNotice}>
                       Screenshot fehlgeschlagen – zeige Code-Preview
                     </div>
                   )}
-                  
-                  <div className="text-[10px] text-gray-400 mt-2">
-                    Depth: {position.depth} • {screen.filePath || 'Unknown file'}
+
+                  <div className={styles.depthRow}>
+                    Depth: {position.depth} • {screen.filePath || "Unknown file"}
                   </div>
                 </div>
               </div>
@@ -529,8 +531,9 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
       </div>
 
       {/* Instructions */}
-      <div className="border-t border-gray-200 px-4 py-2 bg-gray-50 text-xs text-gray-600 flex-shrink-0">
-        💡 <strong>Tip:</strong> Klick & Drag zum Verschieben • Mausrad zum Zoomen • Klick auf Screen für Details
+      <div className={styles.footerHint}>
+        💡 <strong>Tip:</strong> Klick & Drag zum Verschieben • Mausrad zum Zoomen • Klick auf
+        Screen für Details
       </div>
 
       {/* Detail View */}

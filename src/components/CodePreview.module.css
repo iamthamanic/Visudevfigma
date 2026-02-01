@@ -1,0 +1,107 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-hover);
+}
+
+.toggleButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.toggleButton:hover {
+  color: var(--color-foreground);
+  background: var(--color-hover);
+}
+
+.toggleButtonActive {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.toggleIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.content {
+  flex: 1;
+  overflow: auto;
+  background: var(--color-surface);
+}
+
+.previewFrame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--color-foreground);
+}
+
+.errorState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--space-md);
+}
+
+.errorCard {
+  text-align: center;
+  max-width: 420px;
+}
+
+.errorIcon {
+  width: 48px;
+  height: 48px;
+  color: var(--color-danger);
+  margin: 0 auto var(--space-sm);
+}
+
+.errorTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  margin-bottom: var(--space-xs);
+}
+
+.errorText {
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+
+.codePane {
+  padding: var(--space-md);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--color-foreground);
+  background: var(--color-background);
+  height: 100%;
+  overflow: auto;
+}

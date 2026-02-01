@@ -1,60 +1,26 @@
 /**
- * VisuDEV Edge Function: Logs
- * 
- * @version 1.0.0
- * @created 2025-11-06T12:00:00.000Z
- * @updated 2025-11-06T12:00:00.000Z
- * 
+ * VisuDEV Edge Function: Logs (DDD/DI Refactor)
+ *
+ * @version 2.0.0
  * @description Execution logs and trace history API
  */
 
-import { Hono } from "npm:hono";
-import { cors } from "npm:hono/cors";
-import { logger } from "npm:hono/logger";
-import { createClient } from "jsr:@supabase/supabase-js@2.49.8";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { createClient } from "@jsr/supabase__supabase-js";
+import { createLogsModule } from "./module/index.ts";
+import type { LoggerLike } from "./module/interfaces/module.interface.ts";
+import { ModuleException } from "./module/internal/exceptions/index.ts";
+import type { ErrorResponse } from "./module/types/index.ts";
 
-// KV Store Implementation (inline for Dashboard compatibility)
-const kvClient = () => createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-);
+interface EnvConfig {
+  supabaseUrl: string;
+  supabaseServiceRoleKey: string;
+  kvTableName: string;
+}
 
-const kvSet = async (key: string, value: any): Promise<void> => {
-  const supabase = kvClient();
-  const { error } = await supabase.from("kv_store_edf036ef").upsert({ key, value });
-  if (error) throw new Error(error.message);
-};
-
-const kvGet = async (key: string): Promise<any> => {
-  const supabase = kvClient();
-  const { data, error } = await supabase.from("kv_store_edf036ef").select("value").eq("key", key).maybeSingle();
-  if (error) throw new Error(error.message);
-  return data?.value;
-};
-
-const kvDel = async (key: string): Promise<void> => {
-  const supabase = kvClient();
-  const { error } = await supabase.from("kv_store_edf036ef").delete().eq("key", key);
-  if (error) throw new Error(error.message);
-};
-
-const kvMDel = async (keys: string[]): Promise<void> => {
-  const supabase = kvClient();
-  const { error } = await supabase.from("kv_store_edf036ef").delete().in("key", keys);
-  if (error) throw new Error(error.message);
-};
-
-const kvGetByPrefix = async (prefix: string): Promise<any[]> => {
-  const supabase = kvClient();
-  const { data, error } = await supabase.from("kv_store_edf036ef").select("key, value").like("key", prefix + "%");
-  if (error) throw new Error(error.message);
-  return data?.map((d) => d.value) ?? [];
-};
-
-// API Implementation
 const app = new Hono();
 
-app.use('*', logger(console.log));
 app.use(
   "/*",
   cors({
@@ -66,86 +32,118 @@ app.use(
   }),
 );
 
-// Get logs for project
-app.get("/:projectId", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const logs = await kvGetByPrefix(`logs:${projectId}:`);
-    // Sort by timestamp descending
-    const sorted = logs.sort((a: any, b: any) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-    return c.json({ success: true, data: sorted });
-  } catch (error) {
-    console.log(`Error fetching logs: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
+const logger: LoggerLike = createLogger();
+const env = loadEnvConfig(logger);
+
+const supabase = createClient(env.supabaseUrl, env.supabaseServiceRoleKey);
+
+const logsModule = createLogsModule({
+  supabase,
+  logger,
+  config: { kvTableName: env.kvTableName },
 });
 
-// Get single log entry
-app.get("/:projectId/:logId", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const logId = c.req.param("logId");
-    const log = await kvGet(`logs:${projectId}:${logId}`);
-    if (!log) {
-      return c.json({ success: false, error: "Log not found" }, 404);
-    }
-    return c.json({ success: true, data: log });
-  } catch (error) {
-    console.log(`Error fetching log: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
-});
+logsModule.registerRoutes(app);
 
-// Create log entry
-app.post("/:projectId", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const body = await c.req.json();
-    const timestamp = new Date().toISOString();
-    const logId = `${timestamp}:${crypto.randomUUID()}`;
-    const log = {
-      ...body,
-      projectId,
-      timestamp,
-      id: logId,
+app.onError((err, c) => {
+  if (err instanceof ModuleException) {
+    logger.warn("Request failed", { code: err.code, message: err.message });
+    const payload: ErrorResponse = {
+      success: false,
+      error: {
+        code: err.code,
+        message: err.message,
+        details: err.details,
+      },
     };
-    await kvSet(`logs:${projectId}:${logId}`, log);
-    return c.json({ success: true, data: log });
-  } catch (error) {
-    console.log(`Error creating log: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
+    return c.json(payload, err.statusCode);
   }
-});
 
-// Delete all logs for project
-app.delete("/:projectId", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const logs = await kvGetByPrefix(`logs:${projectId}:`);
-    const keys = logs.map((log: any) => `logs:${projectId}:${log.id}`);
-    if (keys.length > 0) {
-      await kvMDel(keys);
-    }
-    return c.json({ success: true, deleted: keys.length });
-  } catch (error) {
-    console.log(`Error deleting logs: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
-});
-
-// Delete single log entry
-app.delete("/:projectId/:logId", async (c) => {
-  try {
-    const projectId = c.req.param("projectId");
-    const logId = c.req.param("logId");
-    await kvDel(`logs:${projectId}:${logId}`);
-    return c.json({ success: true });
-  } catch (error) {
-    console.log(`Error deleting log: ${error}`);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
+  const message = err instanceof Error ? err.message : "Unknown error";
+  logger.error("Unhandled error", { message });
+  const payload: ErrorResponse = {
+    success: false,
+    error: {
+      code: "INTERNAL_ERROR",
+      message,
+    },
+  };
+  return c.json(payload, 500);
 });
 
 Deno.serve(app.fetch);
+
+function createLogger(): LoggerLike {
+  const encoder = new TextEncoder();
+  const write = (
+    stream: "stdout" | "stderr",
+    payload: Record<string, unknown>,
+  ): void => {
+    const line = JSON.stringify(payload);
+    const data = encoder.encode(`${line}\n`);
+    if (stream === "stderr") {
+      Deno.stderr.writeSync(data);
+      return;
+    }
+    Deno.stdout.writeSync(data);
+  };
+
+  return {
+    info: (message: string, meta?: Record<string, unknown>): void => {
+      write("stdout", {
+        level: "info",
+        message,
+        meta,
+        ts: new Date().toISOString(),
+      });
+    },
+    warn: (message: string, meta?: Record<string, unknown>): void => {
+      write("stderr", {
+        level: "warn",
+        message,
+        meta,
+        ts: new Date().toISOString(),
+      });
+    },
+    error: (message: string, meta?: Record<string, unknown>): void => {
+      write("stderr", {
+        level: "error",
+        message,
+        meta,
+        ts: new Date().toISOString(),
+      });
+    },
+    debug: (message: string, meta?: Record<string, unknown>): void => {
+      write("stdout", {
+        level: "debug",
+        message,
+        meta,
+        ts: new Date().toISOString(),
+      });
+    },
+  };
+}
+
+function loadEnvConfig(loggerInstance: LoggerLike): EnvConfig {
+  const supabaseUrl = getRequiredEnv("SUPABASE_URL");
+  const supabaseServiceRoleKey = getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+
+  const kvTableName = Deno.env.get("VISUDEV_KV_TABLE") ??
+    Deno.env.get("KV_TABLE_NAME") ?? "kv_store_edf036ef";
+
+  if (!Deno.env.get("VISUDEV_KV_TABLE") && !Deno.env.get("KV_TABLE_NAME")) {
+    loggerInstance.warn("KV table env not set. Falling back to default.", {
+      defaultValue: kvTableName,
+    });
+  }
+
+  return { supabaseUrl, supabaseServiceRoleKey, kvTableName };
+}
+
+function getRequiredEnv(key: string): string {
+  const value = Deno.env.get(key);
+  if (!value) {
+    throw new Error(`${key} environment variable is required`);
+  }
+  return value;
+}

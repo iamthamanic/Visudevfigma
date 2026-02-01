@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Loader2, Image as ImageIcon, AlertCircle } from 'lucide-react';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { useState, useEffect, useCallback } from "react";
+import { Loader2, Image as ImageIcon, AlertCircle } from "lucide-react";
+import { captureScreenshots } from "../lib/services/screenshots";
+import styles from "./ScreenshotPreview.module.css";
 
 interface ScreenshotPreviewProps {
   projectData: {
@@ -19,15 +20,9 @@ export function ScreenshotPreview({ projectData, screen }: ScreenshotPreviewProp
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (projectData.deployed_url) {
-      captureScreenshot();
-    }
-  }, [projectData.deployed_url, screen.id]);
-
-  const captureScreenshot = async () => {
+  const captureScreenshot = useCallback(async () => {
     if (!projectData.deployed_url) {
-      setError('Keine deployed URL konfiguriert');
+      setError("Keine deployed URL konfiguriert");
       return;
     }
 
@@ -35,63 +30,48 @@ export function ScreenshotPreview({ projectData, screen }: ScreenshotPreviewProp
     setError(null);
 
     try {
-      console.log(`[ScreenshotPreview] Capturing screenshot for ${screen.name} at ${screen.path}`);
-
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/visudev-screenshots/capture`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}`
+      const result = await captureScreenshots({
+        deployedUrl: projectData.deployed_url,
+        repo: `project-${projectData.id}`,
+        screens: [
+          {
+            id: screen.id,
+            path: screen.path,
           },
-          body: JSON.stringify({
-            deployedUrl: projectData.deployed_url,
-            repo: `project-${projectData.id}`,
-            screens: [{
-              id: screen.id,
-              path: screen.path
-            }]
-          })
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Screenshot API error: ${response.status} - ${errorData}`);
-      }
-
-      const result = await response.json();
-      console.log('[ScreenshotPreview] Capture result:', result);
+        ],
+      });
 
       if (result.screenshots && result.screenshots.length > 0) {
         const screenshot = result.screenshots[0];
-        if (screenshot.status === 'ok' && screenshot.screenshotUrl) {
+        if (screenshot.status === "ok" && screenshot.screenshotUrl) {
           setScreenshotUrl(screenshot.screenshotUrl);
-          console.log('[ScreenshotPreview] ✓ Screenshot captured:', screenshot.screenshotUrl);
         } else {
-          setError(screenshot.error || 'Screenshot capture failed');
+          setError(screenshot.error || "Screenshot capture failed");
         }
       } else {
-        setError('No screenshot returned');
+        setError("No screenshot returned");
       }
     } catch (err) {
-      console.error('[ScreenshotPreview] Error capturing screenshot:', err);
+      console.error("[ScreenshotPreview] Error capturing screenshot:", err);
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [projectData.deployed_url, projectData.id, screen.id, screen.path]);
+
+  useEffect(() => {
+    if (projectData.deployed_url) {
+      void captureScreenshot();
+    }
+  }, [projectData.deployed_url, captureScreenshot]);
 
   // No deployed URL - show placeholder
   if (!projectData.deployed_url) {
     return (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
-        <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-        <p className="text-sm text-gray-600 mb-1">
-          Keine deployed URL konfiguriert
-        </p>
-        <p className="text-xs text-gray-500">
+      <div className={styles.card}>
+        <ImageIcon className={styles.iconMuted} />
+        <p className={styles.titleMuted}>Keine deployed URL konfiguriert</p>
+        <p className={styles.subtitleMuted}>
           Fügen Sie eine deployed URL im Projekt-Dialog hinzu, um echte Screenshots zu sehen
         </p>
       </div>
@@ -101,12 +81,10 @@ export function ScreenshotPreview({ projectData, screen }: ScreenshotPreviewProp
   // Loading state
   if (isLoading) {
     return (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
-        <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-3" />
-        <p className="text-sm text-gray-600">
-          Screenshot wird generiert...
-        </p>
-        <p className="text-xs text-gray-500 mt-1">
+      <div className={styles.card}>
+        <Loader2 className={styles.spinner} />
+        <p className={styles.titleMuted}>Screenshot wird generiert...</p>
+        <p className={styles.subtitleMuted}>
           {screen.name} • {screen.path}
         </p>
       </div>
@@ -116,18 +94,11 @@ export function ScreenshotPreview({ projectData, screen }: ScreenshotPreviewProp
   // Error state
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-        <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-3" />
-        <p className="text-sm text-red-700 mb-1">
-          Screenshot-Fehler
-        </p>
-        <p className="text-xs text-red-600">
-          {error}
-        </p>
-        <button
-          onClick={captureScreenshot}
-          className="mt-3 text-xs text-red-700 hover:text-red-800 underline"
-        >
+      <div className={`${styles.card} ${styles.errorCard}`}>
+        <AlertCircle className={`${styles.iconMuted} ${styles.iconError}`} />
+        <p className={`${styles.titleMuted} ${styles.titleError}`}>Screenshot-Fehler</p>
+        <p className={`${styles.subtitleMuted} ${styles.subtitleError}`}>{error}</p>
+        <button onClick={captureScreenshot} type="button" className={styles.retryButton}>
           Erneut versuchen
         </button>
       </div>
@@ -137,21 +108,19 @@ export function ScreenshotPreview({ projectData, screen }: ScreenshotPreviewProp
   // Success - show screenshot
   if (screenshotUrl) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="aspect-video relative">
-          <img 
-            src={screenshotUrl} 
+      <div className={styles.previewCard}>
+        <div className={styles.previewFrame}>
+          <img
+            src={screenshotUrl}
             alt={`Screenshot of ${screen.name}`}
-            className="w-full h-full object-cover object-top"
+            className={styles.previewImage}
           />
         </div>
-        <div className="p-3 bg-gray-50 border-t border-gray-200">
-          <p className="text-xs text-gray-600">
+        <div className={styles.previewMeta}>
+          <p className={styles.previewTitle}>
             {screen.name} • {screen.path}
           </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {projectData.deployed_url}
-          </p>
+          <p className={styles.previewUrl}>{projectData.deployed_url}</p>
         </div>
       </div>
     );

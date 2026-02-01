@@ -1,32 +1,35 @@
 /**
- * VisuDEV Edge Function: Screenshot Capture (REALISTIC)
- * 
- * @version 2.0.0
+ * VisuDEV Edge Function: Screenshot Capture (DDD/DI Refactor)
+ *
+ * @version 3.0.0
  * @description Captures screenshots via external Screenshot API (ScreenshotOne)
- * 
- * Requirements:
- * - SCREENSHOT_API_KEY environment variable (ScreenshotOne access key)
- * - Deployed app URL (e.g., Netlify, Vercel)
- * 
- * Usage:
- * POST /visudev-screenshots/capture
- * {
- *   "deployedUrl": "https://myapp.netlify.app",
- *   "repo": "owner/name",
- *   "commitSha": "abc123",
- *   "routePrefix": "/app",
- *   "screens": [{ "id": "home", "path": "/" }]
- * }
  */
 
-import { Hono } from "npm:hono";
-import { cors } from "npm:hono/cors";
-import { logger } from "npm:hono/logger";
-import { createClient } from "jsr:@supabase/supabase-js@2.49.8";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { createClient } from "@jsr/supabase__supabase-js";
+import { createScreenshotsModule } from "./module/index.ts";
+import type { LoggerLike } from "./module/interfaces/module.interface.ts";
+import { ModuleException } from "./module/internal/exceptions/index.ts";
+import type { ErrorResponse } from "./module/types/index.ts";
 
-const app = new Hono({ strict: false }).basePath('/visudev-screenshots');
+interface EnvConfig {
+  supabaseUrl: string;
+  supabaseServiceRoleKey: string;
+  apiKey?: string;
+  apiBaseUrl: string;
+  bucketName: string;
+  bucketPublic: boolean;
+  format: string;
+  viewportWidth: number;
+  viewportHeight: number;
+  deviceScaleFactor: number;
+  fullPage: boolean;
+  delaySeconds: number;
+}
 
-app.use('*', logger(console.log));
+const app = new Hono({ strict: false }).basePath("/visudev-screenshots");
+
 app.use(
   "/*",
   cors({
@@ -38,268 +41,210 @@ app.use(
   }),
 );
 
-// ==================== TYPES ====================
+const logger: LoggerLike = createLogger();
+const env = loadEnvConfig(logger);
 
-type ScreenshotStatus = "ok" | "failed";
+const supabase = createClient(env.supabaseUrl, env.supabaseServiceRoleKey);
 
-interface CaptureRequest {
-  deployedUrl: string;   // "https://myapp.netlify.app"
-  repo?: string;         // "owner/name" (optional, for storage path)
-  commitSha?: string;    // from analyzer (optional, for versioning)
-  routePrefix?: string;  // optional route prefix, e.g. "/app" for routes like /app/dashboard
-  screens: {
-    id: string;
-    path: string;        // "/", "/login", "/dashboard"
-  }[];
-}
-
-interface ScreenshotResult {
-  screenId: string;
-  screenshotUrl: string | null;
-  status: ScreenshotStatus;
-  error?: string;
-}
-
-interface CaptureResponse {
-  screenshots: ScreenshotResult[];
-}
-
-// ==================== SUPABASE CLIENT ====================
-
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-);
-
-// ==================== SCREENSHOT API CONFIG ====================
-
-const SCREENSHOT_API_KEY = Deno.env.get("SCREENSHOT_API_KEY");
-const SCREENSHOT_API_ENDPOINT = "https://api.screenshotone.com/take";
-
-// ==================== HELPER FUNCTIONS ====================
-
-/**
- * Fetch screenshot from ScreenshotOne API
- */
-async function fetchScreenshotFromService(targetUrl: string): Promise<{ success: true; image: Uint8Array } | { success: false; status: number; body: string }> {
-  if (!SCREENSHOT_API_KEY) {
-    return { success: false, status: 0, body: "SCREENSHOT_API_KEY environment variable not set" };
-  }
-
-  console.log(`[Screenshots] 📸 Fetching screenshot for: ${targetUrl}`);
-
-  const url = new URL(SCREENSHOT_API_ENDPOINT);
-  url.searchParams.set("access_key", SCREENSHOT_API_KEY);
-  url.searchParams.set("url", targetUrl);
-  url.searchParams.set("format", "png");
-  url.searchParams.set("viewport_width", "1440");
-  url.searchParams.set("viewport_height", "900");
-  url.searchParams.set("device_scale_factor", "1");
-  url.searchParams.set("full_page", "false");
-  url.searchParams.set("delay", "1"); // Wait 1s for page load
-
-  console.log(`[Screenshots] 🔗 API URL: ${url.toString().replace(SCREENSHOT_API_KEY, 'XXX')}`);
-
-  const res = await fetch(url.toString());
-  const status = res.status;
-
-  console.log(`[Screenshots] 📡 Response status: ${status} ${res.statusText}`);
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    const bodySnippet = errorText.substring(0, 500);
-    console.error(`[Screenshots] ❌ ScreenshotOne API error: ${status} ${res.statusText}`);
-    console.error(`[Screenshots] 📄 Error body: ${bodySnippet}`);
-    return { success: false, status, body: bodySnippet };
-  }
-
-  const arrayBuffer = await res.arrayBuffer();
-  const imageData = new Uint8Array(arrayBuffer);
-  
-  console.log(`[Screenshots] ✅ Screenshot fetched successfully (${imageData.length} bytes)`);
-  return { success: true, image: imageData };
-}
-
-/**
- * Upload screenshot to Supabase Storage
- */
-async function uploadScreenshot(
-  image: Uint8Array,
-  deployedUrl: string,
-  commitSha: string | undefined,
-  screenId: string,
-): Promise<string> {
-  const bucketName = "visudev-screens";
-
-  console.log(`[Screenshots] Uploading screenshot to Supabase Storage...`);
-
-  // Ensure bucket exists
-  const { data: buckets, error: bucketErr } = await supabase.storage.listBuckets();
-  if (bucketErr) {
-    throw new Error(`List buckets failed: ${bucketErr.message}`);
-  }
-
-  const exists = buckets?.some((b) => b.name === bucketName);
-  if (!exists) {
-    console.log(`[Screenshots] Creating bucket: ${bucketName}`);
-    const { error: createErr } = await supabase.storage.createBucket(bucketName, { 
-      public: true 
-    });
-    if (createErr) {
-      throw new Error(`Create bucket failed: ${createErr.message}`);
-    }
-  }
-
-  // Create stable project key from deployed URL
-  const projectKey = encodeURIComponent(deployedUrl.replace(/^https?:\/\//, '').replace(/\//g, '-'));
-
-  const filename = commitSha
-    ? `screens/${projectKey}/${commitSha}/${screenId}.png`
-    : `screens/${projectKey}/latest/${screenId}.png`;
-
-  console.log(`[Screenshots] Uploading to: ${bucketName}/${filename}`);
-
-  const { error: uploadErr } = await supabase.storage
-    .from(bucketName)
-    .upload(filename, image, {
-      contentType: "image/png",
-      upsert: true,
-    });
-
-  if (uploadErr) {
-    throw new Error(`Upload failed: ${uploadErr.message}`);
-  }
-
-  const { data } = supabase.storage.from(bucketName).getPublicUrl(filename);
-  
-  console.log(`[Screenshots] ✓ Uploaded successfully: ${data.publicUrl}`);
-  return data.publicUrl;
-}
-
-// ==================== MAIN ENDPOINT ====================
-
-// Root health check
-app.get("/", (c) => {
-  const hasApiKey = !!SCREENSHOT_API_KEY;
-  return c.json({
-    status: "ok",
-    service: "visudev-screenshots",
-    apiKeyConfigured: hasApiKey,
-    availableRoutes: ["/", "/health", "/capture"]
-  });
+const screenshotsModule = createScreenshotsModule({
+  supabase,
+  logger,
+  config: {
+    apiKey: env.apiKey,
+    apiBaseUrl: env.apiBaseUrl,
+    bucketName: env.bucketName,
+    bucketPublic: env.bucketPublic,
+    format: env.format,
+    viewportWidth: env.viewportWidth,
+    viewportHeight: env.viewportHeight,
+    deviceScaleFactor: env.deviceScaleFactor,
+    fullPage: env.fullPage,
+    delaySeconds: env.delaySeconds,
+  },
 });
 
-app.post("/capture", async (c) => {
-  try {
-    const body = (await c.req.json()) as CaptureRequest;
-    const { deployedUrl, repo, commitSha, routePrefix, screens } = body;
+screenshotsModule.registerRoutes(app);
 
-    console.log(`[Screenshots] 🚀 Starting capture for ${deployedUrl}`);
-    console.log(`[Screenshots] 📊 Screens to capture: ${screens.length}`);
-    console.log(`[Screenshots] 🔖 Commit SHA: ${commitSha || 'none'}`);
-    console.log(`[Screenshots] 🛤️  Route prefix: ${routePrefix || 'none'}`);
-
-    // Validation
-    if (!deployedUrl || !screens || screens.length === 0) {
-      return c.json(
-        { error: "Missing required fields: deployedUrl, screens" },
-        400,
-      );
-    }
-
-    if (!SCREENSHOT_API_KEY) {
-      return c.json(
-        { error: "SCREENSHOT_API_KEY not configured in Supabase secrets" },
-        500,
-      );
-    }
-
-    const results: ScreenshotResult[] = [];
-
-    // Capture screenshots for each screen
-    for (const screen of screens) {
-      try {
-        // Build full URL with optional route prefix
-        let screenPath = screen.path || "/";
-        if (routePrefix && !screenPath.startsWith(routePrefix)) {
-          screenPath = routePrefix + screenPath;
-        }
-        
-        const targetUrl = new URL(screenPath, deployedUrl).toString();
-        
-        console.log(`[Screenshots] 🎯 Processing screen: ${screen.id}`);
-        console.log(`[Screenshots]    - Original path: ${screen.path}`);
-        console.log(`[Screenshots]    - Final URL: ${targetUrl}`);
-
-        // Fetch screenshot from API
-        const screenshotResult = await fetchScreenshotFromService(targetUrl);
-
-        if (!screenshotResult.success) {
-          // API returned an error (4xx, 5xx)
-          const errorMsg = `HTTP ${screenshotResult.status}: ${screenshotResult.body}`;
-          console.error(`[Screenshots] ❌ Failed for ${screen.id}: ${errorMsg}`);
-          
-          results.push({
-            screenId: screen.id,
-            screenshotUrl: null,
-            status: "failed",
-            error: `url=${targetUrl}, status=${screenshotResult.status}, body=${screenshotResult.body.substring(0, 200)}`,
-          });
-          continue;
-        }
-
-        // Upload to Supabase Storage
-        const screenshotUrl = await uploadScreenshot(
-          screenshotResult.image,
-          deployedUrl,
-          commitSha,
-          screen.id,
-        );
-
-        results.push({
-          screenId: screen.id,
-          screenshotUrl,
-          status: "ok",
-        });
-
-        console.log(`[Screenshots] ✅ Success for ${screen.id}`);
-      } catch (err) {
-        console.error(`[Screenshots] ❌ Exception for ${screen.id}:`, err);
-        results.push({
-          screenId: screen.id,
-          screenshotUrl: null,
-          status: "failed",
-          error: `Exception: ${String(err)}`,
-        });
-      }
-    }
-
-    const successCount = results.filter(r => r.status === "ok").length;
-    console.log(`[Screenshots] 🎉 Capture complete! ${successCount}/${results.length} successful`);
-
-    const response: CaptureResponse = { screenshots: results };
-    return c.json(response);
-
-  } catch (err) {
-    console.error("[Screenshots] 💥 Fatal error:", err);
-    return c.json(
-      { 
-        error: String(err),
-        screenshots: []
+app.onError((err, c) => {
+  if (err instanceof ModuleException) {
+    logger.warn("Request failed", { code: err.code, message: err.message });
+    const payload: ErrorResponse = {
+      success: false,
+      error: {
+        code: err.code,
+        message: err.message,
+        details: err.details,
       },
-      500,
-    );
+    };
+    return c.json({ ...payload, screenshots: [] }, err.statusCode);
   }
-});
 
-// Health check endpoint
-app.get("/health", (c) => {
-  const hasApiKey = !!SCREENSHOT_API_KEY;
-  return c.json({
-    status: "ok",
-    apiKeyConfigured: hasApiKey,
-    service: "ScreenshotOne",
-  });
+  const message = err instanceof Error ? err.message : "Unknown error";
+  logger.error("Unhandled error", { message });
+  const payload: ErrorResponse = {
+    success: false,
+    error: {
+      code: "INTERNAL_ERROR",
+      message,
+    },
+  };
+  return c.json({ ...payload, screenshots: [] }, 500);
 });
 
 Deno.serve(app.fetch);
+
+function createLogger(): LoggerLike {
+  const encoder = new TextEncoder();
+  const write = (
+    stream: "stdout" | "stderr",
+    payload: Record<string, unknown>,
+  ): void => {
+    const line = JSON.stringify(payload);
+    const data = encoder.encode(`${line}\n`);
+    if (stream === "stderr") {
+      Deno.stderr.writeSync(data);
+      return;
+    }
+    Deno.stdout.writeSync(data);
+  };
+
+  return {
+    info: (message: string, meta?: Record<string, unknown>): void => {
+      write("stdout", {
+        level: "info",
+        message,
+        meta,
+        ts: new Date().toISOString(),
+      });
+    },
+    warn: (message: string, meta?: Record<string, unknown>): void => {
+      write("stderr", {
+        level: "warn",
+        message,
+        meta,
+        ts: new Date().toISOString(),
+      });
+    },
+    error: (message: string, meta?: Record<string, unknown>): void => {
+      write("stderr", {
+        level: "error",
+        message,
+        meta,
+        ts: new Date().toISOString(),
+      });
+    },
+    debug: (message: string, meta?: Record<string, unknown>): void => {
+      write("stdout", {
+        level: "debug",
+        message,
+        meta,
+        ts: new Date().toISOString(),
+      });
+    },
+  };
+}
+
+function loadEnvConfig(loggerInstance: LoggerLike): EnvConfig {
+  const supabaseUrl = getRequiredEnv("SUPABASE_URL");
+  const supabaseServiceRoleKey = getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+
+  const apiKey = Deno.env.get("SCREENSHOT_API_KEY") ?? undefined;
+  const apiBaseUrl = Deno.env.get("SCREENSHOT_API_BASE_URL") ??
+    Deno.env.get("SCREENSHOTONE_API_BASE_URL") ??
+    "https://api.screenshotone.com/take";
+
+  if (
+    !Deno.env.get("SCREENSHOT_API_BASE_URL") &&
+    !Deno.env.get("SCREENSHOTONE_API_BASE_URL")
+  ) {
+    loggerInstance.warn(
+      "Screenshot API base URL not set. Falling back to default.",
+      {
+        defaultValue: apiBaseUrl,
+      },
+    );
+  }
+
+  const bucketName = Deno.env.get("VISUDEV_SCREENSHOT_BUCKET") ??
+    Deno.env.get("SCREENSHOT_BUCKET_NAME") ??
+    "visudev-screens";
+
+  if (
+    !Deno.env.get("VISUDEV_SCREENSHOT_BUCKET") &&
+    !Deno.env.get("SCREENSHOT_BUCKET_NAME")
+  ) {
+    loggerInstance.warn(
+      "Screenshot bucket env not set. Falling back to default.",
+      {
+        defaultValue: bucketName,
+      },
+    );
+  }
+
+  const bucketPublic = parseBooleanEnv("SCREENSHOT_BUCKET_PUBLIC", true);
+  const format = Deno.env.get("SCREENSHOT_FORMAT") ?? "png";
+  const viewportWidth = Math.max(
+    1,
+    parseNumberEnv("SCREENSHOT_VIEWPORT_WIDTH", 1440),
+  );
+  const viewportHeight = Math.max(
+    1,
+    parseNumberEnv("SCREENSHOT_VIEWPORT_HEIGHT", 900),
+  );
+  const deviceScaleFactor = Math.max(
+    1,
+    parseNumberEnv("SCREENSHOT_DEVICE_SCALE_FACTOR", 1),
+  );
+  const fullPage = parseBooleanEnv("SCREENSHOT_FULL_PAGE", false);
+  const delaySeconds = Math.max(
+    0,
+    parseNumberEnv("SCREENSHOT_DELAY_SECONDS", 1),
+  );
+
+  return {
+    supabaseUrl,
+    supabaseServiceRoleKey,
+    apiKey,
+    apiBaseUrl,
+    bucketName,
+    bucketPublic,
+    format,
+    viewportWidth,
+    viewportHeight,
+    deviceScaleFactor,
+    fullPage,
+    delaySeconds,
+  };
+}
+
+function getRequiredEnv(key: string): string {
+  const value = Deno.env.get(key);
+  if (!value) {
+    throw new Error(`${key} environment variable is required`);
+  }
+  return value;
+}
+
+function parseNumberEnv(key: string, fallback: number): number {
+  const raw = Deno.env.get(key);
+  if (!raw) {
+    return fallback;
+  }
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function parseBooleanEnv(key: string, fallback: boolean): boolean {
+  const raw = Deno.env.get(key);
+  if (!raw) {
+    return fallback;
+  }
+  const normalized = raw.toLowerCase().trim();
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+  return fallback;
+}
