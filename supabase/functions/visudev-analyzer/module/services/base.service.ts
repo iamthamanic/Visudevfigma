@@ -1,7 +1,4 @@
-import type {
-  AnalyzerModuleConfig,
-  LoggerLike,
-} from "../interfaces/module.interface.ts";
+import type { AnalyzerModuleConfig, LoggerLike } from "../interfaces/module.interface.ts";
 
 let moduleDeps: AnalyzerModuleConfig | null = null;
 

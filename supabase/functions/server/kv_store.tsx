@@ -13,10 +13,7 @@ CREATE TABLE kv_store_edf036ef (
 import { createClient } from "@jsr/supabase__supabase-js";
 
 const client = () =>
-  createClient(
-    Deno.env.get("SUPABASE_URL"),
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
-  );
+  createClient(Deno.env.get("SUPABASE_URL"), Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));
 
 // Set stores a key-value pair in the database.
 export const set = async (key: string, value: unknown): Promise<void> => {
@@ -47,20 +44,14 @@ export const get = async (key: string): Promise<unknown> => {
 // Delete deletes a key-value pair from the database.
 export const del = async (key: string): Promise<void> => {
   const supabase = client();
-  const { error } = await supabase.from("kv_store_edf036ef").delete().eq(
-    "key",
-    key,
-  );
+  const { error } = await supabase.from("kv_store_edf036ef").delete().eq("key", key);
   if (error) {
     throw new Error(error.message);
   }
 };
 
 // Sets multiple key-value pairs in the database.
-export const mset = async (
-  keys: string[],
-  values: unknown[],
-): Promise<void> => {
+export const mset = async (keys: string[], values: unknown[]): Promise<void> => {
   const supabase = client();
   const { error } = await supabase
     .from("kv_store_edf036ef")
@@ -73,9 +64,7 @@ export const mset = async (
 // Gets multiple key-value pairs from the database.
 export const mget = async (keys: string[]): Promise<unknown[]> => {
   const supabase = client();
-  const { data, error } = await supabase.from("kv_store_edf036ef").select(
-    "value",
-  ).in("key", keys);
+  const { data, error } = await supabase.from("kv_store_edf036ef").select("value").in("key", keys);
   if (error) {
     throw new Error(error.message);
   }
@@ -85,10 +74,7 @@ export const mget = async (keys: string[]): Promise<unknown[]> => {
 // Deletes multiple key-value pairs from the database.
 export const mdel = async (keys: string[]): Promise<void> => {
   const supabase = client();
-  const { error } = await supabase.from("kv_store_edf036ef").delete().in(
-    "key",
-    keys,
-  );
+  const { error } = await supabase.from("kv_store_edf036ef").delete().in("key", keys);
   if (error) {
     throw new Error(error.message);
   }

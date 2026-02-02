@@ -19,11 +19,7 @@ export function createAuthModule(config: AuthModuleConfig): {
   const repository = new AuthRepository();
   const githubService = new GitHubAuthService(repository);
   const supabaseService = new SupabaseAuthService();
-  const controller = new AuthController(
-    githubService,
-    supabaseService,
-    config.logger,
-  );
+  const controller = new AuthController(githubService, supabaseService, config.logger);
 
   return {
     registerRoutes: (app: Hono): void => registerAuthRoutes(app, controller),

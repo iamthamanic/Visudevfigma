@@ -1,8 +1,4 @@
-import type {
-  CreateProjectDto,
-  ProjectResponseDto,
-  UpdateProjectDto,
-} from "../dto/index.ts";
+import type { CreateProjectDto, ProjectResponseDto, UpdateProjectDto } from "../dto/index.ts";
 import { NotFoundException } from "../internal/exceptions/index.ts";
 import { ProjectsRepository } from "../internal/repositories/projects.repository.ts";
 import { BaseService } from "./base.service.ts";
@@ -22,18 +18,12 @@ export class ProjectsService extends BaseService {
     return this.repository.getProject(id);
   }
 
-  public createProject(
-    id: string,
-    payload: CreateProjectDto,
-  ): Promise<ProjectResponseDto> {
+  public createProject(id: string, payload: CreateProjectDto): Promise<ProjectResponseDto> {
     this.logger.info("Creating project", { id });
     return this.repository.createProject(id, payload);
   }
 
-  public async updateProject(
-    id: string,
-    payload: UpdateProjectDto,
-  ): Promise<ProjectResponseDto> {
+  public async updateProject(id: string, payload: UpdateProjectDto): Promise<ProjectResponseDto> {
     const existing = await this.repository.getProject(id);
     if (!existing) {
       throw new NotFoundException("Project");

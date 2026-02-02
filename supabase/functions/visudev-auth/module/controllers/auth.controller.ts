@@ -57,47 +57,30 @@ export class AuthController {
   }
 
   public async githubSession(c: Context): Promise<Response> {
-    const body = await this.parseBody<{ state: string }>(
-      c,
-      githubSessionSchema,
-    );
+    const body = await this.parseBody<{ state: string }>(c, githubSessionSchema);
     const data = await this.githubService.getSession(body.state);
     return this.ok<GitHubSessionDto>(c, data);
   }
 
   public async githubRepos(c: Context): Promise<Response> {
-    const body = await this.parseBody<{ access_token: string }>(
-      c,
-      githubReposSchema,
-    );
+    const body = await this.parseBody<{ access_token: string }>(c, githubReposSchema);
     const data = await this.githubService.getRepos(body.access_token);
     return this.ok<GitHubRepoDto[]>(c, data);
   }
 
   public async supabaseValidate(c: Context): Promise<Response> {
-    const body = await this.parseBody<{ management_token: string }>(
-      c,
-      supabaseTokenSchema,
-    );
-    const data = await this.supabaseService.validateToken(
-      body.management_token,
-    );
+    const body = await this.parseBody<{ management_token: string }>(c, supabaseTokenSchema);
+    const data = await this.supabaseService.validateToken(body.management_token);
     return this.ok<SupabaseValidateResponseDto>(c, data);
   }
 
   public async supabaseProjects(c: Context): Promise<Response> {
-    const body = await this.parseBody<{ management_token: string }>(
-      c,
-      supabaseTokenSchema,
-    );
+    const body = await this.parseBody<{ management_token: string }>(c, supabaseTokenSchema);
     const data = await this.supabaseService.getProjects(body.management_token);
     return this.ok<SupabaseProjectsResponseDto>(c, data);
   }
 
-  private async parseBody<T>(
-    c: Context,
-    schema: { parse: (data: unknown) => T },
-  ): Promise<T> {
+  private async parseBody<T>(c: Context, schema: { parse: (data: unknown) => T }): Promise<T> {
     let payload: unknown;
     try {
       payload = await c.req.json();
@@ -117,10 +100,7 @@ export class AuthController {
     return c.json(payload, 200);
   }
 
-  private asValidationError(
-    message: string,
-    error: unknown,
-  ): ValidationException {
+  private asValidationError(message: string, error: unknown): ValidationException {
     if (error instanceof ZodError) {
       const details = error.issues.map((issue) => ({
         field: issue.path.join("."),

@@ -16,10 +16,7 @@ interface AiScreenPayload {
 }
 
 export class AiSchemaService extends BaseService {
-  public async analyzeSchema(
-    schema: DbSchema,
-    deployedUrl: string,
-  ): Promise<Screen[]> {
+  public async analyzeSchema(schema: DbSchema, deployedUrl: string): Promise<Screen[]> {
     if (!this.config.anthropic.apiKey) {
       this.logger.warn("ANTHROPIC_API_KEY not set, skipping AI analysis");
       return [];
@@ -91,9 +88,7 @@ export class AiSchemaService extends BaseService {
 
   private buildPrompt(schema: DbSchema, deployedUrl: string): string {
     const tablesSummary = schema.tables
-      .map((table) =>
-        `- ${table.name} (${table.columns.length} columns, ${table.rowCount} rows)`
-      )
+      .map((table) => `- ${table.name} (${table.columns.length} columns, ${table.rowCount} rows)`)
       .join("\n");
 
     return `You are analyzing a database schema for a web application deployed at ${deployedUrl}.
@@ -155,24 +150,16 @@ Rules:
       return null;
     }
 
-    const framework = typeof record.framework === "string"
-      ? record.framework
-      : "database-driven";
-    const tableName = typeof record.tableName === "string"
-      ? record.tableName
-      : "unknown";
-    const description = typeof record.description === "string"
-      ? record.description
-      : undefined;
+    const framework = typeof record.framework === "string" ? record.framework : "database-driven";
+    const tableName = typeof record.tableName === "string" ? record.tableName : "unknown";
+    const description = typeof record.description === "string" ? record.description : undefined;
 
     return {
       id: record.id,
       name: record.name,
       path: record.path,
       filePath: `database:${tableName}`,
-      type: record.type === "screen" || record.type === "view"
-        ? record.type
-        : "page",
+      type: record.type === "screen" || record.type === "view" ? record.type : "page",
       flows: [],
       navigatesTo: [],
       framework,

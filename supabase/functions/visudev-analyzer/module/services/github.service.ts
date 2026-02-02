@@ -20,10 +20,7 @@ export class GitHubService extends BaseService {
     const response = await fetch(
       `${this.config.githubApiBaseUrl}/repos/${repo}/commits/${branch}`,
       {
-        headers: this.buildHeaders(
-          accessToken,
-          "application/vnd.github.v3+json",
-        ),
+        headers: this.buildHeaders(accessToken, "application/vnd.github.v3+json"),
       },
     );
 
@@ -63,10 +60,7 @@ export class GitHubService extends BaseService {
     const response = await fetch(
       `${this.config.githubApiBaseUrl}/repos/${repo}/git/trees/${branch}?recursive=1`,
       {
-        headers: this.buildHeaders(
-          accessToken,
-          "application/vnd.github.v3+json",
-        ),
+        headers: this.buildHeaders(accessToken, "application/vnd.github.v3+json"),
       },
     );
 
@@ -93,15 +87,9 @@ export class GitHubService extends BaseService {
     repo: string,
     path: string,
   ): Promise<string> {
-    const response = await fetch(
-      `${this.config.githubApiBaseUrl}/repos/${repo}/contents/${path}`,
-      {
-        headers: this.buildHeaders(
-          accessToken,
-          "application/vnd.github.v3.raw",
-        ),
-      },
-    );
+    const response = await fetch(`${this.config.githubApiBaseUrl}/repos/${repo}/contents/${path}`, {
+      headers: this.buildHeaders(accessToken, "application/vnd.github.v3.raw"),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -111,19 +99,13 @@ export class GitHubService extends BaseService {
         status: response.status,
         error: errorText,
       });
-      throw new ExternalApiException(
-        `Failed to fetch file: ${path}`,
-        response.status,
-      );
+      throw new ExternalApiException(`Failed to fetch file: ${path}`, response.status);
     }
 
     return await response.text();
   }
 
-  private buildHeaders(
-    accessToken: string | undefined,
-    accept: string,
-  ): Record<string, string> {
+  private buildHeaders(accessToken: string | undefined, accept: string): Record<string, string> {
     const headers: Record<string, string> = { Accept: accept };
     if (accessToken) {
       headers.Authorization = `Bearer ${accessToken}`;

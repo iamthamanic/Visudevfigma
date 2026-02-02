@@ -1,16 +1,9 @@
 import type { Context } from "hono";
 import { ZodError } from "zod";
 import type { CreateLogDto, LogResponseDto } from "../dto/index.ts";
-import {
-  NotFoundException,
-  ValidationException,
-} from "../internal/exceptions/index.ts";
+import { NotFoundException, ValidationException } from "../internal/exceptions/index.ts";
 import { LogsService } from "../services/logs.service.ts";
-import {
-  createLogBodySchema,
-  logIdSchema,
-  projectIdSchema,
-} from "../validators/logs.validator.ts";
+import { createLogBodySchema, logIdSchema, projectIdSchema } from "../validators/logs.validator.ts";
 
 interface SuccessResponse<T> {
   success: true;
@@ -77,10 +70,7 @@ export class LogsController {
     }
   }
 
-  private async parseBody<T>(
-    c: Context,
-    schema: { parse: (data: unknown) => T },
-  ): Promise<T> {
+  private async parseBody<T>(c: Context, schema: { parse: (data: unknown) => T }): Promise<T> {
     let payload: unknown;
     try {
       payload = await c.req.json();
@@ -100,10 +90,7 @@ export class LogsController {
     return c.json(payload, 200);
   }
 
-  private asValidationError(
-    message: string,
-    error: unknown,
-  ): ValidationException {
+  private asValidationError(message: string, error: unknown): ValidationException {
     if (error instanceof ZodError) {
       const details = error.issues.map((issue) => ({
         field: issue.path.join("."),

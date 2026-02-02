@@ -294,8 +294,8 @@ app.delete("/logs/:projectId", async (c) => {
   try {
     const projectId = c.req.param("projectId");
     const logs = await kv.getByPrefix(`logs:${projectId}:`);
-    const keys = logs.map((log: { timestamp?: string; id?: string }) =>
-      `logs:${projectId}:${log.timestamp}:${log.id}`
+    const keys = logs.map(
+      (log: { timestamp?: string; id?: string }) => `logs:${projectId}:${log.timestamp}:${log.id}`,
     );
     if (keys.length > 0) {
       await kv.mdel(keys);
@@ -498,10 +498,7 @@ app.post("/scans/:projectId/appflow", async (c) => {
     }
 
     if (!project.github_repo) {
-      return c.json(
-        { success: false, error: "GitHub repo not configured" },
-        400,
-      );
+      return c.json({ success: false, error: "GitHub repo not configured" }, 400);
     }
 
     // Get GitHub integration
@@ -521,9 +518,7 @@ app.post("/scans/:projectId/appflow", async (c) => {
     // Start async scan with REAL code analysis
     setTimeout(async () => {
       try {
-        console.log(
-          `[AppFlow Scan] Starting real code analysis for ${project.github_repo}`,
-        );
+        console.log(`[AppFlow Scan] Starting real code analysis for ${project.github_repo}`);
 
         // Parse owner/repo from github_repo (format: "owner/repo")
         const [owner, repo] = project.github_repo.split("/");
@@ -572,8 +567,7 @@ app.post("/scans/:projectId/appflow", async (c) => {
           status: "completed",
           progress: 100,
           completedAt: new Date().toISOString(),
-          message:
-            `Found ${scanResult.screens.length} screens and ${scanResult.flows.length} flows`,
+          message: `Found ${scanResult.screens.length} screens and ${scanResult.flows.length} flows`,
         });
 
         console.log(`[AppFlow Scan] ✅ Scan completed successfully`);
@@ -606,10 +600,7 @@ app.post("/scans/:projectId/blueprint", async (c) => {
     }
 
     if (!project.github_repo) {
-      return c.json(
-        { success: false, error: "GitHub repo not configured" },
-        400,
-      );
+      return c.json({ success: false, error: "GitHub repo not configured" }, 400);
     }
 
     await kv.set(`scan:${projectId}:blueprint`, {
@@ -684,10 +675,13 @@ app.post("/scans/:projectId/data", async (c) => {
     }
 
     if (!project.supabase_project_id) {
-      return c.json({
-        success: false,
-        error: "Supabase project not configured",
-      }, 400);
+      return c.json(
+        {
+          success: false,
+          error: "Supabase project not configured",
+        },
+        400,
+      );
     }
 
     await kv.set(`scan:${projectId}:data`, {
@@ -765,27 +759,21 @@ app.post("/scans/:projectId/all", async (c) => {
 
     // Start AppFlow scan if GitHub is configured
     if (project.github_repo) {
-      const appflowUrl = `${
-        c.req.url.split("/scans/")[0]
-      }/scans/${projectId}/appflow`;
+      const appflowUrl = `${c.req.url.split("/scans/")[0]}/scans/${projectId}/appflow`;
       const appflowResponse = await fetch(appflowUrl, { method: "POST" });
       results.appflow = appflowResponse.ok;
     }
 
     // Start Blueprint scan if GitHub is configured
     if (project.github_repo) {
-      const blueprintUrl = `${
-        c.req.url.split("/scans/")[0]
-      }/scans/${projectId}/blueprint`;
+      const blueprintUrl = `${c.req.url.split("/scans/")[0]}/scans/${projectId}/blueprint`;
       const blueprintResponse = await fetch(blueprintUrl, { method: "POST" });
       results.blueprint = blueprintResponse.ok;
     }
 
     // Start Data scan if Supabase is configured
     if (project.supabase_project_id) {
-      const dataUrl = `${
-        c.req.url.split("/scans/")[0]
-      }/scans/${projectId}/data`;
+      const dataUrl = `${c.req.url.split("/scans/")[0]}/scans/${projectId}/data`;
       const dataResponse = await fetch(dataUrl, { method: "POST" });
       results.data = dataResponse.ok;
     }

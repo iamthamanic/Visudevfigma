@@ -8,10 +8,7 @@ import type {
   SupabaseInfoDto,
   UpdateIntegrationsDto,
 } from "../dto/index.ts";
-import {
-  ExternalApiException,
-  NotFoundException,
-} from "../internal/exceptions/index.ts";
+import { ExternalApiException, NotFoundException } from "../internal/exceptions/index.ts";
 import { IntegrationsRepository } from "../internal/repositories/integrations.repository.ts";
 import { BaseService } from "./base.service.ts";
 
@@ -20,9 +17,7 @@ export class IntegrationsService extends BaseService {
     super();
   }
 
-  public getIntegrations(
-    projectId: string,
-  ): Promise<IntegrationsResponseDto> {
+  public getIntegrations(projectId: string): Promise<IntegrationsResponseDto> {
     this.logger.info("Fetching integrations", { projectId });
     return this.repository.getIntegrations(projectId);
   }
@@ -65,10 +60,7 @@ export class IntegrationsService extends BaseService {
     if (!token) {
       throw new NotFoundException("GitHub integration");
     }
-    return this.fetchGitHub<GitHubBranchDto[]>(
-      `/repos/${owner}/${repo}/branches`,
-      token,
-    );
+    return this.fetchGitHub<GitHubBranchDto[]>(`/repos/${owner}/${repo}/branches`, token);
   }
 
   public async getGitHubContent(
@@ -91,10 +83,7 @@ export class IntegrationsService extends BaseService {
     );
   }
 
-  public connectSupabase(
-    projectId: string,
-    payload: ConnectSupabaseDto,
-  ): Promise<SupabaseInfoDto> {
+  public connectSupabase(projectId: string, payload: ConnectSupabaseDto): Promise<SupabaseInfoDto> {
     this.logger.info("Connecting Supabase", { projectId });
     return this.repository.connectSupabase(projectId, payload);
   }
@@ -122,8 +111,7 @@ export class IntegrationsService extends BaseService {
     });
 
     if (!response.ok) {
-      const message =
-        `GitHub API error: ${response.status} ${response.statusText}`;
+      const message = `GitHub API error: ${response.status} ${response.statusText}`;
       throw new ExternalApiException(message, response.status);
     }
 

@@ -1,7 +1,4 @@
-import type {
-  LoggerLike,
-  ScreenshotsModuleConfig,
-} from "../interfaces/module.interface.ts";
+import type { LoggerLike, ScreenshotsModuleConfig } from "../interfaces/module.interface.ts";
 
 let moduleDeps: ScreenshotsModuleConfig | null = null;
 

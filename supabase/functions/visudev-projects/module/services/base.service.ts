@@ -1,7 +1,4 @@
-import type {
-  LoggerLike,
-  ProjectsModuleConfig,
-} from "../interfaces/module.interface.ts";
+import type { LoggerLike, ProjectsModuleConfig } from "../interfaces/module.interface.ts";
 
 let moduleDeps: ProjectsModuleConfig | null = null;
 

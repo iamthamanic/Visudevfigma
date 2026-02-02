@@ -6,8 +6,7 @@ export const analysisRequestSchema = z.object({
   branch: z.string().min(1, "branch is required").trim(),
 });
 
-export const analysisIdSchema = z.string().min(1, "analysis id is required")
-  .trim();
+export const analysisIdSchema = z.string().min(1, "analysis id is required").trim();
 
 export const screenInputSchema = z
   .object({

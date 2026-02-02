@@ -18,9 +18,7 @@ export class AuthRepository extends BaseService {
   }
 
   public async setValue<T>(key: string, value: T): Promise<void> {
-    const { error } = await this.supabase
-      .from(this.config.kvTableName)
-      .upsert({ key, value });
+    const { error } = await this.supabase.from(this.config.kvTableName).upsert({ key, value });
 
     if (error) {
       this.logger.error("KV upsert failed", { key, error: error.message });
@@ -29,10 +27,7 @@ export class AuthRepository extends BaseService {
   }
 
   public async deleteValue(key: string): Promise<void> {
-    const { error } = await this.supabase
-      .from(this.config.kvTableName)
-      .delete()
-      .eq("key", key);
+    const { error } = await this.supabase.from(this.config.kvTableName).delete().eq("key", key);
 
     if (error) {
       this.logger.error("KV delete failed", { key, error: error.message });

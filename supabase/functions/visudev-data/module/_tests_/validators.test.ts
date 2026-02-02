@@ -13,9 +13,7 @@ function assert(condition: boolean, message: string): void {
 
 function assertEquals<T>(actual: T, expected: T, message?: string): void {
   if (actual !== expected) {
-    throw new Error(
-      message ?? `Expected ${String(actual)} to equal ${String(expected)}`,
-    );
+    throw new Error(message ?? `Expected ${String(actual)} to equal ${String(expected)}`);
   }
 }
 
@@ -53,10 +51,7 @@ Deno.test("schemaBodySchema rejects non-object payload", () => {
 Deno.test("migrationsBodySchema accepts array payload", () => {
   const payload = [{ id: "001_init" }];
   const value = migrationsBodySchema.parse(payload);
-  assert(
-    Array.isArray(value),
-    "Expected migrationsBodySchema to return an array",
-  );
+  assert(Array.isArray(value), "Expected migrationsBodySchema to return an array");
 });
 
 Deno.test("migrationsBodySchema rejects non-array payload", () => {

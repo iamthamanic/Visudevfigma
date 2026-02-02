@@ -1,7 +1,4 @@
-import type {
-  LoggerLike,
-  LogsModuleConfig,
-} from "../interfaces/module.interface.ts";
+import type { LoggerLike, LogsModuleConfig } from "../interfaces/module.interface.ts";
 
 let moduleDeps: LogsModuleConfig | null = null;
 
@@ -11,9 +8,7 @@ export function initModuleServices(deps: LogsModuleConfig): void {
 
 export function getModuleDeps(): LogsModuleConfig {
   if (!moduleDeps) {
-    throw new Error(
-      "[visudev-logs] Services not initialized. Call initModuleServices() first.",
-    );
+    throw new Error("[visudev-logs] Services not initialized. Call initModuleServices() first.");
   }
   return moduleDeps;
 }

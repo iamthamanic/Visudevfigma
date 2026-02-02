@@ -18,15 +18,12 @@ export function createScreenshotsModule(config: ScreenshotsModuleConfig): {
   const repository = new StorageRepository();
   const apiService = new ScreenshotApiService();
   const service = new ScreenshotsService(repository, apiService);
-  const controller = new ScreenshotsController(
-    service,
-    config.logger,
-    () => Boolean(config.config.apiKey),
+  const controller = new ScreenshotsController(service, config.logger, () =>
+    Boolean(config.config.apiKey),
   );
 
   return {
-    registerRoutes: (app: Hono): void =>
-      registerScreenshotsRoutes(app, controller),
+    registerRoutes: (app: Hono): void => registerScreenshotsRoutes(app, controller),
     controller,
     service,
     repository,

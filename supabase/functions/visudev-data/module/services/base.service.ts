@@ -1,7 +1,4 @@
-import type {
-  DataModuleConfig,
-  LoggerLike,
-} from "../interfaces/module.interface.ts";
+import type { DataModuleConfig, LoggerLike } from "../interfaces/module.interface.ts";
 
 let moduleDeps: DataModuleConfig | null = null;
 
@@ -11,9 +8,7 @@ export function initModuleServices(deps: DataModuleConfig): void {
 
 export function getModuleDeps(): DataModuleConfig {
   if (!moduleDeps) {
-    throw new Error(
-      "[visudev-data] Services not initialized. Call initModuleServices() first.",
-    );
+    throw new Error("[visudev-data] Services not initialized. Call initModuleServices() first.");
   }
   return moduleDeps;
 }

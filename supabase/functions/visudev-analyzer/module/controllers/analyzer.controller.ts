@@ -32,10 +32,7 @@ export class AnalyzerController {
   }
 
   public async analyze(c: Context): Promise<Response> {
-    const body = await this.parseBody<AnalysisRequestDto>(
-      c,
-      analysisRequestSchema,
-    );
+    const body = await this.parseBody<AnalysisRequestDto>(c, analysisRequestSchema);
     const result = await this.analysisService.analyze(body);
     return this.ok<AnalysisResultDto>(c, result);
   }
@@ -47,10 +44,7 @@ export class AnalyzerController {
   }
 
   public async captureScreenshots(c: Context): Promise<Response> {
-    const body = await this.parseBody<ScreenshotRequestDto>(
-      c,
-      screenshotRequestSchema,
-    );
+    const body = await this.parseBody<ScreenshotRequestDto>(c, screenshotRequestSchema);
     const result = await this.screenshotService.captureScreenshots(body);
     return this.ok<ScreenshotResponseDto>(c, result);
   }
@@ -63,10 +57,7 @@ export class AnalyzerController {
     }
   }
 
-  private async parseBody<T>(
-    c: Context,
-    schema: { parse: (data: unknown) => T },
-  ): Promise<T> {
+  private async parseBody<T>(c: Context, schema: { parse: (data: unknown) => T }): Promise<T> {
     let payload: unknown;
     try {
       payload = await c.req.json();
@@ -86,10 +77,7 @@ export class AnalyzerController {
     return c.json(payload, 200);
   }
 
-  private asValidationError(
-    message: string,
-    error: unknown,
-  ): ValidationException {
+  private asValidationError(message: string, error: unknown): ValidationException {
     if (error instanceof ZodError) {
       const details = error.issues.map((issue) => ({
         field: issue.path.join("."),

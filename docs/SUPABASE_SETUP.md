@@ -15,6 +15,81 @@ Dieses Repo enthält alles, um das Supabase-Projekt später neu aufzusetzen (z.�
 - **Docker** läuft (für `supabase db dump` und lokale Entwicklung)
 - Optional: `jq` für JSON (ansonsten Python)
 
+## Supabase lokal auf dem Mac hosten
+
+Ja – du kannst die **komplette Supabase-Umgebung lokal** auf deinem Mac betreiben (Datenbank, Auth, Storage, Edge Functions, Studio). Alles läuft in Docker.
+
+### 1. Voraussetzungen
+
+- **Docker Desktop** für Mac: [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/) – installieren und starten (Docker muss laufen).
+- **Supabase CLI** (falls noch nicht vorhanden):
+  ```bash
+  brew install supabase/tap/supabase
+  ```
+
+### 2. Lokalen Stack starten
+
+Am **Repo-Root** (dort liegt `supabase/config.toml`):
+
+```bash
+cd /path/to/Visudevfigma
+supabase start
+```
+
+Beim ersten Mal werden die Docker-Images geladen – das kann einige Minuten dauern. Danach laufen:
+
+- **API (Kong):** `http://localhost:54321`
+- **Postgres:** `postgresql://postgres:postgres@localhost:54322/postgres`
+- **Supabase Studio (Dashboard):** `http://localhost:54323`
+- **Mailpit (E-Mails):** `http://localhost:54324`
+
+Die **Anon Key** und **Service Role Key** für lokal zeigt dir:
+
+```bash
+supabase status
+```
+
+### 3. Datenbank-Schema anwenden (Migrationen)
+
+Nach dem ersten Start die Migrationen aus dem Repo anwenden:
+
+```bash
+supabase db reset
+```
+
+Das wendet alle Dateien in `supabase/migrations/` auf die lokale DB an (inkl. Tabelle `kv_store_edf036ef`).
+
+### 4. Edge Functions lokal ausführen (optional)
+
+Functions einzeln testen:
+
+```bash
+supabase functions serve
+# oder eine Function: supabase functions serve visudev-analyzer
+```
+
+Dann erreichst du sie z. B. unter `http://localhost:54321/functions/v1/<function-name>`.
+
+### 5. Frontend auf lokales Supabase umstellen (optional)
+
+Damit die Vite-App gegen die lokale Supabase-Instanz geht:
+
+- In **Supabase Studio** unter `http://localhost:54323` → Project Settings → API: **Project URL** und **anon key** kopieren.
+- In `src/utils/supabase/info.tsx` vorübergehend `projectId` und `publicAnonKey` durch die lokalen Werte ersetzen (oder per Env-Variablen steuern).  
+  Lokale API-URL ist `http://localhost:54321` (nicht `https://xxx.supabase.co`), die Keys stehen in `supabase status`.
+
+### 6. Nützliche Befehle
+
+| Befehl                      | Bedeutung                                    |
+| --------------------------- | -------------------------------------------- |
+| `supabase start`            | Lokalen Stack starten                        |
+| `supabase stop`             | Stack anhalten (Daten bleiben)               |
+| `supabase stop --no-backup` | Anhalten und Daten löschen                   |
+| `supabase status`           | URLs und Keys anzeigen                       |
+| `supabase db reset`         | DB zurücksetzen und Migrationen neu anwenden |
+
+Damit hast du Datenbank und alles Supabase-Relevante lokal auf deinem Mac.
+
 ## Repo-Layout (Standard am Root)
 
 | Pfad                     | Inhalt                                                      |

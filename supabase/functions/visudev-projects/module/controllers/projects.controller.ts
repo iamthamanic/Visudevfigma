@@ -1,14 +1,7 @@
 import type { Context } from "hono";
 import { ZodError } from "zod";
-import type {
-  CreateProjectDto,
-  ProjectResponseDto,
-  UpdateProjectDto,
-} from "../dto/index.ts";
-import {
-  NotFoundException,
-  ValidationException,
-} from "../internal/exceptions/index.ts";
+import type { CreateProjectDto, ProjectResponseDto, UpdateProjectDto } from "../dto/index.ts";
+import { NotFoundException, ValidationException } from "../internal/exceptions/index.ts";
 import { ProjectsService } from "../services/projects.service.ts";
 import {
   createProjectBodySchema,
@@ -39,10 +32,7 @@ export class ProjectsController {
   }
 
   public async createProject(c: Context): Promise<Response> {
-    const body = await this.parseBody<CreateProjectDto>(
-      c,
-      createProjectBodySchema,
-    );
+    const body = await this.parseBody<CreateProjectDto>(c, createProjectBodySchema);
     const id = this.extractId(body);
     const project = await this.service.createProject(id, body);
     return this.ok<ProjectResponseDto>(c, project);
@@ -50,10 +40,7 @@ export class ProjectsController {
 
   public async updateProject(c: Context): Promise<Response> {
     const id = this.parseProjectId(c);
-    const body = await this.parseBody<UpdateProjectDto>(
-      c,
-      updateProjectBodySchema,
-    );
+    const body = await this.parseBody<UpdateProjectDto>(c, updateProjectBodySchema);
     const project = await this.service.updateProject(id, body);
     return this.ok<ProjectResponseDto>(c, project);
   }
@@ -85,10 +72,7 @@ export class ProjectsController {
     ]);
   }
 
-  private async parseBody<T>(
-    c: Context,
-    schema: { parse: (data: unknown) => T },
-  ): Promise<T> {
+  private async parseBody<T>(c: Context, schema: { parse: (data: unknown) => T }): Promise<T> {
     let payload: unknown;
     try {
       payload = await c.req.json();
@@ -108,10 +92,7 @@ export class ProjectsController {
     return c.json(payload, 200);
   }
 
-  private asValidationError(
-    message: string,
-    error: unknown,
-  ): ValidationException {
+  private asValidationError(message: string, error: unknown): ValidationException {
     if (error instanceof ZodError) {
       const details = error.issues.map((issue) => ({
         field: issue.path.join("."),

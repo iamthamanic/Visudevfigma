@@ -11,9 +11,7 @@ import {
 } from "../internal/exceptions/index.ts";
 
 export class ScreenshotService extends BaseService {
-  public async captureScreenshots(
-    request: ScreenshotRequestDto,
-  ): Promise<ScreenshotResponseDto> {
+  public async captureScreenshots(request: ScreenshotRequestDto): Promise<ScreenshotResponseDto> {
     if (!this.config.screenshot.apiKey) {
       throw new ConfigException("SCREENSHOT_API_KEY not configured");
     }
@@ -33,10 +31,7 @@ export class ScreenshotService extends BaseService {
           url: fullUrl,
         });
 
-        const buffer = await this.captureScreenshot(
-          fullUrl,
-          this.config.screenshot.apiKey,
-        );
+        const buffer = await this.captureScreenshot(fullUrl, this.config.screenshot.apiKey);
         const screenPath = this.getScreenPath(fullUrl);
         const signedUrl = await this.uploadScreenshotToStorage(
           buffer,
@@ -66,8 +61,7 @@ export class ScreenshotService extends BaseService {
       }
     }
 
-    const successCount =
-      results.filter((result) => result.status === "ok").length;
+    const successCount = results.filter((result) => result.status === "ok").length;
     return {
       captured: successCount,
       total: request.screens.length,
@@ -75,10 +69,7 @@ export class ScreenshotService extends BaseService {
     };
   }
 
-  private async captureScreenshot(
-    url: string,
-    apiKey: string,
-  ): Promise<ArrayBuffer> {
+  private async captureScreenshot(url: string, apiKey: string): Promise<ArrayBuffer> {
     const screenshotApiUrl = new URL(this.config.screenshot.apiBaseUrl);
     screenshotApiUrl.searchParams.set("access_key", apiKey);
     screenshotApiUrl.searchParams.set("url", url);
@@ -95,10 +86,7 @@ export class ScreenshotService extends BaseService {
       String(this.config.screenshot.deviceScaleFactor),
     );
     screenshotApiUrl.searchParams.set("format", this.config.screenshot.format);
-    screenshotApiUrl.searchParams.set(
-      "image_quality",
-      String(this.config.screenshot.imageQuality),
-    );
+    screenshotApiUrl.searchParams.set("image_quality", String(this.config.screenshot.imageQuality));
     screenshotApiUrl.searchParams.set(
       "block_ads",
       this.booleanParam(this.config.screenshot.blockAds),
@@ -112,10 +100,7 @@ export class ScreenshotService extends BaseService {
       this.booleanParam(this.config.screenshot.blockTrackers),
     );
     screenshotApiUrl.searchParams.set("cache", "true");
-    screenshotApiUrl.searchParams.set(
-      "cache_ttl",
-      String(this.config.screenshot.cacheTtlSeconds),
-    );
+    screenshotApiUrl.searchParams.set("cache_ttl", String(this.config.screenshot.cacheTtlSeconds));
 
     const response = await fetch(screenshotApiUrl.toString());
     if (!response.ok) {
@@ -141,10 +126,8 @@ export class ScreenshotService extends BaseService {
     const bucketName = this.config.screenshot.bucketName;
     await this.ensureBucket(bucketName);
 
-    const cleanPath = screenPath.replace(/^\//, "").replace(/\//g, "_") ||
-      "home";
-    const fileName =
-      `${projectId}/${cleanPath}_${Date.now()}.${this.config.screenshot.format}`;
+    const cleanPath = screenPath.replace(/^\//, "").replace(/\//g, "_") || "home";
+    const fileName = `${projectId}/${cleanPath}_${Date.now()}.${this.config.screenshot.format}`;
 
     const { error } = await this.supabase.storage
       .from(bucketName)
@@ -155,11 +138,7 @@ export class ScreenshotService extends BaseService {
 
     if (error) {
       this.logger.error("Screenshot upload failed", { error: error.message });
-      throw new ServiceException(
-        `Storage upload error: ${error.message}`,
-        500,
-        "STORAGE_ERROR",
-      );
+      throw new ServiceException(`Storage upload error: ${error.message}`, 500, "STORAGE_ERROR");
     }
 
     const { data, error: signedError } = await this.supabase.storage
@@ -170,19 +149,11 @@ export class ScreenshotService extends BaseService {
       this.logger.error("Signed URL creation failed", {
         error: signedError.message,
       });
-      throw new ServiceException(
-        `Signed URL error: ${signedError.message}`,
-        500,
-        "STORAGE_ERROR",
-      );
+      throw new ServiceException(`Signed URL error: ${signedError.message}`, 500, "STORAGE_ERROR");
     }
 
     if (!data?.signedUrl) {
-      throw new ServiceException(
-        "Failed to create signed URL",
-        500,
-        "STORAGE_ERROR",
-      );
+      throw new ServiceException("Failed to create signed URL", 500, "STORAGE_ERROR");
     }
 
     return data.signedUrl;
@@ -192,11 +163,7 @@ export class ScreenshotService extends BaseService {
     const { data, error } = await this.supabase.storage.listBuckets();
     if (error) {
       this.logger.error("Bucket listing failed", { error: error.message });
-      throw new ServiceException(
-        `Bucket listing error: ${error.message}`,
-        500,
-        "STORAGE_ERROR",
-      );
+      throw new ServiceException(`Bucket listing error: ${error.message}`, 500, "STORAGE_ERROR");
     }
 
     const exists = data?.some((bucket) => bucket.name === bucketName);
@@ -205,12 +172,9 @@ export class ScreenshotService extends BaseService {
     }
 
     this.logger.info("Creating storage bucket", { bucketName });
-    const { error: createError } = await this.supabase.storage.createBucket(
-      bucketName,
-      {
-        public: false,
-      },
-    );
+    const { error: createError } = await this.supabase.storage.createBucket(bucketName, {
+      public: false,
+    });
 
     if (createError) {
       this.logger.error("Bucket creation failed", {

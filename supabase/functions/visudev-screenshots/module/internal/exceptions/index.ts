@@ -44,11 +44,7 @@ export class StorageException extends ModuleException {
 }
 
 export class ServiceException extends ModuleException {
-  constructor(
-    message: string,
-    statusCode: number = 500,
-    code: string = "SERVICE_ERROR",
-  ) {
+  constructor(message: string, statusCode: number = 500, code: string = "SERVICE_ERROR") {
     super(message, statusCode, code);
     this.name = "ServiceException";
   }

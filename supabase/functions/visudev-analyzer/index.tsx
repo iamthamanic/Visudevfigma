@@ -100,10 +100,7 @@ Deno.serve(app.fetch);
 
 function createLogger(): LoggerLike {
   const encoder = new TextEncoder();
-  const write = (
-    stream: "stdout" | "stderr",
-    payload: Record<string, unknown>,
-  ): void => {
+  const write = (stream: "stdout" | "stderr", payload: Record<string, unknown>): void => {
     const line = JSON.stringify(payload);
     const data = encoder.encode(`${line}\n`);
     if (stream === "stderr") {
@@ -153,8 +150,8 @@ function loadEnvConfig(loggerInstance: LoggerLike): EnvConfig {
   const supabaseUrl = getRequiredEnv("SUPABASE_URL");
   const supabaseServiceRoleKey = getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY");
 
-  const kvTableName = Deno.env.get("VISUDEV_KV_TABLE") ??
-    Deno.env.get("KV_TABLE_NAME") ?? "kv_store_edf036ef";
+  const kvTableName =
+    Deno.env.get("VISUDEV_KV_TABLE") ?? Deno.env.get("KV_TABLE_NAME") ?? "kv_store_edf036ef";
 
   if (!Deno.env.get("VISUDEV_KV_TABLE") && !Deno.env.get("KV_TABLE_NAME")) {
     loggerInstance.warn("KV table env not set. Falling back to default.", {
@@ -162,54 +159,36 @@ function loadEnvConfig(loggerInstance: LoggerLike): EnvConfig {
     });
   }
 
-  const githubApiBaseUrl = Deno.env.get("GITHUB_API_BASE_URL") ??
-    "https://api.github.com";
-  const analysisFileLimit = Math.max(
-    0,
-    parseNumberEnv("VISUDEV_ANALYZER_FILE_LIMIT", 150),
-  );
+  const githubApiBaseUrl = Deno.env.get("GITHUB_API_BASE_URL") ?? "https://api.github.com";
+  const analysisFileLimit = Math.max(0, parseNumberEnv("VISUDEV_ANALYZER_FILE_LIMIT", 150));
   const analysisProgressLogEvery = Math.max(
     0,
     parseNumberEnv("VISUDEV_ANALYZER_PROGRESS_EVERY", 20),
   );
 
   const fallbackRoutes = parseFallbackRoutes(
-    Deno.env.get("VISUDEV_ANALYZER_FALLBACK_ROUTES") ??
-      Deno.env.get("ANALYZER_FALLBACK_ROUTES"),
+    Deno.env.get("VISUDEV_ANALYZER_FALLBACK_ROUTES") ?? Deno.env.get("ANALYZER_FALLBACK_ROUTES"),
   );
 
   const screenshot: AnalyzerScreenshotConfig = {
-    apiBaseUrl: Deno.env.get("SCREENSHOT_API_BASE_URL") ??
+    apiBaseUrl:
+      Deno.env.get("SCREENSHOT_API_BASE_URL") ??
       Deno.env.get("SCREENSHOTONE_API_BASE_URL") ??
       "https://api.screenshotone.com/take",
     apiKey: Deno.env.get("SCREENSHOT_API_KEY") ?? undefined,
-    bucketName: Deno.env.get("VISUDEV_SCREENSHOT_BUCKET") ??
+    bucketName:
+      Deno.env.get("VISUDEV_SCREENSHOT_BUCKET") ??
       Deno.env.get("SCREENSHOT_BUCKET_NAME") ??
       "make-edf036ef-screenshots",
-    viewportWidth: Math.max(
-      1,
-      parseNumberEnv("SCREENSHOT_VIEWPORT_WIDTH", 1280),
-    ),
-    viewportHeight: Math.max(
-      1,
-      parseNumberEnv("SCREENSHOT_VIEWPORT_HEIGHT", 1024),
-    ),
-    deviceScaleFactor: Math.max(
-      1,
-      parseNumberEnv("SCREENSHOT_DEVICE_SCALE_FACTOR", 2),
-    ),
+    viewportWidth: Math.max(1, parseNumberEnv("SCREENSHOT_VIEWPORT_WIDTH", 1280)),
+    viewportHeight: Math.max(1, parseNumberEnv("SCREENSHOT_VIEWPORT_HEIGHT", 1024)),
+    deviceScaleFactor: Math.max(1, parseNumberEnv("SCREENSHOT_DEVICE_SCALE_FACTOR", 2)),
     imageQuality: Math.max(1, parseNumberEnv("SCREENSHOT_IMAGE_QUALITY", 80)),
     format: Deno.env.get("SCREENSHOT_FORMAT") ?? "jpg",
     blockAds: parseBooleanEnv("SCREENSHOT_BLOCK_ADS", true),
-    blockCookieBanners: parseBooleanEnv(
-      "SCREENSHOT_BLOCK_COOKIE_BANNERS",
-      true,
-    ),
+    blockCookieBanners: parseBooleanEnv("SCREENSHOT_BLOCK_COOKIE_BANNERS", true),
     blockTrackers: parseBooleanEnv("SCREENSHOT_BLOCK_TRACKERS", true),
-    cacheTtlSeconds: Math.max(
-      0,
-      parseNumberEnv("SCREENSHOT_CACHE_TTL_SECONDS", 2_592_000),
-    ),
+    cacheTtlSeconds: Math.max(0, parseNumberEnv("SCREENSHOT_CACHE_TTL_SECONDS", 2_592_000)),
     delayMs: Math.max(0, parseNumberEnv("SCREENSHOT_DELAY_MS", 500)),
     signedUrlTtlSeconds: Math.max(
       0,
@@ -219,8 +198,7 @@ function loadEnvConfig(loggerInstance: LoggerLike): EnvConfig {
 
   const anthropic: AnalyzerAnthropicConfig = {
     apiKey: Deno.env.get("ANTHROPIC_API_KEY") ?? undefined,
-    apiBaseUrl: Deno.env.get("ANTHROPIC_API_BASE_URL") ??
-      "https://api.anthropic.com/v1/messages",
+    apiBaseUrl: Deno.env.get("ANTHROPIC_API_BASE_URL") ?? "https://api.anthropic.com/v1/messages",
     model: Deno.env.get("ANTHROPIC_MODEL") ?? "claude-3-5-sonnet-20241022",
     maxTokens: Math.max(1, parseNumberEnv("ANTHROPIC_MAX_TOKENS", 2000)),
     version: Deno.env.get("ANTHROPIC_VERSION") ?? "2023-06-01",
@@ -239,9 +217,7 @@ function loadEnvConfig(loggerInstance: LoggerLike): EnvConfig {
   };
 }
 
-function parseFallbackRoutes(
-  value: string | undefined,
-): Array<{ path: string; name: string }> {
+function parseFallbackRoutes(value: string | undefined): Array<{ path: string; name: string }> {
   if (!value) {
     return DEFAULT_FALLBACK_ROUTES;
   }
@@ -253,9 +229,7 @@ function parseFallbackRoutes(
     }
 
     return parsed
-      .filter((route) =>
-        typeof route.path === "string" && typeof route.name === "string"
-      )
+      .filter((route) => typeof route.path === "string" && typeof route.name === "string")
       .map((route) => ({
         path: route.path as string,
         name: route.name as string,

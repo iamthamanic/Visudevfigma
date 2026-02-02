@@ -11,6 +11,7 @@ supabase/backups/*.sql
 # Supabase local / temp
 src/supabase/.temp/
 supabase/.temp/
+supabase/.branches/
 
 # Env / secrets
 .env

@@ -14,10 +14,9 @@ export class StorageRepository extends BaseService {
       return;
     }
 
-    const { error: createError } = await this.supabase.storage.createBucket(
-      name,
-      { public: isPublic },
-    );
+    const { error: createError } = await this.supabase.storage.createBucket(name, {
+      public: isPublic,
+    });
 
     if (createError) {
       this.logger.error("Create bucket failed", { error: createError.message });
@@ -40,9 +39,9 @@ export class StorageRepository extends BaseService {
       throw new StorageException(uploadError.message);
     }
 
-    const { data: urlData, error: urlError } = this.supabase.storage.from(
-      bucketName,
-    ).getPublicUrl(path);
+    const { data: urlData, error: urlError } = this.supabase.storage
+      .from(bucketName)
+      .getPublicUrl(path);
 
     if (urlError || !urlData?.publicUrl) {
       const message = urlError?.message ?? "Public URL missing";
