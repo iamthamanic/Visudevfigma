@@ -1,0 +1,7 @@
+-- Platzhalter: Ersetzen durch echten Dump.
+-- Lokal ausführen (Docker muss laufen):
+--   supabase db dump -f supabase/backups/schema_and_data_$(date +%Y%m%d_%H%M%S).sql
+--   supabase db dump --data-only -f supabase/backups/_data.sql
+--   cat supabase/backups/_data.sql >> supabase/backups/schema_and_data_*.sql
+--   cp supabase/backups/schema_and_data_*.sql supabase/backups/schema_and_data_LATEST.sql
+-- Siehe docs/SUPABASE_SETUP.md

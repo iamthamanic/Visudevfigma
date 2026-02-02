@@ -1,0 +1,22 @@
+# Dependencies & build
+node_modules/
+build/
+dist/
+
+# Supabase backups (alle SQL-Dumps ignorieren, außer LATEST für Restore)
+supabase/backups/*.sql
+!supabase/backups/schema_and_data_LATEST.sql
+*.dump
+
+# Supabase local / temp
+src/supabase/.temp/
+supabase/.temp/
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# IDE / OS
+.DS_Store
+*.log

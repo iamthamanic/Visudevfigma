@@ -6,7 +6,12 @@ import reactRefresh from "eslint-plugin-react-refresh";
 
 export default tseslint.config(
   {
-    ignores: ["build", "node_modules", "src/supabase/functions/**"],
+    ignores: [
+      "build",
+      "node_modules",
+      "src/supabase/functions/**",
+      "supabase/**", // Backup-Layout (Deno/Edge Functions)
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
