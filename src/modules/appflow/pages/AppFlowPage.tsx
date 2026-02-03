@@ -356,6 +356,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                     Preview beenden
                   </button>
                 </div>
+                {/* Preview is shown only inside this iframe in App Flow; do not open in a new tab. */}
                 <iframe
                   src={preview.previewUrl}
                   title="Live App Preview"

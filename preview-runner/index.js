@@ -2,17 +2,34 @@
  * VisuDEV Preview Runner
  *
  * API: POST /start, GET /status/:runId, POST /stop/:runId
- * MVP: In-memory stub; after delay returns status "ready" with PREVIEW_BASE_URL.
- * Replace with real clone/build/run (Docker) for production.
+ * MVP: In-memory stub; assigns a free port per run and returns previewUrl (http://localhost:PORT).
+ * Optional PREVIEW_BASE_URL for tunnel/public URL. Replace with real clone/build/run for production.
  */
 
 import http from "node:http";
 
 const PORT = Number(process.env.PORT) || 4000;
-const PREVIEW_BASE_URL = process.env.PREVIEW_BASE_URL || "https://example.com";
+const PREVIEW_PORT_MIN = Number(process.env.PREVIEW_PORT_MIN) || 4001;
+const PREVIEW_PORT_MAX = Number(process.env.PREVIEW_PORT_MAX) || 4099;
+const PREVIEW_BASE_URL = process.env.PREVIEW_BASE_URL || "";
 const SIMULATE_DELAY_MS = Number(process.env.SIMULATE_DELAY_MS) || 3000;
 
 const runs = new Map();
+const usedPorts = new Set();
+
+function getNextFreePort() {
+  for (let p = PREVIEW_PORT_MIN; p <= PREVIEW_PORT_MAX; p++) {
+    if (!usedPorts.has(p)) {
+      usedPorts.add(p);
+      return p;
+    }
+  }
+  return null;
+}
+
+function releasePort(port) {
+  usedPorts.delete(port);
+}
 
 function parseBody(req) {
   return new Promise((resolve, reject) => {
@@ -60,10 +77,25 @@ async function handleStart(req, res, _url) {
     return;
   }
 
+  const assignedPort = getNextFreePort();
+  if (assignedPort === null) {
+    send(res, 503, {
+      success: false,
+      error: "No free port in pool (PREVIEW_PORT_MIN–PREVIEW_PORT_MAX)",
+    });
+    return;
+  }
+
+  const previewUrl =
+    PREVIEW_BASE_URL.trim() !== ""
+      ? `${PREVIEW_BASE_URL.replace(/\/$/, "")}?preview=${assignedPort}`
+      : `http://localhost:${assignedPort}`;
+
   const runId = `run_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
   runs.set(runId, {
     status: "starting",
-    previewUrl: null,
+    port: assignedPort,
+    previewUrl,
     error: null,
     startedAt: new Date().toISOString(),
     repo,
@@ -75,7 +107,6 @@ async function handleStart(req, res, _url) {
     const run = runs.get(runId);
     if (run && run.status === "starting") {
       run.status = "ready";
-      run.previewUrl = PREVIEW_BASE_URL.replace(/\/$/, "") + `?preview=${runId}`;
       run.readyAt = new Date().toISOString();
     }
   }, SIMULATE_DELAY_MS);
@@ -125,6 +156,9 @@ function handleStop(req, res, url) {
     return;
   }
 
+  if (run.port != null) {
+    releasePort(run.port);
+  }
   run.status = "stopped";
   run.stoppedAt = new Date().toISOString();
   send(res, 200, {
@@ -175,6 +209,9 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Preview Runner listening on http://localhost:${PORT}`);
-  console.log(`  PREVIEW_BASE_URL=${PREVIEW_BASE_URL}`);
+  console.log(`  Port pool: ${PREVIEW_PORT_MIN}-${PREVIEW_PORT_MAX} (auto-assigned per run)`);
+  if (PREVIEW_BASE_URL) {
+    console.log(`  PREVIEW_BASE_URL=${PREVIEW_BASE_URL}`);
+  }
   console.log(`  SIMULATE_DELAY_MS=${SIMULATE_DELAY_MS}`);
 });
