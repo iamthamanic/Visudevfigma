@@ -1,4 +1,5 @@
 build/
+tickets2.md
 src/supabase/functions/
 # Root supabase/ = Backup-Layout (Deno/Edge Functions, von Prettier ausgenommen)
 supabase/
