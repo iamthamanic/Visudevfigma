@@ -1,4 +1,4 @@
-/* VisuDEV Tooltip – STYLEGUIDE: Background #111111, Border #03ffa3 */
+/* VisuDEV Tooltip – uses --tooltip-bg and --tooltip-border from globals.css */
 
 .wrapper {
   display: inline-flex;
@@ -10,38 +10,38 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-xs, 4px);
+  padding: var(--space-xs);
   margin: 0;
   font: inherit;
-  color: var(--color-muted-foreground, #a0a0a0);
+  color: var(--color-muted-foreground);
   background: none;
   border: none;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   cursor: help;
 }
 
 .trigger:hover {
-  color: var(--color-foreground, #fff);
+  color: var(--color-foreground);
 }
 
 .trigger:focus-visible {
-  outline: 2px solid var(--color-primary, #03ffa3);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
 .content {
   max-width: 280px;
-  padding: var(--space-sm, 8px) var(--space-md, 16px);
+  padding: var(--space-sm) var(--space-md);
   font-size: 0.875rem;
   line-height: 1.5;
-  color: var(--color-foreground, #fff);
-  background: var(--tooltip-bg, #111111);
-  border: 1px solid var(--tooltip-border, #03ffa3);
-  border-radius: var(--radius-md, 8px);
-  box-shadow: var(--shadow-2, 0 4px 12px rgba(0, 0, 0, 0.5));
+  color: var(--color-foreground);
+  background: var(--tooltip-bg);
+  border: 1px solid var(--tooltip-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
   z-index: 100;
 }
 
 .arrow {
-  fill: var(--tooltip-bg, #111111);
+  fill: var(--tooltip-bg);
 }

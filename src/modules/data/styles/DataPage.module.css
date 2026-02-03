@@ -140,7 +140,7 @@
 
 .tableBoxActive {
   border-color: var(--color-primary);
-  background-color: var(--color-primary-soft, rgba(3, 255, 163, 0.08));
+  background-color: var(--color-primary-soft);
 }
 
 .tableBoxTitle {

@@ -1,5 +1,5 @@
 /**
- * Tooltip: Einheitliches Info-Tooltip (STYLEGUIDE: Background #111111, Border #03ffa3).
+ * Tooltip: Einheitliches Info-Tooltip (STYLEGUIDE: --tooltip-bg, --tooltip-border).
  * Nutzung: Trigger (z. B. Info-Icon) + Content; für Konfigurationshinweise, Shortcuts.
  * Location: src/components/ui/Tooltip.tsx
  */
