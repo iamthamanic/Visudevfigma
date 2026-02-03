@@ -6,6 +6,7 @@ export function registerAuthRoutes(
   app: Hono,
   controller: AuthController,
 ): void {
+  app.get("/health", asyncHandler(controller.health.bind(controller)));
   app.get(
     "/github/authorize",
     asyncHandler(controller.githubAuthorize.bind(controller)),
@@ -13,6 +14,18 @@ export function registerAuthRoutes(
   app.get(
     "/github/callback",
     asyncHandler(controller.githubCallback.bind(controller)),
+  );
+  app.get(
+    "/github/status",
+    asyncHandler(controller.githubStatus.bind(controller)),
+  );
+  app.delete(
+    "/github",
+    asyncHandler(controller.githubDisconnect.bind(controller)),
+  );
+  app.get(
+    "/github/repos",
+    asyncHandler(controller.githubReposGet.bind(controller)),
   );
   app.post(
     "/github/session",

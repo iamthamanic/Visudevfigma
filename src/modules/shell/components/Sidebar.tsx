@@ -1,9 +1,11 @@
-import { Fragment, type SVGProps } from "react";
+import { Fragment, useState, type SVGProps } from "react";
 import clsx from "clsx";
 import { Loader2 } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
+import { useAuth } from "../../../contexts/AuthContext";
+import { AuthDialog } from "../../../components/AuthDialog";
 import svgPaths from "../../../imports/svg-mni0z0xtlg";
-import logoImage from "figma:asset/3305ba5fc95fb7f7afe99537b027f7238dc7c767.png";
+import logoImage from "../../../assets/visudev-logo.png";
 import type { ShellScreen } from "../types";
 import styles from "../styles/Sidebar.module.css";
 
@@ -57,6 +59,8 @@ const navItems: NavItem[] = [
 
 export function Sidebar({ activeScreen, onNavigate, onNewProject }: SidebarProps) {
   const { activeProject, scanStatuses } = useVisudev();
+  const { user, loading: authLoading, signOut } = useAuth();
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
 
   const renderScanIndicator = (scanType: ScanType) => {
     const status = scanStatuses[scanType];
@@ -100,6 +104,8 @@ export function Sidebar({ activeScreen, onNavigate, onNewProject }: SidebarProps
                   isActive && styles.navButtonActive,
                   isDisabled && styles.navButtonDisabled,
                 )}
+                aria-label={`Zu ${item.label} wechseln`}
+                aria-current={isActive ? "page" : undefined}
               >
                 <Icon className={styles.navIcon} aria-hidden="true" />
                 <span className={styles.navLabel}>{item.label}</span>
@@ -116,12 +122,48 @@ export function Sidebar({ activeScreen, onNavigate, onNewProject }: SidebarProps
         })}
       </nav>
 
+      {!authLoading && (
+        <div className={styles.authBlock}>
+          {user ? (
+            <div className={styles.authUser}>
+              <span className={styles.authEmail} title={user.email ?? undefined}>
+                {user.email ?? user.id.slice(0, 8)}
+              </span>
+              <button
+                type="button"
+                onClick={() => signOut()}
+                className={styles.authSignOut}
+                aria-label="Abmelden"
+              >
+                Abmelden
+              </button>
+            </div>
+          ) : (
+<button
+            type="button"
+            onClick={() => setAuthDialogOpen(true)}
+            className={styles.authSignIn}
+            aria-label="Anmelden"
+          >
+            Anmelden
+          </button>
+          )}
+        </div>
+      )}
+
       <div className={styles.footer}>
-        <button type="button" onClick={onNewProject} className={styles.newProjectButton}>
+        <button
+          type="button"
+          onClick={onNewProject}
+          className={styles.newProjectButton}
+          aria-label="Neues Projekt erstellen"
+        >
           <PlusIcon className={styles.navIcon} aria-hidden="true" />
           <span className={styles.newProjectLabel}>Neues Projekt</span>
         </button>
       </div>
+
+      <AuthDialog open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
     </aside>
   );
 }

@@ -1,6 +1,6 @@
-import { projectId, publicAnonKey } from "../../utils/supabase/info";
+import { publicAnonKey, supabaseUrl } from "../../utils/supabase/info";
 
-const BASE_URL = `https://${projectId}.supabase.co/functions/v1/visudev-screenshots`;
+const BASE_URL = `${supabaseUrl}/functions/v1/visudev-screenshots`;
 
 export type ScreenshotStatus = "ok" | "failed";
 

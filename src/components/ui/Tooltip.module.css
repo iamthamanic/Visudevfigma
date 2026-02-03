@@ -1,0 +1,47 @@
+/* VisuDEV Tooltip – STYLEGUIDE: Background #111111, Border #03ffa3 */
+
+.wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xs, 4px);
+  margin: 0;
+  font: inherit;
+  color: var(--color-muted-foreground, #a0a0a0);
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  cursor: help;
+}
+
+.trigger:hover {
+  color: var(--color-foreground, #fff);
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--color-primary, #03ffa3);
+  outline-offset: 2px;
+}
+
+.content {
+  max-width: 280px;
+  padding: var(--space-sm, 8px) var(--space-md, 16px);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-foreground, #fff);
+  background: var(--tooltip-bg, #111111);
+  border: 1px solid var(--tooltip-border, #03ffa3);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: var(--shadow-2, 0 4px 12px rgba(0, 0, 0, 0.5));
+  z-index: 100;
+}
+
+.arrow {
+  fill: var(--tooltip-bg, #111111);
+}

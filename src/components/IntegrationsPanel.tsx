@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import clsx from "clsx";
+import { useAuth } from "../contexts/AuthContext";
 import type { GitHubRepo } from "../lib/visudev/integrations";
 import { useIntegrations } from "../utils/useVisuDev";
 import { api } from "../utils/api";
@@ -22,6 +23,8 @@ interface IntegrationsPanelProps {
 }
 
 export function IntegrationsPanel({ projectId }: IntegrationsPanelProps) {
+  const { session } = useAuth();
+  const accessToken = session?.access_token ?? null;
   const {
     integrations,
     loading,
@@ -70,7 +73,7 @@ export function IntegrationsPanel({ projectId }: IntegrationsPanelProps) {
     if (!projectId) return;
 
     setTestingGithub(true);
-    const result = await api.integrations.github.getRepos(projectId);
+    const result = await api.integrations.github.getRepos(projectId, accessToken ?? undefined);
     if (result.success) {
       setGithubRepos(result.data || []);
       toast.success(`${result.data?.length || 0} Repositories gefunden`);

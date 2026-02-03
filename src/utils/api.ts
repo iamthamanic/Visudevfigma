@@ -25,22 +25,31 @@ import type {
 } from "../modules/data/types";
 import type { LogCreateInput, LogEntry } from "../modules/logs/types";
 import type { ProjectCreateInput, ProjectUpdateInput } from "../modules/projects/types";
-import { projectId, publicAnonKey } from "./supabase/info";
+import { publicAnonKey, supabaseUrl } from "./supabase/info";
 
-const BASE_URL = `https://${projectId}.supabase.co/functions/v1`;
+const BASE_URL = `${supabaseUrl}/functions/v1`;
+
+export interface ApiRequestOptions extends RequestInit {
+  /** When set, used as Bearer token instead of anon key (e.g. user session for integrations/auth). */
+  accessToken?: string | null;
+}
 
 // Base fetch wrapper with auth
 async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {},
+  options: ApiRequestOptions = {},
 ): Promise<{ success: boolean; data?: T; error?: string }> {
+  const { accessToken, ...fetchOptions } = options;
+  const authHeader =
+    accessToken != null && accessToken !== "" ? `Bearer ${accessToken}` : `Bearer ${publicAnonKey}`;
+
   try {
     const response = await fetch(`${BASE_URL}${endpoint}`, {
-      ...options,
+      ...fetchOptions,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${publicAnonKey}`,
-        ...options.headers,
+        Authorization: authHeader,
+        ...fetchOptions.headers,
       },
     });
 
@@ -240,16 +249,31 @@ export const integrationsAPI = {
 
   // GitHub
   github: {
-    // Connect GitHub
+    // Connect GitHub (manual token)
     connect: (projectId: string, token: string, username?: string) =>
       apiRequest(`/visudev-integrations/${projectId}/github`, {
         method: "POST",
         body: JSON.stringify({ token, username }),
       }),
 
-    // Get repositories
-    getRepos: (projectId: string) =>
-      apiRequest<GitHubRepo[]>(`/visudev-integrations/${projectId}/github/repos`),
+    // Set project GitHub repo from user-scoped OAuth (Bearer required)
+    setProjectGitHubRepo: (
+      projectId: string,
+      payload: { repo: string; branch?: string },
+      accessToken: string,
+    ) =>
+      apiRequest(`/visudev-integrations/${projectId}/github`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+        accessToken,
+      }),
+
+    // Get repositories (Bearer required for user-scoped token)
+    getRepos: (projectId: string, accessToken?: string | null) =>
+      apiRequest<GitHubRepo[]>(
+        `/visudev-integrations/${projectId}/github/repos`,
+        accessToken != null && accessToken !== "" ? { accessToken } : {},
+      ),
 
     // Get branches
     getBranches: (projectId: string, owner: string, repo: string) =>

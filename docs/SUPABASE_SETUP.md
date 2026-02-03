@@ -2,11 +2,25 @@
 
 Dieses Repo enthält alles, um das Supabase-Projekt später neu aufzusetzen (z. B. nach Löschen des Cloud-Projekts).
 
-## PROJECT_REF
+**Standard:** Die App nutzt **Supabase Cloud** (Projekt `tzfxbgxnjkthxwvoeyse`). Keine `.env` nötig – URL und Anon-Key sind im Code hinterlegt. Einfach `npm run dev` starten, anmelden/registrieren im Dashboard, GitHub-Verbindung usw. funktionieren gegen die Cloud.
+
+## PROJECT_REF (Cloud – Standard)
 
 - **PROJECT_REF:** `tzfxbgxnjkthxwvoeyse`
 - Dashboard: https://supabase.com/dashboard/project/tzfxbgxnjkthxwvoeyse
+- Edge Functions: https://supabase.com/dashboard/project/tzfxbgxnjkthxwvoeyse/functions
 - API-URL: `https://tzfxbgxnjkthxwvoeyse.supabase.co`
+
+## Frontend auf Supabase Cloud (Standard)
+
+Ohne weitere Konfiguration nutzt die Vite-App die Cloud:
+
+1. **Keine `.env.local` nötig** – `src/utils/supabase/info.tsx` verwendet standardmäßig die Cloud-URL und den Anon-Key des Projekts `tzfxbgxnjkthxwvoeyse`.
+2. **`npm run dev`** – App spricht mit Auth, DB und Edge Functions in der Cloud.
+3. **Anmelden:** Im Dashboard unter Authentication → Users Nutzer anlegen oder in der App „Konto erstellen“ / „Anmelden“ nutzen.
+4. **Secrets für Edge Functions** (z. B. GitHub OAuth): Im [Supabase Dashboard](https://supabase.com/dashboard/project/tzfxbgxnjkthxwvoeyse/settings/functions) unter Edge Functions → Secrets setzen (`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, ggf. `GITHUB_REDIRECT_URI`).
+
+Falls du doch lokale Werte überschreiben willst: `.env.local` mit `VITE_SUPABASE_URL` und `VITE_SUPABASE_ANON_KEY` anlegen (siehe `.env.example`).
 
 ## Voraussetzungen
 
@@ -29,12 +43,15 @@ Ja – du kannst die **komplette Supabase-Umgebung lokal** auf deinem Mac betrei
 
 ### 2. Lokalen Stack starten
 
-Am **Repo-Root** (dort liegt `supabase/config.toml`):
+- **Docker Desktop** muss laufen – Supabase nutzt Docker für Postgres, Kong, Studio usw.
+- Am **Repo-Root** (dort liegt `supabase/config.toml`):
 
 ```bash
 cd /path/to/Visudevfigma
 supabase start
 ```
+
+Falls ihr Projekt ein **Supabase-Wrapper-Skript** nutzt (`scripts/supabase-checked.sh`): Für `start`, `stop`, `status`, `db`, `functions` werden keine Code-Checks ausgeführt – Supabase startet auch bei Prettier/Lint-Warnungen. Wenn du die echte CLI direkt nutzen willst: `SUPABASE_REAL_BIN=/opt/homebrew/bin/supabase supabase start` oder `npm run supabase:checked -- start`.
 
 Beim ersten Mal werden die Docker-Images geladen – das kann einige Minuten dauern. Danach laufen:
 
@@ -42,6 +59,10 @@ Beim ersten Mal werden die Docker-Images geladen – das kann einige Minuten dau
 - **Postgres:** `postgresql://postgres:postgres@localhost:54322/postgres`
 - **Supabase Studio (Dashboard):** `http://localhost:54323`
 - **Mailpit (E-Mails):** `http://localhost:54324`
+
+**Hinweis Lokal vs. Cloud:** Beim lokalen Supabase gibt es **keine Projektliste** (nur eine lokale Instanz). Unter **Edge Functions** im lokalen Studio siehst du ggf. keine oder wenige Einträge – lokal werden die Functions **aus dem Repo** geladen (`src/supabase/functions/` bei `--workdir src`), sie werden nicht „deployt“. Sie sind trotzdem erreichbar unter `http://127.0.0.1:54321/functions/v1/<name>` (z. B. `visudev-auth`, `visudev-projects`). Im Studio nutzen: **Database** (Tabellen, SQL Editor), **Authentication** (User, Provider), **Storage**, **Logs** – das funktioniert lokal wie gewohnt.
+
+**Edge Functions im Browser testen:** Für `visudev-auth` ist in der Config **`verify_jwt = false`** gesetzt (wie in der Cloud „Verify JWT“ aus). Das Gateway verlangt dann keinen Authorization-Header; die Auth prüft die Function selbst (Bearer + getUser). Ohne diese Einstellung würde das Gateway „Missing authorization header“ zurückgeben, bevor die Function läuft. Nach Config-Änderung: `supabase stop` und `supabase start`. Health im Browser: `http://127.0.0.1:54321/functions/v1/visudev-auth/health` → `{"success":true,"data":{"service":"visudev-auth","ok":true}}`. Geschützte Endpoints (z. B. `/github/status`) verlangen weiterhin `Authorization: Bearer <user-jwt>` – geprüft im Code.
 
 Die **Anon Key** und **Service Role Key** für lokal zeigt dir:
 
@@ -70,13 +91,29 @@ supabase functions serve
 
 Dann erreichst du sie z. B. unter `http://localhost:54321/functions/v1/<function-name>`.
 
-### 5. Frontend auf lokales Supabase umstellen (optional)
+### 5. Supabase Auth (E-Mail/Passwort) im Frontend
 
-Damit die Vite-App gegen die lokale Supabase-Instanz geht:
+Die App nutzt **Supabase Auth** (E-Mail/Passwort) über den Browser-Client (`src/lib/supabase/client.ts`). Anmelden/Konto erstellen ist in der Sidebar („Anmelden“) und im Dialog möglich. Session wird von Supabase verwaltet (auth.users).  
+Lokal: In Supabase Studio (http://127.0.0.1:54323) unter **Authentication → Providers → Email** kannst du „Confirm email“ deaktivieren, damit sich Nutzer ohne E-Mail-Bestätigung anmelden können. **Wichtig:** Nutzer der Cloud existieren lokal nicht – bei lokalem Supabase zuerst **„Konto erstellen“** (Sign up) ausführen, dann mit dieser E-Mail/Passwort anmelden.
 
-- In **Supabase Studio** unter `http://localhost:54323` → Project Settings → API: **Project URL** und **anon key** kopieren.
-- In `src/utils/supabase/info.tsx` vorübergehend `projectId` und `publicAnonKey` durch die lokalen Werte ersetzen (oder per Env-Variablen steuern).  
-  Lokale API-URL ist `http://localhost:54321` (nicht `https://xxx.supabase.co`), die Keys stehen in `supabase status`.
+### 6. Frontend auf lokales Supabase umstellen (optional)
+
+**Hinweis:** Standard ist Cloud. Nur nötig, wenn du bewusst gegen eine lokale Supabase-Instanz entwickeln willst.
+
+1. Nach `supabase start` im Repo-Root ausführen: `supabase status`
+2. **Project URL** = `http://127.0.0.1:54321`, **Publishable** = Anon-Key für den Client
+3. Datei **`.env.local`** im Repo-Root anlegen (wird von Git ignoriert):
+
+   ```bash
+   VITE_SUPABASE_URL=http://127.0.0.1:54321
+   VITE_SUPABASE_ANON_KEY=<Publishable-Key aus supabase status>
+   ```
+
+4. Vite neu starten (`npm run dev`). Die App nutzt dann die lokale Instanz (siehe `src/utils/supabase/info.tsx`).
+
+**Zurück zu Cloud:** `.env.local` löschen oder die Zeilen `VITE_SUPABASE_URL` und `VITE_SUPABASE_ANON_KEY` entfernen – dann nutzt die App wieder die Cloud (tzfxbgxnjkthxwvoeyse).
+
+Vorlage: **`.env.example`** (ohne echte Keys).
 
 ### 6. Nützliche Befehle
 
@@ -145,7 +182,7 @@ cat supabase/backups/data_*.sql >> supabase/backups/schema_and_data_LATEST.sql
 3. Migrationen anwenden: `supabase db push` (oder SQL aus `supabase/migrations/` im SQL Editor ausführen).
 4. Optional: Daten wiederherstellen: `psql` mit Connection-String aus Dashboard, dann `\i supabase/backups/schema_and_data_LATEST.sql` (oder nur Daten-Teil einspielen).
 5. Edge Functions deployen: `supabase functions deploy <name>` für jede Function unter `supabase/functions/`.
-6. Secrets setzen (Dashboard → Edge Functions → Secrets): z. B. `SCREENSHOT_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (werden beim Deploy gesetzt).
+6. Secrets setzen (Dashboard → Edge Functions → Secrets): z. B. `SCREENSHOT_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (werden beim Deploy gesetzt). Für **GitHub Actions**-Secrets siehe `docs/GITHUB_SECRETS.md` (CLI: `gh secret set`).
 
 ## Im Repo vs. separat sichern
 

@@ -51,6 +51,30 @@
   height: 12px;
 }
 
+.copyButton {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.copyButton:hover {
+  background: var(--color-primary-soft);
+}
+
+.copyIcon {
+  width: 12px;
+  height: 12px;
+}
+
 .content {
   flex: 1;
   overflow: auto;

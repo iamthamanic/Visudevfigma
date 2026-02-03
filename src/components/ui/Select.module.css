@@ -29,13 +29,14 @@
   color: var(--color-muted-foreground);
 }
 
+/* Above Dialog (z-index 51) when Select is used inside a modal */
 .content {
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-2);
   overflow: hidden;
-  z-index: 50;
+  z-index: 100;
 }
 
 .viewport {

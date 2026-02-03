@@ -26,10 +26,19 @@ export class AuthController {
     private readonly logger: LoggerLike,
   ) {}
 
+  /** Public health check – no auth required. Use in browser to verify the function is reachable. */
+  public health(c: Context): Response {
+    return this.ok(c, { service: "visudev-auth", ok: true });
+  }
+
   public async githubAuthorize(c: Context): Promise<Response> {
+    const authUserId = await this.githubService.getAuthUserIdFromContext(c);
     const returnUrl = c.req.query("return_url") ?? undefined;
     const parsed = githubAuthorizeQuerySchema.parse({ return_url: returnUrl });
-    const data = await this.githubService.createAuthorizeUrl(parsed.return_url);
+    const data = await this.githubService.createAuthorizeUrl(
+      parsed.return_url,
+      authUserId,
+    );
     return this.ok<GitHubAuthorizeResponseDto>(c, data);
   }
 
@@ -63,6 +72,25 @@ export class AuthController {
     );
     const data = await this.githubService.getSession(body.state);
     return this.ok<GitHubSessionDto>(c, data);
+  }
+
+  public async githubStatus(c: Context): Promise<Response> {
+    const authUserId = await this.githubService.getAuthUserIdFromContext(c);
+    const data = await this.githubService.getStatus(authUserId);
+    return this.ok(c, data);
+  }
+
+  /** Disconnect GitHub for the current user (requires Bearer). */
+  public async githubDisconnect(c: Context): Promise<Response> {
+    const authUserId = await this.githubService.getAuthUserIdFromContext(c);
+    await this.githubService.disconnectUser(authUserId);
+    return this.ok(c, { disconnected: true });
+  }
+
+  public async githubReposGet(c: Context): Promise<Response> {
+    const authUserId = await this.githubService.getAuthUserIdFromContext(c);
+    const data = await this.githubService.getReposForUser(authUserId);
+    return this.ok<GitHubRepoDto[]>(c, data);
   }
 
   public async githubRepos(c: Context): Promise<Response> {

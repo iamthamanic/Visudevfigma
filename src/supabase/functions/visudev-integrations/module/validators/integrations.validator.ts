@@ -10,6 +10,11 @@ export const connectGitHubSchema = z.object({
   username: z.string().min(1).optional(),
 });
 
+export const setProjectGitHubRepoSchema = z.object({
+  repo: z.string().min(1, "repo is required").trim(),
+  branch: z.string().min(1).optional(),
+});
+
 export const connectSupabaseSchema = z.object({
   url: z.string().min(1, "url is required").trim(),
   anonKey: z.string().min(1, "anonKey is required").trim(),
@@ -25,4 +30,7 @@ export const githubRefSchema = z.string().min(1).optional();
 export type ProjectIdInput = z.infer<typeof projectIdSchema>;
 export type UpdateIntegrationsInput = z.infer<typeof updateIntegrationsSchema>;
 export type ConnectGitHubInput = z.infer<typeof connectGitHubSchema>;
+export type SetProjectGitHubRepoInput = z.infer<
+  typeof setProjectGitHubRepoSchema
+>;
 export type ConnectSupabaseInput = z.infer<typeof connectSupabaseSchema>;

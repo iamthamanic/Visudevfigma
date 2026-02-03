@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, Download, Loader2, RefreshCw } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
 import { SitemapFlowView } from "../../../components/SitemapFlowView";
 import styles from "../styles/AppFlowPage.module.css";
+
+function downloadFile(content: string, filename: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
 interface AppFlowPageProps {
   projectId: string;
@@ -45,6 +54,40 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
   const hasError = scanStatuses.appflow.status === "failed";
   const hasData = activeProject.screens.length > 0;
 
+  const handleExportJson = useCallback(() => {
+    const data = {
+      screens: activeProject.screens,
+      flows: activeProject.flows,
+    };
+    downloadFile(
+      JSON.stringify(data, null, 2),
+      `appflow-${projectId}.json`,
+      "application/json",
+    );
+  }, [activeProject.screens, activeProject.flows, projectId]);
+
+  const handleExportMermaid = useCallback(() => {
+    const id = (s: string) => s.replace(/\s+/g, "_").replace(/-/g, "_") || "n";
+    const lines: string[] = ["flowchart LR"];
+    const seen = new Set<string>();
+    activeProject.screens.forEach((s) => {
+      const n = id(s.name);
+      if (!seen.has(n)) {
+        seen.add(n);
+        lines.push(`  ${n}["${s.name}"]`);
+      }
+    });
+    activeProject.flows.forEach((f) => {
+      const from = id(f.name);
+      f.calls.forEach((c) => {
+        const to = id(c);
+        lines.push(`  ${from} --> ${to}`);
+      });
+    });
+    if (lines.length === 1) lines.push("  empty[Keine Flows]");
+    downloadFile(lines.join("\n"), `appflow-${projectId}.md`, "text/markdown");
+  }, [activeProject.screens, activeProject.flows, projectId]);
+
   return (
     <div className={styles.root}>
       <div className={styles.header}>
@@ -56,24 +99,44 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
               {activeProject.flows.length} Flows
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleRescan}
-            disabled={isScanning}
-            className={styles.primaryButton}
-          >
-            {isScanning ? (
-              <>
-                <Loader2 className={`${styles.inlineIcon} ${styles.spinner}`} aria-hidden="true" />
-                Analysiere...
-              </>
-            ) : (
-              <>
-                <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
-                Neu analysieren
-              </>
-            )}
-          </button>
+          <div className={styles.headerActions}>
+            <button
+              type="button"
+              onClick={handleExportJson}
+              className={styles.secondaryButton}
+              aria-label="App Flow als JSON exportieren"
+            >
+              <Download className={styles.inlineIcon} aria-hidden="true" />
+              Export JSON
+            </button>
+            <button
+              type="button"
+              onClick={handleExportMermaid}
+              className={styles.secondaryButton}
+              aria-label="App Flow als Mermaid exportieren"
+            >
+              <Download className={styles.inlineIcon} aria-hidden="true" />
+              Export Mermaid
+            </button>
+            <button
+              type="button"
+              onClick={handleRescan}
+              disabled={isScanning}
+              className={styles.primaryButton}
+            >
+              {isScanning ? (
+                <>
+                  <Loader2 className={`${styles.inlineIcon} ${styles.spinner}`} aria-hidden="true" />
+                  Analysiere...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
+                  Neu analysieren
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {isScanning && (
@@ -116,11 +179,18 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
           <div className={styles.centerState}>
             <div className={styles.emptyCard}>
               <AlertCircle className={styles.emptyIcon} aria-hidden="true" />
-              <p className={styles.emptyTitle}>Keine Daten vorhanden</p>
-              <p className={styles.emptyHint}>Starte eine Analyse um Screens und Flows zu sehen</p>
-              <button type="button" onClick={handleRescan} className={styles.primaryButton}>
+              <p className={styles.emptyTitle}>Noch keine Flows analysiert</p>
+              <p className={styles.emptyHint}>
+                Starte einen Scan, um Screens und Flows aus dem Repository zu laden.
+              </p>
+              <button
+                type="button"
+                onClick={handleRescan}
+                disabled={isScanning}
+                className={styles.primaryButton}
+              >
                 <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
-                Jetzt analysieren
+                Scan starten
               </button>
             </div>
           </div>

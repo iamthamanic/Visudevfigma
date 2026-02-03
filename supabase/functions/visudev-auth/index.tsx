@@ -27,13 +27,14 @@ interface EnvConfig {
   supabaseApiBaseUrl: string;
 }
 
+// Supabase passes path prefixed with function name: /visudev-auth/github/status (not /functions/v1/...)
 const app = new Hono().basePath("/visudev-auth");
 
 app.use(
   "/*",
   cors({
     origin: "*",
-    allowHeaders: ["Content-Type", "Authorization"],
+    allowHeaders: ["Content-Type", "Authorization", "X-Supabase-URL"],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,

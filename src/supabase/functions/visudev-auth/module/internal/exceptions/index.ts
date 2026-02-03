@@ -56,3 +56,10 @@ export class ConfigException extends ModuleException {
     this.name = "ConfigException";
   }
 }
+
+export class UnauthorizedException extends ModuleException {
+  constructor(message: string = "Please sign in first") {
+    super(message, 401, "UNAUTHORIZED");
+    this.name = "UnauthorizedException";
+  }
+}

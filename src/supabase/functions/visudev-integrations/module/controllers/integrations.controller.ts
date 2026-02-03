@@ -12,6 +12,7 @@ import {
   connectGitHubSchema,
   connectSupabaseSchema,
   projectIdSchema,
+  setProjectGitHubRepoSchema,
   updateIntegrationsSchema,
 } from "../validators/integrations.validator.ts";
 
@@ -48,8 +49,23 @@ export class IntegrationsController {
 
   public async getGitHubRepos(c: Context): Promise<Response> {
     const projectId = this.parseProjectId(c);
-    const repos = await this.service.getGitHubRepos(projectId);
+    const userId = await this.service.getAuthUserIdFromContext(c);
+    const repos = await this.service.getGitHubRepos(projectId, userId);
     return this.ok(c, repos);
+  }
+
+  public async setProjectGitHubRepo(c: Context): Promise<Response> {
+    const projectId = this.parseProjectId(c);
+    const userId = await this.service.getAuthUserIdFromContext(c);
+    const body = await this.parseBody<{ repo: string; branch?: string }>(
+      c,
+      setProjectGitHubRepoSchema,
+    );
+    const data = await this.service.setProjectGitHubRepo(projectId, userId, {
+      repo: body.repo,
+      branch: body.branch,
+    });
+    return this.ok(c, data);
   }
 
   public async getGitHubBranches(c: Context): Promise<Response> {

@@ -105,10 +105,23 @@
   --sidebar-accent-foreground: var(--color-foreground);
   --sidebar-border: var(--color-border);
   --sidebar-ring: var(--color-primary);
+
+  --tooltip-bg: var(--color-card);
+  --tooltip-border: var(--color-primary);
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* T2-016: Focus indicator (2px solid #03ffa3) for keyboard/screen-reader users */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 body {

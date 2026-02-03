@@ -157,3 +157,18 @@
   height: 1rem;
   width: 1rem;
 }
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+.skeletonCard {
+  height: 10rem;
+  min-height: 10rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

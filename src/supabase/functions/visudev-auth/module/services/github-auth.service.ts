@@ -1,3 +1,4 @@
+import type { Context } from "hono";
 import type {
   GitHubAuthorizeResponseDto,
   GitHubAuthorizeReturnDto,
@@ -5,12 +6,18 @@ import type {
   GitHubSessionDto,
 } from "../dto/index.ts";
 import { BaseService } from "./base.service.ts";
+import { getAuthUserIdFromContext } from "../internal/helpers/auth-helper.ts";
 import {
   ConfigException,
   ExternalApiException,
   NotFoundException,
 } from "../internal/exceptions/index.ts";
 import { AuthRepository } from "../internal/repositories/auth.repository.ts";
+
+export interface GitHubStatusDto {
+  connected: boolean;
+  account?: { login: string; id: number };
+}
 
 export class GitHubAuthService extends BaseService {
   constructor(private readonly repository: AuthRepository) {
@@ -19,6 +26,7 @@ export class GitHubAuthService extends BaseService {
 
   public async createAuthorizeUrl(
     returnUrl?: string,
+    authUserId?: string,
   ): Promise<GitHubAuthorizeResponseDto> {
     if (!this.config.githubClientId) {
       throw new ConfigException(
@@ -37,6 +45,10 @@ export class GitHubAuthService extends BaseService {
           created_at: new Date().toISOString(),
         } satisfies GitHubAuthorizeReturnDto,
       );
+    }
+
+    if (authUserId) {
+      await this.repository.setValue(`github_oauth_user:${state}`, authUserId);
     }
 
     const authUrl =
@@ -112,25 +124,30 @@ export class GitHubAuthService extends BaseService {
       created_at: new Date().toISOString(),
     };
 
+    const authUserId = await this.repository.getValue<string>(
+      `github_oauth_user:${effectiveState}`,
+    );
+    if (authUserId) {
+      await this.repository.setValue(
+        `github_user_token:${authUserId}`,
+        session,
+      );
+    }
+
     await this.repository.setValue(`github_session:${effectiveState}`, session);
 
     const returnData = await this.repository.getValue<GitHubAuthorizeReturnDto>(
       `github_oauth_return:${effectiveState}`,
     );
 
-    const defaultReturnUrl = this.appendStateToUrl(
-      this.config.githubDefaultReturnUrl,
-      effectiveState,
-    );
-
+    const defaultReturnUrl = this.config.githubDefaultReturnUrl;
     let redirectUrl = defaultReturnUrl;
 
     if (returnData?.return_url) {
       try {
-        redirectUrl = this.appendStateToUrl(
-          returnData.return_url,
-          effectiveState,
-        );
+        const target = new URL(returnData.return_url);
+        target.searchParams.set("github", "connected");
+        redirectUrl = target.toString();
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         this.logger.warn("Failed to parse return URL", { message });
@@ -138,6 +155,7 @@ export class GitHubAuthService extends BaseService {
     }
 
     await this.repository.deleteValue(`github_oauth_return:${effectiveState}`);
+    await this.repository.deleteValue(`github_oauth_user:${effectiveState}`);
 
     return { redirectUrl, state: effectiveState };
   }
@@ -175,9 +193,40 @@ export class GitHubAuthService extends BaseService {
     return (await response.json()) as GitHubRepoDto[];
   }
 
-  private appendStateToUrl(url: string, state: string): string {
-    const target = new URL(url);
-    target.searchParams.set("github_auth_state", state);
-    return target.toString();
+  public async getStatus(authUserId: string): Promise<GitHubStatusDto> {
+    const session = await this.repository.getValue<GitHubSessionDto>(
+      `github_user_token:${authUserId}`,
+    );
+    if (!session?.access_token || !session.user) {
+      return { connected: false };
+    }
+    const login = session.user.login;
+    const id = session.user.id;
+    return {
+      connected: true,
+      account: {
+        login: typeof login === "string" ? login : String(login ?? ""),
+        id: typeof id === "number" ? id : Number(id ?? 0),
+      },
+    };
+  }
+
+  public async getReposForUser(authUserId: string): Promise<GitHubRepoDto[]> {
+    const session = await this.repository.getValue<GitHubSessionDto>(
+      `github_user_token:${authUserId}`,
+    );
+    if (!session?.access_token) {
+      return [];
+    }
+    return this.getRepos(session.access_token);
+  }
+
+  public async getAuthUserIdFromContext(c: Context): Promise<string> {
+    return await getAuthUserIdFromContext(c, this.supabase as unknown);
+  }
+
+  /** Disconnect GitHub for the current user (delete user-scoped token from KV). */
+  public async disconnectUser(authUserId: string): Promise<void> {
+    await this.repository.deleteValue(`github_user_token:${authUserId}`);
   }
 }

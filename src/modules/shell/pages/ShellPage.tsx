@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ProjectsPage } from "../../projects";
 import { AppFlowPage } from "../../appflow";
 import { BlueprintPage } from "../../blueprint";
@@ -13,6 +13,15 @@ import styles from "../styles/ShellPage.module.css";
 export function ShellPage() {
   const [activeScreen, setActiveScreen] = useState<ShellScreen>("projects");
   const { activeProject } = useVisudev();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("github") === "connected") {
+      setActiveScreen("settings");
+      const path = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, "", path);
+    }
+  }, []);
 
   const handleProjectSelect = () => {
     setActiveScreen("appflow");
@@ -32,7 +41,11 @@ export function ShellPage() {
 
       <main className={styles.main}>
         {activeScreen === "projects" && (
-          <ProjectsPage onProjectSelect={handleProjectSelect} onNewProject={handleNewProject} />
+          <ProjectsPage
+            onProjectSelect={handleProjectSelect}
+            onNewProject={handleNewProject}
+            onOpenSettings={() => setActiveScreen("settings")}
+          />
         )}
 
         {activeScreen === "appflow" && activeProject && (
@@ -51,7 +64,7 @@ export function ShellPage() {
 
         {activeScreen === "logs" && activeProject && <LogsPage projectId={activeProject.id} />}
 
-        {activeScreen === "settings" && activeProject && <SettingsPage project={activeProject} />}
+        {activeScreen === "settings" && <SettingsPage project={activeProject ?? null} />}
 
         {!activeProject && activeScreen !== "projects" && (
           <div className={styles.emptyState}>

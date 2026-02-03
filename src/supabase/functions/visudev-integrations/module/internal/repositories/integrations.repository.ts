@@ -10,6 +10,8 @@ import type {
 interface GitHubIntegrationRecord {
   token?: string;
   username?: string;
+  repo?: string;
+  branch?: string;
   connectedAt?: string;
 }
 
@@ -122,6 +124,41 @@ export class IntegrationsRepository extends BaseService {
       return null;
     }
     return String(integrations.github.token);
+  }
+
+  public async getGitHubUserToken(
+    userId: string,
+  ): Promise<{ access_token: string; user?: { login?: string } } | null> {
+    return await this.getValueByKey<{
+      access_token: string;
+      user?: { login?: string };
+    }>(`github_user_token:${userId}`);
+  }
+
+  public async setProjectGitHubFromUser(
+    projectId: string,
+    payload: {
+      token: string;
+      username?: string;
+      repo?: string;
+      branch?: string;
+    },
+  ): Promise<{ connected: boolean; username?: string }> {
+    const integrations = await this.getIntegrations(projectId);
+    integrations.github = {
+      token: payload.token,
+      username: payload.username,
+      repo: payload.repo,
+      branch: payload.branch,
+      connectedAt: new Date().toISOString(),
+    };
+    integrations.updatedAt = new Date().toISOString();
+    await this.setValue(this.getKey(projectId), integrations);
+    return { connected: true, username: payload.username };
+  }
+
+  public async getValueByKey<T>(key: string): Promise<T | null> {
+    return await this.getValue<T>(key);
   }
 
   private getKey(projectId: string): string {

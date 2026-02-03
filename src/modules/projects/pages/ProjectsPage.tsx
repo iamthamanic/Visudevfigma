@@ -1,5 +1,7 @@
 import { useState } from "react";
+import clsx from "clsx";
 import { FolderGit2, Loader2, Plus, Search } from "lucide-react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -10,8 +12,11 @@ import {
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { Button } from "../../../components/ui/button";
+import { Skeleton } from "../../../components/ui/Skeleton";
+import { useAuth } from "../../../contexts/AuthContext";
 import { useVisudev } from "../../../lib/visudev/store";
 import type { Project } from "../../../lib/visudev/types";
+import { api } from "../../../utils/api";
 import { ProjectCard } from "../components/ProjectCard";
 import { GitHubRepoSelector } from "../components/GitHubRepoSelector";
 import { SupabaseProjectSelector } from "../components/SupabaseProjectSelector";
@@ -20,10 +25,14 @@ import styles from "../styles/ProjectsPage.module.css";
 interface ProjectsPageProps {
   onProjectSelect?: (project: Project) => void;
   onNewProject?: () => void;
+  onOpenSettings?: () => void;
 }
 
-export function ProjectsPage({ onProjectSelect, onNewProject }: ProjectsPageProps) {
-  const { projects, setActiveProject, addProject, updateProject, deleteProject } = useVisudev();
+export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: ProjectsPageProps) {
+  const { session } = useAuth();
+  const { projects, projectsLoading, setActiveProject, addProject, updateProject, deleteProject } =
+    useVisudev();
+  const accessToken = session?.access_token ?? null;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -55,12 +64,19 @@ export function ProjectsPage({ onProjectSelect, onNewProject }: ProjectsPageProp
         description: `GitHub: ${githubRepo}${deployedUrl ? ` | Live: ${deployedUrl}` : ""}`,
       };
 
-      addProject(newProject);
+      const created = addProject(newProject);
+      if (githubRepo && accessToken && created.id) {
+        await api.integrations.github.setProjectGitHubRepo(
+          created.id,
+          { repo: githubRepo, branch: githubBranch || "main" },
+          accessToken,
+        );
+      }
       setIsDialogOpen(false);
       setStep(1);
       resetForm();
     } catch {
-      alert("Fehler beim Erstellen des Projekts");
+      toast.error("Projekt konnte nicht erstellt werden.");
     } finally {
       setIsLoading(false);
     }
@@ -85,11 +101,18 @@ export function ProjectsPage({ onProjectSelect, onNewProject }: ProjectsPageProp
       };
 
       updateProject(updatedProject);
+      if (githubRepo && accessToken) {
+        await api.integrations.github.setProjectGitHubRepo(
+          editingProject.id,
+          { repo: githubRepo, branch: githubBranch || "main" },
+          accessToken,
+        );
+      }
       setIsEditDialogOpen(false);
       setEditingProject(null);
       resetForm();
     } catch {
-      alert("Fehler beim Aktualisieren des Projekts");
+      toast.error("Projekt konnte nicht gespeichert werden.");
     } finally {
       setIsLoading(false);
     }
@@ -190,7 +213,12 @@ export function ProjectsPage({ onProjectSelect, onNewProject }: ProjectsPageProp
 
       <div className={styles.content}>
         <div className={styles.grid}>
-          {filteredProjects.map((project) => (
+          {projectsLoading ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={`skeleton-${i}`} className={styles.skeletonCard} />
+            ))
+          ) : (
+            filteredProjects.map((project) => (
             <ProjectCard
               key={project.id}
               project={project}
@@ -198,10 +226,11 @@ export function ProjectsPage({ onProjectSelect, onNewProject }: ProjectsPageProp
               onEdit={() => handleEditClick(project)}
               onDelete={() => handleDeleteProject(project.id)}
             />
-          ))}
+          ))
+          )}
         </div>
 
-        {filteredProjects.length === 0 && (
+        {!projectsLoading && filteredProjects.length === 0 && (
           <div className={styles.emptyState}>
             <FolderGit2 className={styles.emptyIcon} aria-hidden="true" />
             <p className={styles.emptyTitle}>
@@ -251,11 +280,12 @@ export function ProjectsPage({ onProjectSelect, onNewProject }: ProjectsPageProp
                 <div className={styles.stackSm}>
                   <Label>GitHub Repository *</Label>
                   <GitHubRepoSelector
-                    onSelect={(repoFullName, branch, accessToken) => {
+                    projectId={null}
+                    onSelect={(repoFullName, branch) => {
                       setGithubRepo(repoFullName);
                       setGithubBranch(branch || "main");
-                      setGithubAccessToken(accessToken);
                     }}
+                    onOpenSettings={onOpenSettings}
                     initialRepo={githubRepo}
                     initialBranch={githubBranch}
                   />
@@ -382,8 +412,14 @@ export function ProjectsPage({ onProjectSelect, onNewProject }: ProjectsPageProp
                   <Button onClick={handleNextStep}>Weiter</Button>
                 ) : (
                   <Button onClick={handleCreateProject} disabled={isLoading}>
-                    {isLoading && <Loader2 className={styles.inlineIcon} aria-hidden="true" />}
-                    Projekt erstellen
+                    {isLoading ? (
+                      <>
+                        <Loader2 className={clsx(styles.inlineIcon, styles.spinner)} aria-hidden="true" />
+                        Wird erstellt…
+                      </>
+                    ) : (
+                      "Projekt erstellen"
+                    )}
                   </Button>
                 )}
               </div>
@@ -449,8 +485,14 @@ export function ProjectsPage({ onProjectSelect, onNewProject }: ProjectsPageProp
                   Abbrechen
                 </Button>
                 <Button onClick={handleUpdateProject} disabled={isLoading}>
-                  {isLoading && <Loader2 className={styles.inlineIcon} aria-hidden="true" />}
-                  Speichern
+                  {isLoading ? (
+                    <>
+                      <Loader2 className={clsx(styles.inlineIcon, styles.spinner)} aria-hidden="true" />
+                      Wird gespeichert…
+                    </>
+                  ) : (
+                    "Speichern"
+                  )}
                 </Button>
               </div>
             </div>

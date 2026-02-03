@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import clsx from "clsx";
-import { ZoomIn, ZoomOut, Home } from "lucide-react";
+import { ZoomIn, ZoomOut, Home, Search, X } from "lucide-react";
 import { ScreenDetailView } from "./ScreenDetailView";
 import styles from "./SitemapFlowView.module.css";
 
@@ -57,6 +57,8 @@ const HORIZONTAL_SPACING = 100;
 const VERTICAL_SPACING = 80;
 const SCREENS_PER_ROW = 4;
 
+type LayerFilter = "" | "ui-event" | "api-call" | "db-query";
+
 export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewProps) {
   const [selectedScreen, setSelectedScreen] = useState<string | null>(null);
   const [detailViewScreen, setDetailViewScreen] = useState<Screen | null>(null);
@@ -64,36 +66,61 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
   const [pan, setPan] = useState({ x: 50, y: 50 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [layerFilter, setLayerFilter] = useState<LayerFilter>("");
   const canvasRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [screenPositions, setScreenPositions] = useState<Map<string, ScreenPosition>>(new Map());
 
-  // Auto-layout screens
+  const filteredScreens = useMemo(() => {
+    let list = screens;
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          (s.path ?? "").toLowerCase().includes(q) ||
+          (s.filePath ?? "").toLowerCase().includes(q),
+      );
+    }
+    if (layerFilter) {
+      list = list.filter((s) => {
+        const screenFlowIds = s.flows ?? [];
+        const hasType = flows.some(
+          (f) => f.type === layerFilter && screenFlowIds.includes(f.id),
+        );
+        return hasType;
+      });
+    }
+    return list;
+  }, [screens, flows, searchQuery, layerFilter]);
+
+  // Auto-layout screens (use filtered list for layout)
   useEffect(() => {
-    if (screens.length === 0) return;
+    if (filteredScreens.length === 0) return;
 
     const positions = new Map<string, ScreenPosition>();
 
     // Calculate depths
-    const screenDepths = calculateScreenDepths(screens);
+    const screenDepths = calculateScreenDepths(filteredScreens);
 
     // Group by depth
     const columns: Screen[][] = [];
-    screens.forEach((screen) => {
+    filteredScreens.forEach((screen) => {
       const depth = screenDepths.get(screen.id) || 0;
       if (!columns[depth]) columns[depth] = [];
       columns[depth].push(screen);
     });
 
     // If all screens are in depth 0 (no navigation detected), use GRID layout
-    if (columns.length === 1 || screens.length === columns[0]?.length) {
+    if (columns.length === 1 || filteredScreens.length === columns[0]?.length) {
       // Grid layout
       let currentX = 100;
       let currentY = 100;
       let screensInRow = 0;
 
-      screens.forEach((screen) => {
+      filteredScreens.forEach((screen) => {
         positions.set(screen.id, {
           x: currentX,
           y: currentY,
@@ -132,7 +159,7 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
     }
 
     setScreenPositions(positions);
-  }, [screens]);
+  }, [filteredScreens]);
 
   const setCardRef = (id: string) => (node: HTMLDivElement | null) => {
     if (node) {
@@ -231,20 +258,21 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
     return jsx.substring(0, 500); // Limit length
   };
 
-  // Render connection lines
+  // Render connection lines (only between filtered screens)
   const renderConnections = () => {
     const connections: JSX.Element[] = [];
+    const filteredIds = new Set(filteredScreens.map((s) => s.id));
 
-    screens.forEach((sourceScreen) => {
+    filteredScreens.forEach((sourceScreen) => {
       const sourcePos = screenPositions.get(sourceScreen.id);
       if (!sourcePos) return;
 
       const navigatesTo = sourceScreen.navigatesTo || [];
       navigatesTo.forEach((targetPath, index) => {
-        const targetScreen = screens.find(
+        const targetScreen = filteredScreens.find(
           (s) => s.path === targetPath || s.path.includes(targetPath),
         );
-        if (!targetScreen) return;
+        if (!targetScreen || !filteredIds.has(targetScreen.id)) return;
 
         const targetPos = screenPositions.get(targetScreen.id);
         if (!targetPos) return;
@@ -328,6 +356,9 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
     setPan({ x: 100, y: 100 });
   };
 
+  const hasActiveFilter = searchQuery.trim() !== "" || layerFilter !== "";
+  const showFilteredEmpty = screens.length > 0 && filteredScreens.length === 0;
+
   if (screens.length === 0) {
     return (
       <div className={styles.emptyState}>
@@ -345,9 +376,69 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
         <div>
           <h2 className={styles.headerTitle}>App Sitemap</h2>
           <p className={styles.headerSubtitle}>
-            {screens.length} Screens • {flows.length} Flows
+            {filteredScreens.length} Screens • {flows.length} Flows
             {framework?.primary && <> • {framework.primary}</>}
           </p>
+        </div>
+
+        {/* Search + Layer Filter */}
+        <div className={styles.searchRow}>
+          <div className={styles.searchWrap}>
+            <Search className={styles.searchIcon} aria-hidden="true" />
+            <input
+              type="search"
+              placeholder="Screens durchsuchen…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={styles.searchInput}
+              aria-label="Screens durchsuchen"
+            />
+          </div>
+          <div className={styles.filterGroup}>
+            <button
+              type="button"
+              onClick={() => setLayerFilter("")}
+              className={clsx(styles.filterBtn, !layerFilter && styles.filterBtnActive)}
+            >
+              Alle
+            </button>
+            <button
+              type="button"
+              onClick={() => setLayerFilter("ui-event")}
+              className={clsx(styles.filterBtn, layerFilter === "ui-event" && styles.filterBtnActive)}
+            >
+              UI
+            </button>
+            <button
+              type="button"
+              onClick={() => setLayerFilter("api-call")}
+              className={clsx(styles.filterBtn, layerFilter === "api-call" && styles.filterBtnActive)}
+            >
+              API
+            </button>
+            <button
+              type="button"
+              onClick={() => setLayerFilter("db-query")}
+              className={clsx(styles.filterBtn, layerFilter === "db-query" && styles.filterBtnActive)}
+            >
+              DB
+            </button>
+          </div>
+          {hasActiveFilter && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setLayerFilter("");
+              }}
+              className={styles.clearBtn}
+              title="Filter zurücksetzen"
+              aria-label="Filter zurücksetzen"
+            >
+              <X className={styles.clearIcon} />
+              Zurücksetzen
+            </button>
+          )}
         </div>
 
         {/* Zoom Controls */}
@@ -380,6 +471,23 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
         </div>
       </div>
 
+      {showFilteredEmpty && (
+        <div className={styles.filteredEmpty}>
+          <p className={styles.emptyText}>Keine Screens passen zum Filter.</p>
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery("");
+              setLayerFilter("");
+            }}
+            className={styles.clearBtn}
+          >
+            <X className={styles.clearIcon} />
+            Zurücksetzen
+          </button>
+        </div>
+      )}
+
       {/* Canvas */}
       <div
         ref={canvasRef}
@@ -394,7 +502,7 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
           {renderConnections()}
 
           {/* Screen Cards */}
-          {screens.map((screen) => {
+          {filteredScreens.map((screen) => {
             const position = screenPositions.get(screen.id);
             if (!position) return null;
 

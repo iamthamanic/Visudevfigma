@@ -19,6 +19,10 @@ export function registerIntegrationsRoutes(
     "/:projectId/github",
     asyncHandler(controller.connectGitHub.bind(controller)),
   );
+  app.put(
+    "/:projectId/github",
+    asyncHandler(controller.setProjectGitHubRepo.bind(controller)),
+  );
   app.get(
     "/:projectId/github/repos",
     asyncHandler(controller.getGitHubRepos.bind(controller)),

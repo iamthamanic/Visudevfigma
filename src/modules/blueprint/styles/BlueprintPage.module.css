@@ -53,6 +53,31 @@
   opacity: 0.6;
 }
 
+.headerActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.secondaryButton {
+  align-items: center;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-foreground);
+  cursor: pointer;
+  display: inline-flex;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.secondaryButton:hover {
+  background-color: var(--color-hover);
+  border-color: var(--color-border-hover);
+}
+
 .inlineIcon {
   height: 1rem;
   width: 1rem;
@@ -99,6 +124,121 @@
 
 .errorIcon {
   color: var(--color-danger);
+}
+
+/* Rules / Violations panel */
+.rulesPanel {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-top: 1rem;
+  overflow: hidden;
+}
+
+.rulesPanelTitle {
+  color: var(--color-foreground);
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.rulesEmpty {
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.rulesTable {
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  width: 100%;
+}
+
+.rulesTable th,
+.rulesTable td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.75rem 1rem;
+  text-align: left;
+}
+
+.rulesTable th {
+  color: var(--color-muted-foreground);
+  font-weight: 500;
+}
+
+.rulesTable td {
+  color: var(--color-foreground);
+}
+
+.rulesTable tr:last-child td {
+  border-bottom: none;
+}
+
+.severityError { color: var(--color-danger); }
+.severityWarn { color: var(--color-warning); }
+.severityInfo { color: var(--color-info); }
+
+/* Zyklen-Panel (cycles[]) */
+.cyclesPanel {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-top: 1rem;
+  overflow: hidden;
+}
+
+.cyclesPanelTitle {
+  color: var(--color-foreground);
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cyclesEmpty {
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.cycleBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-warning);
+  background: var(--color-warning-soft);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-sm);
+  margin-right: 0.5rem;
+}
+
+.cycleList {
+  list-style: none;
+  margin: 0;
+  padding: 1rem 1.5rem;
+}
+
+.cycleItem {
+  font-size: 0.875rem;
+  color: var(--color-foreground);
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cycleItem:last-child {
+  border-bottom: none;
+}
+
+.cycleNodes {
+  color: var(--color-muted-foreground);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
 }
 
 @keyframes spin {

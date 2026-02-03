@@ -4,9 +4,9 @@
  * Renders React/JSX code in an isolated iframe
  */
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-import { Eye, Code2, AlertCircle } from "lucide-react";
+import { Eye, Code2, AlertCircle, Copy, Check } from "lucide-react";
 import styles from "./CodePreview.module.css";
 
 interface CodePreviewProps {
@@ -18,6 +18,19 @@ export function CodePreview({ code, className = "" }: CodePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [viewMode, setViewMode] = useState<"preview" | "code">("preview");
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      const t = setTimeout(() => setCopied(false), 2000);
+      return () => clearTimeout(t);
+    } catch {
+      setCopied(false);
+    }
+  }, [code]);
 
   useEffect(() => {
     if (!code || viewMode !== "preview") return;
@@ -132,7 +145,7 @@ export function CodePreview({ code, className = "" }: CodePreviewProps) {
 
   return (
     <div className={clsx(styles.root, className)}>
-      {/* Toggle */}
+      {/* Toggle + Copy */}
       <div className={styles.toolbar}>
         <button
           type="button"
@@ -150,6 +163,27 @@ export function CodePreview({ code, className = "" }: CodePreviewProps) {
           <Code2 className={styles.toggleIcon} />
           Code
         </button>
+        {viewMode === "code" && (
+          <button
+            type="button"
+            onClick={handleCopy}
+            className={styles.copyButton}
+            title="Code kopieren"
+            aria-label="Code kopieren"
+          >
+            {copied ? (
+              <>
+                <Check className={styles.copyIcon} />
+                Kopiert!
+              </>
+            ) : (
+              <>
+                <Copy className={styles.copyIcon} />
+                Kopieren
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Content */}

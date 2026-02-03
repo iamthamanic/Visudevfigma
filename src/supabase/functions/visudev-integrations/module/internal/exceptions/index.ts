@@ -49,3 +49,17 @@ export class ExternalApiException extends ModuleException {
     this.name = "ExternalApiException";
   }
 }
+
+export class ForbiddenException extends ModuleException {
+  constructor(message: string = "Forbidden") {
+    super(message, 403, "FORBIDDEN");
+    this.name = "ForbiddenException";
+  }
+}
+
+export class UnauthorizedException extends ModuleException {
+  constructor(message: string = "Please sign in first") {
+    super(message, 401, "UNAUTHORIZED");
+    this.name = "UnauthorizedException";
+  }
+}

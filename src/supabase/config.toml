@@ -1,39 +1,52 @@
 # Supabase config (workdir: src)
 # https://supabase.com/docs/guides/functions/function-configuration
 # Alle Functions nutzen index.tsx als Entrypoint.
+# verify_jwt = false: Gateway prüft kein JWT; Auth ggf. in der Function (Bearer + getUser).
 
 [functions.visudev-analyzer]
 entrypoint = "./functions/visudev-analyzer/index.tsx"
+verify_jwt = false
 
 [functions.visudev-integrations]
 entrypoint = "./functions/visudev-integrations/index.tsx"
+verify_jwt = false
 
 [functions.visudev-data]
 entrypoint = "./functions/visudev-data/index.tsx"
+verify_jwt = false
 
 [functions.visudev-logs]
 entrypoint = "./functions/visudev-logs/index.tsx"
+verify_jwt = false
 
 [functions.visudev-projects]
 entrypoint = "./functions/visudev-projects/index.tsx"
+verify_jwt = false
 
 [functions.visudev-screenshots]
 entrypoint = "./functions/visudev-screenshots/index.tsx"
+verify_jwt = false
 
 [functions.visudev-auth]
 entrypoint = "./functions/visudev-auth/index.tsx"
+verify_jwt = false
 
 [functions.visudev-appflow]
 entrypoint = "./functions/visudev-appflow/index.tsx"
+verify_jwt = false
 
 [functions.visudev-blueprint]
 entrypoint = "./functions/visudev-blueprint/index.tsx"
+verify_jwt = false
 
 [functions.visudev-account]
 entrypoint = "./functions/visudev-account/index.tsx"
+verify_jwt = false
 
 [functions.visudev-server]
 entrypoint = "./functions/visudev-server/index.tsx"
+verify_jwt = false
 
 [functions.server]
 entrypoint = "./functions/server/index.tsx"
+verify_jwt = false

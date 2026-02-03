@@ -5,7 +5,6 @@ import React, {
   useState,
   ReactNode,
   useCallback,
-  useRef,
   useEffect,
 } from "react";
 import type { AnalyzerResponse, AnalyzerScreenshotsResponse } from "./analyzer";
@@ -17,14 +16,16 @@ import {
   Screen,
   ScreenshotStatus,
 } from "./types";
-import { projectId as supabaseProjectId, publicAnonKey } from "../../utils/supabase/info";
+import { publicAnonKey, supabaseUrl } from "../../utils/supabase/info";
 
 interface VisudevStore {
   // Projects
   projects: Project[];
+  projectsLoading: boolean;
+  setProjectsLoading: (loading: boolean) => void;
   activeProject: Project | null;
   setActiveProject: (project: Project | null) => void;
-  addProject: (project: Omit<Project, "id" | "createdAt" | "screens" | "flows">) => void;
+  addProject: (project: Omit<Project, "id" | "createdAt" | "screens" | "flows">) => Project;
   updateProject: (project: Project) => void;
   deleteProject: (id: string) => void;
 
@@ -39,6 +40,7 @@ const VisudevContext = createContext<VisudevStore | null>(null);
 
 export function VisudevProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
   const [activeProject, setActiveProjectState] = useState<Project | null>(null);
   const [scans, setScans] = useState<ScanResult[]>([]);
   const [scanStatuses, setScanStatuses] = useState<ScanStatuses>({
@@ -47,44 +49,26 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     data: { status: "idle", progress: 0 },
   });
 
-  const hasInitializedRef = useRef(false);
-
   const setActiveProject = useCallback((project: Project | null) => {
     setActiveProjectState(project);
   }, []);
 
   const addProject = useCallback(
-    (projectData: Omit<Project, "id" | "createdAt" | "screens" | "flows">) => {
+    (projectData: Omit<Project, "id" | "createdAt" | "screens" | "flows">): Project => {
       const newProject: Project = {
         ...projectData,
         id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
-        // ✅ Start with EMPTY arrays - let the analyzer populate them
         screens: [],
         flows: [],
       };
       setProjects((prev) => [...prev, newProject]);
+      return newProject;
     },
     [],
   );
 
-  // Auto-create Scriptony project on mount
-  useEffect(() => {
-    if (!hasInitializedRef.current && projects.length === 0) {
-      hasInitializedRef.current = true;
-      const scriptonyProject = {
-        name: "Scriptony",
-        description: "Film Screenwriting Software",
-        github_repo: "iamthamanic/Scriptonyapp",
-        github_branch: "main",
-        deployed_url: "https://scriptony.figma.site",
-      };
-
-      addProject(scriptonyProject);
-    }
-  }, [addProject, projects.length]);
-
-  // Auto-activate first project and trigger scan
+  // Auto-activate first project when list has items
   useEffect(() => {
     if (projects.length > 0 && !activeProject) {
       setActiveProject(projects[0]);
@@ -145,7 +129,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         try {
           // ONLY call visudev-analyzer Edge Function for code analysis
           const analyzeResponse = await fetch(
-            `https://${supabaseProjectId}.supabase.co/functions/v1/visudev-analyzer/analyze`,
+            `${supabaseUrl}/functions/v1/visudev-analyzer/analyze`,
             {
               method: "POST",
               headers: {
@@ -153,8 +137,8 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                repo: activeProject.github_repo || "iamthamanic/Scriptonyapp",
-                branch: activeProject.github_branch || "main",
+                repo: activeProject.github_repo ?? "",
+                branch: activeProject.github_branch ?? "main",
               }),
             },
           );
@@ -191,7 +175,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
           if (activeProject.deployed_url && screensWithScreenshots.length > 0) {
             try {
               const screenshotResponse = await fetch(
-                `https://${supabaseProjectId}.supabase.co/functions/v1/visudev-analyzer/screenshots`,
+                `${supabaseUrl}/functions/v1/visudev-analyzer/screenshots`,
                 {
                   method: "POST",
                   headers: {
@@ -322,6 +306,8 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
 
   const value: VisudevStore = {
     projects,
+    projectsLoading,
+    setProjectsLoading,
     activeProject,
     setActiveProject,
     addProject,

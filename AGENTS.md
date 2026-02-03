@@ -9,9 +9,9 @@ This repo enforces strict modular architecture and quality gates. Agents must fo
 - Always run checks before push/deploy.
   - Preferred: `npm run checks`
   - `git push` runs pre-push checks automatically.
-  - `supabase ...` uses the shim and runs checks automatically.
+  - `supabase ...` uses the shim and runs checks automatically before invoking Supabase.
 - Never call the real Supabase binary directly. Use the shim (`supabase`) or `npm run supabase:checked`.
-- If any check fails, fix it before proceeding.
+- If any check fails, fix it before proceeding. The Supabase shim (`scripts/supabase-checked.sh`) attempts an auto-fix on first failure: it runs `npm run format` and `deno fmt` (backend), then re-runs checks once. If checks still fail after that, the script exits and the agent/developer must fix the remaining issues.
 
 ## Repository Structure
 

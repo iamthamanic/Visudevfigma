@@ -50,8 +50,14 @@
 .loadingRow {
   align-items: center;
   display: flex;
+  gap: 0.5rem;
   justify-content: center;
   padding: 2rem 0;
+}
+
+.loadingText {
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
 }
 
 .spinner {
@@ -65,6 +71,45 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.repoSearchWrap {
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  position: sticky;
+  top: 0;
+  background: var(--color-card);
+  z-index: 1;
+}
+
+.repoSearchIcon {
+  color: var(--color-muted-foreground);
+  flex-shrink: 0;
+  height: 1rem;
+  width: 1rem;
+}
+
+.repoSearchInput {
+  background: transparent;
+  border: none;
+  color: var(--color-foreground);
+  flex: 1;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.repoSearchInput::placeholder {
+  color: var(--color-muted-foreground);
+}
+
+.repoSearchEmpty {
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+  padding: 0.75rem;
+  text-align: center;
 }
 
 .selectTriggerSpacing {
@@ -93,6 +138,11 @@
   color: var(--color-muted-foreground);
   font-size: 0.875rem;
   text-align: center;
+}
+
+.errorText {
+  color: var(--color-danger);
+  font-size: 0.875rem;
 }
 
 .manualLinkRow {

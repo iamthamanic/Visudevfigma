@@ -1,3 +1,4 @@
+import type { Context } from "hono";
 import type {
   ConnectGitHubDto,
   ConnectSupabaseDto,
@@ -10,8 +11,10 @@ import type {
 } from "../dto/index.ts";
 import {
   ExternalApiException,
+  ForbiddenException,
   NotFoundException,
 } from "../internal/exceptions/index.ts";
+import { getAuthUserIdFromContext } from "../internal/helpers/auth-helper.ts";
 import { IntegrationsRepository } from "../internal/repositories/integrations.repository.ts";
 import { BaseService } from "./base.service.ts";
 
@@ -48,12 +51,47 @@ export class IntegrationsService extends BaseService {
     await this.repository.disconnectGitHub(projectId);
   }
 
-  public async getGitHubRepos(projectId: string): Promise<GitHubRepoDto[]> {
+  public async getAuthUserIdFromContext(c: Context): Promise<string> {
+    return await getAuthUserIdFromContext(c, this.supabase as unknown);
+  }
+
+  public async getGitHubRepos(
+    projectId: string,
+    userId?: string,
+  ): Promise<GitHubRepoDto[]> {
+    if (userId) {
+      const userSession = await this.repository.getGitHubUserToken(userId);
+      if (!userSession?.access_token) {
+        throw new ForbiddenException("GitHub not connected");
+      }
+      return this.fetchGitHub<GitHubRepoDto[]>(
+        `/user/repos?per_page=100&sort=updated`,
+        userSession.access_token,
+      );
+    }
     const token = await this.repository.getGitHubToken(projectId);
     if (!token) {
       throw new NotFoundException("GitHub integration");
     }
     return this.fetchGitHub<GitHubRepoDto[]>(`/user/repos?per_page=100`, token);
+  }
+
+  public async setProjectGitHubRepo(
+    projectId: string,
+    userId: string,
+    payload: { repo: string; branch?: string },
+  ): Promise<{ connected: boolean; username?: string }> {
+    const userSession = await this.repository.getGitHubUserToken(userId);
+    if (!userSession?.access_token) {
+      throw new ForbiddenException("Connect GitHub first");
+    }
+    const username = userSession.user?.login;
+    return this.repository.setProjectGitHubFromUser(projectId, {
+      token: userSession.access_token,
+      username,
+      repo: payload.repo,
+      branch: payload.branch,
+    });
   }
 
   public async getGitHubBranches(
