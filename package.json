@@ -48,6 +48,7 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.1",
     "@types/node": "^20.10.0",
     "@types/react": "^18.3.24",
     "@types/react-dom": "^18.3.7",
@@ -75,6 +76,9 @@
     "rules:check": "bash scripts/checks/project-rules.sh",
     "checks": "bash scripts/checks/run.sh",
     "supabase:checked": "bash scripts/supabase-checked.sh",
-    "hooks:setup": "bash scripts/setup-hooks.sh"
+    "hooks:setup": "bash scripts/setup-hooks.sh",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:install": "playwright install chromium"
   }
 }

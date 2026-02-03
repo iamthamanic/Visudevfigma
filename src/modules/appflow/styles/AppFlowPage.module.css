@@ -120,9 +120,91 @@
   margin-top: 0.25rem;
 }
 
+.tabRow {
+  background-color: var(--color-card);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  gap: 0;
+  padding: 0 1.5rem;
+}
+
+.tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: -1px;
+  padding: 0.75rem 1rem;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+
+.tab:hover {
+  color: var(--color-foreground);
+}
+
+.tabActive {
+  border-bottom-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.tabPanel {
+  flex: 1;
+  overflow: auto;
+}
+
 .content {
   flex: 1;
   overflow: hidden;
+}
+
+.liveAppSplit {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+.tabsPanel {
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.liveAppPanel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.liveAppPlaceholder {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: center;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.liveAppPlaceholder .emptyIcon {
+  margin-bottom: 1rem;
+}
+
+.liveAppPlaceholder .emptyTitle {
+  margin-bottom: 0.5rem;
+}
+
+.liveAppPlaceholder .emptyHint {
+  margin-bottom: 1rem;
 }
 
 .centerState {
@@ -154,6 +236,34 @@
   color: var(--color-muted-foreground);
   font-size: 0.875rem;
   margin-bottom: 1rem;
+}
+
+.liveAppWrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.liveAppBar {
+  align-items: center;
+  background-color: var(--color-card);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+}
+
+.liveAppLabel {
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+}
+
+.liveAppIframe {
+  border: none;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
 }
 
 @keyframes spin {

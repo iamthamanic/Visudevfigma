@@ -38,6 +38,8 @@ interface CodeFlow {
 interface SitemapFlowViewProps {
   screens: Screen[];
   flows: CodeFlow[];
+  /** Optional project data for live screenshots from deployed app (echte Screens) */
+  projectData?: { id: string; deployed_url?: string };
   framework?: {
     detected: string[];
     primary: string | null;
@@ -59,7 +61,7 @@ const SCREENS_PER_ROW = 4;
 
 type LayerFilter = "" | "ui-event" | "api-call" | "db-query";
 
-export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewProps) {
+export function SitemapFlowView({ screens, flows, projectData, framework }: SitemapFlowViewProps) {
   const [selectedScreen, setSelectedScreen] = useState<string | null>(null);
   const [detailViewScreen, setDetailViewScreen] = useState<Screen | null>(null);
   const [zoom, setZoom] = useState(0.7);
@@ -651,11 +653,12 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
         Screen für Details
       </div>
 
-      {/* Detail View */}
+      {/* Detail View – mit projectData werden echte Screens der angebundenen App angezeigt */}
       {detailViewScreen && (
         <ScreenDetailView
           screen={detailViewScreen}
           flows={flows}
+          projectData={projectData}
           onClose={() => setDetailViewScreen(null)}
         />
       )}

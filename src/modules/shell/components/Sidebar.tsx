@@ -29,7 +29,7 @@ const navItems: NavItem[] = [
   { key: "projects", label: "Projekte", icon: ProjectsIcon },
   {
     key: "appflow",
-    label: "App/Flow",
+    label: "App Flow",
     icon: AppFlowIcon,
     requiresProject: true,
     scanType: "appflow",

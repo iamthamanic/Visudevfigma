@@ -1,0 +1,14 @@
+{
+  "name": "visudev-preview-runner",
+  "version": "1.0.0",
+  "description": "Preview Runner: clones repo, builds and runs app, exposes URL for VisuDEV Live App",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

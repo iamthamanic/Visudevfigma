@@ -26,12 +26,13 @@ Open the URL shown (e.g. http://localhost:3000). Sign in or create an account, c
 - `src/` – Frontend (React, TypeScript, CSS Modules). Modules under `src/modules/` (projects, appflow, blueprint, data, logs, settings, shell).
 - `src/supabase/functions/` – Edge Functions source (visudev-auth, visudev-analyzer, visudev-projects, etc.). Deploy with `supabase functions deploy <name>`.
 - `supabase/` – Config, migrations, and deployed function copies. See `docs/SUPABASE_SETUP.md`.
-- `docs/` – Setup and runbooks (`SUPABASE_SETUP.md`, `GITHUB_SECRETS.md`).
+- `docs/` – Setup and runbooks (`SUPABASE_SETUP.md`, `GITHUB_SECRETS.md`, `PREVIEW_RUNNER.md`).
 
 ## Configuration
 
 - **Supabase:** The app uses **Supabase Cloud** by default (project ref in code). No `.env` required. For local Supabase, see `docs/SUPABASE_SETUP.md` and `.env.example`.
 - **GitHub OAuth:** Configure `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` in Supabase Dashboard → Edge Functions → Secrets for the auth function.
+- **Live App (Preview):** VisuDEV can build and run the linked app from the repo. See `docs/PREVIEW_RUNNER.md`. Optional: add `visudev.config.json` in your app repo root (`buildCommand`, `startCommand`, `port`) so the Preview Runner builds and serves it correctly.
 
 ## Design and scope
 

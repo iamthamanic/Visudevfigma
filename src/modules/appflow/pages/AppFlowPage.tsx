@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, Download, Loader2, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import clsx from "clsx";
+import { AlertCircle, Download, Loader2, Play, RefreshCw, Square } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
 import { SitemapFlowView } from "../../../components/SitemapFlowView";
+import { IntegrationsPanel } from "../../../components/IntegrationsPanel";
+import { FlowGraphView } from "../components/FlowGraphView";
 import styles from "../styles/AppFlowPage.module.css";
 
 function downloadFile(content: string, filename: string, mimeType: string) {
@@ -19,9 +22,25 @@ interface AppFlowPageProps {
   githubBranch?: string;
 }
 
+type AppFlowTab = "sitemap" | "integrations" | "flowgraph";
+
+const PREVIEW_POLL_INTERVAL_MS = 2500;
+const AUTO_PREVIEW_DELAY_MS = 800;
+
 export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPageProps) {
-  const { activeProject, scanStatuses, startScan } = useVisudev();
+  const {
+    activeProject,
+    scanStatuses,
+    startScan,
+    preview,
+    startPreview,
+    refreshPreviewStatus,
+    stopPreview,
+  } = useVisudev();
   const [isRescan, setIsRescan] = useState(false);
+  const [activeTab, setActiveTab] = useState<AppFlowTab>("sitemap");
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoPreviewDoneRef = useRef(false);
 
   const handleRescan = useCallback(async () => {
     setIsRescan(true);
@@ -32,6 +51,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     }
   }, [startScan]);
 
+  // Auto-scan when repo connected and no screens yet
   useEffect(() => {
     if (
       activeProject &&
@@ -41,6 +61,64 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
       handleRescan();
     }
   }, [activeProject, projectId, scanStatuses.appflow.status, handleRescan]);
+
+  // On mount: fetch current preview status
+  useEffect(() => {
+    if (projectId) {
+      void refreshPreviewStatus(projectId);
+    }
+  }, [projectId, refreshPreviewStatus]);
+
+  // Auto-start preview when repo is connected and status still idle (once per project)
+  useEffect(() => {
+    if (
+      !activeProject?.github_repo ||
+      preview.projectId !== projectId ||
+      preview.status !== "idle" ||
+      autoPreviewDoneRef.current
+    ) {
+      if (preview.status === "ready" || preview.status === "starting") {
+        autoPreviewDoneRef.current = true;
+      }
+      return;
+    }
+    const t = setTimeout(() => {
+      autoPreviewDoneRef.current = true;
+      void startPreview(projectId, activeProject.github_repo, activeProject.github_branch);
+    }, AUTO_PREVIEW_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [
+    projectId,
+    activeProject?.id,
+    activeProject?.github_repo,
+    activeProject?.github_branch,
+    preview.projectId,
+    preview.status,
+    startPreview,
+  ]);
+
+  // Reset auto-preview flag when switching project
+  useEffect(() => {
+    autoPreviewDoneRef.current = false;
+  }, [projectId]);
+
+  // Poll preview status when starting
+  useEffect(() => {
+    if (preview.projectId === projectId && preview.status === "starting") {
+      const tick = () => void refreshPreviewStatus(projectId);
+      pollRef.current = setInterval(tick, PREVIEW_POLL_INTERVAL_MS);
+      return () => {
+        if (pollRef.current) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
+      };
+    }
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, [projectId, preview.projectId, preview.status, refreshPreviewStatus]);
 
   const handleExportJson = useCallback(() => {
     if (!activeProject) return;
@@ -163,39 +241,183 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
             </div>
           </div>
         )}
+
+        {hasData && !activeProject.deployed_url && !preview.previewUrl && (
+          <div className={`${styles.statusBar} ${styles.statusInfo}`} role="status">
+            <p className={styles.statusMeta}>
+              💡 Echte Screens: <strong>Preview</strong> startet automatisch; oder im Projekt eine{" "}
+              <strong>Deployed URL</strong> setzen.
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className={styles.tabRow}>
+        <button
+          type="button"
+          onClick={() => setActiveTab("sitemap")}
+          className={clsx(styles.tab, activeTab === "sitemap" && styles.tabActive)}
+          aria-pressed={activeTab === "sitemap"}
+          aria-label="Sitemap-Ansicht"
+        >
+          Sitemap
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("integrations")}
+          className={clsx(styles.tab, activeTab === "integrations" && styles.tabActive)}
+          aria-pressed={activeTab === "integrations"}
+          aria-label="Integrations-Ansicht"
+        >
+          Integrations
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("flowgraph")}
+          className={clsx(styles.tab, activeTab === "flowgraph" && styles.tabActive)}
+          aria-pressed={activeTab === "flowgraph"}
+          aria-label="Flow-Graph-Ansicht"
+        >
+          Flow Graph
+        </button>
       </div>
 
       <div className={styles.content}>
-        {isScanning && !hasData ? (
-          <div className={styles.centerState}>
-            <div className={styles.emptyCard}>
-              <Loader2 className={`${styles.emptyIcon} ${styles.spinner}`} aria-hidden="true" />
-              <p className={styles.emptyTitle}>Code wird analysiert...</p>
-              <p className={styles.emptyHint}>Dies kann einige Sekunden dauern</p>
-            </div>
+        <div className={styles.liveAppSplit}>
+          <div className={styles.tabsPanel}>
+            {activeTab === "integrations" ? (
+              <div className={styles.tabPanel}>
+                <IntegrationsPanel projectId={projectId} />
+              </div>
+            ) : activeTab === "flowgraph" ? (
+              <div className={styles.tabPanel}>
+                {hasData ? (
+                  <FlowGraphView screens={activeProject.screens} flows={activeProject.flows} />
+                ) : (
+                  <div className={styles.centerState}>
+                    <p className={styles.emptyTitle}>Keine Daten für Flow Graph</p>
+                    <p className={styles.emptyHint}>
+                      Sitemap und Flow Graph werden aus dem Repo gebaut.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : isScanning && !hasData ? (
+              <div className={styles.centerState}>
+                <div className={styles.emptyCard}>
+                  <Loader2 className={`${styles.emptyIcon} ${styles.spinner}`} aria-hidden="true" />
+                  <p className={styles.emptyTitle}>Code wird analysiert...</p>
+                  <p className={styles.emptyHint}>Sitemap und Flow Graph werden gebaut.</p>
+                </div>
+              </div>
+            ) : hasData ? (
+              <SitemapFlowView
+                screens={activeProject.screens}
+                flows={activeProject.flows}
+                projectData={{
+                  id: activeProject.id,
+                  deployed_url: activeProject.deployed_url ?? preview.previewUrl ?? undefined,
+                }}
+              />
+            ) : (
+              <div className={styles.centerState}>
+                <div className={styles.emptyCard}>
+                  <AlertCircle className={styles.emptyIcon} aria-hidden="true" />
+                  <p className={styles.emptyTitle}>Noch keine Flows analysiert</p>
+                  <p className={styles.emptyHint}>
+                    Sitemap und Flow Graph werden automatisch aus dem Repository gebaut.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleRescan}
+                    disabled={isScanning}
+                    className={styles.primaryButton}
+                  >
+                    <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
+                    Scan starten
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        ) : hasData ? (
-          <SitemapFlowView screens={activeProject.screens} flows={activeProject.flows} />
-        ) : (
-          <div className={styles.centerState}>
-            <div className={styles.emptyCard}>
-              <AlertCircle className={styles.emptyIcon} aria-hidden="true" />
-              <p className={styles.emptyTitle}>Noch keine Flows analysiert</p>
-              <p className={styles.emptyHint}>
-                Starte einen Scan, um Screens und Flows aus dem Repository zu laden.
-              </p>
-              <button
-                type="button"
-                onClick={handleRescan}
-                disabled={isScanning}
-                className={styles.primaryButton}
-              >
-                <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
-                Scan starten
-              </button>
-            </div>
+
+          <div className={styles.liveAppPanel}>
+            {preview.projectId === projectId && preview.previewUrl ? (
+              <div className={styles.liveAppWrap}>
+                <div className={styles.liveAppBar}>
+                  <span className={styles.liveAppLabel}>Live App (Preview)</span>
+                  <button
+                    type="button"
+                    onClick={() => stopPreview(projectId)}
+                    className={styles.secondaryButton}
+                    aria-label="Preview beenden"
+                  >
+                    <Square className={styles.inlineIcon} aria-hidden="true" />
+                    Preview beenden
+                  </button>
+                </div>
+                <iframe
+                  src={preview.previewUrl}
+                  title="Live App Preview"
+                  className={styles.liveAppIframe}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                />
+              </div>
+            ) : preview.projectId === projectId && preview.status === "starting" ? (
+              <div className={styles.liveAppPlaceholder}>
+                <Loader2 className={`${styles.emptyIcon} ${styles.spinner}`} aria-hidden="true" />
+                <p className={styles.emptyTitle}>Preview wird gestartet...</p>
+                <p className={styles.emptyHint}>VisuDEV baut und startet die App aus dem Repo.</p>
+              </div>
+            ) : preview.projectId === projectId && preview.status === "failed" ? (
+              <div className={styles.liveAppPlaceholder}>
+                <AlertCircle className={styles.emptyIcon} aria-hidden="true" />
+                <p className={styles.emptyTitle}>Preview fehlgeschlagen</p>
+                <p className={styles.emptyHint}>{preview.error ?? "Unbekannter Fehler"}</p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    startPreview(
+                      projectId,
+                      activeProject?.github_repo,
+                      activeProject?.github_branch,
+                    )
+                  }
+                  className={styles.primaryButton}
+                >
+                  <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
+                  Erneut versuchen
+                </button>
+              </div>
+            ) : (
+              <div className={styles.liveAppPlaceholder}>
+                <p className={styles.emptyTitle}>Live App</p>
+                <p className={styles.emptyHint}>
+                  Die App aus dem Repo wird automatisch gebaut und hier angezeigt.
+                </p>
+                {activeProject?.github_repo ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      startPreview(
+                        projectId,
+                        activeProject?.github_repo,
+                        activeProject?.github_branch,
+                      )
+                    }
+                    className={styles.primaryButton}
+                    aria-label="Preview starten"
+                  >
+                    <Play className={styles.inlineIcon} aria-hidden="true" />
+                    Preview starten
+                  </button>
+                ) : (
+                  <p className={styles.emptyHint}>Verbinde ein GitHub-Repo im Projekt.</p>
+                )}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

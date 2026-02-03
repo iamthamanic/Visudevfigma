@@ -29,6 +29,9 @@ export interface Flow {
   color: string;
 }
 
+/** Preview (Live App) status from Preview Runner */
+export type PreviewStatus = "idle" | "starting" | "ready" | "failed" | "stopped";
+
 export interface Project {
   id: string;
   name: string;
@@ -44,6 +47,12 @@ export interface Project {
   flows: Flow[];
   createdAt: string;
   updatedAt?: string;
+  /** Live App preview URL (from Preview Runner) */
+  previewUrl?: string;
+  /** Live App preview status */
+  previewStatus?: PreviewStatus;
+  /** When the preview expires (ISO) */
+  previewExpiresAt?: string;
 }
 
 export interface AnalysisResult {

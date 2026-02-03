@@ -35,6 +35,10 @@ verify_jwt = false
 entrypoint = "./functions/visudev-appflow/index.tsx"
 verify_jwt = false
 
+[functions.visudev-preview]
+entrypoint = "./functions/visudev-preview/index.tsx"
+verify_jwt = false
+
 [functions.visudev-blueprint]
 entrypoint = "./functions/visudev-blueprint/index.tsx"
 verify_jwt = false

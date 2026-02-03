@@ -16,7 +16,16 @@ import {
   Screen,
   ScreenshotStatus,
 } from "./types";
+import type { PreviewStatus } from "./types";
 import { publicAnonKey, supabaseUrl } from "../../utils/supabase/info";
+import { previewAPI } from "../../utils/api";
+
+export interface PreviewState {
+  projectId: string | null;
+  status: PreviewStatus;
+  previewUrl: string | null;
+  error: string | null;
+}
 
 interface VisudevStore {
   // Projects
@@ -34,6 +43,12 @@ interface VisudevStore {
   scanStatuses: ScanStatuses;
   startScan: (scanType: "appflow" | "blueprint" | "data" | "all") => Promise<void>;
   refreshScanStatus: () => Promise<void>;
+
+  // Preview (Live App)
+  preview: PreviewState;
+  startPreview: (projectId: string, repo?: string, branchOrCommit?: string) => Promise<void>;
+  refreshPreviewStatus: (projectId: string) => Promise<void>;
+  stopPreview: (projectId: string) => Promise<void>;
 }
 
 const VisudevContext = createContext<VisudevStore | null>(null);
@@ -47,6 +62,12 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     appflow: { status: "idle", progress: 0 },
     blueprint: { status: "idle", progress: 0 },
     data: { status: "idle", progress: 0 },
+  });
+  const [preview, setPreview] = useState<PreviewState>({
+    projectId: null,
+    status: "idle",
+    previewUrl: null,
+    error: null,
   });
 
   const setActiveProject = useCallback((project: Project | null) => {
@@ -304,6 +325,60 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     [activeProject, updateProject],
   );
 
+  const startPreview = useCallback(
+    async (projectId: string, repo?: string, branchOrCommit?: string) => {
+      setPreview((prev) => ({
+        ...prev,
+        projectId,
+        status: "starting",
+        previewUrl: null,
+        error: null,
+      }));
+      const res = await previewAPI.start(projectId, { repo, branchOrCommit });
+      if (!res.success) {
+        setPreview((prev) =>
+          prev.projectId === projectId
+            ? { ...prev, status: "failed", error: res.error ?? "Start failed" }
+            : prev,
+        );
+        return;
+      }
+      // Keep status "starting"; UI will poll refreshPreviewStatus
+    },
+    [],
+  );
+
+  const refreshPreviewStatus = useCallback(async (projectId: string) => {
+    const res = await previewAPI.status(projectId);
+    if (!res.success) return;
+    // Backend returns flat { success, status, previewUrl, error }
+    const payload = res as {
+      status?: PreviewStatus;
+      previewUrl?: string | null;
+      error?: string | null;
+    };
+    const status = (payload.status as PreviewStatus) ?? "idle";
+    setPreview((prev) =>
+      prev.projectId === projectId
+        ? {
+            ...prev,
+            status,
+            previewUrl: payload.previewUrl ?? prev.previewUrl,
+            error: payload.error ?? prev.error,
+          }
+        : prev,
+    );
+  }, []);
+
+  const stopPreview = useCallback(async (projectId: string) => {
+    await previewAPI.stop(projectId);
+    setPreview((prev) =>
+      prev.projectId === projectId
+        ? { ...prev, status: "stopped", previewUrl: null, error: null }
+        : prev,
+    );
+  }, []);
+
   const value: VisudevStore = {
     projects,
     projectsLoading,
@@ -317,6 +392,10 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     scanStatuses,
     startScan,
     refreshScanStatus,
+    preview,
+    startPreview,
+    refreshPreviewStatus,
+    stopPreview,
   };
 
   return <VisudevContext.Provider value={value}>{children}</VisudevContext.Provider>;

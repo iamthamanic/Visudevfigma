@@ -9,6 +9,7 @@ export default tseslint.config(
     ignores: [
       "build",
       "node_modules",
+      "preview-runner/**",
       "src/supabase/functions/**",
       "supabase/**", // Backup-Layout (Deno/Edge Functions)
     ],

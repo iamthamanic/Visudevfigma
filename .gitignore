@@ -20,6 +20,10 @@ src/supabase/.branches/
 .env.*.local
 .env.gh-secrets
 
+# Playwright E2E
+playwright-report/
+test-results/
+
 # IDE / OS
 .DS_Store
 *.log

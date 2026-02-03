@@ -324,6 +324,43 @@ export const integrationsAPI = {
   },
 };
 
+// ==================== PREVIEW (Live App) ====================
+
+export interface PreviewStatusResponse {
+  success: boolean;
+  status?: "idle" | "starting" | "ready" | "failed" | "stopped";
+  previewUrl?: string;
+  error?: string;
+  startedAt?: string;
+  expiresAt?: string;
+}
+
+export const previewAPI = {
+  /** Start preview (build/run app from repo via Preview Runner). Pass repo/branch when project not in backend KV. */
+  start: (projectId: string, options?: { repo?: string; branchOrCommit?: string }) =>
+    apiRequest<{ runId: string; status: string }>("/visudev-preview/preview/start", {
+      method: "POST",
+      body: JSON.stringify({
+        projectId,
+        repo: options?.repo,
+        branchOrCommit: options?.branchOrCommit,
+      }),
+    }),
+
+  /** Get preview status and URL */
+  status: (projectId: string) =>
+    apiRequest<PreviewStatusResponse>(
+      `/visudev-preview/preview/status?projectId=${encodeURIComponent(projectId)}`,
+    ),
+
+  /** Stop preview */
+  stop: (projectId: string) =>
+    apiRequest<{ status: string }>("/visudev-preview/preview/stop", {
+      method: "POST",
+      body: JSON.stringify({ projectId }),
+    }),
+};
+
 // Export all APIs
 export const api = {
   projects: projectsAPI,
@@ -333,4 +370,5 @@ export const api = {
   logs: logsAPI,
   account: accountAPI,
   integrations: integrationsAPI,
+  preview: previewAPI,
 };

@@ -4,13 +4,14 @@
  * Displays detailed information about a screen including:
  * - Screen metadata
  * - Associated flows
- * - LIVE PREVIEW of the screen using iframe
+ * - LIVE PREVIEW: echte Screens der angebundenen App (ScreenshotPreview) oder Code/Placeholder
  */
 
 import React from "react";
 import clsx from "clsx";
 import { X, Code, FileText, GitBranch, ExternalLink, Eye } from "lucide-react";
 import { CodePreview } from "./CodePreview";
+import { ScreenshotPreview } from "./ScreenshotPreview";
 import styles from "./ScreenDetailView.module.css";
 
 interface Screen {
@@ -47,6 +48,8 @@ interface CodeFlow {
 interface ScreenDetailViewProps {
   screen: Screen;
   flows: CodeFlow[];
+  /** Wenn gesetzt: Live-Screenshot der angebundenen App (echte Screens) anzeigen */
+  projectData?: { id: string; deployed_url?: string };
   onClose: () => void;
   onNavigateToScreen?: (screenPath: string) => void;
 }
@@ -54,6 +57,7 @@ interface ScreenDetailViewProps {
 export function ScreenDetailView({
   screen,
   flows,
+  projectData,
   onClose,
   onNavigateToScreen,
 }: ScreenDetailViewProps) {
@@ -167,10 +171,14 @@ export function ScreenDetailView({
             )}
           </div>
 
-          {/* Right Side: Live Preview */}
+          {/* Right Side: Echte Screens der angebundenen App (Live) oder Fallback */}
           <div className={styles.preview}>
-            {screen.screenshotUrl ? (
-              // Show screenshot if available
+            {projectData?.deployed_url ? (
+              <ScreenshotPreview
+                projectData={projectData}
+                screen={{ id: screen.id, name: screen.name, path: screen.path }}
+              />
+            ) : screen.screenshotUrl ? (
               <div className={styles.screenshotWrap}>
                 <img
                   src={screen.screenshotUrl}
@@ -179,7 +187,7 @@ export function ScreenDetailView({
                 />
                 <div className={styles.screenshotMeta}>
                   <Eye className={styles.navIcon} />
-                  <span>Screenshot from deployed URL</span>
+                  <span>Screenshot from scan</span>
                   {screen.lastScreenshotCommit && (
                     <span className={styles.commitSha}>
                       @ {screen.lastScreenshotCommit.slice(0, 7)}
@@ -193,8 +201,10 @@ export function ScreenDetailView({
               <div className={styles.emptyPreview}>
                 <div className={styles.emptyContent}>
                   <Code className={styles.emptyIcon} />
-                  <h3 className={styles.emptyTitle}>No Preview Available</h3>
-                  <p className={styles.emptyText}>Add a deployed_url to capture screenshots</p>
+                  <h3 className={styles.emptyTitle}>Keine Vorschau</h3>
+                  <p className={styles.emptyText}>
+                    Deployed URL im Projekt setzen, um echte Screens der App zu sehen
+                  </p>
                 </div>
               </div>
             )}
