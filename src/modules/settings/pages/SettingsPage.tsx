@@ -12,6 +12,7 @@ import {
   Database,
   Github,
   Info,
+  Link2,
   Loader2,
   RefreshCw,
   User,
@@ -39,10 +40,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../../components/ui/dialog";
+import { IntegrationsPanel } from "../../../components/IntegrationsPanel";
 import { projectId as supabaseProjectId, supabaseUrl } from "../../../utils/supabase/info";
 import styles from "../styles/SettingsPage.module.css";
 
-type SettingsTab = "profile" | "connections" | "project";
+type SettingsTab = "profile" | "connections" | "project" | "integrations";
 
 interface SettingsPageProps {
   project: Project | null;
@@ -204,6 +206,7 @@ export function SettingsPage({ project }: SettingsPageProps) {
   ];
   if (project) {
     tabs.push({ key: "project", label: "Projekt", icon: Database });
+    tabs.push({ key: "integrations", label: "Projekt-Anbindungen", icon: Link2 });
   }
 
   return (
@@ -438,6 +441,16 @@ export function SettingsPage({ project }: SettingsPageProps) {
               )}
             </div>
           </div>
+        </section>
+      )}
+
+      {activeTab === "integrations" && project && (
+        <section className={styles.section} role="tabpanel">
+          <h2 className={styles.sectionTitle}>Projekt-Anbindungen</h2>
+          <p className={styles.caption}>
+            GitHub-Repo und Supabase für dieses Projekt verbinden (für Scan, Preview, Daten).
+          </p>
+          <IntegrationsPanel projectId={project.id} />
         </section>
       )}
 

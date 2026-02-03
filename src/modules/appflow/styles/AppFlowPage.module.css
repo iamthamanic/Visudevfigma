@@ -170,12 +170,22 @@
   min-height: 0;
 }
 
-.tabsPanel {
+.sitemapFlowPanel {
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   min-width: 0;
-  overflow: hidden;
+  overflow: auto;
+}
+
+.sitemapSection {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.flowGraphSection {
+  flex-shrink: 0;
+  min-height: 200px;
 }
 
 .liveAppPanel {

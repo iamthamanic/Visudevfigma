@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import clsx from "clsx";
 import { AlertCircle, Download, Loader2, Play, RefreshCw, Square } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
 import { SitemapFlowView } from "../../../components/SitemapFlowView";
-import { IntegrationsPanel } from "../../../components/IntegrationsPanel";
 import { FlowGraphView } from "../components/FlowGraphView";
 import styles from "../styles/AppFlowPage.module.css";
 
@@ -22,8 +20,6 @@ interface AppFlowPageProps {
   githubBranch?: string;
 }
 
-type AppFlowTab = "sitemap" | "integrations" | "flowgraph";
-
 const PREVIEW_POLL_INTERVAL_MS = 2500;
 const AUTO_PREVIEW_DELAY_MS = 800;
 
@@ -38,7 +34,6 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     stopPreview,
   } = useVisudev();
   const [isRescan, setIsRescan] = useState(false);
-  const [activeTab, setActiveTab] = useState<AppFlowTab>("sitemap");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoPreviewDoneRef = useRef(false);
 
@@ -252,57 +247,10 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
         )}
       </div>
 
-      <div className={styles.tabRow}>
-        <button
-          type="button"
-          onClick={() => setActiveTab("sitemap")}
-          className={clsx(styles.tab, activeTab === "sitemap" && styles.tabActive)}
-          aria-pressed={activeTab === "sitemap"}
-          aria-label="Sitemap-Ansicht"
-        >
-          Sitemap
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("integrations")}
-          className={clsx(styles.tab, activeTab === "integrations" && styles.tabActive)}
-          aria-pressed={activeTab === "integrations"}
-          aria-label="Integrations-Ansicht"
-        >
-          Integrations
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("flowgraph")}
-          className={clsx(styles.tab, activeTab === "flowgraph" && styles.tabActive)}
-          aria-pressed={activeTab === "flowgraph"}
-          aria-label="Flow-Graph-Ansicht"
-        >
-          Flow Graph
-        </button>
-      </div>
-
       <div className={styles.content}>
         <div className={styles.liveAppSplit}>
-          <div className={styles.tabsPanel}>
-            {activeTab === "integrations" ? (
-              <div className={styles.tabPanel}>
-                <IntegrationsPanel projectId={projectId} />
-              </div>
-            ) : activeTab === "flowgraph" ? (
-              <div className={styles.tabPanel}>
-                {hasData ? (
-                  <FlowGraphView screens={activeProject.screens} flows={activeProject.flows} />
-                ) : (
-                  <div className={styles.centerState}>
-                    <p className={styles.emptyTitle}>Keine Daten für Flow Graph</p>
-                    <p className={styles.emptyHint}>
-                      Sitemap und Flow Graph werden aus dem Repo gebaut.
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : isScanning && !hasData ? (
+          <div className={styles.sitemapFlowPanel}>
+            {isScanning && !hasData ? (
               <div className={styles.centerState}>
                 <div className={styles.emptyCard}>
                   <Loader2 className={`${styles.emptyIcon} ${styles.spinner}`} aria-hidden="true" />
@@ -310,16 +258,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                   <p className={styles.emptyHint}>Sitemap und Flow Graph werden gebaut.</p>
                 </div>
               </div>
-            ) : hasData ? (
-              <SitemapFlowView
-                screens={activeProject.screens}
-                flows={activeProject.flows}
-                projectData={{
-                  id: activeProject.id,
-                  deployed_url: activeProject.deployed_url ?? preview.previewUrl ?? undefined,
-                }}
-              />
-            ) : (
+            ) : !hasData ? (
               <div className={styles.centerState}>
                 <div className={styles.emptyCard}>
                   <AlertCircle className={styles.emptyIcon} aria-hidden="true" />
@@ -338,6 +277,22 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                   </button>
                 </div>
               </div>
+            ) : (
+              <>
+                <div className={styles.sitemapSection}>
+                  <SitemapFlowView
+                    screens={activeProject.screens}
+                    flows={activeProject.flows}
+                    projectData={{
+                      id: activeProject.id,
+                      deployed_url: activeProject.deployed_url ?? preview.previewUrl ?? undefined,
+                    }}
+                  />
+                </div>
+                <div className={styles.flowGraphSection}>
+                  <FlowGraphView screens={activeProject.screens} flows={activeProject.flows} />
+                </div>
+              </>
             )}
           </div>
 

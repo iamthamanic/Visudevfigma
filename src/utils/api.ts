@@ -53,14 +53,27 @@ async function apiRequest<T>(
       },
     });
 
-    const result = await response.json();
+    const text = await response.text();
+    let result: { success?: boolean; error?: string; [key: string]: unknown };
+    try {
+      result = text ? (JSON.parse(text) as typeof result) : {};
+    } catch {
+      console.error(`API [${endpoint}]: response is not JSON`, text.slice(0, 150));
+      return {
+        success: false,
+        error:
+          response.ok === false
+            ? `Server error ${response.status}. Check that Edge Functions are deployed and reachable.`
+            : "Server returned invalid response (not JSON). Check network and Edge Function URL.",
+      };
+    }
 
     if (!response.ok) {
       console.error(`API Error [${endpoint}]:`, result.error || response.statusText);
-      return { success: false, error: result.error || response.statusText };
+      return { success: false, error: (result.error as string) || response.statusText };
     }
 
-    return result;
+    return { ...result, success: result.success !== false };
   } catch (error) {
     console.error(`Network Error [${endpoint}]:`, error);
     return { success: false, error: String(error) };

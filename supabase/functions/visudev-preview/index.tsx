@@ -102,20 +102,25 @@ app.post("/preview/start", async (c) => {
       }),
     });
 
+    const runnerText = await runnerRes.text();
     if (!runnerRes.ok) {
-      const errText = await runnerRes.text();
-      console.error("Runner start failed", runnerRes.status, errText);
+      console.error("Runner start failed", runnerRes.status, runnerText);
       return c.json(
         { success: false, error: `Runner error: ${runnerRes.status}` },
         502,
       );
     }
 
-    const runnerData = (await runnerRes.json()) as {
-      success?: boolean;
-      runId?: string;
-      status?: string;
-    };
+    let runnerData: { success?: boolean; runId?: string; status?: string };
+    try {
+      runnerData = JSON.parse(runnerText) as typeof runnerData;
+    } catch {
+      console.error("Runner returned invalid JSON", runnerText.slice(0, 200));
+      return c.json(
+        { success: false, error: "Preview Runner returned invalid response (not JSON). Is the Runner running and reachable?" },
+        502,
+      );
+    }
     const runId = runnerData.runId ?? "";
     const status = (runnerData.status as PreviewState["status"]) ?? "starting";
 
@@ -167,28 +172,32 @@ app.get("/preview/status", async (c) => {
         const statusRes = await fetch(
           `${runnerUrl.replace(/\/$/, "")}/status/${stored.runId}`,
         );
+        const statusText = await statusRes.text();
         if (statusRes.ok) {
-          const data = (await statusRes.json()) as {
-            status?: string;
-            previewUrl?: string;
-            error?: string;
-          };
-          const newStatus = (data.status as PreviewState["status"]) ?? stored.status;
-          const updated: PreviewState = {
-            ...stored,
-            status: newStatus,
-            previewUrl: data.previewUrl ?? stored.previewUrl,
-            error: data.error ?? stored.error,
-          };
-          await kvSet(`preview:${projectId}`, updated);
-          return c.json({
-            success: true,
-            status: updated.status,
-            previewUrl: updated.previewUrl,
-            error: updated.error,
-            startedAt: updated.startedAt,
-            expiresAt: updated.expiresAt,
-          });
+          let data: { status?: string; previewUrl?: string; error?: string } | null = null;
+          try {
+            data = JSON.parse(statusText) as NonNullable<typeof data>;
+          } catch {
+            console.error("Runner status returned invalid JSON", statusText.slice(0, 200));
+          }
+          if (data !== null) {
+            const newStatus = (data.status as PreviewState["status"]) ?? stored.status;
+            const updated: PreviewState = {
+              ...stored,
+              status: newStatus,
+              previewUrl: data.previewUrl ?? stored.previewUrl,
+              error: data.error ?? stored.error,
+            };
+            await kvSet(`preview:${projectId}`, updated);
+            return c.json({
+              success: true,
+              status: updated.status,
+              previewUrl: updated.previewUrl,
+              error: updated.error,
+              startedAt: updated.startedAt,
+              expiresAt: updated.expiresAt,
+            });
+          }
         }
       } catch (_e) {
         // keep stored state
