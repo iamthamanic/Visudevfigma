@@ -82,7 +82,7 @@ export function LogsPage({ projectId }: LogsPageProps) {
 
   const messageText = useCallback((entry: LogEntry): string => {
     if (typeof entry.message === "string") return entry.message;
-    const { id, timestamp, projectId: _pid, ...rest } = entry;
+    const { id, ...rest } = entry;
     return Object.keys(rest).length ? JSON.stringify(rest) : id;
   }, []);
 

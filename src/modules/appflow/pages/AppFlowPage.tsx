@@ -42,27 +42,17 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     }
   }, [activeProject, projectId, scanStatuses.appflow.status, handleRescan]);
 
-  if (!activeProject) {
-    return (
-      <div className={styles.centerState}>
-        <p className={styles.emptyTitle}>Kein Projekt ausgewählt</p>
-      </div>
-    );
-  }
-
-  const isScanning = scanStatuses.appflow.status === "running" || isRescan;
-  const hasError = scanStatuses.appflow.status === "failed";
-  const hasData = activeProject.screens.length > 0;
-
   const handleExportJson = useCallback(() => {
+    if (!activeProject) return;
     const data = {
       screens: activeProject.screens,
       flows: activeProject.flows,
     };
     downloadFile(JSON.stringify(data, null, 2), `appflow-${projectId}.json`, "application/json");
-  }, [activeProject.screens, activeProject.flows, projectId]);
+  }, [activeProject, projectId]);
 
   const handleExportMermaid = useCallback(() => {
+    if (!activeProject) return;
     const id = (s: string) => s.replace(/\s+/g, "_").replace(/-/g, "_") || "n";
     const lines: string[] = ["flowchart LR"];
     const seen = new Set<string>();
@@ -82,7 +72,19 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     });
     if (lines.length === 1) lines.push("  empty[Keine Flows]");
     downloadFile(lines.join("\n"), `appflow-${projectId}.md`, "text/markdown");
-  }, [activeProject.screens, activeProject.flows, projectId]);
+  }, [activeProject, projectId]);
+
+  if (!activeProject) {
+    return (
+      <div className={styles.centerState}>
+        <p className={styles.emptyTitle}>Kein Projekt ausgewählt</p>
+      </div>
+    );
+  }
+
+  const isScanning = scanStatuses.appflow.status === "running" || isRescan;
+  const hasError = scanStatuses.appflow.status === "failed";
+  const hasData = activeProject.screens.length > 0;
 
   return (
     <div className={styles.root}>
