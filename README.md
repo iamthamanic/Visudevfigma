@@ -16,7 +16,7 @@ Open the URL shown (e.g. http://localhost:3000). Sign in or create an account, c
 | Command           | Description                    |
 | ----------------- | ------------------------------ |
 | `npm run dev`     | Start dev server (Vite)        |
-| `npm run build`   | Production build              |
+| `npm run build`   | Production build               |
 | `npm run preview` | Preview production build       |
 | `npm run checks`  | Format, lint, typecheck, tests |
 | `npm run format`  | Prettier + Deno fmt            |

@@ -139,14 +139,14 @@ export function Sidebar({ activeScreen, onNavigate, onNewProject }: SidebarProps
               </button>
             </div>
           ) : (
-<button
-            type="button"
-            onClick={() => setAuthDialogOpen(true)}
-            className={styles.authSignIn}
-            aria-label="Anmelden"
-          >
-            Anmelden
-          </button>
+            <button
+              type="button"
+              onClick={() => setAuthDialogOpen(true)}
+              className={styles.authSignIn}
+              aria-label="Anmelden"
+            >
+              Anmelden
+            </button>
           )}
         </div>
       )}

@@ -63,7 +63,9 @@
   color: var(--color-primary);
   font-size: 0.75rem;
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 .copyButton:hover {

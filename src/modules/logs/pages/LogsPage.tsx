@@ -80,14 +80,11 @@ export function LogsPage({ projectId }: LogsPageProps) {
     }
   }, [autoScroll, filteredLogs.length]);
 
-  const messageText = useCallback(
-    (entry: LogEntry): string => {
-      if (typeof entry.message === "string") return entry.message;
-      const { id, timestamp, projectId: _pid, ...rest } = entry;
-      return Object.keys(rest).length ? JSON.stringify(rest) : id;
-    },
-    [],
-  );
+  const messageText = useCallback((entry: LogEntry): string => {
+    if (typeof entry.message === "string") return entry.message;
+    const { id, timestamp, projectId: _pid, ...rest } = entry;
+    return Object.keys(rest).length ? JSON.stringify(rest) : id;
+  }, []);
 
   return (
     <div className={styles.root}>
@@ -179,8 +176,7 @@ export function LogsPage({ projectId }: LogsPageProps) {
           <div className={styles.list}>
             {filteredLogs.map((entry) => {
               const level = getLevel(entry);
-              const levelClass =
-                styles[`level${level}` as keyof typeof styles] ?? styles.levelINFO;
+              const levelClass = styles[`level${level}` as keyof typeof styles] ?? styles.levelINFO;
               return (
                 <div key={entry.id} className={styles.logRow}>
                   <span className={styles.logTime}>

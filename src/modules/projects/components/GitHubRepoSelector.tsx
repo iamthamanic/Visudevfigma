@@ -241,9 +241,7 @@ export function GitHubRepoSelector({
                     </div>
                     {filteredRepos.length === 0 ? (
                       <div className={styles.repoSearchEmpty}>
-                        {repoSearchQuery.trim()
-                          ? "Keine Treffer"
-                          : "Keine Repositories"}
+                        {repoSearchQuery.trim() ? "Keine Treffer" : "Keine Repositories"}
                       </div>
                     ) : (
                       filteredRepos.map((r) => (

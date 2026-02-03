@@ -359,7 +359,10 @@ export function SettingsPage({ project }: SettingsPageProps) {
           <h3 className={styles.sectionTitle}>
             <Database className={styles.inlineIcon} aria-hidden="true" />
             Supabase
-            <Tooltip content="Konfiguration über Supabase Dashboard" aria-label="Konfiguration über Supabase Dashboard">
+            <Tooltip
+              content="Konfiguration über Supabase Dashboard"
+              aria-label="Konfiguration über Supabase Dashboard"
+            >
               <Info className={styles.inlineIcon} aria-hidden="true" size={16} />
             </Tooltip>
           </h3>
@@ -395,9 +398,7 @@ export function SettingsPage({ project }: SettingsPageProps) {
               </div>
               <div>
                 <div className={styles.infoLabel}>DB/Edge-Status</div>
-                <div className={styles.statusText}>
-                  {supabaseConnected ? "Aktiv" : "Inaktiv"}
-                </div>
+                <div className={styles.statusText}>{supabaseConnected ? "Aktiv" : "Inaktiv"}</div>
               </div>
             </div>
             <div className={styles.splitRow}>

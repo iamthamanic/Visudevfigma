@@ -17,7 +17,8 @@ interface DataPageProps {
 
 function getTables(erd: Record<string, unknown> | null): ERDTableNode[] {
   if (!erd) return [];
-  const nodes = (erd.nodes as ERDTableNode[] | undefined) ?? (erd.tables as ERDTableNode[] | undefined);
+  const nodes =
+    (erd.nodes as ERDTableNode[] | undefined) ?? (erd.tables as ERDTableNode[] | undefined);
   return Array.isArray(nodes) ? nodes : [];
 }
 
@@ -118,7 +119,10 @@ export function DataPage({ projectId }: DataPageProps) {
         ) : erdError ? (
           <div className={styles.centerState}>
             <div className={styles.emptyCard}>
-              <AlertCircle className={clsx(styles.emptyIcon, styles.errorIcon)} aria-hidden="true" />
+              <AlertCircle
+                className={clsx(styles.emptyIcon, styles.errorIcon)}
+                aria-hidden="true"
+              />
               <p className={styles.emptyTitle}>{erdError}</p>
             </div>
           </div>
@@ -150,9 +154,7 @@ export function DataPage({ projectId }: DataPageProps) {
                 >
                   <span className={styles.tableBoxTitle}>{tableName(node)}</span>
                   {node.columns && (
-                    <span className={styles.tableBoxMeta}>
-                      {node.columns.length} Spalte(n)
-                    </span>
+                    <span className={styles.tableBoxMeta}>{node.columns.length} Spalte(n)</span>
                   )}
                 </button>
               ))}
@@ -200,12 +202,8 @@ export function DataPage({ projectId }: DataPageProps) {
                           {selectedTable.columns.map((col, i) => (
                             <li key={i} className={styles.columnRow}>
                               <code className={styles.columnName}>{col.name}</code>
-                              {col.type && (
-                                <span className={styles.columnType}>{col.type}</span>
-                              )}
-                              {col.nullable && (
-                                <span className={styles.columnMeta}>nullable</span>
-                              )}
+                              {col.type && <span className={styles.columnType}>{col.type}</span>}
+                              {col.nullable && <span className={styles.columnMeta}>nullable</span>}
                             </li>
                           ))}
                         </ul>
@@ -227,11 +225,14 @@ export function DataPage({ projectId }: DataPageProps) {
                   )}
                   {detailTab === "sample" && (
                     <div className={styles.tabContent}>
-                      {selectedTable.sample != null && Array.isArray(selectedTable.sample) && selectedTable.sample.length > 0 ? (
+                      {selectedTable.sample != null &&
+                      Array.isArray(selectedTable.sample) &&
+                      selectedTable.sample.length > 0 ? (
                         <pre className={styles.jsonBlock}>
                           {JSON.stringify(selectedTable.sample.slice(0, 5), null, 2)}
                         </pre>
-                      ) : selectedTable.sample != null && typeof selectedTable.sample === "object" ? (
+                      ) : selectedTable.sample != null &&
+                        typeof selectedTable.sample === "object" ? (
                         <pre className={styles.jsonBlock}>
                           {JSON.stringify(selectedTable.sample, null, 2)}
                         </pre>

@@ -70,7 +70,9 @@
   gap: 0.5rem;
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 }
 
 .secondaryButton:hover {
@@ -176,9 +178,15 @@
   border-bottom: none;
 }
 
-.severityError { color: var(--color-danger); }
-.severityWarn { color: var(--color-warning); }
-.severityInfo { color: var(--color-info); }
+.severityError {
+  color: var(--color-danger);
+}
+.severityWarn {
+  color: var(--color-warning);
+}
+.severityInfo {
+  color: var(--color-info);
+}
 
 /* Zyklen-Panel (cycles[]) */
 .cyclesPanel {

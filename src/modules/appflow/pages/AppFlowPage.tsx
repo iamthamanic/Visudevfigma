@@ -59,11 +59,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
       screens: activeProject.screens,
       flows: activeProject.flows,
     };
-    downloadFile(
-      JSON.stringify(data, null, 2),
-      `appflow-${projectId}.json`,
-      "application/json",
-    );
+    downloadFile(JSON.stringify(data, null, 2), `appflow-${projectId}.json`, "application/json");
   }, [activeProject.screens, activeProject.flows, projectId]);
 
   const handleExportMermaid = useCallback(() => {
@@ -126,7 +122,10 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
             >
               {isScanning ? (
                 <>
-                  <Loader2 className={`${styles.inlineIcon} ${styles.spinner}`} aria-hidden="true" />
+                  <Loader2
+                    className={`${styles.inlineIcon} ${styles.spinner}`}
+                    aria-hidden="true"
+                  />
                   Analysiere...
                 </>
               ) : (

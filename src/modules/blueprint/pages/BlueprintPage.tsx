@@ -32,7 +32,8 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
       setBlueprint(res.data as BlueprintData);
     } else {
       setBlueprint(null);
-      if (!res.success) setBlueprintLoadError(res.error ?? "Blueprint konnte nicht geladen werden.");
+      if (!res.success)
+        setBlueprintLoadError(res.error ?? "Blueprint konnte nicht geladen werden.");
     }
   }, [projectId]);
 
@@ -59,7 +60,9 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
 
   const isScanning = scanStatuses.blueprint.status === "running" || isRescan;
   const hasError = scanStatuses.blueprint.status === "failed";
-  const violations: RuleViolation[] = Array.isArray(blueprint?.violations) ? blueprint.violations : [];
+  const violations: RuleViolation[] = Array.isArray(blueprint?.violations)
+    ? blueprint.violations
+    : [];
   const cycles: BlueprintCycle[] = Array.isArray(blueprint?.cycles) ? blueprint.cycles : [];
 
   function severityClass(severity: RuleViolation["severity"]) {
@@ -70,11 +73,7 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
 
   const handleExportJson = useCallback(() => {
     const data = blueprint ?? {};
-    downloadFile(
-      JSON.stringify(data, null, 2),
-      `blueprint-${projectId}.json`,
-      "application/json",
-    );
+    downloadFile(JSON.stringify(data, null, 2), `blueprint-${projectId}.json`, "application/json");
   }, [blueprint, projectId]);
 
   const handleExportMermaid = useCallback(() => {
@@ -126,7 +125,10 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
             >
               {isScanning ? (
                 <>
-                  <Loader2 className={`${styles.inlineIcon} ${styles.spinner}`} aria-hidden="true" />
+                  <Loader2
+                    className={`${styles.inlineIcon} ${styles.spinner}`}
+                    aria-hidden="true"
+                  />
                   Analysiere...
                 </>
               ) : (
@@ -193,10 +195,16 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
                 <tbody>
                   {violations.map((v, i) => (
                     <tr key={`${v.ruleId}-${v.source}-${i}`}>
-                      <td><code>{v.ruleId}</code></td>
+                      <td>
+                        <code>{v.ruleId}</code>
+                      </td>
                       <td className={severityClass(v.severity)}>{v.severity}</td>
-                      <td><code>{v.source}</code></td>
-                      <td><code>{v.target ?? "—"}</code></td>
+                      <td>
+                        <code>{v.source}</code>
+                      </td>
+                      <td>
+                        <code>{v.target ?? "—"}</code>
+                      </td>
                       <td>{v.message}</td>
                     </tr>
                   ))}
@@ -219,9 +227,7 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
                 {cycles.map((c, i) => (
                   <li key={i} className={styles.cycleItem}>
                     {c.message && <div>{c.message}</div>}
-                    <div className={styles.cycleNodes}>
-                      {c.nodes.join(" → ")}
-                    </div>
+                    <div className={styles.cycleNodes}>{c.nodes.join(" → ")}</div>
                   </li>
                 ))}
               </ul>

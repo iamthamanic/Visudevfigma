@@ -87,9 +87,7 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
     if (layerFilter) {
       list = list.filter((s) => {
         const screenFlowIds = s.flows ?? [];
-        const hasType = flows.some(
-          (f) => f.type === layerFilter && screenFlowIds.includes(f.id),
-        );
+        const hasType = flows.some((f) => f.type === layerFilter && screenFlowIds.includes(f.id));
         return hasType;
       });
     }
@@ -405,21 +403,30 @@ export function SitemapFlowView({ screens, flows, framework }: SitemapFlowViewPr
             <button
               type="button"
               onClick={() => setLayerFilter("ui-event")}
-              className={clsx(styles.filterBtn, layerFilter === "ui-event" && styles.filterBtnActive)}
+              className={clsx(
+                styles.filterBtn,
+                layerFilter === "ui-event" && styles.filterBtnActive,
+              )}
             >
               UI
             </button>
             <button
               type="button"
               onClick={() => setLayerFilter("api-call")}
-              className={clsx(styles.filterBtn, layerFilter === "api-call" && styles.filterBtnActive)}
+              className={clsx(
+                styles.filterBtn,
+                layerFilter === "api-call" && styles.filterBtnActive,
+              )}
             >
               API
             </button>
             <button
               type="button"
               onClick={() => setLayerFilter("db-query")}
-              className={clsx(styles.filterBtn, layerFilter === "db-query" && styles.filterBtnActive)}
+              className={clsx(
+                styles.filterBtn,
+                layerFilter === "db-query" && styles.filterBtnActive,
+              )}
             >
               DB
             </button>

@@ -213,21 +213,19 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
 
       <div className={styles.content}>
         <div className={styles.grid}>
-          {projectsLoading ? (
-            Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={`skeleton-${i}`} className={styles.skeletonCard} />
-            ))
-          ) : (
-            filteredProjects.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              onClick={() => handleProjectClick(project)}
-              onEdit={() => handleEditClick(project)}
-              onDelete={() => handleDeleteProject(project.id)}
-            />
-          ))
-          )}
+          {projectsLoading
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={`skeleton-${i}`} className={styles.skeletonCard} />
+              ))
+            : filteredProjects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  onClick={() => handleProjectClick(project)}
+                  onEdit={() => handleEditClick(project)}
+                  onDelete={() => handleDeleteProject(project.id)}
+                />
+              ))}
         </div>
 
         {!projectsLoading && filteredProjects.length === 0 && (
@@ -414,7 +412,10 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
                   <Button onClick={handleCreateProject} disabled={isLoading}>
                     {isLoading ? (
                       <>
-                        <Loader2 className={clsx(styles.inlineIcon, styles.spinner)} aria-hidden="true" />
+                        <Loader2
+                          className={clsx(styles.inlineIcon, styles.spinner)}
+                          aria-hidden="true"
+                        />
                         Wird erstellt…
                       </>
                     ) : (
@@ -487,7 +488,10 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
                 <Button onClick={handleUpdateProject} disabled={isLoading}>
                   {isLoading ? (
                     <>
-                      <Loader2 className={clsx(styles.inlineIcon, styles.spinner)} aria-hidden="true" />
+                      <Loader2
+                        className={clsx(styles.inlineIcon, styles.spinner)}
+                        aria-hidden="true"
+                      />
                       Wird gespeichert…
                     </>
                   ) : (

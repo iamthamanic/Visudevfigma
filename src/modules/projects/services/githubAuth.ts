@@ -130,10 +130,11 @@ export async function disconnectGitHub(accessToken: string): Promise<void> {
   if (!accessToken || accessToken.trim() === "") {
     throw new Error("Please sign in first");
   }
-  const result = await requestVisudevAuth<{ success: boolean; data?: { disconnected: boolean }>>(
-    "/github",
-    { method: "DELETE", accessToken },
-  );
+  type DisconnectResult = { success: boolean; data?: { disconnected: boolean } };
+  const result = await requestVisudevAuth<DisconnectResult>("/github", {
+    method: "DELETE",
+    accessToken,
+  });
   if (!result.success) {
     throw new Error("Failed to disconnect GitHub");
   }
