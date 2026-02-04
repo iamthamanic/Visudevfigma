@@ -91,6 +91,8 @@ export function LiveFlowCanvas({ screens, flows, previewUrl, previewError }: Liv
   const canvasRef = useRef<HTMLDivElement>(null);
   const terminalScrollRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<HTMLDivElement>(null);
+  const nodesLayerRef = useRef<HTMLDivElement>(null);
+  const progressTrackRef = useRef<HTMLDivElement>(null);
   const pathRefs = useRef<Map<string, SVGPathElement>>(new Map());
   const animFrameRef = useRef<number | null>(null);
   const iframeToScreenRef = useRef<Map<Window, string>>(new Map());
@@ -248,7 +250,9 @@ export function LiveFlowCanvas({ screens, flows, previewUrl, previewError }: Liv
 
   useEffect(() => {
     if (!graphRef.current) return;
-    graphRef.current.style.transform = `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`;
+    graphRef.current.style.setProperty("--graph-translate-x", `${pan.x}px`);
+    graphRef.current.style.setProperty("--graph-translate-y", `${pan.y}px`);
+    graphRef.current.style.setProperty("--graph-scale", String(zoom));
   }, [pan, zoom]);
 
   useEffect(() => {
@@ -256,6 +260,29 @@ export function LiveFlowCanvas({ screens, flows, previewUrl, previewError }: Liv
       terminalScrollRef.current.scrollTop = terminalScrollRef.current.scrollHeight;
     }
   }, [showTerminal, loadLogs]);
+
+  const maxX = screens.length
+    ? Math.max(...Array.from(positions.values()).map((p) => p.x), 0) + NODE_WIDTH + 80
+    : 0;
+  const maxY = screens.length
+    ? Math.max(...Array.from(positions.values()).map((p) => p.y), 0) + NODE_HEIGHT + 80
+    : 0;
+
+  const screensWithUrl = screens.filter((s) => normalizePreviewUrl(previewUrl, s.path || "/"));
+  const totalWithUrl = screensWithUrl.length;
+  const loadedCount = screensWithUrl.filter((s) => screenLoadState[s.id] === "loaded").length;
+  const progressPercent = totalWithUrl > 0 ? Math.round((loadedCount / totalWithUrl) * 100) : 100;
+
+  useEffect(() => {
+    if (!nodesLayerRef.current) return;
+    nodesLayerRef.current.style.setProperty("--nodes-layer-width", `${maxX}px`);
+    nodesLayerRef.current.style.setProperty("--nodes-layer-height", `${maxY}px`);
+  }, [maxX, maxY]);
+
+  useEffect(() => {
+    if (!progressTrackRef.current) return;
+    progressTrackRef.current.style.setProperty("--progress-percent", `${progressPercent}%`);
+  }, [progressPercent]);
 
   const runEdgeAnimation = useCallback((edge: GraphEdge) => {
     const key = `${edge.fromId}-${edge.toId}`;
@@ -355,14 +382,7 @@ export function LiveFlowCanvas({ screens, flows, previewUrl, previewError }: Liv
     );
   }
 
-  const maxX = Math.max(...Array.from(positions.values()).map((p) => p.x), 0) + NODE_WIDTH + 80;
-  const maxY = Math.max(...Array.from(positions.values()).map((p) => p.y), 0) + NODE_HEIGHT + 80;
-
-  const screensWithUrl = screens.filter((s) => normalizePreviewUrl(previewUrl, s.path || "/"));
-  const totalWithUrl = screensWithUrl.length;
-  const loadedCount = screensWithUrl.filter((s) => screenLoadState[s.id] === "loaded").length;
   const loadingCount = screensWithUrl.filter((s) => screenLoadState[s.id] === "loading").length;
-  const progressPercent = totalWithUrl > 0 ? Math.round((loadedCount / totalWithUrl) * 100) : 100;
   const showProgress = totalWithUrl > 0 && (loadingCount > 0 || loadedCount < totalWithUrl);
 
   return (
@@ -370,8 +390,8 @@ export function LiveFlowCanvas({ screens, flows, previewUrl, previewError }: Liv
       <div className={styles.controls}>
         {showProgress && (
           <div className={styles.progressWrap} role="status" aria-live="polite">
-            <div className={styles.progressBarTrack}>
-              <div className={styles.progressBarFill} style={{ width: `${progressPercent}%` }} />
+            <div className={styles.progressBarTrack} ref={progressTrackRef}>
+              <div className={styles.progressBarFill} />
             </div>
             <span className={styles.progressText}>
               Screens: {loadedCount}/{totalWithUrl} ({progressPercent} %)
@@ -532,15 +552,7 @@ export function LiveFlowCanvas({ screens, flows, previewUrl, previewError }: Liv
           </svg>
 
           {/* Node layer: iframes */}
-          <div
-            className={styles.nodesLayer}
-            ref={(el) => {
-              if (el) {
-                el.style.width = `${maxX}px`;
-                el.style.height = `${maxY}px`;
-              }
-            }}
-          >
+          <div className={styles.nodesLayer} ref={nodesLayerRef}>
             {screens.map((screen) => {
               const pos = positions.get(screen.id);
               if (!pos) return null;
@@ -551,10 +563,10 @@ export function LiveFlowCanvas({ screens, flows, previewUrl, previewError }: Liv
                   className={styles.nodeCard}
                   ref={(el) => {
                     if (el) {
-                      el.style.left = `${pos.x}px`;
-                      el.style.top = `${pos.y}px`;
-                      el.style.width = `${NODE_WIDTH}px`;
-                      el.style.height = `${NODE_HEIGHT}px`;
+                      el.style.setProperty("--node-left", `${pos.x}px`);
+                      el.style.setProperty("--node-top", `${pos.y}px`);
+                      el.style.setProperty("--node-width", `${NODE_WIDTH}px`);
+                      el.style.setProperty("--node-height", `${NODE_HEIGHT}px`);
                     }
                   }}
                 >

@@ -69,6 +69,12 @@
   --color-flow-function-soft: rgba(139, 92, 246, 0.15);
 
   --color-overlay: rgba(0, 0, 0, 0.8);
+  --color-overlay-muted: rgba(0, 0, 0, 0.6);
+
+  --color-terminal-bg: #0d1117;
+  --color-terminal-header: #161b22;
+  --color-terminal-text: #8b949e;
+  --color-terminal-time: #6e7681;
 
   --shadow-1: 0 2px 4px rgba(0, 0, 0, 0.4);
   --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.5);

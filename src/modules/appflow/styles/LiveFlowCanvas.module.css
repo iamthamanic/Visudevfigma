@@ -33,6 +33,7 @@
   background-color: var(--color-primary);
   border-radius: var(--radius-sm);
   height: 100%;
+  width: var(--progress-percent, 0%);
   transition: width 0.3s ease;
 }
 
@@ -43,7 +44,7 @@
 }
 
 .terminalPanel {
-  background-color: #0d1117;
+  background-color: var(--color-terminal-bg);
   border-bottom: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
@@ -53,7 +54,7 @@
 
 .terminalHeader {
   align-items: center;
-  background-color: #161b22;
+  background-color: var(--color-terminal-header);
   border-bottom: 1px solid var(--color-border);
   color: var(--color-muted-foreground);
   display: flex;
@@ -77,23 +78,23 @@
 }
 
 .terminalLine {
-  color: #8b949e;
+  color: var(--color-terminal-text);
   line-height: 1.5;
   word-break: break-all;
   white-space: pre-wrap;
 }
 
 .terminalTime {
-  color: #6e7681;
+  color: var(--color-terminal-time);
   margin-right: 0.5rem;
 }
 
 .terminalLineSuccess {
-  color: #3fb950;
+  color: var(--color-success);
 }
 
 .terminalLineError {
-  color: #f85149;
+  color: var(--color-danger);
 }
 
 .zoomBtn {
@@ -154,6 +155,8 @@
 
 .graph {
   position: relative;
+  transform: translate(var(--graph-translate-x, 0), var(--graph-translate-y, 0))
+    scale(var(--graph-scale, 1));
   transform-origin: 0 0;
   will-change: transform;
 }
@@ -215,11 +218,17 @@
   position: absolute;
   left: 0;
   top: 0;
+  width: var(--nodes-layer-width, 100%);
+  height: var(--nodes-layer-height, 100%);
   pointer-events: none;
 }
 
 .nodeCard {
   position: absolute;
+  left: var(--node-left, 0);
+  top: var(--node-top, 0);
+  width: var(--node-width, 320px);
+  height: var(--node-height, 240px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -299,7 +308,7 @@
   padding: 0.2rem 0.35rem;
   position: absolute;
   right: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: var(--color-overlay-muted);
   color: var(--color-muted-foreground);
   pointer-events: none;
 }
