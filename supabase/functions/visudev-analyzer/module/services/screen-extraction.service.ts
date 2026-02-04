@@ -1,6 +1,23 @@
 import type { FileContent, Screen } from "../dto/index.ts";
+import {
+  extractNavigationFromAst,
+  extractReactRouterRoutesFromAst,
+} from "./ast-navigation.service.ts";
 
 export class ScreenExtractionService {
+  /** Use AST first for navigatesTo; fallback to regex on parse error or empty result. */
+  private getNavigationLinks(content: string, filePath: string): string[] {
+    try {
+      const astResult = extractNavigationFromAst(content, filePath);
+      if (astResult && astResult.navigatesTo.length > 0) {
+        return astResult.navigatesTo;
+      }
+    } catch {
+      // fallback to regex
+    }
+    return this.extractNavigationLinks(content);
+  }
+
   public extractNextJsAppRouterScreens(files: FileContent[]): Screen[] {
     const screens: Screen[] = [];
 
@@ -19,7 +36,7 @@ export class ScreenExtractionService {
           filePath: file.path,
           type: "page",
           flows: [],
-          navigatesTo: this.extractNavigationLinks(file.content),
+          navigatesTo: this.getNavigationLinks(file.content, file.path),
           framework: "nextjs-app-router",
           componentCode: file.content,
         });
@@ -56,7 +73,7 @@ export class ScreenExtractionService {
           filePath: file.path,
           type: "page",
           flows: [],
-          navigatesTo: this.extractNavigationLinks(file.content),
+          navigatesTo: this.getNavigationLinks(file.content, file.path),
           framework: "nextjs-pages-router",
           componentCode: file.content,
         });
@@ -70,6 +87,23 @@ export class ScreenExtractionService {
     const screens: Screen[] = [];
 
     files.forEach((file) => {
+      const astRoutes = extractReactRouterRoutesFromAst(file.content);
+      if (astRoutes && astRoutes.length > 0) {
+        astRoutes.forEach(({ path: routePath, componentName }) => {
+          screens.push({
+            id: `screen:${componentName}:${routePath}`,
+            name: componentName,
+            path: routePath,
+            filePath: file.path,
+            type: "page",
+            flows: [],
+            navigatesTo: this.getNavigationLinks(file.content, file.path),
+            framework: "react-router",
+          });
+        });
+        return;
+      }
+
       const routeRegex = /<Route\s+path=["']([^"']+)["']\s+element=\{<(\w+)/g;
       let match: RegExpExecArray | null;
 
@@ -84,7 +118,7 @@ export class ScreenExtractionService {
           filePath: file.path,
           type: "page",
           flows: [],
-          navigatesTo: this.extractNavigationLinks(file.content),
+          navigatesTo: this.getNavigationLinks(file.content, file.path),
           framework: "react-router",
         });
       }
@@ -102,7 +136,7 @@ export class ScreenExtractionService {
             filePath: file.path,
             type: "page",
             flows: [],
-            navigatesTo: this.extractNavigationLinks(file.content),
+            navigatesTo: this.getNavigationLinks(file.content, file.path),
             framework: "react-router",
           });
         }
@@ -139,7 +173,7 @@ export class ScreenExtractionService {
           filePath: file.path,
           type: "page",
           flows: [],
-          navigatesTo: this.extractNavigationLinks(file.content),
+          navigatesTo: this.getNavigationLinks(file.content, file.path),
           framework: "nuxt",
           componentCode: file.content,
         });
@@ -171,7 +205,7 @@ export class ScreenExtractionService {
           filePath: file.path,
           type: "screen",
           flows: [],
-          navigatesTo: this.extractNavigationLinks(file.content),
+          navigatesTo: this.getNavigationLinks(file.content, file.path),
           framework: "heuristic",
           componentCode: file.content,
         });
@@ -196,7 +230,7 @@ export class ScreenExtractionService {
             filePath: file.path,
             type: "screen",
             flows: [],
-            navigatesTo: this.extractNavigationLinks(file.content),
+            navigatesTo: this.getNavigationLinks(file.content, file.path),
             framework: "heuristic",
             componentCode: file.content,
           });

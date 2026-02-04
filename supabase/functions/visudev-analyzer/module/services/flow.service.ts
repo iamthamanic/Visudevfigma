@@ -1,30 +1,58 @@
 import type { CodeFlow, Screen } from "../dto/index.ts";
+import {
+  extractCallGraphFromAst,
+  extractUiEventsFromAst,
+} from "./ast-navigation.service.ts";
+
+const JSX_EXT = /\.(tsx|jsx)$/i;
+const SCRIPT_EXT = /\.(tsx?|jsx?)$/i;
 
 export class FlowService {
   public analyzeFile(filePath: string, content: string): CodeFlow[] {
     const flows: CodeFlow[] = [];
     const lines = content.split("\n");
 
+    const useAstForUiEvents = JSX_EXT.test(filePath);
+    let astUiEvents: CodeFlow[] | null = null;
+    if (useAstForUiEvents) {
+      try {
+        astUiEvents = extractUiEventsFromAst(content, filePath);
+      } catch {
+        astUiEvents = null;
+      }
+    }
+
+    let callGraphByFlowId: Record<string, string[]> | null = null;
+    if (SCRIPT_EXT.test(filePath)) {
+      try {
+        callGraphByFlowId = extractCallGraphFromAst(content, filePath);
+      } catch {
+        callGraphByFlowId = null;
+      }
+    }
+
     lines.forEach((line, index) => {
       const lineNum = index + 1;
       const trimmed = line.trim();
 
-      const eventHandlerRegex =
-        /\b(onClick|onSubmit|onChange|onKeyPress|onFocus|onBlur|onPress|onTouchStart)\s*=\s*\{([^}]+)\}/g;
-      let match: RegExpExecArray | null;
+      if (!astUiEvents) {
+        const eventHandlerRegex =
+          /\b(onClick|onSubmit|onChange|onKeyPress|onFocus|onBlur|onPress|onTouchStart)\s*=\s*\{([^}]+)\}/g;
+        let match: RegExpExecArray | null;
 
-      while ((match = eventHandlerRegex.exec(line)) !== null) {
-        const eventType = match[1];
-        flows.push({
-          id: `${filePath}:${lineNum}:event:${eventType}`,
-          type: "ui-event",
-          name: `${eventType}`,
-          file: filePath,
-          line: lineNum,
-          code: trimmed,
-          calls: [],
-          color: "#03ffa3",
-        });
+        while ((match = eventHandlerRegex.exec(line)) !== null) {
+          const eventType = match[1];
+          flows.push({
+            id: `${filePath}:${lineNum}:event:${eventType}`,
+            type: "ui-event",
+            name: `${eventType}`,
+            file: filePath,
+            line: lineNum,
+            code: trimmed,
+            calls: [],
+            color: "#03ffa3",
+          });
+        }
       }
 
       const funcRegex = /(const|function)\s+(handle\w+|on\w+)\s*=?\s*(?:async\s*)?\(/;
@@ -114,6 +142,18 @@ export class FlowService {
         }
       }
     });
+
+    if (astUiEvents && astUiEvents.length > 0) {
+      flows.push(...astUiEvents);
+    }
+
+    if (callGraphByFlowId) {
+      for (const flow of flows) {
+        if (flow.type === "function-call" && callGraphByFlowId[flow.id]) {
+          flow.calls = callGraphByFlowId[flow.id];
+        }
+      }
+    }
 
     return flows;
   }

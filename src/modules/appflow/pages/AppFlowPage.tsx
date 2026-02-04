@@ -33,6 +33,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     startPreview,
     refreshPreviewStatus,
     stopPreview,
+    refreshPreview,
   } = useVisudev();
   const [isRescan, setIsRescan] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -253,6 +254,15 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
             <div className={styles.liveAppBar}>
               <span className={styles.liveAppLabel}>Live App Flow</span>
               <div className={styles.liveAppBarActions}>
+                <button
+                  type="button"
+                  onClick={() => refreshPreview(projectId)}
+                  className={styles.secondaryButton}
+                  aria-label="Preview aktualisieren (Pull, Rebuild, Restart)"
+                >
+                  <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
+                  Preview aktualisieren
+                </button>
                 <button
                   type="button"
                   onClick={() => stopPreview(projectId)}

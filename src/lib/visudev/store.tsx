@@ -48,6 +48,7 @@ interface VisudevStore {
   preview: PreviewState;
   startPreview: (projectId: string, repo?: string, branchOrCommit?: string) => Promise<void>;
   refreshPreviewStatus: (projectId: string) => Promise<void>;
+  refreshPreview: (projectId: string) => Promise<void>;
   stopPreview: (projectId: string) => Promise<void>;
 }
 
@@ -379,6 +380,21 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const refreshPreview = useCallback(async (projectId: string) => {
+    const res = await previewAPI.refresh(projectId);
+    if (!res.success) {
+      setPreview((prev) =>
+        prev.projectId === projectId
+          ? { ...prev, status: "failed", error: res.error ?? "Refresh failed" }
+          : prev,
+      );
+      return;
+    }
+    setPreview((prev) =>
+      prev.projectId === projectId ? { ...prev, status: "starting", error: null } : prev,
+    );
+  }, []);
+
   const value: VisudevStore = {
     projects,
     projectsLoading,
@@ -395,6 +411,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     preview,
     startPreview,
     refreshPreviewStatus,
+    refreshPreview,
     stopPreview,
   };
 

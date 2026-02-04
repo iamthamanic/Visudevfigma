@@ -31,6 +31,14 @@ function normalizePreviewUrl(base: string, screenPath: string): string {
   return `${baseClean}${safePath}`;
 }
 
+/** Payload sent by user app via postMessage for optional live DOM/route display. */
+export interface VisudevDomReport {
+  type: "visudev-dom-report";
+  route: string;
+  buttons?: { tagName: string; role?: string; label?: string }[];
+  links?: { href: string; text?: string }[];
+}
+
 interface LiveFlowCanvasProps {
   screens: Screen[];
   flows: Flow[];
@@ -45,6 +53,10 @@ export function LiveFlowCanvas({ screens, flows, previewUrl }: LiveFlowCanvasPro
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [animatingEdge, setAnimatingEdge] = useState<GraphEdge | null>(null);
   const [dotPosition, setDotPosition] = useState<{ x: number; y: number } | null>(null);
+  /** Last visudev-dom-report per screen id (from iframe postMessage). */
+  const [domReportsByScreenId, setDomReportsByScreenId] = useState<
+    Record<string, VisudevDomReport>
+  >({});
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<HTMLDivElement>(null);
@@ -136,7 +148,18 @@ export function LiveFlowCanvas({ screens, flows, previewUrl }: LiveFlowCanvasPro
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       const data = event.data;
-      if (!data || data.type !== "visudev-navigate" || typeof data.path !== "string") return;
+      if (!data || typeof data !== "object") return;
+
+      if (data.type === "visudev-dom-report") {
+        const report = data as VisudevDomReport;
+        if (typeof report.route !== "string") return;
+        const sourceScreenId = iframeToScreenRef.current.get(event.source as Window);
+        if (!sourceScreenId) return;
+        setDomReportsByScreenId((prev) => ({ ...prev, [sourceScreenId]: report }));
+        return;
+      }
+
+      if (data.type !== "visudev-navigate" || typeof data.path !== "string") return;
       const targetPath = data.path;
       const targetScreen = screens.find(
         (s) => s.path === targetPath || (targetPath && s.path.includes(targetPath)),
@@ -310,6 +333,13 @@ export function LiveFlowCanvas({ screens, flows, previewUrl }: LiveFlowCanvasPro
                     {screen.name}
                     {screen.path ? ` · ${screen.path}` : ""}
                   </div>
+                  {domReportsByScreenId[screen.id] && (
+                    <div className={styles.nodeLiveReport} title="Live-Daten von der App">
+                      Live: {domReportsByScreenId[screen.id].route}
+                      {domReportsByScreenId[screen.id].buttons != null &&
+                        ` · ${domReportsByScreenId[screen.id].buttons!.length} Buttons`}
+                    </div>
+                  )}
                   {iframeSrc ? (
                     <iframe
                       src={iframeSrc}

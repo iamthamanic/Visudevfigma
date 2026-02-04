@@ -66,8 +66,8 @@ async function apiRequest<T>(
         if (is404 && isPreview) {
           errorMsg =
             "Edge Function 'visudev-preview' nicht gefunden (404). " +
-            "Bitte deployen: supabase functions deploy visudev-preview. " +
-            "Außerdem PREVIEW_RUNNER_URL in Supabase Dashboard → Edge Functions → Secrets setzen.";
+            "Lokal: .env mit VITE_PREVIEW_RUNNER_URL=http://localhost:4000 setzen und Preview Runner starten (cd preview-runner && npm start). " +
+            "Oder deployen: supabase functions deploy visudev-preview und PREVIEW_RUNNER_URL in Supabase → Edge Functions → Secrets setzen (Runner-API-URL, z.B. https://dein-runner.example.com; der Runner vergibt intern freie Ports pro Preview).";
         } else {
           errorMsg = `Server error ${response.status}. Check that Edge Functions are deployed and reachable.`;
         }
@@ -85,7 +85,7 @@ async function apiRequest<T>(
       const error =
         (result.error as string) ||
         (is404 && isPreview
-          ? "Edge Function 'visudev-preview' nicht gefunden (404). Deploy: supabase functions deploy visudev-preview. PREVIEW_RUNNER_URL in Secrets setzen."
+          ? "Edge Function 'visudev-preview' nicht gefunden (404). Lokal: VITE_PREVIEW_RUNNER_URL=http://localhost:4000 + Runner starten. Oder deployen und PREVIEW_RUNNER_URL (Runner-API-URL) in Secrets setzen."
           : response.statusText);
       return { success: false, error };
     }
@@ -356,6 +356,105 @@ export const integrationsAPI = {
 
 // ==================== PREVIEW (Live App) ====================
 
+/** When set (e.g. http://localhost:4000), frontend calls the Preview Runner directly; no Edge Function or Supabase secret needed. Runner assigns free ports per preview internally. */
+const localRunnerUrl =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_PREVIEW_RUNNER_URL) || "";
+
+/** projectId -> runId when using local runner */
+const localRunIds = new Map<string, string>();
+
+async function localPreviewStart(
+  projectId: string,
+  options?: { repo?: string; branchOrCommit?: string },
+): Promise<{ success: boolean; data?: { runId: string; status: string }; error?: string }> {
+  const base = localRunnerUrl.replace(/\/$/, "");
+  const res = await fetch(`${base}/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      projectId,
+      repo: options?.repo,
+      branchOrCommit: options?.branchOrCommit ?? "main",
+    }),
+  });
+  const text = await res.text();
+  let data: { success?: boolean; runId?: string; status?: string; error?: string };
+  try {
+    data = text ? (JSON.parse(text) as typeof data) : {};
+  } catch {
+    return { success: false, error: "Runner response not JSON" };
+  }
+  if (!res.ok) return { success: false, error: (data.error as string) || String(res.status) };
+  if (data.runId) localRunIds.set(projectId, data.runId);
+  return { success: true, data: { runId: data.runId!, status: data.status ?? "starting" } };
+}
+
+async function localPreviewStatus(projectId: string): Promise<{
+  success: boolean;
+  status?: PreviewStatusResponse["status"];
+  previewUrl?: string;
+  error?: string;
+}> {
+  const runId = localRunIds.get(projectId);
+  if (!runId) return { success: true, status: "idle" };
+  const base = localRunnerUrl.replace(/\/$/, "");
+  const res = await fetch(`${base}/status/${encodeURIComponent(runId)}`);
+  const text = await res.text();
+  let data: { success?: boolean; status?: string; previewUrl?: string; error?: string };
+  try {
+    data = text ? (JSON.parse(text) as typeof data) : {};
+  } catch {
+    return { success: false, error: "Runner response not JSON" };
+  }
+  if (!res.ok) return { success: false, error: (data.error as string) || String(res.status) };
+  return {
+    success: true,
+    status: (data.status as PreviewStatusResponse["status"]) ?? "idle",
+    previewUrl: data.previewUrl,
+    error: data.error,
+  };
+}
+
+async function localPreviewStop(projectId: string): Promise<{ success: boolean; error?: string }> {
+  const runId = localRunIds.get(projectId);
+  if (!runId) return { success: true };
+  const base = localRunnerUrl.replace(/\/$/, "");
+  const res = await fetch(`${base}/stop/${encodeURIComponent(runId)}`, { method: "POST" });
+  localRunIds.delete(projectId);
+  const text = await res.text();
+  let data: { success?: boolean; error?: string };
+  try {
+    data = text ? (JSON.parse(text) as typeof data) : {};
+  } catch {
+    return { success: false, error: "Runner response not JSON" };
+  }
+  if (!res.ok) return { success: false, error: (data.error as string) || String(res.status) };
+  return { success: true };
+}
+
+/** Refresh preview: pull latest from repo, rebuild, restart (live update). Only with local runner. */
+async function localPreviewRefresh(
+  projectId: string,
+): Promise<{ success: boolean; error?: string }> {
+  const runId = localRunIds.get(projectId);
+  if (!runId) return { success: false, error: "No active preview for this project" };
+  const base = localRunnerUrl.replace(/\/$/, "");
+  const res = await fetch(`${base}/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ runId }),
+  });
+  const text = await res.text();
+  let data: { success?: boolean; error?: string };
+  try {
+    data = text ? (JSON.parse(text) as typeof data) : {};
+  } catch {
+    return { success: false, error: "Runner response not JSON" };
+  }
+  if (!res.ok) return { success: false, error: (data.error as string) || String(res.status) };
+  return { success: true };
+}
+
 export interface PreviewStatusResponse {
   success: boolean;
   status?: "idle" | "starting" | "ready" | "failed" | "stopped";
@@ -367,28 +466,46 @@ export interface PreviewStatusResponse {
 
 export const previewAPI = {
   /** Start preview (build/run app from repo via Preview Runner). Pass repo/branch when project not in backend KV. */
-  start: (projectId: string, options?: { repo?: string; branchOrCommit?: string }) =>
-    apiRequest<{ runId: string; status: string }>("/visudev-preview/preview/start", {
+  start: async (
+    projectId: string,
+    options?: { repo?: string; branchOrCommit?: string },
+  ): Promise<{ success: boolean; data?: { runId: string; status: string }; error?: string }> => {
+    if (localRunnerUrl) {
+      const out = await localPreviewStart(projectId, options);
+      return out.data ? { ...out, data: out.data } : out;
+    }
+    return apiRequest<{ runId: string; status: string }>("/visudev-preview/preview/start", {
       method: "POST",
       body: JSON.stringify({
         projectId,
         repo: options?.repo,
         branchOrCommit: options?.branchOrCommit,
       }),
-    }),
+    });
+  },
 
   /** Get preview status and URL */
-  status: (projectId: string) =>
-    apiRequest<PreviewStatusResponse>(
+  status: async (projectId: string) => {
+    if (localRunnerUrl) return localPreviewStatus(projectId);
+    return apiRequest<PreviewStatusResponse>(
       `/visudev-preview/preview/status?projectId=${encodeURIComponent(projectId)}`,
-    ),
+    );
+  },
 
   /** Stop preview */
-  stop: (projectId: string) =>
-    apiRequest<{ status: string }>("/visudev-preview/preview/stop", {
+  stop: async (projectId: string): Promise<{ success: boolean; error?: string }> => {
+    if (localRunnerUrl) return localPreviewStop(projectId);
+    return apiRequest<{ status: string }>("/visudev-preview/preview/stop", {
       method: "POST",
       body: JSON.stringify({ projectId }),
-    }),
+    });
+  },
+
+  /** Refresh preview: pull latest from repo, rebuild, restart (live). Only with local runner. */
+  refresh: async (projectId: string): Promise<{ success: boolean; error?: string }> => {
+    if (localRunnerUrl) return localPreviewRefresh(projectId);
+    return { success: false, error: "Refresh only with local runner (VITE_PREVIEW_RUNNER_URL)" };
+  },
 };
 
 // Export all APIs

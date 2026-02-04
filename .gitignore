@@ -20,6 +20,9 @@ src/supabase/.branches/
 .env.*.local
 .env.gh-secrets
 
+# Preview Runner cloned repos
+preview-runner/workspace/
+
 # Playwright E2E
 playwright-report/
 test-results/

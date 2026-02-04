@@ -457,6 +457,8 @@ Response: {
 
 **Analyse-Pipeline:**
 
+- **AST (Babel):** Navigation, React Router routes, UI events (buttons/onClick), and call-graph are extracted via `@babel/parser` in `.tsx`/`.jsx` files; Regex fallback on parse error or non-JSX files. API/DB flows remain Regex-based.
+
 1. **GitHub File Fetching:**
 
    ```
@@ -593,7 +595,9 @@ Response: {
      - Link flows via function calls
      - Attach flows to screen.flows[]
 
-   Flow.calls = [other_flow_ids]
+   Flow.calls = [callee names or flow IDs]
+   - Filled from AST call-graph (visudev-analyzer): which functions each
+     function-call flow invokes. Frontend (buildEdges) resolves by flow name or id.
    ```
 
 7. **Component Code Extraction:**
@@ -718,7 +722,7 @@ interface CodeFlow {
   file: string; // "src/components/Form.tsx"
   line: number; // Line number in file
   code: string; // Code snippet
-  calls: string[]; // Flow IDs this calls
+  calls: string[]; // Callee names (or flow IDs); filled from AST call-graph for function-call flows
   color: string; // "#fbbf24", "#3b82f6", etc.
 }
 ```
