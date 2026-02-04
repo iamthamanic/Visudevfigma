@@ -1,6 +1,6 @@
-import { Fragment, useState, type SVGProps } from "react";
+import { Fragment, useState, type ComponentType, type SVGProps } from "react";
 import clsx from "clsx";
-import { Loader2 } from "lucide-react";
+import { File, Loader2 } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
 import { useAuth } from "../../../contexts/AuthContext";
 import { AuthDialog } from "../../../components/AuthDialog";
@@ -20,13 +20,13 @@ type ScanType = "appflow" | "blueprint" | "data";
 type NavItem = {
   key: ShellScreen;
   label: string;
-  icon: (props: SVGProps<SVGSVGElement>) => JSX.Element;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
   requiresProject?: boolean;
   scanType?: ScanType;
 };
 
 const navItems: NavItem[] = [
-  { key: "projects", label: "Projekte", icon: ProjectsIcon },
+  { key: "projects", label: "Projekte", icon: File },
   {
     key: "appflow",
     label: "App Flow",
@@ -168,7 +168,7 @@ export function Sidebar({ activeScreen, onNavigate, onNewProject }: SidebarProps
   );
 }
 
-function ProjectsIcon(props: SVGProps<SVGSVGElement>) {
+function AppFlowIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 20 20" fill="none" {...props}>
       <path
@@ -194,10 +194,6 @@ function ProjectsIcon(props: SVGProps<SVGSVGElement>) {
       />
     </svg>
   );
-}
-
-function AppFlowIcon(props: SVGProps<SVGSVGElement>) {
-  return <ProjectsIcon {...props} />;
 }
 
 function BlueprintIcon(props: SVGProps<SVGSVGElement>) {

@@ -9,17 +9,21 @@ npm i
 npm run dev
 ```
 
-Open the URL shown (e.g. http://localhost:3000). Sign in or create an account, connect GitHub in **Settings → Connections**, then create or select a project and run analysis (App Flow, Blueprint, Data).
+Damit starten **VisuDEV-App** (Vite, Port 3005) und **Preview-Runner** (Port 4000) mit **echtem Build** – der Runner klont das Repo, baut und startet die App; in App Flow siehst du die echte Live-App. Ein **Ctrl+C** beendet beide.
+
+Open: **http://localhost:3005** (fester Port, siehe unten). Runner: http://localhost:4000. Sign in or create an account, connect GitHub in **Settings → Connections**, then create or select a project and run analysis (App Flow, Blueprint, Data).
 
 ## Scripts
 
-| Command           | Description                    |
-| ----------------- | ------------------------------ |
-| `npm run dev`     | Start dev server (Vite)        |
-| `npm run build`   | Production build               |
-| `npm run preview` | Preview production build       |
-| `npm run checks`  | Format, lint, typecheck, tests |
-| `npm run format`  | Prettier + Deno fmt            |
+| Command              | Description                                      |
+| -------------------- | ------------------------------------------------ |
+| `npm run dev`        | Startet App (Vite, 3005) + Preview-Runner (4000) |
+| `npm run dev:app`    | Nur Vite-Dev-Server (3005)                       |
+| `npm run dev:runner` | Nur Preview-Runner (4000)                        |
+| `npm run build`      | Production build                                 |
+| `npm run preview`    | Preview production build                         |
+| `npm run checks`     | Format, lint, typecheck, tests                   |
+| `npm run format`     | Prettier + Deno fmt                              |
 
 ## Project layout
 
@@ -27,6 +31,10 @@ Open the URL shown (e.g. http://localhost:3000). Sign in or create an account, c
 - `src/supabase/functions/` – Edge Functions source (visudev-auth, visudev-analyzer, visudev-projects, etc.). Deploy with `supabase functions deploy <name>`.
 - `supabase/` – Config, migrations, and deployed function copies. See `docs/SUPABASE_SETUP.md`.
 - `docs/` – Setup and runbooks (`SUPABASE_SETUP.md`, `GITHUB_SECRETS.md`, `PREVIEW_RUNNER.md`).
+
+## Dev-Server-Port (3005)
+
+Der Vite-Dev-Server und `npm run preview` laufen fest auf **Port 3005** (`vite.config.ts`: `server.port` / `preview.port`). Mit `strictPort: true` bricht Vite ab, wenn 3005 belegt ist – so starten keine weiteren Instanzen auf anderen Ports. Andere Dienste sollten 3005 nicht verwenden, damit VisuDEV immer unter http://localhost:3005 erreichbar ist.
 
 ## Configuration
 

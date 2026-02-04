@@ -31,9 +31,26 @@
   margin-top: 0.25rem;
 }
 
-.search {
+.toolbar {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
   margin-top: 1rem;
+}
+
+.search {
+  flex: 1;
   position: relative;
+}
+
+.viewToggle {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.viewIcon {
+  height: 1.125rem;
+  width: 1.125rem;
 }
 
 .searchIcon {
@@ -54,6 +71,17 @@
   flex: 1;
   overflow: auto;
   padding: 1.5rem;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.skeletonRow {
+  border-radius: var(--radius-md);
+  height: 3.5rem;
 }
 
 .grid {

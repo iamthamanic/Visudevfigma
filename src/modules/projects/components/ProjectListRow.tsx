@@ -1,6 +1,11 @@
+/**
+ * Projekt als kompakte Listenzeile (Name, Repo, Datum, Aktionen).
+ * Wird auf der Projekte-Seite in der Listenansicht verwendet.
+ */
+
 import type { MouseEvent } from "react";
 import clsx from "clsx";
-import { Calendar, Database, FolderGit2, Github, Globe, MoreVertical, Trash2 } from "lucide-react";
+import { Calendar, FolderGit2, Github, MoreVertical, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,16 +15,16 @@ import {
 } from "../../../components/ui/dropdown-menu";
 import { useVisudev } from "../../../lib/visudev/store";
 import type { Project } from "../../../lib/visudev/types";
-import styles from "../styles/ProjectCard.module.css";
+import styles from "../styles/ProjectListRow.module.css";
 
-interface ProjectCardProps {
+interface ProjectListRowProps {
   project: Project;
   onDelete?: (id: string) => void;
   onClick?: (project: Project) => void;
   onEdit?: (project: Project) => void;
 }
 
-export function ProjectCard({ project, onDelete, onClick, onEdit }: ProjectCardProps) {
+export function ProjectListRow({ project, onDelete, onClick, onEdit }: ProjectListRowProps) {
   const { activeProject, setActiveProject } = useVisudev();
   const isActive = activeProject?.id === project.id;
 
@@ -51,23 +56,45 @@ export function ProjectCard({ project, onDelete, onClick, onEdit }: ProjectCardP
 
   return (
     <div
-      className={clsx(styles.card, isActive && styles.cardActive)}
+      className={clsx(styles.row, isActive && styles.rowActive)}
       onClick={() => onClick?.(project)}
     >
+      <div className={styles.iconCell}>
+        <FolderGit2 className={styles.icon} aria-hidden="true" />
+      </div>
+      <div className={styles.nameCell}>
+        <span className={styles.name}>{project.name}</span>
+      </div>
+      <div className={styles.repoCell}>
+        {project.github_repo ? (
+          <span className={styles.repo}>
+            <Github className={styles.repoIcon} aria-hidden="true" />
+            <span className={styles.repoText} title={project.github_repo}>
+              {project.github_repo}
+            </span>
+            {project.github_branch && (
+              <span className={styles.branch}>{project.github_branch}</span>
+            )}
+          </span>
+        ) : (
+          <span className={styles.muted}>—</span>
+        )}
+      </div>
+      <div className={styles.dateCell}>
+        <Calendar className={styles.dateIcon} aria-hidden="true" />
+        <span>{formattedDate}</span>
+      </div>
       <div
-        className={styles.header}
+        className={styles.actionsCell}
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className={styles.iconBadge}>
-          <FolderGit2 className={styles.icon} aria-hidden="true" />
-        </div>
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className={styles.dropdownButton}
+              className={styles.menuButton}
               aria-label="Projekt-Aktionen öffnen"
             >
               <MoreVertical aria-hidden="true" />
@@ -93,48 +120,6 @@ export function ProjectCard({ project, onDelete, onClick, onEdit }: ProjectCardP
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
-
-      <h3 className={styles.title}>{project.name}</h3>
-
-      <div className={styles.metaList}>
-        {project.github_repo && (
-          <div className={styles.metaRow}>
-            <Github className={styles.icon} aria-hidden="true" />
-            <span className={styles.metaRowText}>{project.github_repo}</span>
-            {project.github_branch && (
-              <span className={styles.branchBadge}>{project.github_branch}</span>
-            )}
-          </div>
-        )}
-        {project.supabase_project_id && (
-          <div className={styles.metaRow}>
-            <Database className={styles.icon} aria-hidden="true" />
-            <span className={styles.metaRowText}>{project.supabase_project_id}</span>
-          </div>
-        )}
-        <div className={styles.metaRow}>
-          <Globe className={styles.icon} aria-hidden="true" />
-          {project.deployed_url ? (
-            <span className={styles.metaRowText}>{project.deployed_url}</span>
-          ) : (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onEdit?.(project);
-              }}
-              className={styles.deployedLink}
-            >
-              Deployed URL hinzufügen...
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className={styles.footer}>
-        <Calendar className={styles.icon} aria-hidden="true" />
-        <span>Erstellt am {formattedDate}</span>
       </div>
     </div>
   );

@@ -160,6 +160,14 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
   const hasError = scanStatuses.appflow.status === "failed";
   const hasData = activeProject.screens.length > 0;
 
+  // Live App Flow: nutzt Preview-URL (lokal gebaut) ODER Deployed URL als Fallback
+  const previewReady =
+    preview.projectId === projectId && preview.previewUrl && preview.status === "ready";
+  const deployedUrl = activeProject.deployed_url?.trim() || null;
+  const liveFlowBaseUrl = previewReady ? preview.previewUrl : deployedUrl;
+  const showLiveFlowCanvas = hasData && !!liveFlowBaseUrl;
+  const liveFlowFromDeployed = !!deployedUrl && !previewReady;
+
   return (
     <div className={styles.root}>
       <div className={styles.header}>
@@ -238,47 +246,76 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
           </div>
         )}
 
-        {hasData && !activeProject.deployed_url && !preview.previewUrl && (
+        {hasData && !liveFlowBaseUrl && (
           <div className={`${styles.statusBar} ${styles.statusInfo}`} role="status">
             <p className={styles.statusMeta}>
-              💡 Preview startet automatisch bei verbundenem Repo; oder im Projekt eine{" "}
-              <strong>Deployed URL</strong> setzen.
+              💡 Für Inhalte in den Karten: Preview startet automatisch bei verbundenem Repo (lokal
+              bauen), oder im Projekt eine <strong>Deployed URL</strong> setzen.
             </p>
           </div>
         )}
       </div>
 
       <div className={styles.content}>
-        {preview.projectId === projectId && preview.previewUrl && hasData ? (
+        {showLiveFlowCanvas ? (
           <div className={styles.liveAppWrap}>
             <div className={styles.liveAppBar}>
-              <span className={styles.liveAppLabel}>Live App Flow</span>
-              <div className={styles.liveAppBarActions}>
-                <button
-                  type="button"
-                  onClick={() => refreshPreview(projectId)}
-                  className={styles.secondaryButton}
-                  aria-label="Preview aktualisieren (Pull, Rebuild, Restart)"
-                >
-                  <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
-                  Preview aktualisieren
-                </button>
-                <button
-                  type="button"
-                  onClick={() => stopPreview(projectId)}
-                  className={styles.secondaryButton}
-                  aria-label="Preview beenden"
-                >
-                  <Square className={styles.inlineIcon} aria-hidden="true" />
-                  Preview beenden
-                </button>
+              <span className={styles.liveAppLabel}>
+                Live App Flow
+                {liveFlowFromDeployed ? " (Deployed URL)" : ""}
+              </span>
+              <div className={styles.liveAppBarRight}>
+                {!liveFlowFromDeployed && (
+                  <div className={styles.liveAppBarActions}>
+                    <button
+                      type="button"
+                      onClick={() => refreshPreview(projectId)}
+                      disabled={preview.projectId === projectId && preview.status === "starting"}
+                      className={styles.secondaryButton}
+                      aria-label="Preview aktualisieren (Pull, Rebuild, Restart)"
+                    >
+                      {preview.projectId === projectId && preview.status === "starting" ? (
+                        <Loader2
+                          className={`${styles.inlineIcon} ${styles.spinner}`}
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
+                      )}
+                      {preview.projectId === projectId && preview.status === "starting"
+                        ? "Aktualisiere…"
+                        : "Preview aktualisieren"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => stopPreview(projectId)}
+                      disabled={preview.projectId === projectId && preview.status === "starting"}
+                      className={styles.secondaryButton}
+                      aria-label="Preview beenden"
+                    >
+                      <Square className={styles.inlineIcon} aria-hidden="true" />
+                      Preview beenden
+                    </button>
+                  </div>
+                )}
+                {liveFlowFromDeployed && (
+                  <p className={styles.liveAppBarHint}>
+                    Inhalte kommen von der Deployed URL. Für lokale Preview: Repo verbinden und
+                    Preview starten.
+                  </p>
+                )}
               </div>
             </div>
             <LiveFlowCanvas
               screens={activeProject.screens}
               flows={activeProject.flows}
-              previewUrl={preview.previewUrl}
+              previewUrl={liveFlowBaseUrl!}
               projectId={projectId}
+              previewError={
+                preview.projectId === projectId && preview.status === "failed"
+                  ? preview.error
+                  : null
+              }
             />
           </div>
         ) : (
@@ -332,6 +369,11 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                         />
                       </div>
                       <div className={styles.flowGraphSection}>
+                        <p className={styles.graphHint}>
+                          Im Graph siehst du nur Screen-Namen und Pfade. Für echte Inhalte in den
+                          Karten: lokal Preview starten („Preview aktualisieren“) oder im Projekt
+                          eine Deployed URL setzen.
+                        </p>
                         <FlowGraphView
                           screens={activeProject.screens}
                           flows={activeProject.flows}

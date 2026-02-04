@@ -5,7 +5,7 @@
   border-radius: var(--radius-md);
   padding: var(--space-xs);
   box-shadow: var(--shadow-2);
-  z-index: 50;
+  z-index: 9999;
 }
 
 .item {
@@ -22,4 +22,10 @@
 .item:focus {
   background: var(--color-hover);
   outline: none;
+}
+
+.separator {
+  background: var(--color-border);
+  height: 1px;
+  margin: 4px 0;
 }

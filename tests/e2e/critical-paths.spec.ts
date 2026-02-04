@@ -96,4 +96,47 @@ test.describe("VisuDEV critical paths", () => {
       .catch(() => false);
     expect(hasScanButton || hasExportOrTabs).toBeTruthy();
   });
+
+  test("app flow screen cards show either loaded iframe or clear failure reason (per-screen resilience)", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    const loginHeading = page.getByRole("heading", { name: /VisuDEV/i });
+    if (await loginHeading.isVisible().catch(() => false)) {
+      test.skip();
+      return;
+    }
+    const appFlowNav = page
+      .getByRole("button", { name: /App Flow/i })
+      .or(page.getByText("App Flow").first());
+    if (!(await appFlowNav.isVisible().catch(() => false))) {
+      test.skip();
+      return;
+    }
+    await appFlowNav.click();
+    await page.waitForTimeout(800);
+    const liveFlowLabel = page.getByText("Live App Flow");
+    const hasLiveFlow = await liveFlowLabel.isVisible().catch(() => false);
+    if (!hasLiveFlow) {
+      const hasGraphOrSitemap = await page
+        .getByText(/Sitemap|Flow Graph|Noch keine Flows|Kein Projekt/i)
+        .isVisible()
+        .catch(() => false);
+      expect(hasGraphOrSitemap).toBeTruthy();
+      return;
+    }
+    const failedCards = page.locator("[data-testid=screen-card-failed]");
+    const iframeCards = page.locator("[data-testid=screen-card-iframe]");
+    const failedCount = await failedCards.count();
+    const iframeCount = await iframeCards.count();
+    const totalCards = failedCount + iframeCount;
+    if (totalCards === 0) return;
+    for (let i = 0; i < failedCount; i++) {
+      const card = failedCards.nth(i);
+      await expect(card).toBeVisible();
+      const reason = card.locator("[data-testid=screen-fail-reason]").first();
+      await expect(reason).toContainText(/Timeout|Fehler beim Laden|Keine URL/i);
+    }
+  });
 });

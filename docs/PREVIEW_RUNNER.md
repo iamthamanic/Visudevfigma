@@ -48,6 +48,13 @@ Umgebungsvariablen:
 - `PREVIEW_PORT_MIN` / `PREVIEW_PORT_MAX` – Port-Pool für Preview-URLs (Standard: 4001–4099). Pro Lauf wird automatisch ein freier Port vergeben.
 - `PREVIEW_BASE_URL` – **optional**. Wenn gesetzt (z. B. Tunnel-URL), wird diese Basis + Query als `previewUrl` genutzt; sonst immer `http://localhost:${port}`.
 - `SIMULATE_DELAY_MS` – Verzögerung in ms, bis „ready“ (nur im Stub-Modus; Standard: 3000)
+- `AUTO_REFRESH_INTERVAL_MS` – **optional**. Im REAL-Modus prüft der Runner alle N ms, ob das Repo neue Commits hat; bei Bedarf automatisch pull + rebuild + restart (Standard: 60000 = 1 Minute). Auf 0 setzen deaktiviert Auto-Refresh.
+
+**Unterstützte Paketmanager:** Der Runner erkennt den Paketmanager anhand der Lock-Dateien und führt Install/Build mit dem passenden Befehl aus:
+
+- **npm** – `package-lock.json` → `npm ci --ignore-scripts` bzw. `npm install --ignore-scripts`
+- **pnpm** – `pnpm-lock.yaml` → `pnpm install --ignore-scripts` (pnpm muss installiert sein, z. B. `npm install -g pnpm`)
+- **yarn** – `yarn.lock` → `yarn install --ignore-scripts` (yarn muss installiert sein, z. B. `corepack enable`)
 
 ### Hosting (Produktion)
 
@@ -94,6 +101,26 @@ Im **Root des User-Repos** (z. B. Scriptony) kann optional eine Datei `visudev
 
 Fehlt die Datei, verwendet der Runner sinnvolle Defaults (z. B. `npm run build` + `npx serve dist`, Port 3000).
 
+## Build-Test (Runner-Funktion prüfen)
+
+Der Preview Runner hat einen Build-Test, der **ohne echten Git-Clone** prüft, ob `runBuildNodeDirect` (Paketmanager-Erkennung, Install, Build) funktioniert:
+
+- **Im Runner-Verzeichnis:** `cd preview-runner && npm run test:build`
+- **Im Projekt-Root:** `npm run test:preview-runner`
+
+Der Test legt ein minimales Workspace mit `package.json` an, führt `npm ci --ignore-scripts` und `npm run build` aus und räumt danach auf. So kannst du nach Änderungen an `build.js` schnell prüfen, dass der Build-Pfad funktioniert.
+
+## Nach Code-Änderungen am Runner (Neustart)
+
+Änderungen an `preview-runner/build.js` oder `preview-runner/index.js` werden erst nach einem **Neustart** des Runners wirksam:
+
+1. Runner im Terminal mit **Ctrl+C** beenden.
+2. Erneut starten:
+   - Stub: `npm start`
+   - Echter Build: `USE_REAL_BUILD=1 npm start` (optional mit `GITHUB_TOKEN=…`).
+
+Ohne Neustart läuft weiterhin die alte Version.
+
 ## Checkliste: alles lokal (ohne Supabase-Secret)
 
 1. **Runner starten:** `cd preview-runner && npm install && npm start` (läuft auf `http://localhost:4000`).
@@ -122,12 +149,50 @@ Ohne Webhook: **„Preview aktualisieren“** in VisuDEV klicken erzeugt denselb
 ## Ablauf in der UI
 
 1. Projekt mit GitHub-Repo auswählen.
-2. App Flow öffnen (Live-Preview-Iframes oder Einzel-iframe).
+2. App Flow öffnen (Live-Preview-Iframes oder Einzel-iframe). **Pro Screen:** Jede Karte lädt die Route in einem eigenen Iframe. Kann ein Screen nicht geladen werden (Timeout, Fehler, keine URL), wird nur diese Karte mit einem **klar benannten Grund** angezeigt (z. B. „Timeout: Screen konnte nicht innerhalb von 12 s geladen werden …“); die übrigen Screens bleiben unberührt und werden weiter angezeigt.
 3. **Preview starten** (oder Auto-Start bei verbundenem Repo) → VisuDEV ruft entweder den Runner **direkt** (wenn `VITE_PREVIEW_RUNNER_URL` gesetzt) oder die Edge Function auf; der Runner vergibt einen freien Port und liefert die Preview-URL.
 4. Nach einigen Sekunden (Stub) bzw. Minuten (echter Build) erscheint die **Preview-URL** im iframe.
 5. **Live:** Nach Push ins Repo wird die Preview automatisch aktualisiert (wenn Webhook konfiguriert), sonst **„Preview aktualisieren“** klicken.
 6. Optional: **Preview beenden** zum Stoppen (Port wird im Runner wieder freigegeben).
 7. Optional: **Live Route/Buttons** anzeigen – wenn deine App im iframe `postMessage` mit Typ `visudev-dom-report` sendet, zeigt VisuDEV z. B. „Live: /dashboard · 3 Buttons“ am Preview-Knoten. Snippet und Doku: [LIVE_DOM_REPORT.md](./LIVE_DOM_REPORT.md).
+
+## Iframe-Einbetten (Frame-Proxy)
+
+Der Preview Runner startet im **echten Build** (USE_REAL_BUILD=1) einen **Frame-Proxy**: Die Preview-App läuft auf einem internen Port (z. B. 4004), der **Proxy** läuft auf dem Port, den VisuDEV als Preview-URL nutzt (z. B. 4003). Der Proxy leitet alle Anfragen an die App weiter und setzt die Header **Content-Security-Policy: frame-ancestors …** so, dass VisuDEV (localhost:5173, 3000) die Preview in Iframes einbetten kann. **Du musst in der Preview-App (hrkoordinator o. Ä.) nichts anpassen** – der Runner übernimmt das.
+
+## Wenn alle Screens mit Timeout fehlschlagen (ohne Frame-Proxy)
+
+Falls du den Runner **ohne** USE_REAL_BUILD nutzt (Stub) oder der Proxy ausfällt, kann die Preview-App das Einbetten blockieren. Dann in der **Preview-App** (das Repo, das auf z. B. `http://localhost:4003` läuft) Einbetten erlauben:
+
+- **X-Frame-Options:** Nicht setzen oder nicht `DENY`/`SAMEORIGIN` (bzw. erlauben, dass VisuDEV (z. B. `http://localhost:5173`) einbetten darf).
+- **CSP (Content-Security-Policy):** `frame-ancestors` so setzen, dass die VisuDEV-Origin erlaubt ist.
+
+**Beispiel Vite (Preview-App):** In `vite.config.ts`:
+
+```ts
+export default defineConfig({
+  server: {
+    headers: {
+      "Content-Security-Policy":
+        "frame-ancestors 'self' http://localhost:5173 http://localhost:3000",
+    },
+  },
+});
+```
+
+**Beispiel Express (Preview-App):** Vor dem Ausliefern der statischen Dateien:
+
+```js
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    "frame-ancestors 'self' http://localhost:5173 http://localhost:3000",
+  );
+  next();
+});
+```
+
+Danach Preview-App neu starten und in VisuDEV erneut „Preview aktualisieren“ oder Preview starten. Im **Terminal** (Button neben dem Home-Icon) siehst du, welche URLs geladen werden und ob weiterhin Timeouts auftreten.
 
 ## Hinweis zu Projekten in KV
 

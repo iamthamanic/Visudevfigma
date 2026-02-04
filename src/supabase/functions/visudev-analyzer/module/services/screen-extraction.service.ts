@@ -7,15 +7,17 @@ export class ScreenExtractionService {
     files.forEach((file) => {
       const match = file.path.match(/app\/(.*?)\/page\.(tsx?|jsx?)$/);
       if (match) {
-        let routePath = `/${match[1] === "" ? "" : match[1]}`;
+        let pathSegment = match[1] === "" ? "" : match[1];
+        pathSegment = pathSegment.replace(/\([^)]+\)\/?/g, "").replace(/\/+/g, "/").replace(/^\/|\/$/g, "");
+        let routePath = pathSegment ? `/${pathSegment}` : "/";
         routePath = routePath.replace(/\[([^\]]+)\]/g, ":$1");
-        const segment = routePath === "/"
+        const nameSegment = routePath === "/"
           ? "Home"
           : (routePath.split("/").filter(Boolean).pop() ?? "Unknown");
 
         screens.push({
           id: `screen:${file.path}`,
-          name: segment.charAt(0).toUpperCase() + segment.slice(1),
+          name: nameSegment.charAt(0).toUpperCase() + nameSegment.slice(1),
           path: routePath,
           filePath: file.path,
           type: "page",
@@ -71,41 +73,69 @@ export class ScreenExtractionService {
   public extractReactRouterScreens(files: FileContent[]): Screen[] {
     const screens: Screen[] = [];
 
-    files.forEach((file) => {
-      const routeRegex = /<Route\s+path=["']([^"']+)["']\s+element=\{<(\w+)/g;
-      let match: RegExpExecArray | null;
+    for (const file of files) {
+      if (
+        !file.content.includes("<Route") &&
+        !file.content.includes("<Routes>")
+      ) {
+        continue;
+      }
 
-      while ((match = routeRegex.exec(file.content)) !== null) {
-        const routePath = match[1];
-        const componentName = match[2];
+      const routeEntries = this.parseReactRouterRoutes(file.content);
+      const navigatesTo = this.extractNavigationLinks(file.content);
+      const basename = this.getReactRouterBasename(file.content);
+
+      for (const entry of routeEntries) {
+        if (entry.skip) continue;
+        let fullPath = this.normalizeRoutePath(entry.fullPath);
+        if (basename) {
+          const base = basename.replace(/\/+$/, "") || "";
+          fullPath = base + (fullPath === "/" ? "" : fullPath);
+          fullPath = fullPath.replace(/\/+/g, "/") || "/";
+        }
+        const name = this.screenNameFromPathOrComponent(
+          fullPath,
+          entry.componentName,
+        );
 
         screens.push({
-          id: `screen:${componentName}:${routePath}`,
-          name: componentName,
-          path: routePath,
+          id: `screen:${name}:${fullPath}`,
+          name,
+          path: fullPath,
           filePath: file.path,
           type: "page",
           flows: [],
-          navigatesTo: this.extractNavigationLinks(file.content),
+          navigatesTo,
           framework: "react-router",
         });
       }
 
       const routerConfigRegex =
         /\{\s*path:\s*["']([^"']+)["'],\s*element:\s*<(\w+)/g;
+      let match: RegExpExecArray | null;
       while ((match = routerConfigRegex.exec(file.content)) !== null) {
         const routePath = match[1];
         const componentName = match[2];
-
+        if (componentName === "Navigate") continue;
+        let fullPath = this.normalizeRoutePath(routePath);
+        if (basename) {
+          const base = basename.replace(/\/+$/, "") || "";
+          fullPath = base + (fullPath === "/" ? "" : fullPath);
+          fullPath = fullPath.replace(/\/+/g, "/") || "/";
+        }
+        const name = this.screenNameFromPathOrComponent(
+          fullPath,
+          componentName,
+        );
         if (
-          !screens.some((screen) =>
-            screen.path === routePath && screen.name === componentName
+          !screens.some(
+            (s) => s.path === fullPath && s.name === name,
           )
         ) {
           screens.push({
-            id: `screen:${componentName}:${routePath}`,
-            name: componentName,
-            path: routePath,
+            id: `screen:${name}:${fullPath}`,
+            name,
+            path: fullPath,
             filePath: file.path,
             type: "page",
             flows: [],
@@ -114,9 +144,242 @@ export class ScreenExtractionService {
           });
         }
       }
-    });
+    }
 
     return screens;
+  }
+
+  /**
+   * Parse all <Route path="..." ...> from JSX, including nested routes.
+   * Returns route entries with fullPath (parent + path), componentName, and skip=true for Navigate redirects.
+   */
+  private parseReactRouterRoutes(content: string): Array<{
+    fullPath: string;
+    componentName: string;
+    skip: boolean;
+  }> {
+    const routeStartRegex = /<Route\s+path=["']([^"']*)["']/g;
+    let m: RegExpExecArray | null;
+    const routeStarts: Array<{ path: string; index: number }> = [];
+    while ((m = routeStartRegex.exec(content)) !== null) {
+      routeStarts.push({ path: m[1], index: m.index });
+    }
+
+    const raw: Array<{
+      path: string;
+      start: number;
+      end: number;
+      componentName: string;
+      skip: boolean;
+    }> = [];
+
+    for (const { path, index: startIndex } of routeStarts) {
+      const afterOpen = content.slice(startIndex);
+      const openTagEnd = afterOpen.indexOf(">");
+      const segmentToTagEnd = afterOpen.slice(0, openTagEnd + 1);
+      const isSelfClosingTag =
+        /\/\s*>/.test(segmentToTagEnd) &&
+        segmentToTagEnd.indexOf("</") === -1;
+      const selfClosePos = this.findRouteSelfCloseEnd(afterOpen, 0);
+
+      let endIndex: number;
+      if (isSelfClosingTag) {
+        const close = afterOpen.indexOf("/>");
+        endIndex = startIndex + (close >= 0 ? close + 2 : openTagEnd + 1);
+      } else if (selfClosePos >= 0) {
+        endIndex = startIndex + selfClosePos + 2;
+      } else {
+        let depth = 1;
+        let i = openTagEnd + 1;
+        endIndex = startIndex + afterOpen.length;
+        while (depth > 0 && i < afterOpen.length) {
+          const open = afterOpen.indexOf("<Route", i);
+          const close = afterOpen.indexOf("</Route>", i);
+          const innerSelfClose = this.findRouteSelfCloseEnd(afterOpen, open);
+          if (
+            open >= 0 &&
+            innerSelfClose >= 0 &&
+            (close < 0 || innerSelfClose < close)
+          ) {
+            i = innerSelfClose + 2;
+            continue;
+          }
+          if (close >= 0 && (open < 0 || close < open)) {
+            depth -= 1;
+            i = close + 8;
+            if (depth === 0) {
+              endIndex = startIndex + close + 8;
+              break;
+            }
+          } else if (open >= 0) {
+            depth += 1;
+            i = open + 6;
+          } else {
+            break;
+          }
+        }
+      }
+
+      const block = content.slice(startIndex, endIndex);
+      const componentName = this.extractRouteElementComponentName(block);
+      const skip =
+        this.isRouteRedirect(block) ||
+        path === "*" ||
+        this.isLayoutOnlyRoute(block, componentName);
+      raw.push({
+        path,
+        start: startIndex,
+        end: endIndex,
+        componentName,
+        skip,
+      });
+    }
+
+    const sorted = [...raw].sort(
+      (a, b) => a.start - b.start || b.end - b.start - (a.end - a.start),
+    );
+    const withFullPath: Array<typeof raw[0] & { fullPath: string }> = [];
+    for (const r of sorted) {
+      let parent = this.findContainingRouteWithFullPath(
+        withFullPath,
+        r.start,
+        r.end,
+      );
+      if (parent == null && !r.path.startsWith("/") && r.path !== "*") {
+        const lastRoot = withFullPath.filter((x) =>
+          x.path.startsWith("/") && x.path !== "*"
+        ).pop();
+        if (lastRoot != null && lastRoot.start < r.start) {
+          parent = { fullPath: lastRoot.fullPath };
+        }
+      }
+      let fullPath = r.path;
+      if (parent != null) {
+        const base = parent.fullPath.endsWith("/")
+          ? parent.fullPath.slice(0, -1)
+          : parent.fullPath;
+        fullPath = r.path.startsWith("/")
+          ? r.path
+          : base + (base === "" ? "" : "/") + r.path;
+      } else if (!r.path.startsWith("/") && r.path !== "*") {
+        fullPath = "/" + r.path;
+      }
+      fullPath = fullPath.replace(/\/+/g, "/").replace(/\/$/, "") || "/";
+      withFullPath.push({ ...r, fullPath });
+    }
+
+    return withFullPath.map((e) => ({
+      fullPath: e.fullPath,
+      componentName: e.componentName,
+      skip: e.skip,
+    }));
+  }
+
+  /** Find the position of /> that closes a self-closing <Route ... /> (balanced braces in element={}). */
+  private findRouteSelfCloseEnd(content: string, routeStart: number): number {
+    if (routeStart < 0 || !content.slice(routeStart).startsWith("<Route")) {
+      return -1;
+    }
+    const seg = content.slice(routeStart, routeStart + 2000);
+    let pos = 0;
+    while (pos < seg.length) {
+      const slashGt = seg.indexOf("/>", pos);
+      if (slashGt < 0) return -1;
+      const sub = seg.slice(0, slashGt + 2);
+      let brace = 0;
+      for (const c of sub) {
+        if (c === "{") brace += 1;
+        if (c === "}") brace -= 1;
+      }
+      if (brace === 0 && /path=/.test(sub)) {
+        return routeStart + slashGt;
+      }
+      pos = slashGt + 1;
+    }
+    return -1;
+  }
+
+  private findContainingRouteWithFullPath(
+    withFullPath: Array<{ start: number; end: number; fullPath: string }>,
+    start: number,
+    end: number,
+  ): { fullPath: string } | null {
+    let best: { fullPath: string; span: number } | null = null;
+    for (const r of withFullPath) {
+      if (r.start < start && r.end > end) {
+        const span = r.end - r.start;
+        if (!best || span < best.span) {
+          best = { fullPath: r.fullPath, span };
+        }
+      }
+    }
+    return best;
+  }
+
+  private static readonly LAYOUT_WRAPPER_NAMES = new Set([
+    "ProtectedRoute",
+    "AdminRoute",
+    "MainLayout",
+    "AdminLayout",
+    "ErrorBoundary",
+  ]);
+
+  private isRouteRedirect(routeBlock: string): boolean {
+    const elementMatch = routeBlock.match(/element\s*=\s*\{\s*<\s*(\w+)/);
+    return elementMatch != null && elementMatch[1] === "Navigate";
+  }
+
+  private isLayoutOnlyRoute(routeBlock: string, componentName: string): boolean {
+    const elementMatch = routeBlock.match(/element\s*=\s*\{\s*<\s*(\w+)/);
+    const first = elementMatch?.[1];
+    return (
+      !!first &&
+      ScreenExtractionService.LAYOUT_WRAPPER_NAMES.has(first) &&
+      (componentName === first || componentName === "Unknown")
+    );
+  }
+
+  private extractRouteElementComponentName(routeBlock: string): string {
+    const elementMatch = routeBlock.match(/element\s*=\s*\{\s*<\s*(\w+)/);
+    if (!elementMatch) return "Unknown";
+    const first = elementMatch[1];
+    if (first === "Navigate") return "Redirect";
+    if (first === "Suspense") {
+      const inner = routeBlock.match(
+        /<Suspense[^>]*>[\s\S]*?<\s*(\w+)[\s\/>]/,
+      );
+      return inner ? inner[1] : first;
+    }
+    return first;
+  }
+
+  /** Extract Router basename from JSX or createBrowserRouter config (e.g. basename="/multiagentultra"). */
+  private getReactRouterBasename(content: string): string | null {
+    const jsxMatch = content.match(
+      /(?:Router|BrowserRouter)\s+[^>]*basename=["']([^"']+)["']/,
+    );
+    if (jsxMatch) return jsxMatch[1];
+    const configMatch = content.match(
+      /createBrowserRouter\s*\([^)]*\{\s*[^}]*basename:\s*["']([^"']+)["']/,
+    );
+    return configMatch ? configMatch[1] : null;
+  }
+
+  private normalizeRoutePath(path: string): string {
+    if (!path || path === "*") return "/";
+    let p = path.trim();
+    if (!p.startsWith("/")) p = "/" + p;
+    p = p.replace(/\/+/g, "/").replace(/\/$/, "") || "/";
+    return p;
+  }
+
+  private screenNameFromPathOrComponent(path: string, componentName: string): string {
+    if (componentName && componentName !== "Unknown" && componentName !== "Redirect") {
+      return componentName.replace(/Screen$/, "").replace(/Page$/, "") || componentName;
+    }
+    const segment = path.split("/").filter(Boolean).pop() ?? "index";
+    const name = segment.replace(/^:/, "").replace(/-/g, " ");
+    return name.charAt(0).toUpperCase() + name.slice(1);
   }
 
   public extractNuxtScreens(files: FileContent[]): Screen[] {
@@ -155,6 +418,225 @@ export class ScreenExtractionService {
     });
 
     return screens;
+  }
+
+  /**
+   * State-based "routing": currentView/currentPage + switch/case returning JSX.
+   * Paths like /view/dashboard for VisuDEV consistency.
+   */
+  public extractStateBasedScreens(files: FileContent[]): Screen[] {
+    const screens: Screen[] = [];
+    const appFile = files.find(
+      (f) =>
+        f.path.endsWith("App.tsx") ||
+        f.path.endsWith("App.jsx") ||
+        f.path === "src/app/App.tsx" ||
+        f.path === "src/app/App.jsx",
+    );
+    if (!appFile || !appFile.content.includes("useState")) return screens;
+
+    const viewStateMatch = appFile.content.match(
+      /useState\s*[<(].*?(currentView|currentPage|view|page)\s*[>,)]/,
+    );
+    if (!viewStateMatch) return screens;
+
+    const caseRegex = /case\s+["']([^"']+)["']\s*:[\s\S]*?return\s+<(\w+)/g;
+    let m: RegExpExecArray | null;
+    const seen = new Set<string>();
+    while ((m = caseRegex.exec(appFile.content)) !== null) {
+      const pathSegment = m[1];
+      const componentName = m[2];
+      const path = `/view/${pathSegment}`;
+      if (seen.has(path)) continue;
+      seen.add(path);
+      const name = componentName.replace(/Screen$|Page$|View$/i, "") ||
+        pathSegment;
+      screens.push({
+        id: `screen:state:${pathSegment}`,
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        path,
+        filePath: appFile.path,
+        type: "view",
+        flows: [],
+        navigatesTo: this.extractNavigationLinks(appFile.content),
+        framework: "react-state",
+      });
+    }
+    return screens;
+  }
+
+  /**
+   * Hash-based routing: validPages array, location.hash, pathParts[0].
+   * Paths like /hash/home for VisuDEV consistency.
+   */
+  public extractHashRoutingScreens(files: FileContent[]): Screen[] {
+    const screens: Screen[] = [];
+    const appFile = files.find(
+      (f) =>
+        f.path.endsWith("App.tsx") ||
+        f.path.endsWith("App.jsx") ||
+        f.path === "src/app/App.tsx",
+    );
+    if (!appFile) return screens;
+
+    const validPagesMatch = appFile.content.match(
+      /validPages\s*=\s*\[([^\]]+)\]/,
+    );
+    if (validPagesMatch) {
+      const pageList = validPagesMatch[1]
+        .split(",")
+        .map((s) => s.replace(/["'\s]/g, ""))
+        .filter(Boolean);
+      const seen = new Set<string>();
+      for (const page of pageList) {
+        const path = `/hash/${page}`;
+        if (seen.has(path)) continue;
+        seen.add(path);
+        const name = page.charAt(0).toUpperCase() + page.slice(1).replace(/-/g, " ");
+        screens.push({
+          id: `screen:hash:${page}`,
+          name,
+          path,
+          filePath: appFile.path,
+          type: "view",
+          flows: [],
+          navigatesTo: this.extractNavigationLinks(appFile.content),
+          framework: "react-hash",
+        });
+      }
+      return screens;
+    }
+
+    const hashPathMatch = appFile.content.match(
+      /(?:location\.hash|window\.location\.hash)\s*[^;]*pathParts\s*[^;]*\[0\].*?validPages?\s*[^[]*\[([^\]]+)\]/s,
+    );
+    if (hashPathMatch) {
+      const pageList = hashPathMatch[1]
+        .split(",")
+        .map((s) => s.replace(/["'\s]/g, ""))
+        .filter(Boolean);
+      for (const page of pageList) {
+        const path = `/hash/${page}`;
+        const name = page.charAt(0).toUpperCase() + page.slice(1).replace(/-/g, " ");
+        if (!screens.some((s) => s.path === path)) {
+          screens.push({
+            id: `screen:hash:${page}`,
+            name,
+            path,
+            filePath: appFile.path,
+            type: "view",
+            flows: [],
+            navigatesTo: this.extractNavigationLinks(appFile.content),
+            framework: "react-hash",
+          });
+        }
+      }
+    }
+    return screens;
+  }
+
+  /**
+   * CLI Commander: program.command('name') and subcommands.
+   * path = "binName command" e.g. "rag save", "woaru init".
+   */
+  public extractCliCommanderScreens(
+    files: FileContent[],
+    packageJsonContent?: string,
+  ): Screen[] {
+    const screens: Screen[] = [];
+    let binName = "cli";
+    if (packageJsonContent) {
+      try {
+        const pkg = JSON.parse(packageJsonContent) as {
+          name?: string;
+          bin?: string | Record<string, string>;
+        };
+        if (typeof pkg.bin === "string") {
+          binName = pkg.name ?? "cli";
+        } else if (pkg.bin && typeof pkg.bin === "object") {
+          const firstKey = Object.keys(pkg.bin)[0];
+          if (firstKey) binName = firstKey;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    const cliFile = files.find(
+      (f) =>
+        f.content.includes("program.command(") ||
+        f.content.includes("cmd.command(") ||
+        f.content.includes("new Command()"),
+    );
+    if (!cliFile) return screens;
+
+    const commandRegex = /\.command\s*\(\s*["']([^"']+)["'](?:\s*,\s*["']([^"']*)["'])?/g;
+    const seen = new Set<string>();
+    let m: RegExpExecArray | null;
+
+    while ((m = commandRegex.exec(cliFile.content)) !== null) {
+      const commandName = m[1];
+      const fullPath = `${binName} ${commandName}`.trim();
+      if (seen.has(fullPath)) continue;
+      seen.add(fullPath);
+      const name = commandName
+        .split(/[- ]/)
+        .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+        .join(" ");
+      screens.push({
+        id: `screen:cli:${fullPath.replace(/\s/g, ":")}`,
+        name,
+        path: fullPath,
+        filePath: cliFile.path,
+        type: "cli-command",
+        flows: [],
+        navigatesTo: [],
+        framework: "cli-commander",
+      });
+    }
+    return screens;
+  }
+
+  /**
+   * Single-page fallback: one screen when no router/state/hash/cli detected.
+   */
+  public extractSinglePageFallback(
+    files: FileContent[],
+    packageJsonContent?: string,
+  ): Screen[] {
+    let name = "App";
+    if (packageJsonContent) {
+      try {
+        const pkg = JSON.parse(packageJsonContent) as { name?: string };
+        if (pkg.name) {
+          name = pkg.name
+            .replace(/^@[^/]+\//, "")
+            .replace(/[-_]/g, " ")
+            .replace(/\b\w/g, (c) => c.toUpperCase());
+        }
+      } catch {
+        // ignore
+      }
+    }
+    const appFile = files.find(
+      (f) =>
+        f.path.endsWith("App.tsx") ||
+        f.path.endsWith("App.jsx") ||
+        f.path.endsWith("main.tsx") ||
+        f.path.endsWith("main.jsx"),
+    );
+    return [{
+      id: "screen:single:app",
+      name,
+      path: "/",
+      filePath: appFile?.path ?? "unknown",
+      type: "screen",
+      flows: [],
+      navigatesTo: appFile
+        ? this.extractNavigationLinks(appFile.content)
+        : [],
+      framework: "single-page",
+    }];
   }
 
   public extractScreensHeuristic(files: FileContent[]): Screen[] {

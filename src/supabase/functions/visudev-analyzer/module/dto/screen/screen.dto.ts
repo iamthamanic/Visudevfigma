@@ -1,4 +1,4 @@
-export type ScreenType = "page" | "screen" | "view";
+export type ScreenType = "page" | "screen" | "view" | "cli-command";
 export type ScreenScreenshotStatus = "none" | "pending" | "ok" | "error";
 
 export interface Screen {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import clsx from "clsx";
-import { FolderGit2, Loader2, Plus, Search } from "lucide-react";
+import { FolderGit2, LayoutGrid, List, Loader2, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -18,6 +18,7 @@ import { useVisudev } from "../../../lib/visudev/store";
 import type { Project } from "../../../lib/visudev/types";
 import { api } from "../../../utils/api";
 import { ProjectCard } from "../components/ProjectCard";
+import { ProjectListRow } from "../components/ProjectListRow";
 import { GitHubRepoSelector } from "../components/GitHubRepoSelector";
 import { SupabaseProjectSelector } from "../components/SupabaseProjectSelector";
 import styles from "../styles/ProjectsPage.module.css";
@@ -29,7 +30,7 @@ interface ProjectsPageProps {
 }
 
 export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: ProjectsPageProps) {
-  const { session } = useAuth();
+  const { session, user, signInWithPassword } = useAuth();
   const { projects, projectsLoading, setActiveProject, addProject, updateProject, deleteProject } =
     useVisudev();
   const accessToken = session?.access_token ?? null;
@@ -39,6 +40,12 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [deleteConfirmProjectId, setDeleteConfirmProjectId] = useState<string | null>(null);
+  const [deleteConfirmPassword, setDeleteConfirmPassword] = useState("");
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
 
   const [projectName, setProjectName] = useState("");
   const [githubRepo, setGithubRepo] = useState("");
@@ -64,7 +71,7 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
         description: `GitHub: ${githubRepo}${deployedUrl ? ` | Live: ${deployedUrl}` : ""}`,
       };
 
-      const created = addProject(newProject);
+      const created = await addProject(newProject);
       if (githubRepo && accessToken && created.id) {
         await api.integrations.github.setProjectGitHubRepo(
           created.id,
@@ -100,7 +107,7 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
         description: `GitHub: ${githubRepo}${deployedUrl ? ` | Live: ${deployedUrl}` : ""}`,
       };
 
-      updateProject(updatedProject);
+      await updateProject(updatedProject);
       if (githubRepo && accessToken) {
         await api.integrations.github.setProjectGitHubRepo(
           editingProject.id,
@@ -118,13 +125,39 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
     }
   };
 
-  const handleDeleteProject = async (id: string) => {
-    if (!confirm("Projekt wirklich löschen?")) return;
+  const handleDeleteClick = (id: string) => {
+    setDeleteConfirmProjectId(id);
+    setDeleteConfirmPassword("");
+    setIsDeleteConfirmOpen(true);
+  };
 
+  const handleDeleteConfirmClose = () => {
+    setIsDeleteConfirmOpen(false);
+    setDeleteConfirmProjectId(null);
+    setDeleteConfirmPassword("");
+  };
+
+  const handleDeleteConfirmSubmit = async () => {
+    if (!deleteConfirmProjectId || !deleteConfirmPassword.trim()) return;
+    const email = user?.email;
+    if (!email) {
+      toast.error("Nicht angemeldet. Bitte zuerst anmelden.");
+      return;
+    }
+    setIsDeleteLoading(true);
     try {
-      deleteProject(id);
+      const { error } = await signInWithPassword(email, deleteConfirmPassword.trim());
+      if (error) {
+        toast.error("Falsches Passwort. Löschen abgebrochen.");
+        return;
+      }
+      await deleteProject(deleteConfirmProjectId);
+      handleDeleteConfirmClose();
+      toast.success("Projekt wurde gelöscht.");
     } catch {
-      alert("Fehler beim Löschen des Projekts");
+      toast.error("Fehler beim Löschen des Projekts");
+    } finally {
+      setIsDeleteLoading(false);
     }
   };
 
@@ -200,33 +233,75 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
           </Button>
         </div>
 
-        <div className={styles.search}>
-          <Search className={styles.searchIcon} aria-hidden="true" />
-          <Input
-            placeholder="Projekte durchsuchen..."
-            className={styles.searchInput}
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-          />
+        <div className={styles.toolbar}>
+          <div className={styles.search}>
+            <Search className={styles.searchIcon} aria-hidden="true" />
+            <Input
+              placeholder="Projekte durchsuchen..."
+              className={styles.searchInput}
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+            />
+          </div>
+          <div className={styles.viewToggle} role="group" aria-label="Ansicht umschalten">
+            <Button
+              variant={viewMode === "list" ? "secondary" : "ghost"}
+              size="icon"
+              type="button"
+              onClick={() => setViewMode("list")}
+              aria-label="Listenansicht"
+              aria-pressed={viewMode === "list"}
+            >
+              <List className={styles.viewIcon} aria-hidden="true" />
+            </Button>
+            <Button
+              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              size="icon"
+              type="button"
+              onClick={() => setViewMode("grid")}
+              aria-label="Kartenansicht"
+              aria-pressed={viewMode === "grid"}
+            >
+              <LayoutGrid className={styles.viewIcon} aria-hidden="true" />
+            </Button>
+          </div>
         </div>
       </div>
 
       <div className={styles.content}>
-        <div className={styles.grid}>
-          {projectsLoading
-            ? Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={`skeleton-${i}`} className={styles.skeletonCard} />
-              ))
-            : filteredProjects.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  onClick={() => handleProjectClick(project)}
-                  onEdit={() => handleEditClick(project)}
-                  onDelete={() => handleDeleteProject(project.id)}
-                />
-              ))}
-        </div>
+        {viewMode === "list" ? (
+          <div className={styles.list}>
+            {projectsLoading
+              ? Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={`skeleton-${i}`} className={styles.skeletonRow} />
+                ))
+              : filteredProjects.map((project) => (
+                  <ProjectListRow
+                    key={project.id}
+                    project={project}
+                    onClick={() => handleProjectClick(project)}
+                    onEdit={() => handleEditClick(project)}
+                    onDelete={() => handleDeleteClick(project.id)}
+                  />
+                ))}
+          </div>
+        ) : (
+          <div className={styles.grid}>
+            {projectsLoading
+              ? Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={`skeleton-${i}`} className={styles.skeletonCard} />
+                ))
+              : filteredProjects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    onClick={() => handleProjectClick(project)}
+                    onEdit={() => handleEditClick(project)}
+                    onDelete={() => handleDeleteClick(project.id)}
+                  />
+                ))}
+          </div>
+        )}
 
         {!projectsLoading && filteredProjects.length === 0 && (
           <div className={styles.emptyState}>
@@ -433,6 +508,7 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
         <DialogContent className={styles.dialogContent}>
           <DialogHeader>
             <DialogTitle>Projekt bearbeiten</DialogTitle>
+            <DialogDescription>Projektdaten und Verknüpfungen anpassen.</DialogDescription>
           </DialogHeader>
 
           <div className={styles.stackMd}>
@@ -496,6 +572,63 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
                     </>
                   ) : (
                     "Speichern"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isDeleteConfirmOpen}
+        onOpenChange={(open) => !open && handleDeleteConfirmClose()}
+      >
+        <DialogContent className={styles.dialogContent}>
+          <DialogHeader>
+            <DialogTitle>Projekt löschen</DialogTitle>
+            <DialogDescription>
+              Dieses Projekt wird endgültig gelöscht. Zum Bestätigen bitte dein Passwort eingeben.
+            </DialogDescription>
+          </DialogHeader>
+          <div className={styles.stackMd}>
+            <div className={styles.stackSm}>
+              <Label htmlFor="deleteConfirmPassword">Passwort</Label>
+              <Input
+                id="deleteConfirmPassword"
+                type="password"
+                value={deleteConfirmPassword}
+                onChange={(e) => setDeleteConfirmPassword(e.target.value)}
+                placeholder="Dein Passwort"
+                autoComplete="current-password"
+                disabled={isDeleteLoading}
+              />
+            </div>
+            <div className={styles.actionsRow}>
+              <div />
+              <div className={styles.actionsGroup}>
+                <Button
+                  variant="outline"
+                  onClick={handleDeleteConfirmClose}
+                  disabled={isDeleteLoading}
+                >
+                  Abbrechen
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteConfirmSubmit}
+                  disabled={!deleteConfirmPassword.trim() || isDeleteLoading}
+                >
+                  {isDeleteLoading ? (
+                    <>
+                      <Loader2
+                        className={clsx(styles.inlineIcon, styles.spinner)}
+                        aria-hidden="true"
+                      />
+                      Wird gelöscht…
+                    </>
+                  ) : (
+                    "Projekt löschen"
                   )}
                 </Button>
               </div>

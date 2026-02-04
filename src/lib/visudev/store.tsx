@@ -18,7 +18,7 @@ import {
 } from "./types";
 import type { PreviewStatus } from "./types";
 import { publicAnonKey, supabaseUrl } from "../../utils/supabase/info";
-import { previewAPI } from "../../utils/api";
+import { api, previewAPI } from "../../utils/api";
 
 export interface PreviewState {
   projectId: string | null;
@@ -34,9 +34,12 @@ interface VisudevStore {
   setProjectsLoading: (loading: boolean) => void;
   activeProject: Project | null;
   setActiveProject: (project: Project | null) => void;
-  addProject: (project: Omit<Project, "id" | "createdAt" | "screens" | "flows">) => Project;
-  updateProject: (project: Project) => void;
-  deleteProject: (id: string) => void;
+  addProject: (
+    project: Omit<Project, "id" | "createdAt" | "screens" | "flows">,
+  ) => Promise<Project>;
+  updateProject: (project: Project) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
+  loadProjects: () => Promise<void>;
 
   // Scans
   scans: ScanResult[];
@@ -54,9 +57,26 @@ interface VisudevStore {
 
 const VisudevContext = createContext<VisudevStore | null>(null);
 
+/** Projekt aus API-Response normalisieren (screens/flows immer Arrays). */
+function normalizeProject(p: Record<string, unknown> & { id: string }): Project {
+  return {
+    ...p,
+    id: p.id,
+    screens: Array.isArray(p.screens) ? (p.screens as Project["screens"]) : [],
+    flows: Array.isArray(p.flows) ? (p.flows as Project["flows"]) : [],
+  } as Project;
+}
+
+function apiErrorMsg(err: unknown): string {
+  if (typeof err === "string") return err;
+  if (err && typeof err === "object" && "message" in err)
+    return String((err as { message: unknown }).message);
+  return "Request failed";
+}
+
 export function VisudevProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [projectsLoading, setProjectsLoading] = useState(true);
   const [activeProject, setActiveProjectState] = useState<Project | null>(null);
   const [scans, setScans] = useState<ScanResult[]>([]);
   const [scanStatuses, setScanStatuses] = useState<ScanStatuses>({
@@ -75,15 +95,39 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     setActiveProjectState(project);
   }, []);
 
+  const loadProjects = useCallback(async () => {
+    setProjectsLoading(true);
+    try {
+      const res = await api.projects.getAll();
+      if (res.success && Array.isArray(res.data)) {
+        setProjects(
+          res.data.map((p) =>
+            normalizeProject(p as unknown as Record<string, unknown> & { id: string }),
+          ),
+        );
+      } else {
+        setProjects([]);
+      }
+    } catch {
+      setProjects([]);
+    } finally {
+      setProjectsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadProjects();
+  }, [loadProjects]);
+
   const addProject = useCallback(
-    (projectData: Omit<Project, "id" | "createdAt" | "screens" | "flows">): Project => {
-      const newProject: Project = {
-        ...projectData,
-        id: crypto.randomUUID(),
-        createdAt: new Date().toISOString(),
-        screens: [],
-        flows: [],
-      };
+    async (
+      projectData: Omit<Project, "id" | "createdAt" | "screens" | "flows">,
+    ): Promise<Project> => {
+      const res = await api.projects.create(projectData);
+      if (!res.success) throw new Error(apiErrorMsg(res.error));
+      const raw = res.data as unknown as (Record<string, unknown> & { id: string }) | undefined;
+      if (!raw?.id) throw new Error("Projekt wurde nicht zurückgegeben.");
+      const newProject = normalizeProject(raw);
       setProjects((prev) => [...prev, newProject]);
       return newProject;
     },
@@ -97,17 +141,22 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     }
   }, [projects, activeProject, setActiveProject]);
 
-  const updateProject = useCallback((project: Project) => {
-    setProjects((prev) => prev.map((p) => (p.id === project.id ? project : p)));
-    // Update active project if it's the same
-    setActiveProjectState((current) => (current?.id === project.id ? project : current));
+  const updateProject = useCallback(async (project: Project) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- omit from payload
+    const { id, createdAt, updatedAt, ...payload } = project;
+    const res = await api.projects.update(id, payload);
+    if (!res.success) throw new Error(apiErrorMsg(res.error));
+    const raw = res.data as unknown as (Record<string, unknown> & { id: string }) | undefined;
+    const updated = raw ? normalizeProject(raw) : project;
+    setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    setActiveProjectState((current) => (current?.id === updated.id ? updated : current));
   }, []);
 
-  const deleteProject = useCallback((id: string) => {
+  const deleteProject = useCallback(async (id: string) => {
+    const res = await api.projects.delete(id);
+    if (!res.success) throw new Error(apiErrorMsg(res.error));
     setProjects((prev) => prev.filter((p) => p.id !== id));
-    // Clear active project if it was deleted
     setActiveProjectState((current) => (current?.id === id ? null : current));
-    // Clean up related scans
     setScans((prev) => prev.filter((s) => s.projectId !== id));
   }, []);
 
@@ -328,6 +377,30 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
 
   const startPreview = useCallback(
     async (projectId: string, repo?: string, branchOrCommit?: string) => {
+      const setPreviewError = (error: string) => {
+        setPreview((prev) => ({
+          ...prev,
+          projectId,
+          status: "failed" as const,
+          error,
+          previewUrl: null,
+        }));
+      };
+      if (repo) {
+        if (repo.startsWith("http://") || repo.startsWith("https://")) {
+          setPreviewError("Repo als 'owner/repo' angeben, keine URL.");
+          return;
+        }
+        if (!repo.includes("/")) {
+          setPreviewError("Repo-Format: owner/repo (z. B. user/my-app).");
+          return;
+        }
+      }
+      const branch = (branchOrCommit ?? "").trim();
+      if (branch.startsWith("-")) {
+        setPreviewError("Branch darf nicht mit - beginnen (z. B. -h, --help).");
+        return;
+      }
       setPreview((prev) => ({
         ...prev,
         projectId,
@@ -364,7 +437,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         ? {
             ...prev,
             status,
-            previewUrl: payload.previewUrl ?? prev.previewUrl,
+            previewUrl: status === "failed" ? null : (payload.previewUrl ?? prev.previewUrl),
             error: payload.error ?? prev.error,
           }
         : prev,
@@ -404,6 +477,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     addProject,
     updateProject,
     deleteProject,
+    loadProjects,
     scans,
     scanStatuses,
     startScan,

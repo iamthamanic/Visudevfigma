@@ -5,6 +5,4 @@ export type ProjectCreateInput = Omit<
   "id" | "createdAt" | "updatedAt" | "screens" | "flows"
 >;
 
-export type ProjectUpdateInput = Partial<
-  Omit<Project, "id" | "createdAt" | "updatedAt" | "screens" | "flows">
->;
+export type ProjectUpdateInput = Partial<Omit<Project, "id" | "createdAt" | "updatedAt">>;
