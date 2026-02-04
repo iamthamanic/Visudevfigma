@@ -7,6 +7,7 @@ import { useRef, useState, useEffect, useMemo } from "react";
 import clsx from "clsx";
 import { ZoomIn, ZoomOut, Home } from "lucide-react";
 import type { Screen, Flow } from "../../../lib/visudev/types";
+import { getScreenDepths, buildEdges, computePositions } from "../layout";
 import styles from "../styles/FlowGraphView.module.css";
 
 const NODE_WIDTH = 160;
@@ -19,89 +20,6 @@ interface FlowGraphViewProps {
   flows: Flow[];
 }
 
-interface NodePosition {
-  x: number;
-  y: number;
-  depth: number;
-}
-
-function getScreenDepths(screens: Screen[]): Map<string, number> {
-  const depths = new Map<string, number>();
-  const visited = new Set<string>();
-
-  const rootScreens = screens.filter(
-    (s) =>
-      s.path === "/" ||
-      s.path === "/home" ||
-      s.path === "/login" ||
-      s.path === "/index" ||
-      s.name.toLowerCase().includes("home") ||
-      s.name.toLowerCase().includes("index"),
-  );
-  const queue: Array<{ screen: Screen; depth: number }> = (
-    rootScreens.length > 0 ? rootScreens : [screens[0]].filter(Boolean)
-  ).map((s) => ({
-    screen: s,
-    depth: 0,
-  }));
-
-  while (queue.length > 0) {
-    const { screen, depth } = queue.shift()!;
-    if (!screen || visited.has(screen.id)) continue;
-    visited.add(screen.id);
-    depths.set(screen.id, depth);
-    (screen.navigatesTo || []).forEach((targetPath) => {
-      const target = screens.find(
-        (s) => s.path === targetPath || (targetPath && s.path.includes(targetPath)),
-      );
-      if (target && !visited.has(target.id)) queue.push({ screen: target, depth: depth + 1 });
-    });
-  }
-  screens.forEach((s) => {
-    if (!depths.has(s.id)) depths.set(s.id, 0);
-  });
-  return depths;
-}
-
-function buildEdges(
-  screens: Screen[],
-  flows: Flow[],
-): Array<{ fromId: string; toId: string; type: "navigate" | "call" }> {
-  const edges: Array<{ fromId: string; toId: string; type: "navigate" | "call" }> = [];
-  const flowToScreen = new Map<string, string>();
-  screens.forEach((s) => {
-    (s.flows || []).forEach((fid) => flowToScreen.set(fid, s.id));
-  });
-  const flowByNameOrId = new Map<string, Flow>();
-  flows.forEach((f) => {
-    flowByNameOrId.set(f.id, f);
-    flowByNameOrId.set(f.name, f);
-  });
-
-  screens.forEach((source) => {
-    (source.navigatesTo || []).forEach((targetPath) => {
-      const target = screens.find(
-        (s) => s.path === targetPath || (targetPath && s.path.includes(targetPath)),
-      );
-      if (target && target.id !== source.id)
-        edges.push({ fromId: source.id, toId: target.id, type: "navigate" });
-    });
-  });
-
-  flows.forEach((flow) => {
-    const fromScreenId = flowToScreen.get(flow.id);
-    if (!fromScreenId) return;
-    (flow.calls || []).forEach((callTarget) => {
-      const targetFlow = flowByNameOrId.get(callTarget);
-      const toScreenId = targetFlow ? flowToScreen.get(targetFlow.id) : undefined;
-      if (toScreenId && toScreenId !== fromScreenId)
-        edges.push({ fromId: fromScreenId, toId: toScreenId, type: "call" });
-    });
-  });
-
-  return edges;
-}
-
 export function FlowGraphView({ screens, flows }: FlowGraphViewProps) {
   const [zoom, setZoom] = useState(0.8);
   const [pan, setPan] = useState({ x: 60, y: 60 });
@@ -111,28 +29,18 @@ export function FlowGraphView({ screens, flows }: FlowGraphViewProps) {
   const graphRef = useRef<HTMLDivElement>(null);
 
   const depths = useMemo(() => getScreenDepths(screens), [screens]);
-  const positions = useMemo(() => {
-    const pos = new Map<string, NodePosition>();
-    const columns: Screen[][] = [];
-    screens.forEach((s) => {
-      const d = depths.get(s.id) ?? 0;
-      if (!columns[d]) columns[d] = [];
-      columns[d].push(s);
-    });
-    let x = 0;
-    columns.forEach((col) => {
-      if (!col?.length) return;
-      col.sort((a, b) => a.name.localeCompare(b.name));
-      let y = 0;
-      col.forEach((s) => {
-        pos.set(s.id, { x, y, depth: depths.get(s.id) ?? 0 });
-        y += NODE_HEIGHT + VERTICAL_SPACING;
-      });
-      x += NODE_WIDTH + HORIZONTAL_SPACING;
-    });
-    return pos;
-  }, [screens, depths]);
-
+  const positions = useMemo(
+    () =>
+      computePositions(
+        screens,
+        depths,
+        NODE_WIDTH,
+        NODE_HEIGHT,
+        HORIZONTAL_SPACING,
+        VERTICAL_SPACING,
+      ),
+    [screens, depths],
+  );
   const edges = useMemo(() => buildEdges(screens, flows), [screens, flows]);
 
   useEffect(() => {

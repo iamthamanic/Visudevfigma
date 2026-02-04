@@ -59,18 +59,35 @@ async function apiRequest<T>(
       result = text ? (JSON.parse(text) as typeof result) : {};
     } catch {
       console.error(`API [${endpoint}]: response is not JSON`, text.slice(0, 150));
-      return {
-        success: false,
-        error:
-          response.ok === false
-            ? `Server error ${response.status}. Check that Edge Functions are deployed and reachable.`
-            : "Server returned invalid response (not JSON). Check network and Edge Function URL.",
-      };
+      const isPreview = endpoint.includes("preview");
+      const is404 = response.status === 404;
+      let errorMsg: string;
+      if (response.ok === false) {
+        if (is404 && isPreview) {
+          errorMsg =
+            "Edge Function 'visudev-preview' nicht gefunden (404). " +
+            "Bitte deployen: supabase functions deploy visudev-preview. " +
+            "Außerdem PREVIEW_RUNNER_URL in Supabase Dashboard → Edge Functions → Secrets setzen.";
+        } else {
+          errorMsg = `Server error ${response.status}. Check that Edge Functions are deployed and reachable.`;
+        }
+      } else {
+        errorMsg =
+          "Server returned invalid response (not JSON). Check network and Edge Function URL.";
+      }
+      return { success: false, error: errorMsg };
     }
 
     if (!response.ok) {
       console.error(`API Error [${endpoint}]:`, result.error || response.statusText);
-      return { success: false, error: (result.error as string) || response.statusText };
+      const isPreview = endpoint.includes("preview");
+      const is404 = response.status === 404;
+      const error =
+        (result.error as string) ||
+        (is404 && isPreview
+          ? "Edge Function 'visudev-preview' nicht gefunden (404). Deploy: supabase functions deploy visudev-preview. PREVIEW_RUNNER_URL in Secrets setzen."
+          : response.statusText);
+      return { success: false, error };
     }
 
     return { ...result, success: result.success !== false };

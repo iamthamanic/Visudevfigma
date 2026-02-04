@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertCircle, Download, Loader2, Play, RefreshCw, Square } from "lucide-react";
+import { AlertCircle, Download, Loader2, Map, Play, RefreshCw, Square, X } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
 import { SitemapFlowView } from "../../../components/SitemapFlowView";
 import { FlowGraphView } from "../components/FlowGraphView";
+import { LiveFlowCanvas } from "../components/LiveFlowCanvas";
 import styles from "../styles/AppFlowPage.module.css";
 
 function downloadFile(content: string, filename: string, mimeType: string) {
@@ -34,6 +35,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     stopPreview,
   } = useVisudev();
   const [isRescan, setIsRescan] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoPreviewDoneRef = useRef(false);
 
@@ -64,19 +66,17 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     }
   }, [projectId, refreshPreviewStatus]);
 
-  // Auto-start preview when repo is connected and status still idle (once per project)
+  // Auto-start preview when repo is connected (once per project; also when status not yet loaded)
   useEffect(() => {
-    if (
-      !activeProject?.github_repo ||
-      preview.projectId !== projectId ||
-      preview.status !== "idle" ||
-      autoPreviewDoneRef.current
-    ) {
-      if (preview.status === "ready" || preview.status === "starting") {
-        autoPreviewDoneRef.current = true;
-      }
+    if (!activeProject?.github_repo || activeProject.id !== projectId) return;
+    if (preview.status === "ready" || preview.status === "starting") {
+      autoPreviewDoneRef.current = true;
       return;
     }
+    if (autoPreviewDoneRef.current) return;
+    const isIdle =
+      preview.status === "idle" && (preview.projectId === null || preview.projectId === projectId);
+    if (!isIdle) return;
     const t = setTimeout(() => {
       autoPreviewDoneRef.current = true;
       void startPreview(projectId, activeProject.github_repo, activeProject.github_branch);
@@ -240,7 +240,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
         {hasData && !activeProject.deployed_url && !preview.previewUrl && (
           <div className={`${styles.statusBar} ${styles.statusInfo}`} role="status">
             <p className={styles.statusMeta}>
-              💡 Echte Screens: <strong>Preview</strong> startet automatisch; oder im Projekt eine{" "}
+              💡 Preview startet automatisch bei verbundenem Repo; oder im Projekt eine{" "}
               <strong>Deployed URL</strong> setzen.
             </p>
           </div>
@@ -248,110 +248,134 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
       </div>
 
       <div className={styles.content}>
-        <div className={styles.liveAppSplit}>
-          <div className={styles.sitemapFlowPanel}>
-            {isScanning && !hasData ? (
-              <div className={styles.centerState}>
-                <div className={styles.emptyCard}>
-                  <Loader2 className={`${styles.emptyIcon} ${styles.spinner}`} aria-hidden="true" />
-                  <p className={styles.emptyTitle}>Code wird analysiert...</p>
-                  <p className={styles.emptyHint}>Sitemap und Flow Graph werden gebaut.</p>
-                </div>
-              </div>
-            ) : !hasData ? (
-              <div className={styles.centerState}>
-                <div className={styles.emptyCard}>
-                  <AlertCircle className={styles.emptyIcon} aria-hidden="true" />
-                  <p className={styles.emptyTitle}>Noch keine Flows analysiert</p>
-                  <p className={styles.emptyHint}>
-                    Sitemap und Flow Graph werden automatisch aus dem Repository gebaut.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleRescan}
-                    disabled={isScanning}
-                    className={styles.primaryButton}
-                  >
-                    <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
-                    Scan starten
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className={styles.sitemapSection}>
-                  <SitemapFlowView
-                    screens={activeProject.screens}
-                    flows={activeProject.flows}
-                    projectData={{
-                      id: activeProject.id,
-                      deployed_url: activeProject.deployed_url ?? preview.previewUrl ?? undefined,
-                    }}
-                  />
-                </div>
-                <div className={styles.flowGraphSection}>
-                  <FlowGraphView screens={activeProject.screens} flows={activeProject.flows} />
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className={styles.liveAppPanel}>
-            {preview.projectId === projectId && preview.previewUrl ? (
-              <div className={styles.liveAppWrap}>
-                <div className={styles.liveAppBar}>
-                  <span className={styles.liveAppLabel}>Live App (Preview)</span>
-                  <button
-                    type="button"
-                    onClick={() => stopPreview(projectId)}
-                    className={styles.secondaryButton}
-                    aria-label="Preview beenden"
-                  >
-                    <Square className={styles.inlineIcon} aria-hidden="true" />
-                    Preview beenden
-                  </button>
-                </div>
-                {/* Preview is shown only inside this iframe in App Flow; do not open in a new tab. */}
-                <iframe
-                  src={preview.previewUrl}
-                  title="Live App Preview"
-                  className={styles.liveAppIframe}
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                />
-              </div>
-            ) : preview.projectId === projectId && preview.status === "starting" ? (
-              <div className={styles.liveAppPlaceholder}>
-                <Loader2 className={`${styles.emptyIcon} ${styles.spinner}`} aria-hidden="true" />
-                <p className={styles.emptyTitle}>Preview wird gestartet...</p>
-                <p className={styles.emptyHint}>VisuDEV baut und startet die App aus dem Repo.</p>
-              </div>
-            ) : preview.projectId === projectId && preview.status === "failed" ? (
-              <div className={styles.liveAppPlaceholder}>
-                <AlertCircle className={styles.emptyIcon} aria-hidden="true" />
-                <p className={styles.emptyTitle}>Preview fehlgeschlagen</p>
-                <p className={styles.emptyHint}>{preview.error ?? "Unbekannter Fehler"}</p>
+        {preview.projectId === projectId && preview.previewUrl && hasData ? (
+          <div className={styles.liveAppWrap}>
+            <div className={styles.liveAppBar}>
+              <span className={styles.liveAppLabel}>Live App Flow</span>
+              <div className={styles.liveAppBarActions}>
                 <button
                   type="button"
-                  onClick={() =>
-                    startPreview(
-                      projectId,
-                      activeProject?.github_repo,
-                      activeProject?.github_branch,
-                    )
-                  }
-                  className={styles.primaryButton}
+                  onClick={() => stopPreview(projectId)}
+                  className={styles.secondaryButton}
+                  aria-label="Preview beenden"
                 >
-                  <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
-                  Erneut versuchen
+                  <Square className={styles.inlineIcon} aria-hidden="true" />
+                  Preview beenden
                 </button>
               </div>
-            ) : (
-              <div className={styles.liveAppPlaceholder}>
-                <p className={styles.emptyTitle}>Live App</p>
-                <p className={styles.emptyHint}>
-                  Die App aus dem Repo wird automatisch gebaut und hier angezeigt.
-                </p>
-                {activeProject?.github_repo ? (
+            </div>
+            <LiveFlowCanvas
+              screens={activeProject.screens}
+              flows={activeProject.flows}
+              previewUrl={preview.previewUrl}
+              projectId={projectId}
+            />
+          </div>
+        ) : (
+          <div className={styles.previewOnly}>
+            {drawerOpen && (
+              <div className={styles.drawer}>
+                <div className={styles.drawerHeader}>
+                  <span className={styles.drawerTitle}>Sitemap & Flow Graph</span>
+                  <button
+                    type="button"
+                    onClick={() => setDrawerOpen(false)}
+                    className={styles.drawerClose}
+                    aria-label="Panel schließen"
+                  >
+                    <X className={styles.inlineIcon} aria-hidden="true" />
+                  </button>
+                </div>
+                <div className={styles.drawerBody}>
+                  {isScanning && !hasData ? (
+                    <div className={styles.centerState}>
+                      <Loader2
+                        className={`${styles.emptyIcon} ${styles.spinner}`}
+                        aria-hidden="true"
+                      />
+                      <p className={styles.emptyTitle}>Code wird analysiert...</p>
+                    </div>
+                  ) : !hasData ? (
+                    <div className={styles.centerState}>
+                      <p className={styles.emptyTitle}>Noch keine Flows</p>
+                      <button
+                        type="button"
+                        onClick={handleRescan}
+                        disabled={isScanning}
+                        className={styles.primaryButton}
+                      >
+                        <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
+                        Scan starten
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className={styles.sitemapSection}>
+                        <SitemapFlowView
+                          screens={activeProject.screens}
+                          flows={activeProject.flows}
+                          projectData={{
+                            id: activeProject.id,
+                            deployed_url:
+                              activeProject.deployed_url ?? preview.previewUrl ?? undefined,
+                          }}
+                        />
+                      </div>
+                      <div className={styles.flowGraphSection}>
+                        <FlowGraphView
+                          screens={activeProject.screens}
+                          flows={activeProject.flows}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+            <div className={styles.previewMain}>
+              {preview.projectId === projectId && preview.previewUrl ? (
+                <div className={styles.liveAppWrap}>
+                  <div className={styles.liveAppBar}>
+                    <span className={styles.liveAppLabel}>Live App (Preview)</span>
+                    <div className={styles.liveAppBarActions}>
+                      <button
+                        type="button"
+                        onClick={() => setDrawerOpen(!drawerOpen)}
+                        className={styles.secondaryButton}
+                        aria-label={drawerOpen ? "Sitemap schließen" : "Sitemap & Flow Graph"}
+                      >
+                        <Map className={styles.inlineIcon} aria-hidden="true" />
+                        {drawerOpen ? "Sitemap schließen" : "Sitemap & Flow Graph"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => stopPreview(projectId)}
+                        className={styles.secondaryButton}
+                        aria-label="Preview beenden"
+                      >
+                        <Square className={styles.inlineIcon} aria-hidden="true" />
+                        Preview beenden
+                      </button>
+                    </div>
+                  </div>
+                  <iframe
+                    src={preview.previewUrl}
+                    title="Live App Preview"
+                    className={styles.liveAppIframe}
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                  />
+                </div>
+              ) : preview.projectId === projectId && preview.status === "starting" ? (
+                <div className={styles.liveAppPlaceholder}>
+                  <Loader2 className={`${styles.emptyIcon} ${styles.spinner}`} aria-hidden="true" />
+                  <p className={styles.emptyTitle}>Preview wird gestartet...</p>
+                  <p className={styles.emptyHint}>VisuDEV baut und startet die App aus dem Repo.</p>
+                </div>
+              ) : preview.projectId === projectId && preview.status === "failed" ? (
+                <div className={styles.liveAppPlaceholder}>
+                  <AlertCircle className={styles.emptyIcon} aria-hidden="true" />
+                  <p className={styles.emptyTitle}>Preview fehlgeschlagen</p>
+                  <p className={styles.emptyHint}>{preview.error ?? "Unbekannter Fehler"}</p>
                   <button
                     type="button"
                     onClick={() =>
@@ -362,18 +386,56 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                       )
                     }
                     className={styles.primaryButton}
-                    aria-label="Preview starten"
                   >
-                    <Play className={styles.inlineIcon} aria-hidden="true" />
-                    Preview starten
+                    <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
+                    Erneut versuchen
                   </button>
-                ) : (
-                  <p className={styles.emptyHint}>Verbinde ein GitHub-Repo im Projekt.</p>
-                )}
-              </div>
-            )}
+                </div>
+              ) : (
+                <div className={styles.liveAppPlaceholder}>
+                  <p className={styles.emptyTitle}>Live App</p>
+                  <p className={styles.emptyHint}>
+                    Die App aus dem Repo wird automatisch gestartet. Falls nicht, unten starten.
+                  </p>
+                  {activeProject?.github_repo ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        startPreview(
+                          projectId,
+                          activeProject?.github_repo,
+                          activeProject?.github_branch,
+                        )
+                      }
+                      className={styles.primaryButton}
+                      aria-label="Preview starten"
+                    >
+                      <Play className={styles.inlineIcon} aria-hidden="true" />
+                      Preview starten
+                    </button>
+                  ) : (
+                    <p className={styles.emptyHint}>
+                      Verbinde ein GitHub-Repo in Settings → Projekt-Anbindungen.
+                    </p>
+                  )}
+                </div>
+              )}
+              {(!preview.previewUrl || preview.projectId !== projectId) && (
+                <div className={styles.previewToolbar}>
+                  <button
+                    type="button"
+                    onClick={() => setDrawerOpen(!drawerOpen)}
+                    className={styles.secondaryButton}
+                    aria-label={drawerOpen ? "Sitemap schließen" : "Sitemap & Flow Graph anzeigen"}
+                  >
+                    <Map className={styles.inlineIcon} aria-hidden="true" />
+                    {drawerOpen ? "Sitemap schließen" : "Sitemap & Flow Graph"}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -162,20 +162,66 @@
   overflow: hidden;
 }
 
-.liveAppSplit {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
+.previewOnly {
+  display: flex;
   height: 100%;
   min-height: 0;
 }
 
-.sitemapFlowPanel {
+.drawer {
+  width: 420px;
+  max-width: 45%;
+  min-width: 280px;
+  flex-shrink: 0;
+  background-color: var(--color-card);
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  overflow: hidden;
+}
+
+.drawerHeader {
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+}
+
+.drawerTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.drawerClose {
+  background: none;
+  border: none;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  padding: 0.25rem;
+}
+
+.drawerClose:hover {
+  color: var(--color-foreground);
+}
+
+.drawerBody {
+  flex: 1;
   overflow: auto;
+  min-height: 0;
+}
+
+.previewMain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.previewToolbar {
+  border-top: 1px solid var(--color-border);
+  padding: 0.5rem 1rem;
 }
 
 .sitemapSection {
@@ -188,11 +234,10 @@
   min-height: 200px;
 }
 
-.liveAppPanel {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  overflow: hidden;
+.liveAppBarActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .liveAppPlaceholder {
