@@ -469,7 +469,105 @@ export function LiveFlowCanvas({ screens, flows, previewUrl, previewError }: Liv
         onMouseLeave={handleMouseUp}
       >
         <div ref={graphRef} className={styles.graph}>
-          {/* SVG layer: edges (behind nodes) */}
+          {/* Nodes zuerst (unten), Kanten per z-index darüber – so sind Verbindungen sichtbar */}
+          <div className={styles.nodesLayer} ref={nodesLayerRef}>
+            {screens.map((screen) => {
+              const pos = positions.get(screen.id);
+              if (!pos) return null;
+              const iframeSrc = normalizePreviewUrl(previewUrl, screen.path || "/");
+              return (
+                <div
+                  key={screen.id}
+                  className={styles.nodeCard}
+                  ref={(el) => {
+                    if (el) {
+                      el.style.setProperty("--node-left", `${pos.x}px`);
+                      el.style.setProperty("--node-top", `${pos.y}px`);
+                      el.style.setProperty("--node-width", `${NODE_WIDTH}px`);
+                      el.style.setProperty("--node-height", `${NODE_HEIGHT}px`);
+                    }
+                  }}
+                >
+                  <div className={styles.nodeLabel}>
+                    {screen.name}
+                    {screen.path ? ` · ${screen.path}` : ""}
+                  </div>
+                  {domReportsByScreenId[screen.id] && (
+                    <div className={styles.nodeLiveReport} title="Live-Daten von der App">
+                      Live: {domReportsByScreenId[screen.id].route}
+                      {domReportsByScreenId[screen.id].buttons != null &&
+                        ` · ${domReportsByScreenId[screen.id].buttons!.length} Buttons`}
+                    </div>
+                  )}
+                  {screenLoadState[screen.id] === "failed" ? (
+                    <div
+                      className={styles.nodeFailed}
+                      role="status"
+                      data-testid="screen-card-failed"
+                      data-screen-id={screen.id}
+                    >
+                      <span className={styles.nodeFailedReason} data-testid="screen-fail-reason">
+                        {screenFailReason[screen.id] ?? SCREEN_FAIL_REASONS.LOAD_ERROR}
+                      </span>
+                      {iframeSrc ? (
+                        <a
+                          href={iframeSrc}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.nodeOpenInTab}
+                        >
+                          In neuem Tab öffnen
+                        </a>
+                      ) : null}
+                    </div>
+                  ) : iframeSrc ? (
+                    <div className={styles.nodeIframeWrap}>
+                      <iframe
+                        src={iframeSrc}
+                        title={`Live: ${screen.name}`}
+                        className={styles.nodeIframe}
+                        data-testid="screen-card-iframe"
+                        data-screen-id={screen.id}
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                        onLoad={() => markScreenLoaded(screen.id, screen.name)}
+                        onError={() =>
+                          markScreenFailed(
+                            screen.id,
+                            SCREEN_FAIL_REASONS.LOAD_ERROR,
+                            screen.name,
+                            iframeSrc,
+                          )
+                        }
+                        ref={(el) => {
+                          if (el?.contentWindow)
+                            iframeToScreenRef.current.set(el.contentWindow, screen.id);
+                        }}
+                      />
+                      {screenLoadState[screen.id] === "loading" && (
+                        <div
+                          className={styles.nodeLoadingOverlay}
+                          data-testid="screen-card-loading"
+                        >
+                          <Loader2 className={styles.nodeLoadingSpinner} aria-hidden="true" />
+                          <span className={styles.nodeLoadingText}>Laden…</span>
+                        </div>
+                      )}
+                      {screenLoadState[screen.id] === "loaded" && (
+                        <div className={styles.nodeLoadedHint} role="status">
+                          Falls Karte leer: Einbetten (X-Frame-Options/CSP) in der Preview-App
+                          erlauben.
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className={styles.nodePlaceholder}>{SCREEN_FAIL_REASONS.NO_URL}</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Kanten (SVG) über den Nodes – so sind Verbindungen sichtbar */}
           <svg className={styles.svgLayer} width={maxX} height={maxY} aria-hidden="true">
             <defs>
               <marker
@@ -521,7 +619,7 @@ export function LiveFlowCanvas({ screens, flows, previewUrl, previewError }: Liv
             )}
           </svg>
 
-          {/* Clickable invisible paths for edge hit area */}
+          {/* Klickbare unsichtbare Pfade für Kanten (über den sichtbaren Kanten) */}
           <svg className={styles.svgHit} width={maxX} height={maxY} aria-hidden="true">
             {edges.map((edge, i) => {
               const fromPos = positions.get(edge.fromId);
@@ -550,94 +648,6 @@ export function LiveFlowCanvas({ screens, flows, previewUrl, previewError }: Liv
               );
             })}
           </svg>
-
-          {/* Node layer: iframes */}
-          <div className={styles.nodesLayer} ref={nodesLayerRef}>
-            {screens.map((screen) => {
-              const pos = positions.get(screen.id);
-              if (!pos) return null;
-              const iframeSrc = normalizePreviewUrl(previewUrl, screen.path || "/");
-              return (
-                <div
-                  key={screen.id}
-                  className={styles.nodeCard}
-                  ref={(el) => {
-                    if (el) {
-                      el.style.setProperty("--node-left", `${pos.x}px`);
-                      el.style.setProperty("--node-top", `${pos.y}px`);
-                      el.style.setProperty("--node-width", `${NODE_WIDTH}px`);
-                      el.style.setProperty("--node-height", `${NODE_HEIGHT}px`);
-                    }
-                  }}
-                >
-                  <div className={styles.nodeLabel}>
-                    {screen.name}
-                    {screen.path ? ` · ${screen.path}` : ""}
-                  </div>
-                  {domReportsByScreenId[screen.id] && (
-                    <div className={styles.nodeLiveReport} title="Live-Daten von der App">
-                      Live: {domReportsByScreenId[screen.id].route}
-                      {domReportsByScreenId[screen.id].buttons != null &&
-                        ` · ${domReportsByScreenId[screen.id].buttons!.length} Buttons`}
-                    </div>
-                  )}
-                  {screenLoadState[screen.id] === "failed" ? (
-                    <div
-                      className={styles.nodeFailed}
-                      role="status"
-                      data-testid="screen-card-failed"
-                      data-screen-id={screen.id}
-                    >
-                      <span className={styles.nodeFailedReason} data-testid="screen-fail-reason">
-                        {screenFailReason[screen.id] ?? SCREEN_FAIL_REASONS.LOAD_ERROR}
-                      </span>
-                    </div>
-                  ) : iframeSrc ? (
-                    <div className={styles.nodeIframeWrap}>
-                      <iframe
-                        src={iframeSrc}
-                        title={`Live: ${screen.name}`}
-                        className={styles.nodeIframe}
-                        data-testid="screen-card-iframe"
-                        data-screen-id={screen.id}
-                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                        onLoad={() => markScreenLoaded(screen.id, screen.name)}
-                        onError={() =>
-                          markScreenFailed(
-                            screen.id,
-                            SCREEN_FAIL_REASONS.LOAD_ERROR,
-                            screen.name,
-                            iframeSrc,
-                          )
-                        }
-                        ref={(el) => {
-                          if (el?.contentWindow)
-                            iframeToScreenRef.current.set(el.contentWindow, screen.id);
-                        }}
-                      />
-                      {screenLoadState[screen.id] === "loading" && (
-                        <div
-                          className={styles.nodeLoadingOverlay}
-                          data-testid="screen-card-loading"
-                        >
-                          <Loader2 className={styles.nodeLoadingSpinner} aria-hidden="true" />
-                          <span className={styles.nodeLoadingText}>Laden…</span>
-                        </div>
-                      )}
-                      {screenLoadState[screen.id] === "loaded" && (
-                        <div className={styles.nodeLoadedHint} role="status">
-                          Falls Karte leer: Einbetten (X-Frame-Options/CSP) in der Preview-App
-                          erlauben.
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className={styles.nodePlaceholder}>{SCREEN_FAIL_REASONS.NO_URL}</div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
         </div>
       </div>
     </div>

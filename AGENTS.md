@@ -11,7 +11,9 @@ This repo enforces strict modular architecture and quality gates. Agents must fo
   - `git push` runs pre-push checks automatically.
   - `supabase ...` uses the shim and runs checks automatically before invoking Supabase.
 - Never call the real Supabase binary directly. Use the shim (`supabase`) or `npm run supabase:checked`.
-- If any check fails, fix it before proceeding. The Supabase shim (`scripts/supabase-checked.sh`) attempts an auto-fix on first failure: it runs `npm run format` and `deno fmt` (backend), then re-runs checks once. If checks still fail after that, the script exits and the agent/developer must fix the remaining issues.
+- If any check fails, fix it before proceeding. Do not bypass the shim or hooks.
+- AI review (Codex) runs by default after checks. You can skip it for the shim with `--no-ai-review` or `SKIP_AI_REVIEW=1`, but **pushes require AI review** (no skip).
+- Reviews are saved to `.shimwrapper/reviews/` (gitignored). If the shim or push prints Token usage + review output, include it in your response.
 
 ## Repository Structure
 
@@ -120,6 +122,7 @@ src/supabase/functions/<domain>/
 
 - Frontend: format check, lint, typecheck, tests, project rules, build (build always).
 - Backend (only when backend files change): `deno fmt --check`, `deno lint`.
+- Shim/push add-ons: AI review (Codex), `npm audit` (frontend), `deno audit` (backend), optional Snyk (`SKIP_SNYK=1` to skip).
 
 ## Required Setup
 

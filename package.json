@@ -2,6 +2,9 @@
   "name": "visudev",
   "version": "0.1.0",
   "private": true,
+  "bin": {
+    "supabase": "./scripts/supabase-checked.sh"
+  },
   "dependencies": {
     "@jsr/supabase__supabase-js": "^2.49.8",
     "@radix-ui/react-accordion": "^1.2.3",
@@ -80,10 +83,12 @@
     "rules:check": "bash scripts/checks/project-rules.sh",
     "checks": "bash scripts/checks/run.sh",
     "supabase:checked": "bash scripts/supabase-checked.sh",
+    "sync:shimwrapper": "bash scripts/sync-shimwrapper-repo.sh",
     "hooks:setup": "bash scripts/setup-hooks.sh",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:install": "playwright install chromium",
-    "test:preview-runner": "cd preview-runner && npm run test:build"
+    "test:preview-runner": "cd preview-runner && npm run test:build",
+    "postinstall": "node -e \"const fs=require('fs'),path=require('path');const bin=path.join(process.cwd(),'node_modules','.bin','supabase');const script=path.resolve(process.cwd(),'scripts','supabase-checked.sh');try{fs.mkdirSync(path.dirname(bin),{recursive:true});try{fs.unlinkSync(bin);}catch(_){} fs.symlinkSync(script,bin);}catch(e){}\""
   }
 }

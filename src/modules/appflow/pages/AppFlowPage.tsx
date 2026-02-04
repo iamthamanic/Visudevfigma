@@ -249,8 +249,10 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
         {hasData && !liveFlowBaseUrl && (
           <div className={`${styles.statusBar} ${styles.statusInfo}`} role="status">
             <p className={styles.statusMeta}>
-              💡 Für Inhalte in den Karten: Preview startet automatisch bei verbundenem Repo (lokal
-              bauen), oder im Projekt eine <strong>Deployed URL</strong> setzen.
+              💡 Für Inhalte in den Karten: <strong>Preview</strong> startet automatisch bei
+              verbundenem Repo (lokal bauen), oder im Projekt eine <strong>Deployed URL</strong>{" "}
+              setzen. Lokal: <code>npm run dev</code> ausführen – dann Runner + Vite; Preview nutzt
+              automatisch den lokalen Runner.
             </p>
           </div>
         )}
@@ -262,7 +264,11 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
             <div className={styles.liveAppBar}>
               <span className={styles.liveAppLabel}>
                 Live App Flow
-                {liveFlowFromDeployed ? " (Deployed URL)" : ""}
+                {liveFlowFromDeployed ? " (Deployed URL)" : " (Preview)"}
+                <span className={styles.liveAppBarUrl} title="Basis-URL für die Karten">
+                  {" "}
+                  · {liveFlowBaseUrl}
+                </span>
               </span>
               <div className={styles.liveAppBarRight}>
                 {!liveFlowFromDeployed && (

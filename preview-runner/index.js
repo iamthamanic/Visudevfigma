@@ -19,6 +19,7 @@ import {
   hasNewCommits,
   ensurePackageJsonScripts,
 } from "./build.js";
+import { runContainer, stopContainer, isDockerAvailable } from "./docker.js";
 
 const PORT = Number(process.env.PORT) || 4000;
 const AUTO_REFRESH_INTERVAL_MS = Number(process.env.AUTO_REFRESH_INTERVAL_MS) || 60_000;
@@ -31,6 +32,10 @@ const USE_REAL_BUILD =
   process.env.USE_REAL_BUILD === "1" ||
   process.env.USE_REAL_BUILD === "true" ||
   process.env.USE_REAL_BUILD === "yes";
+const USE_DOCKER =
+  process.env.USE_DOCKER === "1" ||
+  process.env.USE_DOCKER === "true" ||
+  process.env.USE_DOCKER === "yes";
 
 const runs = new Map();
 const usedPorts = new Set();
@@ -68,9 +73,56 @@ function releasePort(port) {
   usedPorts.delete(port);
 }
 
-/** CSP value so VisuDEV (different origin) can embed the preview in iframes. */
-const FRAME_ANCESTORS =
-  "frame-ancestors 'self' http://localhost:5173 http://localhost:3000 http://127.0.0.1:5173 http://127.0.0.1:3000";
+/** CSP value so VisuDEV can embed the preview in iframes (any origin; restrict in production if needed). */
+const FRAME_ANCESTORS = "frame-ancestors *";
+
+/** Wait until app on port responds with 2xx (or timeout). Poll interval 500ms, max 60s. */
+function waitForAppReady(port, maxMs = 60_000) {
+  const interval = 500;
+  return new Promise((resolve) => {
+    const deadline = Date.now() + maxMs;
+    const tryOnce = () => {
+      const req = http.request(
+        {
+          hostname: "127.0.0.1",
+          port,
+          path: "/",
+          method: "GET",
+          timeout: 5000,
+        },
+        (res) => {
+          res.resume();
+          if (res.statusCode >= 200 && res.statusCode < 400) {
+            resolve();
+            return;
+          }
+          if (Date.now() >= deadline) {
+            resolve();
+            return;
+          }
+          setTimeout(tryOnce, interval);
+        },
+      );
+      req.on("error", () => {
+        if (Date.now() >= deadline) {
+          resolve();
+          return;
+        }
+        setTimeout(tryOnce, interval);
+      });
+      req.on("timeout", () => {
+        req.destroy();
+        if (Date.now() >= deadline) {
+          resolve();
+          return;
+        }
+        setTimeout(tryOnce, interval);
+      });
+      req.end();
+    };
+    tryOnce();
+  });
+}
 
 /** Create HTTP proxy on proxyPort that forwards to appPort and adds frame-ancestors so iframes work. */
 function createFrameProxy(proxyPort, appPort) {
@@ -102,13 +154,16 @@ function createFrameProxy(proxyPort, appPort) {
   return server;
 }
 
-/** Start a minimal HTTP server on the given port (stub or error page). */
+/** Start a minimal HTTP server on the given port (stub or error page). Sends CSP so iframe embedding works. */
 function startPlaceholderServer(port, errorMessage = null) {
   const html = errorMessage
     ? `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Preview Fehler</title></head><body style="font-family:sans-serif;padding:2rem;background:#1a1a2e;color:#eee;"><h1>Preview Fehler</h1><pre style="white-space:pre-wrap;color:#f88;">${escapeHtml(errorMessage)}</pre></body></html>`
     : `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Preview Stub</title></head><body style="font-family:sans-serif;padding:2rem;background:#1a1a2e;color:#eee;max-width:36rem;"><h1>Preview (Stub)</h1><p>Port ${port} – hier würde die gebaute App laufen.</p><p>Der Runner startet aktuell <strong>keine</strong> echte App. Für echte Previews:</p><ol style="margin:0.5rem 0;padding-left:1.5rem;"><li>Runner stoppen (Ctrl+C)</li><li>Starten mit echtem Build:<br><code style="background:#333;padding:0.25rem 0.5rem;border-radius:4px;">USE_REAL_BUILD=1 npm start</code></li><li>Optional: <code style="background:#333;padding:0.1rem 0.3rem;">GITHUB_TOKEN</code> setzen (für private Repos)</li></ol><p style="color:#9ca3af;font-size:0.9rem;">Siehe <code>docs/PREVIEW_RUNNER.md</code>.</p></body></html>`;
   const server = http.createServer((req, res) => {
-    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8",
+      "Content-Security-Policy": FRAME_ANCESTORS,
+    });
     res.end(html);
   });
   server.listen(port, "127.0.0.1", () => {
@@ -176,8 +231,40 @@ async function buildAndStartAsync(runId) {
   const { repo, branchOrCommit, projectId, proxyPort, appPort, previewUrl } = run;
   const workspaceDir = getWorkspaceDir(projectId);
 
+  const setFailed = (displayMsg, hint = "") => {
+    run.status = "failed";
+    run.error = displayMsg;
+    run.readyAt = null;
+    run.containerId = null;
+    releasePort(appPort);
+    startPlaceholderServer(proxyPort, `Build/Start fehlgeschlagen:\n${displayMsg}${hint}`);
+  };
+
   try {
     await cloneOrPull(repo, branchOrCommit, workspaceDir);
+
+    if (USE_DOCKER) {
+      const dockerOk = await isDockerAvailable();
+      if (!dockerOk) {
+        setFailed(
+          "Docker ist nicht verfügbar. USE_DOCKER=1 erfordert laufenden Docker (docker info).",
+        );
+        return;
+      }
+      ensurePackageJsonScripts(workspaceDir);
+      const containerName = await runContainer(workspaceDir, appPort, runId);
+      run.containerId = containerName;
+      const proxyServer = createFrameProxy(proxyPort, appPort);
+      run.proxyServer = proxyServer;
+      portServers.set(proxyPort, proxyServer);
+      await waitForAppReady(appPort, 120_000);
+      run.status = "ready";
+      run.readyAt = new Date().toISOString();
+      run.error = null;
+      console.log(`  Preview ready (Docker): ${previewUrl}`);
+      return;
+    }
+
     ensurePackageJsonScripts(workspaceDir);
     const config = getConfig(workspaceDir);
     let buildErr = null;
@@ -200,6 +287,7 @@ async function buildAndStartAsync(runId) {
     const proxyServer = createFrameProxy(proxyPort, appPort);
     run.proxyServer = proxyServer;
     portServers.set(proxyPort, proxyServer);
+    await waitForAppReady(appPort, 60_000);
     run.status = "ready";
     run.readyAt = new Date().toISOString();
     run.error = null;
@@ -208,16 +296,18 @@ async function buildAndStartAsync(runId) {
     });
     console.log(`  Preview ready: ${previewUrl}`);
   } catch (err) {
+    if (USE_DOCKER && run.containerId) {
+      try {
+        await stopContainer(runId);
+      } catch (_e) {}
+    }
     const msg = err.message || String(err);
     const displayMsg = normalizeBuildError(msg);
-    run.status = "failed";
-    run.error = displayMsg;
-    run.readyAt = null;
+    setFailed(
+      displayMsg,
+      "\n\nWichtig: Dev-Server neu starten (npm run dev mit Ctrl+C beenden, dann erneut starten). Oder USE_DOCKER=1 versuchen (Docker muss laufen).",
+    );
     console.error(`  Preview failed [${runId}]:`, msg);
-    releasePort(appPort);
-    const hint =
-      "\n\nWichtig: Dev-Server neu starten (im Terminal npm run dev mit Ctrl+C beenden, dann erneut npm run dev), danach Preview erneut starten. So wird die neueste Build-Logik geladen.";
-    startPlaceholderServer(proxyPort, `Build/Start fehlgeschlagen:\n${displayMsg}${hint}`);
   }
 }
 
@@ -228,6 +318,12 @@ async function refreshAsync(runId) {
   const { repo, branchOrCommit, projectId, proxyPort, appPort } = run;
   const workspaceDir = getWorkspaceDir(projectId);
 
+  if (run.containerId) {
+    try {
+      await stopContainer(runId);
+    } catch (_e) {}
+    run.containerId = null;
+  }
   if (run.childProcess) {
     run.childProcess.kill("SIGTERM");
     run.childProcess = null;
@@ -236,6 +332,25 @@ async function refreshAsync(runId) {
 
   try {
     await cloneOrPull(repo, branchOrCommit, workspaceDir);
+
+    if (USE_DOCKER) {
+      const dockerOk = await isDockerAvailable();
+      if (!dockerOk) {
+        run.status = "failed";
+        run.error = "Docker nicht verfügbar (Refresh).";
+        return;
+      }
+      ensurePackageJsonScripts(workspaceDir);
+      const containerName = await runContainer(workspaceDir, appPort, runId);
+      run.containerId = containerName;
+      await waitForAppReady(appPort, 120_000);
+      run.status = "ready";
+      run.readyAt = new Date().toISOString();
+      run.error = null;
+      console.log(`  Preview refreshed (Docker): http://localhost:${proxyPort}`);
+      return;
+    }
+
     ensurePackageJsonScripts(workspaceDir);
     const config = getConfig(workspaceDir);
     let buildErr = null;
@@ -255,6 +370,7 @@ async function refreshAsync(runId) {
     if (buildErr) throw buildErr;
     const child = startApp(workspaceDir, appPort, config);
     run.childProcess = child;
+    await waitForAppReady(appPort, 60_000);
     run.status = "ready";
     run.readyAt = new Date().toISOString();
     run.error = null;
@@ -273,7 +389,8 @@ async function refreshAsync(runId) {
 /** Auto-Refresh: alle N Sekunden prüfen, ob Repo neue Commits hat; bei Bedarf pull + rebuild + restart. */
 let autoRefreshTimer = null;
 function startAutoRefresh() {
-  if (autoRefreshTimer != null || !USE_REAL_BUILD || AUTO_REFRESH_INTERVAL_MS <= 0) return;
+  if (autoRefreshTimer != null || (!USE_REAL_BUILD && !USE_DOCKER) || AUTO_REFRESH_INTERVAL_MS <= 0)
+    return;
   autoRefreshTimer = setInterval(async () => {
     for (const [runId, run] of runs) {
       if (run.status !== "ready" || !run.port) continue;
@@ -338,7 +455,7 @@ async function handleStart(req, res, _url) {
   }
 
   let proxyPort, appPort;
-  if (USE_REAL_BUILD) {
+  if (USE_REAL_BUILD || USE_DOCKER) {
     const ports = getTwoFreePorts();
     if (ports === null) {
       send(res, 503, {
@@ -382,7 +499,7 @@ async function handleStart(req, res, _url) {
     proxyServer: null,
   });
 
-  if (USE_REAL_BUILD) {
+  if (USE_REAL_BUILD || USE_DOCKER) {
     buildAndStartAsync(runId);
   } else {
     startPlaceholderServer(proxyPort);
@@ -404,7 +521,7 @@ async function handleStart(req, res, _url) {
 
 function handleStatus(req, res, url) {
   const match = url.pathname.match(/^\/status\/([^/]+)$/);
-  const runId = match ? match[1] : null;
+  const runId = match ? decodeURIComponent(match[1]) : null;
   if (!runId) {
     send(res, 404, { success: false, error: "runId required" });
     return;
@@ -412,7 +529,8 @@ function handleStatus(req, res, url) {
 
   const run = runs.get(runId);
   if (!run) {
-    send(res, 404, { success: false, error: "Run not found", status: "unknown" });
+    // Run not found (e.g. runner restarted): return 200 idle so frontend gets no 404 and can clear runId
+    send(res, 200, { success: true, status: "idle" });
     return;
   }
 
@@ -426,9 +544,9 @@ function handleStatus(req, res, url) {
   });
 }
 
-function handleStop(req, res, url) {
+async function handleStop(req, res, url) {
   const match = url.pathname.match(/^\/stop\/([^/]+)$/);
-  const runId = match ? match[1] : null;
+  const runId = match ? decodeURIComponent(match[1]) : null;
   if (!runId) {
     send(res, 404, { success: false, error: "runId required" });
     return;
@@ -440,6 +558,12 @@ function handleStop(req, res, url) {
     return;
   }
 
+  if (run.containerId) {
+    try {
+      await stopContainer(runId);
+    } catch (_e) {}
+    run.containerId = null;
+  }
   if (run.childProcess) {
     run.childProcess.kill("SIGTERM");
     run.childProcess = null;
@@ -586,7 +710,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (req.method === "POST" && url.pathname.startsWith("/stop/")) {
-      handleStop(req, res, url);
+      await handleStop(req, res, url);
       return;
     }
     if (req.method === "POST" && url.pathname === "/refresh") {
@@ -606,11 +730,13 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`Preview Runner listening on http://localhost:${PORT}`);
   console.log(`  Port pool: ${PREVIEW_PORT_MIN}-${PREVIEW_PORT_MAX} (auto-assigned per run)`);
-  console.log(`  Mode: ${USE_REAL_BUILD ? "REAL (clone, build, start)" : "STUB (placeholder)"}`);
+  console.log(
+    `  Mode: ${USE_DOCKER ? "DOCKER (clone, build, serve in container)" : USE_REAL_BUILD ? "REAL (clone, build, start)" : "STUB (placeholder)"}`,
+  );
   if (PREVIEW_BASE_URL) {
     console.log(`  PREVIEW_BASE_URL=${PREVIEW_BASE_URL}`);
   }
-  if (!USE_REAL_BUILD) {
+  if (!USE_REAL_BUILD && !USE_DOCKER) {
     console.log(`  SIMULATE_DELAY_MS=${SIMULATE_DELAY_MS}`);
   }
   if (GITHUB_WEBHOOK_SECRET) {

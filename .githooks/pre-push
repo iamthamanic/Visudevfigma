@@ -4,4 +4,55 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-bash scripts/checks/run.sh
+if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
+  RANGE="@{u}...HEAD"
+  CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR "$RANGE")
+else
+  if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+    CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR HEAD~1...HEAD)
+  else
+    CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR --root HEAD)
+  fi
+fi
+
+if [ -z "$CHANGED_FILES" ]; then
+  exit 0
+fi
+
+run_frontend=false
+run_backend=false
+
+while IFS= read -r file; do
+  [[ -z "$file" ]] && continue
+
+  if [[ "$file" == src/supabase/functions/* || "$file" == supabase/functions/* ]]; then
+    run_backend=true
+    continue
+  fi
+
+  case "$file" in
+    src/*|index.html|vite.config.ts|package.json|package-lock.json|tsconfig.json|eslint.config.*|.prettierrc.*|prettier.config.*|vitest.config.*)
+      run_frontend=true
+      ;;
+  esac
+done <<< "$CHANGED_FILES"
+
+if [ "$run_frontend" = false ] && [ "$run_backend" = false ]; then
+  exit 0
+fi
+
+# On push: AI review is mandatory. Do not allow skip.
+CHECK_ARGS=()
+[ "$run_frontend" = true ] && CHECK_ARGS+=(--frontend)
+[ "$run_backend" = true ] && CHECK_ARGS+=(--backend)
+unset SKIP_AI_REVIEW
+bash scripts/run-checks.sh "${CHECK_ARGS[@]}"
+
+# Update README (e.g. "Last updated" line) so it stays in sync on push
+if [ -f scripts/update-readme-on-push.sh ]; then
+  bash scripts/update-readme-on-push.sh
+  if ! git diff --quiet README.md 2>/dev/null; then
+    git add README.md
+    git commit -m "docs: update README (auto on push)"
+  fi
+fi

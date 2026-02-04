@@ -2,6 +2,7 @@
 node_modules/
 build/
 dist/
+.shimwrapper/
 
 # Supabase backups (alle SQL-Dumps ignorieren, außer LATEST für Restore)
 supabase/backups/*.sql

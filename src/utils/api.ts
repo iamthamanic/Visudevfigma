@@ -66,7 +66,7 @@ async function apiRequest<T>(
         if (is404 && isPreview) {
           errorMsg =
             "Edge Function 'visudev-preview' nicht gefunden (404). " +
-            "Lokal: .env mit VITE_PREVIEW_RUNNER_URL=http://localhost:4000 setzen und Preview Runner starten (cd preview-runner && npm start). " +
+            "Lokal: npm run dev ausführen (startet Runner + Vite; Preview nutzt automatisch localhost:4000). " +
             "Oder deployen: supabase functions deploy visudev-preview und PREVIEW_RUNNER_URL in Supabase → Edge Functions → Secrets setzen (Runner-API-URL, z.B. https://dein-runner.example.com; der Runner vergibt intern freie Ports pro Preview).";
         } else {
           errorMsg = `Server error ${response.status}. Check that Edge Functions are deployed and reachable.`;
@@ -85,7 +85,7 @@ async function apiRequest<T>(
       const error =
         (result.error as string) ||
         (is404 && isPreview
-          ? "Edge Function 'visudev-preview' nicht gefunden (404). Lokal: VITE_PREVIEW_RUNNER_URL=http://localhost:4000 + Runner starten. Oder deployen und PREVIEW_RUNNER_URL (Runner-API-URL) in Secrets setzen."
+          ? "Edge Function 'visudev-preview' nicht gefunden (404). Lokal: npm run dev ausführen (Runner + Vite). Oder deployen und PREVIEW_RUNNER_URL (Runner-API-URL) in Secrets setzen."
           : response.statusText);
       return { success: false, error };
     }
@@ -356,9 +356,11 @@ export const integrationsAPI = {
 
 // ==================== PREVIEW (Live App) ====================
 
-/** When set (e.g. http://localhost:4000), frontend calls the Preview Runner directly; no Edge Function or Supabase secret needed. Runner assigns free ports per preview internally. */
+/** When set (e.g. http://localhost:4000), frontend calls the Preview Runner directly; no Edge Function or Supabase secret needed. In dev we default to localhost:4000 so "npm run dev" works without .env. */
 const localRunnerUrl =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_PREVIEW_RUNNER_URL) || "";
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_PREVIEW_RUNNER_URL) ||
+  (typeof import.meta !== "undefined" && import.meta.env?.DEV ? "http://localhost:4000" : "") ||
+  "";
 
 /** projectId -> runId when using local runner */
 const localRunIds = new Map<string, string>();
@@ -435,9 +437,11 @@ async function localPreviewStatus(projectId: string): Promise<{
     if (res.status === 404) clearStoredRunId(projectId);
     return { success: false, error: (data.error as string) || String(res.status) };
   }
+  const status = (data.status as PreviewStatusResponse["status"]) ?? "idle";
+  if (status === "idle") clearStoredRunId(projectId);
   return {
     success: true,
-    status: (data.status as PreviewStatusResponse["status"]) ?? "idle",
+    status,
     previewUrl: data.previewUrl,
     error: data.error,
   };

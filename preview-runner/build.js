@@ -393,11 +393,25 @@ export async function runBuild(workspaceDir, config) {
   await runCommand(workspaceDir, config.buildCommand);
 }
 
+/**
+ * Many dev servers (Vite, CRA, etc.) ignore process.env.PORT. Append --port so they listen on the assigned port.
+ * For "npm run dev" / "npm run start" we pass -- --port <port> so the script receives it.
+ */
+function effectiveStartCommand(startCommand, port) {
+  const cmd = (startCommand || "").trim();
+  if (cmd.includes("--port")) return cmd;
+  if (/^(npm|pnpm|yarn)\s+run\s+(dev|start)(\s|$)/.test(cmd) || /^\s*npx\s+vite\s/.test(cmd)) {
+    return `${cmd} -- --port ${port}`;
+  }
+  return cmd;
+}
+
 /** Start app in workspace on given port. Returns child process. */
 export function startApp(workspaceDir, port, config) {
   const env = { ...process.env, PORT: String(port) };
+  const command = effectiveStartCommand(config.startCommand, port);
   const isWin = process.platform === "win32";
-  const child = spawn(isWin ? "cmd" : "sh", [isWin ? "/c" : "-c", config.startCommand], {
+  const child = spawn(isWin ? "cmd" : "sh", [isWin ? "/c" : "-c", command], {
     cwd: workspaceDir,
     shell: true,
     env,

@@ -331,6 +331,19 @@
   font-size: 0.875rem;
 }
 
+.liveAppBarUrl {
+  color: var(--color-subtle);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  margin-left: 0.25rem;
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: bottom;
+}
+
 .liveAppBarRight {
   align-items: center;
   display: flex;

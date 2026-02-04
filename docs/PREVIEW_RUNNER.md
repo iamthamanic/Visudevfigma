@@ -43,6 +43,7 @@ Umgebungsvariablen:
 
 - `PORT` – Server-Port des Runners (Standard: 4000)
 - `USE_REAL_BUILD` – **optional**. Wenn `1` oder `true`: echter Clone/Build/Start (Repo klonen, bauen, App auf zugewiesenem Port starten). Ohne: Stub (Platzhalter-Seite).
+- `USE_DOCKER` – **optional**. Wenn `1` oder `true`: Build und Serve laufen **im Docker-Container** (fipso/runner-ähnlich). Ein Container pro Preview: `install → build → npx serve dist -s -l 3000` im Container; Host-Port wird auf Container:3000 gemappt. **Vorteil:** Kein „App ignoriert PORT“ (ECONNREFUSED); funktioniert auch bei Vite/React-Apps, die sonst auf 5173 laufen. **Voraussetzung:** Docker muss laufen (`docker info`). Image: `node:20-alpine` (über `VISUDEV_DOCKER_IMAGE` änderbar).
 - `GITHUB_TOKEN` – **optional**. Für private Repos: Token mit Lese-Recht, damit der Runner klonen kann.
 - `GITHUB_WEBHOOK_SECRET` – **optional**. Secret, das du in den GitHub-Webhook-Einstellungen einträgst; der Runner prüft damit die Signatur (X-Hub-Signature-256) und lehnt unbefugte Aufrufe ab.
 - `PREVIEW_PORT_MIN` / `PREVIEW_PORT_MAX` – Port-Pool für Preview-URLs (Standard: 4001–4099). Pro Lauf wird automatisch ein freier Port vergeben.
