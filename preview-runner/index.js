@@ -12,6 +12,7 @@ import http from "node:http";
 import {
   getWorkspaceDir,
   cloneOrPull,
+  checkoutCommit,
   getConfig,
   runBuild,
   runBuildNodeDirect,
@@ -27,6 +28,8 @@ const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET || "";
 const PREVIEW_PORT_MIN = Number(process.env.PREVIEW_PORT_MIN) || 4001;
 const PREVIEW_PORT_MAX = Number(process.env.PREVIEW_PORT_MAX) || 4099;
 const PREVIEW_BASE_URL = process.env.PREVIEW_BASE_URL || "";
+const PREVIEW_PUBLIC_ORIGIN = process.env.PREVIEW_PUBLIC_ORIGIN || "";
+const PREVIEW_BIND_HOST = process.env.PREVIEW_BIND_HOST || "127.0.0.1";
 const SIMULATE_DELAY_MS = Number(process.env.SIMULATE_DELAY_MS) || 3000;
 const USE_REAL_BUILD =
   process.env.USE_REAL_BUILD === "1" ||
@@ -41,6 +44,8 @@ const runs = new Map();
 const usedPorts = new Set();
 /** port -> http.Server (placeholder/error page only) */
 const portServers = new Map();
+/** projectId -> promise chain to serialize git/build per repo */
+const workspaceLocks = new Map();
 
 function getNextFreePort() {
   for (let p = PREVIEW_PORT_MIN; p <= PREVIEW_PORT_MAX; p++) {
@@ -76,10 +81,70 @@ function releasePort(port) {
 /** CSP value so VisuDEV can embed the preview in iframes (any origin; restrict in production if needed). */
 const FRAME_ANCESTORS = "frame-ancestors *";
 
-/** Wait until app on port responds with 2xx (or timeout). Poll interval 500ms, max 60s. */
+function resolvePreviewUrl(proxyPort) {
+  if (PREVIEW_PUBLIC_ORIGIN) {
+    const origin = PREVIEW_PUBLIC_ORIGIN.replace(/\/$/, "");
+    return `${origin}:${proxyPort}`;
+  }
+  if (PREVIEW_BASE_URL.trim() !== "") {
+    return `${PREVIEW_BASE_URL.replace(/\/$/, "")}/${proxyPort}`;
+  }
+  return `http://localhost:${proxyPort}`;
+}
+
+function stripRunnerPrefix(pathname) {
+  if (pathname === "/runner") return "/";
+  if (pathname.startsWith("/runner/")) return pathname.slice("/runner".length) || "/";
+  return pathname;
+}
+
+function buildProxyErrorPage(title, hint) {
+  return (
+    `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title></head>` +
+    `<body style="font-family:sans-serif;padding:1.5rem;background:#1a1a2e;color:#e2e8f0;max-width:28rem;">` +
+    `<h2 style="color:#f87171;">${escapeHtml(title)}</h2>` +
+    `<p style="color:#94a3b8;">${escapeHtml(hint)}</p>` +
+    `<p style="font-size:0.875rem;">Port/App prüfen oder Preview in VisuDEV neu starten.</p>` +
+    `<script>try{window.addEventListener("load",function(){window.parent.postMessage({type:"visudev-preview-error",reason:"Preview-App nicht erreichbar (502). Bitte Preview neu starten."},"*");});}catch(e){}</script>` +
+    `</body></html>`
+  );
+}
+
+function proxyPreviewRequest(req, res, targetPort, targetPath) {
+  const opts = {
+    hostname: "127.0.0.1",
+    port: targetPort,
+    path: targetPath,
+    method: req.method,
+    headers: { ...req.headers, host: `127.0.0.1:${targetPort}` },
+  };
+  const proxy = http.request(opts, (upstreamRes) => {
+    const headers = { ...upstreamRes.headers };
+    delete headers["x-frame-options"];
+    delete headers["content-security-policy"];
+    headers["content-security-policy"] = FRAME_ANCESTORS;
+    res.writeHead(upstreamRes.statusCode || 502, headers);
+    upstreamRes.pipe(res, { end: true });
+  });
+  proxy.on("error", (err) => {
+    const isRefused = /ECONNREFUSED|connect/i.test(err.message);
+    const title = isRefused ? "Preview-App nicht erreichbar" : "Proxy-Fehler";
+    const hint = isRefused
+      ? "Die gebaute App antwortet nicht auf dem erwarteten Port. Bitte „Preview neu starten“ in VisuDEV oder npm run dev + Docker prüfen."
+      : err.message;
+    res.writeHead(502, {
+      "Content-Type": "text/html; charset=utf-8",
+      "Content-Security-Policy": FRAME_ANCESTORS,
+    });
+    res.end(buildProxyErrorPage(title, hint));
+  });
+  req.pipe(proxy, { end: true });
+}
+
+/** Wait until app on port responds with 2xx. Rejects when maxMs elapsed without success (so we don't mark "ready" when app never started). */
 function waitForAppReady(port, maxMs = 60_000) {
   const interval = 500;
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const deadline = Date.now() + maxMs;
     const tryOnce = () => {
       const req = http.request(
@@ -97,15 +162,23 @@ function waitForAppReady(port, maxMs = 60_000) {
             return;
           }
           if (Date.now() >= deadline) {
-            resolve();
+            reject(
+              new Error(
+                `Preview-App antwortet nicht auf Port ${port} innerhalb von ${maxMs / 1000}s (Status ${res.statusCode}).`,
+              ),
+            );
             return;
           }
           setTimeout(tryOnce, interval);
         },
       );
-      req.on("error", () => {
+      req.on("error", (err) => {
         if (Date.now() >= deadline) {
-          resolve();
+          reject(
+            new Error(
+              `Preview-App nicht erreichbar (Port ${port}). ECONNREFUSED nach ${maxMs / 1000}s – Build/Container prüfen.`,
+            ),
+          );
           return;
         }
         setTimeout(tryOnce, interval);
@@ -113,7 +186,11 @@ function waitForAppReady(port, maxMs = 60_000) {
       req.on("timeout", () => {
         req.destroy();
         if (Date.now() >= deadline) {
-          resolve();
+          reject(
+            new Error(
+              `Preview-App antwortet nicht auf Port ${port} innerhalb von ${maxMs / 1000}s (Timeout).`,
+            ),
+          );
           return;
         }
         setTimeout(tryOnce, interval);
@@ -143,13 +220,24 @@ function createFrameProxy(proxyPort, appPort) {
       upstreamRes.pipe(clientRes, { end: true });
     });
     proxy.on("error", (err) => {
-      clientRes.writeHead(502, { "Content-Type": "text/plain" });
-      clientRes.end(`Bad Gateway: ${err.message}`);
+      const isRefused = /ECONNREFUSED|connect/i.test(err.message);
+      const title = isRefused ? "Preview-App nicht erreichbar" : "Proxy-Fehler";
+      const hint = isRefused
+        ? "Die gebaute App antwortet nicht auf dem erwarteten Port. Bitte „Preview neu starten“ in VisuDEV oder npm run dev + Docker prüfen."
+        : escapeHtml(err.message);
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title></head><body style="font-family:sans-serif;padding:1.5rem;background:#1a1a2e;color:#e2e8f0;max-width:28rem;"><h2 style="color:#f87171;">${escapeHtml(title)}</h2><p style="color:#94a3b8;">${hint}</p><p style="font-size:0.875rem;">Port/App prüfen oder Preview in VisuDEV neu starten.</p><script>try{window.addEventListener("load",function(){window.parent.postMessage({type:"visudev-preview-error",reason:"Preview-App nicht erreichbar (502). Bitte Preview neu starten."},"*");});}catch(e){}</script></body></html>`;
+      clientRes.writeHead(502, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Security-Policy": FRAME_ANCESTORS,
+      });
+      clientRes.end(html);
     });
     clientReq.pipe(proxy, { end: true });
   });
-  server.listen(proxyPort, "127.0.0.1", () => {
-    console.log(`  Frame proxy http://localhost:${proxyPort} -> http://127.0.0.1:${appPort}`);
+  server.listen(proxyPort, PREVIEW_BIND_HOST, () => {
+    console.log(
+      `  Frame proxy http://${PREVIEW_BIND_HOST}:${proxyPort} -> http://127.0.0.1:${appPort}`,
+    );
   });
   return server;
 }
@@ -166,8 +254,8 @@ function startPlaceholderServer(port, errorMessage = null) {
     });
     res.end(html);
   });
-  server.listen(port, "127.0.0.1", () => {
-    console.log(`  Placeholder listening on http://localhost:${port}`);
+  server.listen(port, PREVIEW_BIND_HOST, () => {
+    console.log(`  Placeholder listening on http://${PREVIEW_BIND_HOST}:${port}`);
   });
   portServers.set(port, server);
 }
@@ -224,10 +312,37 @@ function normalizeBuildError(msg) {
   return msg;
 }
 
+/** Append a step message to run.logs (for UI). */
+function pushLog(run, message) {
+  if (!run.logs) run.logs = [];
+  run.logs.push({ time: new Date().toISOString(), message });
+}
+
+async function withWorkspaceLock(projectId, fn) {
+  const key = String(projectId || "default");
+  const prev = workspaceLocks.get(key) || Promise.resolve();
+  let release = null;
+  const current = new Promise((resolve) => {
+    release = resolve;
+  });
+  const chain = prev.then(() => current).catch(() => current);
+  workspaceLocks.set(key, chain);
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    if (release) release();
+    if (workspaceLocks.get(key) === chain) {
+      workspaceLocks.delete(key);
+    }
+  }
+}
+
 /** Background: clone, build, start app on appPort, then start frame proxy on proxyPort. On failure show error placeholder on proxyPort. */
 async function buildAndStartAsync(runId) {
   const run = runs.get(runId);
   if (!run || run.status !== "starting") return;
+  run.logs = [];
   const { repo, branchOrCommit, projectId, proxyPort, appPort, previewUrl } = run;
   const workspaceDir = getWorkspaceDir(projectId);
 
@@ -240,75 +355,88 @@ async function buildAndStartAsync(runId) {
     startPlaceholderServer(proxyPort, `Build/Start fehlgeschlagen:\n${displayMsg}${hint}`);
   };
 
-  try {
-    await cloneOrPull(repo, branchOrCommit, workspaceDir);
+  return withWorkspaceLock(projectId, async () => {
+    try {
+      await cloneOrPull(repo, branchOrCommit, workspaceDir);
+      if (run.commitSha) {
+        await checkoutCommit(workspaceDir, run.commitSha, branchOrCommit);
+      }
 
-    if (USE_DOCKER) {
-      const dockerOk = await isDockerAvailable();
-      if (!dockerOk) {
-        setFailed(
-          "Docker ist nicht verfügbar. USE_DOCKER=1 erfordert laufenden Docker (docker info).",
-        );
+      if (USE_DOCKER) {
+        const dockerOk = await isDockerAvailable();
+        if (!dockerOk) {
+          setFailed(
+            "Docker ist nicht verfügbar. USE_DOCKER=1 erfordert laufenden Docker (docker info).",
+          );
+          return;
+        }
+        ensurePackageJsonScripts(workspaceDir);
+        const containerName = await runContainer(workspaceDir, appPort, runId);
+        run.containerId = containerName;
+        const proxyServer = createFrameProxy(proxyPort, appPort);
+        run.proxyServer = proxyServer;
+        portServers.set(proxyPort, proxyServer);
+        await waitForAppReady(appPort, 120_000);
+        run.status = "ready";
+        run.readyAt = new Date().toISOString();
+        run.error = null;
+        console.log(`  Preview ready (Docker): ${previewUrl}`);
         return;
       }
+
       ensurePackageJsonScripts(workspaceDir);
-      const containerName = await runContainer(workspaceDir, appPort, runId);
-      run.containerId = containerName;
+      const config = getConfig(workspaceDir);
+      let buildErr = null;
+      try {
+        await runBuildNodeDirect(workspaceDir);
+      } catch (e) {
+        buildErr = e;
+        if (isNpmOrGitHelpError(e.message)) {
+          try {
+            await runBuild(workspaceDir, config);
+            buildErr = null;
+          } catch (retryErr) {
+            buildErr = retryErr;
+          }
+        }
+      }
+      if (buildErr) throw buildErr;
+      const child = startApp(workspaceDir, appPort, config);
+      run.childProcess = child;
       const proxyServer = createFrameProxy(proxyPort, appPort);
       run.proxyServer = proxyServer;
       portServers.set(proxyPort, proxyServer);
-      await waitForAppReady(appPort, 120_000);
+      await waitForAppReady(appPort, 60_000);
       run.status = "ready";
       run.readyAt = new Date().toISOString();
       run.error = null;
-      console.log(`  Preview ready (Docker): ${previewUrl}`);
-      return;
-    }
-
-    ensurePackageJsonScripts(workspaceDir);
-    const config = getConfig(workspaceDir);
-    let buildErr = null;
-    try {
-      await runBuildNodeDirect(workspaceDir);
-    } catch (e) {
-      buildErr = e;
-      if (isNpmOrGitHelpError(e.message)) {
-        try {
-          await runBuild(workspaceDir, config);
-          buildErr = null;
-        } catch (retryErr) {
-          buildErr = retryErr;
+      child.on("exit", (code, signal) => {
+        if (run.childProcess === child) {
+          run.childProcess = null;
+          if (run.status === "ready") {
+            run.status = "failed";
+            run.error = `Preview-App beendet (exit ${code ?? "?"}${signal ? `, Signal ${signal}` : ""}). Bitte „Preview neu starten“.`;
+            console.log(`  Preview app exited [${runId}]: code=${code} signal=${signal}`);
+          }
         }
+      });
+      console.log(`  Preview ready: ${previewUrl}`);
+    } catch (err) {
+      if (USE_DOCKER && run.containerId) {
+        try {
+          await stopContainer(runId);
+        } catch (_e) {}
       }
+      const msg = err.message || String(err);
+      const displayMsg = normalizeBuildError(msg);
+      pushLog(run, "Fehlgeschlagen: " + displayMsg.slice(0, 200));
+      setFailed(
+        displayMsg,
+        "\n\nWichtig: Dev-Server neu starten (npm run dev mit Ctrl+C beenden, dann erneut starten). Oder USE_DOCKER=1 versuchen (Docker muss laufen).",
+      );
+      console.error(`  Preview failed [${runId}]:`, msg);
     }
-    if (buildErr) throw buildErr;
-    const child = startApp(workspaceDir, appPort, config);
-    run.childProcess = child;
-    const proxyServer = createFrameProxy(proxyPort, appPort);
-    run.proxyServer = proxyServer;
-    portServers.set(proxyPort, proxyServer);
-    await waitForAppReady(appPort, 60_000);
-    run.status = "ready";
-    run.readyAt = new Date().toISOString();
-    run.error = null;
-    child.on("exit", (code) => {
-      if (run.childProcess === child) run.childProcess = null;
-    });
-    console.log(`  Preview ready: ${previewUrl}`);
-  } catch (err) {
-    if (USE_DOCKER && run.containerId) {
-      try {
-        await stopContainer(runId);
-      } catch (_e) {}
-    }
-    const msg = err.message || String(err);
-    const displayMsg = normalizeBuildError(msg);
-    setFailed(
-      displayMsg,
-      "\n\nWichtig: Dev-Server neu starten (npm run dev mit Ctrl+C beenden, dann erneut starten). Oder USE_DOCKER=1 versuchen (Docker muss laufen).",
-    );
-    console.error(`  Preview failed [${runId}]:`, msg);
-  }
+  });
 }
 
 /** Refresh: pull, rebuild, restart app on appPort (proxy stays). */
@@ -329,61 +457,82 @@ async function refreshAsync(runId) {
     run.childProcess = null;
   }
   run.status = "starting";
+  run.logs = [];
 
-  try {
-    await cloneOrPull(repo, branchOrCommit, workspaceDir);
+  return withWorkspaceLock(projectId, async () => {
+    try {
+      pushLog(run, "Git: Pull …");
+      await cloneOrPull(repo, branchOrCommit, workspaceDir);
+      pushLog(run, "Git: Pull fertig");
 
-    if (USE_DOCKER) {
-      const dockerOk = await isDockerAvailable();
-      if (!dockerOk) {
-        run.status = "failed";
-        run.error = "Docker nicht verfügbar (Refresh).";
+      if (USE_DOCKER) {
+        const dockerOk = await isDockerAvailable();
+        if (!dockerOk) {
+          run.status = "failed";
+          run.error = "Docker nicht verfügbar (Refresh).";
+          pushLog(run, "Fehlgeschlagen: Docker nicht verfügbar");
+          return;
+        }
+        pushLog(run, "Docker: Starte Container …");
+        ensurePackageJsonScripts(workspaceDir);
+        const containerName = await runContainer(workspaceDir, appPort, runId);
+        run.containerId = containerName;
+        pushLog(run, "Warte auf App …");
+        await waitForAppReady(appPort, 120_000);
+        pushLog(run, "Bereit");
+        run.status = "ready";
+        run.readyAt = new Date().toISOString();
+        run.error = null;
+        console.log(`  Preview refreshed (Docker): http://localhost:${proxyPort}`);
         return;
       }
+
+      pushLog(run, "Build: npm install / build …");
       ensurePackageJsonScripts(workspaceDir);
-      const containerName = await runContainer(workspaceDir, appPort, runId);
-      run.containerId = containerName;
-      await waitForAppReady(appPort, 120_000);
+      const config = getConfig(workspaceDir);
+      let buildErr = null;
+      try {
+        await runBuildNodeDirect(workspaceDir);
+      } catch (e) {
+        buildErr = e;
+        if (isNpmOrGitHelpError(e.message)) {
+          try {
+            await runBuild(workspaceDir, config);
+            buildErr = null;
+          } catch (retryErr) {
+            buildErr = retryErr;
+          }
+        }
+      }
+      if (buildErr) throw buildErr;
+      pushLog(run, "Build fertig");
+      pushLog(run, "Start: App wird gestartet …");
+      const child = startApp(workspaceDir, appPort, config);
+      run.childProcess = child;
+      pushLog(run, "Warte auf App …");
+      await waitForAppReady(appPort, 60_000);
+      pushLog(run, "Bereit");
       run.status = "ready";
       run.readyAt = new Date().toISOString();
       run.error = null;
-      console.log(`  Preview refreshed (Docker): http://localhost:${proxyPort}`);
-      return;
-    }
-
-    ensurePackageJsonScripts(workspaceDir);
-    const config = getConfig(workspaceDir);
-    let buildErr = null;
-    try {
-      await runBuildNodeDirect(workspaceDir);
-    } catch (e) {
-      buildErr = e;
-      if (isNpmOrGitHelpError(e.message)) {
-        try {
-          await runBuild(workspaceDir, config);
-          buildErr = null;
-        } catch (retryErr) {
-          buildErr = retryErr;
+      child.on("exit", (code, signal) => {
+        if (run.childProcess === child) {
+          run.childProcess = null;
+          if (run.status === "ready") {
+            run.status = "failed";
+            run.error = `Preview-App beendet (exit ${code ?? "?"}${signal ? `, Signal ${signal}` : ""}). Bitte „Preview neu starten“.`;
+            console.log(`  Preview app exited [${runId}]: code=${code} signal=${signal}`);
+          }
         }
-      }
+      });
+      console.log(`  Preview refreshed: http://localhost:${proxyPort}`);
+    } catch (err) {
+      const msg = err.message || String(err);
+      run.status = "failed";
+      run.error = normalizeBuildError(msg);
+      console.error(`  Refresh failed [${runId}]:`, msg);
     }
-    if (buildErr) throw buildErr;
-    const child = startApp(workspaceDir, appPort, config);
-    run.childProcess = child;
-    await waitForAppReady(appPort, 60_000);
-    run.status = "ready";
-    run.readyAt = new Date().toISOString();
-    run.error = null;
-    child.on("exit", (code) => {
-      if (run.childProcess === child) run.childProcess = null;
-    });
-    console.log(`  Preview refreshed: http://localhost:${proxyPort}`);
-  } catch (err) {
-    const msg = err.message || String(err);
-    run.status = "failed";
-    run.error = normalizeBuildError(msg);
-    console.error(`  Refresh failed [${runId}]:`, msg);
-  }
+  });
 }
 
 /** Auto-Refresh: alle N Sekunden prüfen, ob Repo neue Commits hat; bei Bedarf pull + rebuild + restart. */
@@ -445,7 +594,7 @@ function corsPreflight(res) {
 
 async function handleStart(req, res, _url) {
   const body = await parseBody(req);
-  const { repo, branchOrCommit = "main", projectId } = body;
+  const { repo, branchOrCommit = "main", projectId, commitSha } = body;
   if (!repo || !projectId) {
     send(res, 400, {
       success: false,
@@ -478,12 +627,11 @@ async function handleStart(req, res, _url) {
     appPort = single;
   }
 
-  const previewUrl =
-    PREVIEW_BASE_URL.trim() !== ""
-      ? `${PREVIEW_BASE_URL.replace(/\/$/, "")}?preview=${proxyPort}`
-      : `http://localhost:${proxyPort}`;
+  const previewUrl = resolvePreviewUrl(proxyPort);
 
   const runId = `run_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const commitShaTrimmed =
+    commitSha && /^[a-f0-9]{40}$/i.test(String(commitSha).trim()) ? String(commitSha).trim() : null;
   runs.set(runId, {
     status: "starting",
     port: proxyPort,
@@ -495,8 +643,10 @@ async function handleStart(req, res, _url) {
     repo,
     branchOrCommit,
     projectId,
+    commitSha: commitShaTrimmed,
     childProcess: null,
     proxyServer: null,
+    logs: [],
   });
 
   if (USE_REAL_BUILD || USE_DOCKER) {
@@ -541,6 +691,7 @@ function handleStatus(req, res, url) {
     error: run.error ?? undefined,
     startedAt: run.startedAt,
     readyAt: run.readyAt,
+    logs: run.logs || [],
   });
 }
 
@@ -684,8 +835,23 @@ const server = http.createServer(async (req, res) => {
   }
 
   const url = new URL(req.url || "/", `http://localhost:${PORT}`);
+  const strippedPath = stripRunnerPrefix(url.pathname);
+  url.pathname = strippedPath;
+  const pathname = url.pathname;
 
-  if (req.method === "POST" && url.pathname === "/webhook/github") {
+  const previewMatch = pathname.match(/^\/p\/(\d+)(\/.*)?$/);
+  if (previewMatch) {
+    const port = Number(previewMatch[1]);
+    const rest = previewMatch[2] || "/";
+    if (Number.isNaN(port) || port < PREVIEW_PORT_MIN || port > PREVIEW_PORT_MAX) {
+      send(res, 400, { error: "Invalid preview port" });
+      return;
+    }
+    proxyPreviewRequest(req, res, port, rest);
+    return;
+  }
+
+  if (req.method === "POST" && pathname === "/webhook/github") {
     try {
       const rawBody = await readRawBody(req);
       handleWebhookGitHub(req, res, rawBody);
@@ -697,23 +863,23 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
-    if (req.method === "GET" && url.pathname === "/health") {
+    if (req.method === "GET" && pathname === "/health") {
       handleHealth(req, res);
       return;
     }
-    if (req.method === "POST" && url.pathname === "/start") {
+    if (req.method === "POST" && pathname === "/start") {
       await handleStart(req, res, url);
       return;
     }
-    if (req.method === "GET" && url.pathname.startsWith("/status/")) {
+    if (req.method === "GET" && pathname.startsWith("/status/")) {
       handleStatus(req, res, url);
       return;
     }
-    if (req.method === "POST" && url.pathname.startsWith("/stop/")) {
+    if (req.method === "POST" && pathname.startsWith("/stop/")) {
       await handleStop(req, res, url);
       return;
     }
-    if (req.method === "POST" && url.pathname === "/refresh") {
+    if (req.method === "POST" && pathname === "/refresh") {
       await handleRefresh(req, res);
       return;
     }
@@ -735,6 +901,12 @@ server.listen(PORT, () => {
   );
   if (PREVIEW_BASE_URL) {
     console.log(`  PREVIEW_BASE_URL=${PREVIEW_BASE_URL}`);
+  }
+  if (PREVIEW_PUBLIC_ORIGIN) {
+    console.log(`  PREVIEW_PUBLIC_ORIGIN=${PREVIEW_PUBLIC_ORIGIN}`);
+  }
+  if (PREVIEW_BIND_HOST) {
+    console.log(`  PREVIEW_BIND_HOST=${PREVIEW_BIND_HOST}`);
   }
   if (!USE_REAL_BUILD && !USE_DOCKER) {
     console.log(`  SIMULATE_DELAY_MS=${SIMULATE_DELAY_MS}`);
