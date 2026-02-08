@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "bin": {
-    "supabase": "./scripts/supabase-checked.sh"
+    "supabase": "./scripts/supabase-checked.sh",
+    "push": "./scripts/push-checked.sh"
   },
   "dependencies": {
     "@jsr/supabase__supabase-js": "^2.49.8",
@@ -69,12 +70,12 @@
     "vitest": "^2.1.9"
   },
   "scripts": {
-    "dev": "npm run dev:kill-preview-port && sleep 1 && concurrently -n runner,vite \"npm run dev:runner\" \"vite\"",
+    "dev": "node scripts/dev-auto.js",
     "dev:kill-preview-port": "bash scripts/kill-preview-port.sh",
     "dev:runner": "node scripts/run-preview-runner.js",
     "dev:app": "vite",
     "build": "vite build",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
@@ -83,12 +84,15 @@
     "rules:check": "bash scripts/checks/project-rules.sh",
     "checks": "bash scripts/checks/run.sh",
     "supabase:checked": "bash scripts/supabase-checked.sh",
+    "push": "bash scripts/push-checked.sh",
     "sync:shimwrapper": "bash scripts/sync-shimwrapper-repo.sh",
     "hooks:setup": "bash scripts/setup-hooks.sh",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:install": "playwright install chromium",
+    "e2e:maestro": "maestro test -e BASE_URL=http://127.0.0.1:3000 maestro/visudev-smoke.yaml",
+    "e2e:maestro:preview": "bash scripts/maestro-test-preview.sh",
     "test:preview-runner": "cd preview-runner && npm run test:build",
-    "postinstall": "node -e \"const fs=require('fs'),path=require('path');const bin=path.join(process.cwd(),'node_modules','.bin','supabase');const script=path.resolve(process.cwd(),'scripts','supabase-checked.sh');try{fs.mkdirSync(path.dirname(bin),{recursive:true});try{fs.unlinkSync(bin);}catch(_){} fs.symlinkSync(script,bin);}catch(e){}\""
+    "postinstall": "node -e \"const fs=require('fs'),path=require('path');const cwd=process.cwd(),binDir=path.join(cwd,'node_modules','.bin');const links=[['supabase','supabase-checked.sh'],['push','push-checked.sh']];try{fs.mkdirSync(binDir,{recursive:true});for(const [name,script] of links){const bin=path.join(binDir,name),target=path.resolve(cwd,'scripts',script);try{fs.unlinkSync(bin);}catch(_){} fs.symlinkSync(target,bin);}}catch(e){}\""
   }
 }

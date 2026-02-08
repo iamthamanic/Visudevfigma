@@ -7,12 +7,14 @@ This repo enforces strict modular architecture and quality gates. Agents must fo
 ## Mandatory Workflow (Do NOT bypass)
 
 - Always run checks before push/deploy.
-  - Preferred: `npm run checks`
-  - `git push` runs pre-push checks automatically.
-  - `supabase ...` uses the shim and runs checks automatically before invoking Supabase.
-- Never call the real Supabase binary directly. Use the shim (`supabase`) or `npm run supabase:checked`.
+ - Preferred: `npm run checks`
+ - `npm run push` or `git push` run pre-push checks automatically (AI review required; no skip).
+ - `supabase ...` uses the shim and runs checks automatically before invoking Supabase.
+- Never call the real Supabase binary directly. Use the shim (`supabase`) or `npm run supabase:checked`. The package exposes `supabase` and `push` in `bin` (postinstall symlinks in `node_modules/.bin`).
 - If any check fails, fix it before proceeding. Do not bypass the shim or hooks.
-- AI review (Codex) runs by default after checks. You can skip it for the shim with `--no-ai-review` or `SKIP_AI_REVIEW=1`, but **pushes require AI review** (no skip).
+- **Zero warnings policy:** Lint and AI review must pass with **no warnings**. ESLint is run with `--max-warnings 0`; any warning fails the pipeline. Push/deploy is only allowed when all checks pass.
+- AI review (Codex) runs by default after checks. You can skip it for the shim with `--no-ai-review` or `SKIP_AI_REVIEW=1`, but **pushes require AI review** (no skip). AI review is a **required** check in the pipeline (not optional): if it fails, the pipeline fails.
+- **AI review pass criteria:** Only **95% or higher** with **no warnings and no errors** counts as PASS. If the review fails, fix the code and re-run (`bash scripts/run-checks.sh` or push again) until the review passes (rating ≥ 95%, WARNINGS: None, ERRORS: None). No push with &lt; 95% or with any warnings/errors.
 - Reviews are saved to `.shimwrapper/reviews/` (gitignored). If the shim or push prints Token usage + review output, include it in your response.
 
 ## Repository Structure

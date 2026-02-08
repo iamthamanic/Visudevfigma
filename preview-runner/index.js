@@ -735,7 +735,7 @@ async function handleStop(req, res, url) {
 }
 
 function handleHealth(_req, res) {
-  send(res, 200, { ok: true, service: "visudev-preview-runner" });
+  send(res, 200, { ok: true, service: "visudev" });
 }
 
 async function handleRefresh(req, res) {
