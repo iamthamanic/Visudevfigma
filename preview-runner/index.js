@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * VisuDEV Preview Runner
  *
@@ -9,6 +10,7 @@
 
 import crypto from "node:crypto";
 import http from "node:http";
+import net from "node:net";
 import {
   getWorkspaceDir,
   cloneOrPull,
@@ -23,6 +25,11 @@ import {
 import { runContainer, stopContainer, isDockerAvailable } from "./docker.js";
 
 const PORT = Number(process.env.PORT) || 4000;
+/** Actual port the runner binds to (set after finding a free one). */
+let runnerPort = PORT;
+/** Ports to try for the runner API: preferred PORT, then above preview range (4001–4099). */
+const RUNNER_PORT_CANDIDATES = [PORT, 4100, 4110, 4120, 4130, 4140];
+
 const AUTO_REFRESH_INTERVAL_MS = Number(process.env.AUTO_REFRESH_INTERVAL_MS) || 60_000;
 const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET || "";
 const PREVIEW_PORT_MIN = Number(process.env.PREVIEW_PORT_MIN) || 4001;
@@ -39,6 +46,29 @@ const USE_DOCKER =
   process.env.USE_DOCKER === "1" ||
   process.env.USE_DOCKER === "true" ||
   process.env.USE_DOCKER === "yes";
+
+/** Returns the first port from candidates that is free to bind. */
+function findFreeRunnerPort() {
+  return new Promise((resolve) => {
+    let i = 0;
+    function tryNext() {
+      if (i >= RUNNER_PORT_CANDIDATES.length) {
+        resolve(null);
+        return;
+      }
+      const p = RUNNER_PORT_CANDIDATES[i++];
+      const s = net.createServer();
+      s.once("error", () => {
+        s.close(() => tryNext());
+      });
+      s.once("listening", () => {
+        s.close(() => resolve(p));
+      });
+      s.listen(p, PREVIEW_BIND_HOST);
+    }
+    tryNext();
+  });
+}
 
 const runs = new Map();
 const usedPorts = new Set();
@@ -834,7 +864,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  const url = new URL(req.url || "/", `http://localhost:${PORT}`);
+  const url = new URL(req.url || "/", `http://localhost:${runnerPort}`);
   const strippedPath = stripRunnerPrefix(url.pathname);
   url.pathname = strippedPath;
   const pathname = url.pathname;
@@ -893,28 +923,40 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`Preview Runner listening on http://localhost:${PORT}`);
-  console.log(`  Port pool: ${PREVIEW_PORT_MIN}-${PREVIEW_PORT_MAX} (auto-assigned per run)`);
-  console.log(
-    `  Mode: ${USE_DOCKER ? "DOCKER (clone, build, serve in container)" : USE_REAL_BUILD ? "REAL (clone, build, start)" : "STUB (placeholder)"}`,
-  );
-  if (PREVIEW_BASE_URL) {
-    console.log(`  PREVIEW_BASE_URL=${PREVIEW_BASE_URL}`);
+findFreeRunnerPort().then((actualPort) => {
+  if (actualPort == null) {
+    console.error(
+      `No free port for Runner. Tried: ${RUNNER_PORT_CANDIDATES.join(", ")}. Set PORT=… to try another.`,
+    );
+    process.exit(1);
   }
-  if (PREVIEW_PUBLIC_ORIGIN) {
-    console.log(`  PREVIEW_PUBLIC_ORIGIN=${PREVIEW_PUBLIC_ORIGIN}`);
+  runnerPort = actualPort;
+  if (actualPort !== PORT) {
+    console.warn(`Port ${PORT} in use, using ${actualPort}. Set VITE_PREVIEW_RUNNER_URL=http://localhost:${actualPort} if the app does not find the runner.`);
   }
-  if (PREVIEW_BIND_HOST) {
-    console.log(`  PREVIEW_BIND_HOST=${PREVIEW_BIND_HOST}`);
-  }
-  if (!USE_REAL_BUILD && !USE_DOCKER) {
-    console.log(`  SIMULATE_DELAY_MS=${SIMULATE_DELAY_MS}`);
-  }
-  if (GITHUB_WEBHOOK_SECRET) {
-    console.log(`  GitHub Webhook: POST /webhook/github (Signature verified)`);
-  } else {
-    console.log(`  GitHub Webhook: POST /webhook/github (set GITHUB_WEBHOOK_SECRET to verify)`);
-  }
-  startAutoRefresh();
+  server.listen(actualPort, PREVIEW_BIND_HOST, () => {
+    console.log(`Preview Runner listening on http://${PREVIEW_BIND_HOST}:${actualPort}`);
+    console.log(`  Port pool: ${PREVIEW_PORT_MIN}-${PREVIEW_PORT_MAX} (auto-assigned per run)`);
+    console.log(
+      `  Mode: ${USE_DOCKER ? "DOCKER (clone, build, serve in container)" : USE_REAL_BUILD ? "REAL (clone, build, start)" : "STUB (placeholder)"}`,
+    );
+    if (PREVIEW_BASE_URL) {
+      console.log(`  PREVIEW_BASE_URL=${PREVIEW_BASE_URL}`);
+    }
+    if (PREVIEW_PUBLIC_ORIGIN) {
+      console.log(`  PREVIEW_PUBLIC_ORIGIN=${PREVIEW_PUBLIC_ORIGIN}`);
+    }
+    if (PREVIEW_BIND_HOST) {
+      console.log(`  PREVIEW_BIND_HOST=${PREVIEW_BIND_HOST}`);
+    }
+    if (!USE_REAL_BUILD && !USE_DOCKER) {
+      console.log(`  SIMULATE_DELAY_MS=${SIMULATE_DELAY_MS}`);
+    }
+    if (GITHUB_WEBHOOK_SECRET) {
+      console.log(`  GitHub Webhook: POST /webhook/github (Signature verified)`);
+    } else {
+      console.log(`  GitHub Webhook: POST /webhook/github (set GITHUB_WEBHOOK_SECRET to verify)`);
+    }
+    startAutoRefresh();
+  });
 });

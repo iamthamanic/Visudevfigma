@@ -5,12 +5,14 @@
  */
 
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const WORKSPACE_ROOT = join(__dirname, "workspace");
+/** Age (ms) after which index.lock is considered stale. Long clone/fetch on large repos may take > 2 min. */
+const GIT_LOCK_MAX_AGE_MS = 5 * 60 * 1000;
 
 function sanitizeProjectId(projectId) {
   return (
@@ -57,6 +59,31 @@ function runCommand(cwd, command, env = {}) {
     });
     child.on("error", reject);
   });
+}
+
+function getGitLockPath(workspaceDir) {
+  return join(workspaceDir, ".git", "index.lock");
+}
+
+function removeStaleGitLock(workspaceDir, maxAgeMs = GIT_LOCK_MAX_AGE_MS) {
+  if (!workspaceDir) return false;
+  const lockPath = getGitLockPath(workspaceDir);
+  if (!existsSync(lockPath)) return false;
+  try {
+    const stats = statSync(lockPath);
+    const ageMs = Date.now() - stats.mtimeMs;
+    if (ageMs < maxAgeMs) return false;
+    unlinkSync(lockPath);
+    console.warn(`  [git] Removed stale index.lock (${Math.round(ageMs / 1000)}s old).`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isGitLockError(err) {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes("index.lock");
 }
 
 /** Führt Befehl mit exakten Argumenten aus (ohne Shell). Gibt Promise mit { stdout, stderr } oder Fehler. */
@@ -156,17 +183,48 @@ export async function cloneOrPull(repo, branch, workspaceDir) {
   let branchSafe = (branch || "main").replace(/[^a-zA-Z0-9/_.-]/g, "") || "main";
   branchSafe = branchSafe.replace(/^-+/, "") || "main";
 
-  if (!existsSync(workspaceDir)) {
-    const parent = join(workspaceDir, "..");
-    mkdirSync(parent, { recursive: true });
-    await runGit(parent, ["clone", "--depth", "1", "-b", branchSafe, url, workspaceDir]);
-    return "cloned";
-  }
+  const attempt = async () => {
+    if (!existsSync(workspaceDir)) {
+      const parent = join(workspaceDir, "..");
+      mkdirSync(parent, { recursive: true });
+      await runGit(parent, ["clone", "--depth", "1", "-b", branchSafe, url, workspaceDir]);
+      return "cloned";
+    }
 
-  await runGit(workspaceDir, ["fetch", "origin", branchSafe]);
-  await runGit(workspaceDir, ["checkout", branchSafe]);
-  await runGit(workspaceDir, ["pull", "origin", branchSafe, "--rebase"]);
-  return "pulled";
+    await runGit(workspaceDir, ["fetch", "origin", branchSafe]);
+    await runGit(workspaceDir, ["checkout", branchSafe]);
+    await runGit(workspaceDir, ["pull", "origin", branchSafe, "--rebase"]);
+    return "pulled";
+  };
+
+  try {
+    removeStaleGitLock(workspaceDir);
+    return await attempt();
+  } catch (err) {
+    if (isGitLockError(err) && removeStaleGitLock(workspaceDir)) {
+      return await attempt();
+    }
+    throw err;
+  }
+}
+
+/** Checkout exakt einen Commit (z. B. analysis.commitSha). Bei flachem Clone zuerst fetch --unshallow. */
+export async function checkoutCommit(workspaceDir, commitSha, branchForFetch) {
+  if (!workspaceDir || !existsSync(workspaceDir)) {
+    throw new Error("Workspace fehlt für checkoutCommit");
+  }
+  const sha = String(commitSha || "").trim();
+  if (!/^[a-f0-9]{40}$/i.test(sha)) {
+    throw new Error("commitSha muss ein 40-stelliger Hex-Hash sein");
+  }
+  const branchSafe = (branchForFetch || "main").replace(/[^a-zA-Z0-9/_.-]/g, "") || "main";
+  removeStaleGitLock(workspaceDir);
+  try {
+    await runGit(workspaceDir, ["fetch", "origin", branchSafe, "--unshallow"]);
+  } catch {
+    await runGit(workspaceDir, ["fetch", "origin", branchSafe]);
+  }
+  await runGit(workspaceDir, ["checkout", sha]);
 }
 
 /** Prüft, ob origin/branch neue Commits hat (nach fetch). Gibt true zurück, wenn Pull nötig. */
@@ -175,6 +233,7 @@ export async function hasNewCommits(workspaceDir, branch) {
   const branchSafe =
     (branch || "main").replace(/[^a-zA-Z0-9/_.-]/g, "").replace(/^-+/, "") || "main";
   try {
+    removeStaleGitLock(workspaceDir);
     await runGit(workspaceDir, ["fetch", "origin", branchSafe]);
     const { stdout } = await runGit(workspaceDir, [
       "rev-list",
