@@ -44,7 +44,7 @@ export interface Project {
   deployed_url?: string;
   /** Preview mode: local runner (Docker), central runner (server), or auto */
   preview_mode?: PreviewMode;
-  /** Data view (ERD): use Supabase project or local database */
+  /** Data view (ERD): used by ProjectsPage, ProjectCard, visudev-server for Supabase vs local DB */
   database_type?: "supabase" | "local";
   supabase_project_id?: string;
   supabase_anon_key?: string;

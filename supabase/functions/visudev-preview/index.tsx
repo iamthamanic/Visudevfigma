@@ -80,7 +80,11 @@ app.post("/preview/start", async (c) => {
 
     let repo = body.repo as string | undefined;
     let branch = (body.branchOrCommit as string) ?? "main";
-    const commitSha = body.commitSha as string | undefined;
+    const rawCommitSha = body.commitSha as string | undefined;
+    const commitSha = typeof rawCommitSha === "string" &&
+        /^[a-f0-9]{40}$/i.test(rawCommitSha.trim())
+      ? rawCommitSha.trim()
+      : undefined;
     const project = await kvGet(`project:${projectId}`) as
       | Record<string, unknown>
       | null;

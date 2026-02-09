@@ -512,8 +512,9 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     async (projectId: string) => {
       try {
         await previewAPI.stop(projectId, getProjectPreviewMode(projectId));
-      } catch {
-        // Runner unreachable etc. – trotzdem lokalen Zustand zurücksetzen, damit die UI reagiert
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn("[VisuDEV] stopPreview failed (state reset anyway):", msg);
       } finally {
         setPreview((prev) =>
           prev.projectId === projectId
