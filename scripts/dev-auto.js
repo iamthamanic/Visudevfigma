@@ -97,8 +97,10 @@ function waitForRunner(url, maxAttempts = 30, intervalMs = 500) {
     const u = new URL(url);
     const opts = { hostname: u.hostname, port: u.port, path: "/health", method: "GET" };
     let attempts = 0;
+    let destroyedByTimeout = false;
     const tryOnce = () => {
       attempts += 1;
+      destroyedByTimeout = false;
       const req = http.request(opts, (res) => {
         res.resume();
         if (res.statusCode === 200) {
@@ -116,6 +118,7 @@ function waitForRunner(url, maxAttempts = 30, intervalMs = 500) {
         setTimeout(tryOnce, intervalMs);
       });
       req.on("error", () => {
+        if (destroyedByTimeout) return;
         if (attempts >= maxAttempts) {
           reject(
             new Error(
@@ -127,6 +130,7 @@ function waitForRunner(url, maxAttempts = 30, intervalMs = 500) {
         setTimeout(tryOnce, intervalMs);
       });
       req.setTimeout(intervalMs, () => {
+        destroyedByTimeout = true;
         req.destroy();
         if (attempts >= maxAttempts) reject(new Error(`Runner ${url} Timeout`));
         else setTimeout(tryOnce, intervalMs);
@@ -164,6 +168,10 @@ async function getOrStartRunner() {
     env: envForRunner,
     stdio: "inherit",
     shell: true,
+  });
+  runner.on("error", (err) => {
+    console.error("[dev-auto] Runner spawn failed:", err.message);
+    process.exit(1);
   });
   await waitForRunner(previewUrl).catch((err) => {
     console.error("[dev-auto] Runner nicht bereit:", err.message);
