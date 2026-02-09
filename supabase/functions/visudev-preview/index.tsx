@@ -70,10 +70,19 @@ app.post("/preview/start", async (c) => {
     }
 
     const body = await c.req.json().catch(() => ({}));
-    const projectId = body.projectId as string | undefined;
+    const rawProjectId = body.projectId as string | undefined;
+    const projectId = typeof rawProjectId === "string" &&
+        rawProjectId.length >= 1 &&
+        rawProjectId.length <= 128 &&
+        /^[a-zA-Z0-9_-]+$/.test(rawProjectId)
+      ? rawProjectId
+      : null;
     if (!projectId) {
       return c.json(
-        { success: false, error: "projectId is required" },
+        {
+          success: false,
+          error: "projectId is required (1–128 chars, alphanumeric, - _)",
+        },
         400,
       );
     }
@@ -101,13 +110,27 @@ app.post("/preview/start", async (c) => {
         400,
       );
     }
+    const repoTrimmed = typeof repo === "string" ? repo.trim() : "";
+    if (
+      repoTrimmed.length > 256 ||
+      !/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(repoTrimmed)
+    ) {
+      return c.json(
+        { success: false, error: "repo must be owner/repo (max 256 chars)" },
+        400,
+      );
+    }
+    const branchTrimmed = typeof branch === "string"
+      ? String(branch).trim().slice(0, 512)
+      : "main";
+    const branchSafe = branchTrimmed || "main";
 
     const runnerRes = await fetch(`${runnerUrl.replace(/\/$/, "")}/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        repo,
-        branchOrCommit: branch,
+        repo: repoTrimmed,
+        branchOrCommit: branchSafe,
         projectId,
         ...(commitSha ? { commitSha } : {}),
       }),
