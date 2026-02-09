@@ -932,7 +932,9 @@ findFreeRunnerPort().then((actualPort) => {
   }
   runnerPort = actualPort;
   if (actualPort !== PORT) {
-    console.warn(`Port ${PORT} in use, using ${actualPort}. Set VITE_PREVIEW_RUNNER_URL=http://localhost:${actualPort} if the app does not find the runner.`);
+    console.warn(
+      `Port ${PORT} in use, using ${actualPort}. Set VITE_PREVIEW_RUNNER_URL=http://localhost:${actualPort} if the app does not find the runner.`,
+    );
   }
   server.listen(actualPort, PREVIEW_BIND_HOST, () => {
     console.log(`Preview Runner listening on http://${PREVIEW_BIND_HOST}:${actualPort}`);

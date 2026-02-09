@@ -63,7 +63,14 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     ) {
       handleRescan();
     }
-  }, [activeProject?.id, activeProject?.github_repo, activeProject?.screens?.length, projectId, scanStatuses.appflow.status, handleRescan]);
+  }, [
+    activeProject?.id,
+    activeProject?.github_repo,
+    activeProject?.screens?.length,
+    projectId,
+    scanStatuses.appflow.status,
+    handleRescan,
+  ]);
 
   // Zuerst Runner ermitteln (4000, 4100, …), danach Preview-Status – sonst erscheint „nicht erreichbar“, obwohl Runner läuft
   useEffect(() => {
@@ -606,7 +613,10 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                     aria-label="Preview erneut starten"
                   >
                     {isRetrying ? (
-                      <Loader2 className={`${styles.inlineIcon} ${styles.spinner}`} aria-hidden="true" />
+                      <Loader2
+                        className={`${styles.inlineIcon} ${styles.spinner}`}
+                        aria-hidden="true"
+                      />
                     ) : (
                       <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
                     )}
