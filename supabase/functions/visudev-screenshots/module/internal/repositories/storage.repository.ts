@@ -14,9 +14,12 @@ export class StorageRepository extends BaseService {
       return;
     }
 
-    const { error: createError } = await this.supabase.storage.createBucket(name, {
-      public: isPublic,
-    });
+    const { error: createError } = await this.supabase.storage.createBucket(
+      name,
+      {
+        public: isPublic,
+      },
+    );
 
     if (createError) {
       this.logger.error("Create bucket failed", { error: createError.message });

@@ -861,10 +861,14 @@ app.post("/scans/:projectId/data", async (c) => {
       return c.json({ success: false, error: "Project not found" }, 404);
     }
 
-    if (!project.supabase_project_id) {
+    const useSupabase = project.database_type !== "local" &&
+      project.supabase_project_id;
+    const useLocal = project.database_type === "local";
+    if (!useSupabase && !useLocal) {
       return c.json({
         success: false,
-        error: "Supabase project not configured",
+        error:
+          "Datenbank nicht konfiguriert. In den Projekteinstellungen „Supabase“ oder „Lokal“ wählen.",
       }, 400);
     }
 
@@ -898,13 +902,18 @@ app.post("/scans/:projectId/data", async (c) => {
           completedAt: new Date().toISOString(),
         });
 
-        // Store sample schema data
+        // Store schema: Supabase path uses sample for now; local uses placeholder
+        const isLocal = project.database_type === "local";
         await kv.set(`data:${projectId}:schema`, {
           projectId,
-          tables: [
+          databaseType: isLocal ? "local" : "supabase",
+          tables: isLocal ? [] : [
             { name: "users", columns: ["id", "email", "created_at"] },
             { name: "projects", columns: ["id", "name", "user_id"] },
           ],
+          message: isLocal
+            ? "Lokale Datenbank. Schema-Erkennung für lokale DBs kann später ergänzt werden."
+            : undefined,
           updatedAt: new Date().toISOString(),
         });
       } catch (error) {
@@ -959,8 +968,8 @@ app.post("/scans/:projectId/all", async (c) => {
       results.blueprint = blueprintResponse.ok;
     }
 
-    // Start Data scan if Supabase is configured
-    if (project.supabase_project_id) {
+    // Start Data scan if database is configured (Supabase or local)
+    if (project.database_type === "local" || project.supabase_project_id) {
       const dataUrl = `${
         c.req.url.split("/scans/")[0]
       }/scans/${projectId}/data`;

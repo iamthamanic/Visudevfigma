@@ -16,7 +16,10 @@ export class DataRepository extends BaseService {
     return stored ?? {};
   }
 
-  public async updateSchema(projectId: string, dto: UpdateSchemaDto): Promise<SchemaResponseDto> {
+  public async updateSchema(
+    projectId: string,
+    dto: UpdateSchemaDto,
+  ): Promise<SchemaResponseDto> {
     const key = this.getKey(projectId, "schema");
     const schema: SchemaResponseDto = {
       ...dto,
@@ -27,7 +30,9 @@ export class DataRepository extends BaseService {
     return schema;
   }
 
-  public async getMigrations(projectId: string): Promise<MigrationsResponseDto> {
+  public async getMigrations(
+    projectId: string,
+  ): Promise<MigrationsResponseDto> {
     const key = this.getKey(projectId, "migrations");
     const stored = await this.getValue<MigrationsResponseDto>(key);
     return stored ?? [];
@@ -48,7 +53,10 @@ export class DataRepository extends BaseService {
     return stored ?? {};
   }
 
-  public async updateErd(projectId: string, dto: UpdateErdDto): Promise<ErdResponseDto> {
+  public async updateErd(
+    projectId: string,
+    dto: UpdateErdDto,
+  ): Promise<ErdResponseDto> {
     const key = this.getKey(projectId, "erd");
     const erd: ErdResponseDto = {
       ...dto,

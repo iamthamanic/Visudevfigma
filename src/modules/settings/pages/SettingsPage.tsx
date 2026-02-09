@@ -24,7 +24,7 @@ import {
 import { Button } from "../../../components/ui/button";
 import { Tooltip } from "../../../components/ui/Tooltip";
 import { Input } from "../../../components/ui/input";
-import { useAuth } from "../../../contexts/AuthContext";
+import { useAuth } from "../../../contexts/useAuth";
 import type { Project } from "../../../lib/visudev/types";
 import { checkScreenshotsHealth } from "../../../lib/services/screenshots";
 import {

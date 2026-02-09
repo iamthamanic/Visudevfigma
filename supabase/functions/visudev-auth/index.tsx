@@ -94,7 +94,10 @@ Deno.serve(app.fetch);
 
 function createLogger(): LoggerLike {
   const encoder = new TextEncoder();
-  const write = (stream: "stdout" | "stderr", payload: Record<string, unknown>): void => {
+  const write = (
+    stream: "stdout" | "stderr",
+    payload: Record<string, unknown>,
+  ): void => {
     const line = JSON.stringify(payload);
     const data = encoder.encode(`${line}\n`);
     if (stream === "stderr") {
@@ -144,8 +147,8 @@ function loadEnvConfig(loggerInstance: LoggerLike): EnvConfig {
   const supabaseUrl = getRequiredEnv("SUPABASE_URL");
   const supabaseServiceRoleKey = getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY");
 
-  const kvTableName =
-    Deno.env.get("VISUDEV_KV_TABLE") ?? Deno.env.get("KV_TABLE_NAME") ?? "kv_store_edf036ef";
+  const kvTableName = Deno.env.get("VISUDEV_KV_TABLE") ??
+    Deno.env.get("KV_TABLE_NAME") ?? "kv_store_edf036ef";
 
   if (!Deno.env.get("VISUDEV_KV_TABLE") && !Deno.env.get("KV_TABLE_NAME")) {
     loggerInstance.warn("KV table env not set. Falling back to default.", {
@@ -156,50 +159,70 @@ function loadEnvConfig(loggerInstance: LoggerLike): EnvConfig {
   const githubClientId = Deno.env.get("GITHUB_CLIENT_ID") ?? undefined;
   const githubClientSecret = Deno.env.get("GITHUB_CLIENT_SECRET") ?? undefined;
 
-  const githubRedirectUri =
-    Deno.env.get("GITHUB_REDIRECT_URI") ??
+  const githubRedirectUri = Deno.env.get("GITHUB_REDIRECT_URI") ??
     `${supabaseUrl}/functions/v1/visudev-auth/github/callback`;
 
   if (!Deno.env.get("GITHUB_REDIRECT_URI")) {
-    loggerInstance.warn("GITHUB_REDIRECT_URI not set. Falling back to default.", {
-      defaultValue: githubRedirectUri,
-    });
+    loggerInstance.warn(
+      "GITHUB_REDIRECT_URI not set. Falling back to default.",
+      {
+        defaultValue: githubRedirectUri,
+      },
+    );
   }
 
-  const githubOAuthBaseUrl = Deno.env.get("GITHUB_OAUTH_BASE_URL") ?? "https://github.com";
+  const githubOAuthBaseUrl = Deno.env.get("GITHUB_OAUTH_BASE_URL") ??
+    "https://github.com";
   if (!Deno.env.get("GITHUB_OAUTH_BASE_URL")) {
-    loggerInstance.warn("GITHUB_OAUTH_BASE_URL not set. Falling back to default.", {
-      defaultValue: githubOAuthBaseUrl,
-    });
+    loggerInstance.warn(
+      "GITHUB_OAUTH_BASE_URL not set. Falling back to default.",
+      {
+        defaultValue: githubOAuthBaseUrl,
+      },
+    );
   }
 
-  const githubApiBaseUrl = Deno.env.get("GITHUB_API_BASE_URL") ?? "https://api.github.com";
+  const githubApiBaseUrl = Deno.env.get("GITHUB_API_BASE_URL") ??
+    "https://api.github.com";
   if (!Deno.env.get("GITHUB_API_BASE_URL")) {
-    loggerInstance.warn("GITHUB_API_BASE_URL not set. Falling back to default.", {
-      defaultValue: githubApiBaseUrl,
-    });
+    loggerInstance.warn(
+      "GITHUB_API_BASE_URL not set. Falling back to default.",
+      {
+        defaultValue: githubApiBaseUrl,
+      },
+    );
   }
 
   const githubScope = Deno.env.get("GITHUB_OAUTH_SCOPE") ?? "repo,read:user";
   if (!Deno.env.get("GITHUB_OAUTH_SCOPE")) {
-    loggerInstance.warn("GITHUB_OAUTH_SCOPE not set. Falling back to default.", {
-      defaultValue: githubScope,
-    });
+    loggerInstance.warn(
+      "GITHUB_OAUTH_SCOPE not set. Falling back to default.",
+      {
+        defaultValue: githubScope,
+      },
+    );
   }
 
-  const githubDefaultReturnUrl =
-    Deno.env.get("GITHUB_DEFAULT_RETURN_URL") ?? "https://www.figma.com/";
+  const githubDefaultReturnUrl = Deno.env.get("GITHUB_DEFAULT_RETURN_URL") ??
+    "https://www.figma.com/";
   if (!Deno.env.get("GITHUB_DEFAULT_RETURN_URL")) {
-    loggerInstance.warn("GITHUB_DEFAULT_RETURN_URL not set. Falling back to default.", {
-      defaultValue: githubDefaultReturnUrl,
-    });
+    loggerInstance.warn(
+      "GITHUB_DEFAULT_RETURN_URL not set. Falling back to default.",
+      {
+        defaultValue: githubDefaultReturnUrl,
+      },
+    );
   }
 
-  const supabaseApiBaseUrl = Deno.env.get("SUPABASE_API_BASE_URL") ?? "https://api.supabase.com";
+  const supabaseApiBaseUrl = Deno.env.get("SUPABASE_API_BASE_URL") ??
+    "https://api.supabase.com";
   if (!Deno.env.get("SUPABASE_API_BASE_URL")) {
-    loggerInstance.warn("SUPABASE_API_BASE_URL not set. Falling back to default.", {
-      defaultValue: supabaseApiBaseUrl,
-    });
+    loggerInstance.warn(
+      "SUPABASE_API_BASE_URL not set. Falling back to default.",
+      {
+        defaultValue: supabaseApiBaseUrl,
+      },
+    );
   }
 
   return {

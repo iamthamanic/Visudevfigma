@@ -1,4 +1,7 @@
-import type { AuthModuleConfig, LoggerLike } from "../interfaces/module.interface.ts";
+import type {
+  AuthModuleConfig,
+  LoggerLike,
+} from "../interfaces/module.interface.ts";
 
 let moduleDeps: AuthModuleConfig | null = null;
 
@@ -8,7 +11,9 @@ export function initModuleServices(deps: AuthModuleConfig): void {
 
 export function getModuleDeps(): AuthModuleConfig {
   if (!moduleDeps) {
-    throw new Error("[visudev-auth] Services not initialized. Call initModuleServices() first.");
+    throw new Error(
+      "[visudev-auth] Services not initialized. Call initModuleServices() first.",
+    );
   }
   return moduleDeps;
 }

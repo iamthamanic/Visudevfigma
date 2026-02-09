@@ -26,8 +26,9 @@ export class ScreenExtractionService {
       if (match) {
         let routePath = `/${match[1] === "" ? "" : match[1]}`;
         routePath = routePath.replace(/\[([^\]]+)\]/g, ":$1");
-        const segment =
-          routePath === "/" ? "Home" : (routePath.split("/").filter(Boolean).pop() ?? "Unknown");
+        const segment = routePath === "/"
+          ? "Home"
+          : (routePath.split("/").filter(Boolean).pop() ?? "Unknown");
 
         screens.push({
           id: `screen:${file.path}`,
@@ -63,8 +64,9 @@ export class ScreenExtractionService {
 
         routePath = routePath.replace(/\[([^\]]+)\]/g, ":$1");
 
-        const segment =
-          routePath === "/" ? "Home" : (routePath.split("/").filter(Boolean).pop() ?? "Unknown");
+        const segment = routePath === "/"
+          ? "Home"
+          : (routePath.split("/").filter(Boolean).pop() ?? "Unknown");
 
         screens.push({
           id: `screen:${file.path}`,
@@ -123,12 +125,17 @@ export class ScreenExtractionService {
         });
       }
 
-      const routerConfigRegex = /\{\s*path:\s*["']([^"']+)["'],\s*element:\s*<(\w+)/g;
+      const routerConfigRegex =
+        /\{\s*path:\s*["']([^"']+)["'],\s*element:\s*<(\w+)/g;
       while ((match = routerConfigRegex.exec(file.content)) !== null) {
         const routePath = match[1];
         const componentName = match[2];
 
-        if (!screens.some((screen) => screen.path === routePath && screen.name === componentName)) {
+        if (
+          !screens.some((screen) =>
+            screen.path === routePath && screen.name === componentName
+          )
+        ) {
           screens.push({
             id: `screen:${componentName}:${routePath}`,
             name: componentName,
@@ -163,8 +170,9 @@ export class ScreenExtractionService {
 
         routePath = routePath.replace(/\[([^\]]+)\]/g, ":$1");
 
-        const segment =
-          routePath === "/" ? "Home" : (routePath.split("/").filter(Boolean).pop() ?? "Unknown");
+        const segment = routePath === "/"
+          ? "Home"
+          : (routePath.split("/").filter(Boolean).pop() ?? "Unknown");
 
         screens.push({
           id: `screen:${file.path}`,
@@ -196,7 +204,9 @@ export class ScreenExtractionService {
       );
       if (pathMatch) {
         const screenName = pathMatch[1];
-        const routePath = `/${screenName.toLowerCase().replace(/screen|page|view$/i, "")}`;
+        const routePath = `/${
+          screenName.toLowerCase().replace(/screen|page|view$/i, "")
+        }`;
 
         screens.push({
           id: `screen:${file.path}`,
@@ -212,7 +222,9 @@ export class ScreenExtractionService {
         return;
       }
 
-      const componentMatch = file.path.match(/\/components?\/([^\/]+)\.(tsx?|jsx?)$/);
+      const componentMatch = file.path.match(
+        /\/components?\/([^\/]+)\.(tsx?|jsx?)$/,
+      );
       if (componentMatch && !file.path.includes("/components/pages/")) {
         const componentName = componentMatch[1];
 
@@ -226,7 +238,9 @@ export class ScreenExtractionService {
           screens.push({
             id: `screen:${file.path}`,
             name: componentName,
-            path: `/${componentName.toLowerCase().replace(/screen|page|view$/i, "")}`,
+            path: `/${
+              componentName.toLowerCase().replace(/screen|page|view$/i, "")
+            }`,
             filePath: file.path,
             type: "screen",
             flows: [],
@@ -257,7 +271,10 @@ export class ScreenExtractionService {
       let match: RegExpExecArray | null;
       while ((match = pattern.exec(content)) !== null) {
         const link = match[1];
-        if (link.startsWith("/") && !link.startsWith("//") && !links.includes(link)) {
+        if (
+          link.startsWith("/") && !link.startsWith("//") &&
+          !links.includes(link)
+        ) {
           links.push(link);
         }
       }

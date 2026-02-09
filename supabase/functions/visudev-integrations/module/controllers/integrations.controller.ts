@@ -31,7 +31,10 @@ export class IntegrationsController {
 
   public async updateIntegrations(c: Context): Promise<Response> {
     const projectId = this.parseProjectId(c);
-    const body = await this.parseBody<UpdateIntegrationsDto>(c, updateIntegrationsSchema);
+    const body = await this.parseBody<UpdateIntegrationsDto>(
+      c,
+      updateIntegrationsSchema,
+    );
     const data = await this.service.updateIntegrations(projectId, body);
     return this.ok<IntegrationsResponseDto>(c, data);
   }
@@ -61,7 +64,11 @@ export class IntegrationsController {
       ]);
     }
 
-    const branches = await this.service.getGitHubBranches(projectId, owner, repo);
+    const branches = await this.service.getGitHubBranches(
+      projectId,
+      owner,
+      repo,
+    );
     return this.ok(c, branches);
   }
 
@@ -79,7 +86,13 @@ export class IntegrationsController {
       ]);
     }
 
-    const content = await this.service.getGitHubContent(projectId, owner, repo, path, ref);
+    const content = await this.service.getGitHubContent(
+      projectId,
+      owner,
+      repo,
+      path,
+      ref,
+    );
     return this.ok(c, content);
   }
 
@@ -91,7 +104,10 @@ export class IntegrationsController {
 
   public async connectSupabase(c: Context): Promise<Response> {
     const projectId = this.parseProjectId(c);
-    const body = await this.parseBody<ConnectSupabaseDto>(c, connectSupabaseSchema);
+    const body = await this.parseBody<ConnectSupabaseDto>(
+      c,
+      connectSupabaseSchema,
+    );
     const data = await this.service.connectSupabase(projectId, body);
     return this.ok(c, data);
   }
@@ -116,7 +132,10 @@ export class IntegrationsController {
     }
   }
 
-  private async parseBody<T>(c: Context, schema: { parse: (data: unknown) => T }): Promise<T> {
+  private async parseBody<T>(
+    c: Context,
+    schema: { parse: (data: unknown) => T },
+  ): Promise<T> {
     let payload: unknown;
     try {
       payload = await c.req.json();
@@ -136,7 +155,10 @@ export class IntegrationsController {
     return c.json(payload, 200);
   }
 
-  private asValidationError(message: string, error: unknown): ValidationException {
+  private asValidationError(
+    message: string,
+    error: unknown,
+  ): ValidationException {
     if (error instanceof ZodError) {
       const details = error.issues.map((issue) => ({
         field: issue.path.join("."),

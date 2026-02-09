@@ -130,7 +130,10 @@ export function DataPage({ projectId }: DataPageProps) {
           <div className={styles.centerState}>
             <div className={styles.emptyCard}>
               <p className={styles.emptyHint}>
-                Noch keine Tabellen. Schema analysieren oder ERD-Daten anlegen.
+                {(erd as Record<string, unknown> | null)?.message &&
+                typeof (erd as Record<string, unknown>).message === "string"
+                  ? String((erd as Record<string, unknown>).message)
+                  : "Noch keine Tabellen. Schema analysieren oder ERD-Daten anlegen."}
               </p>
             </div>
           </div>

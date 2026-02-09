@@ -29,12 +29,18 @@ export class ScreenshotsController {
   }
 
   public async capture(c: Context): Promise<Response> {
-    const body = await this.parseBody<CaptureRequestDto>(c, captureRequestSchema);
+    const body = await this.parseBody<CaptureRequestDto>(
+      c,
+      captureRequestSchema,
+    );
     const data = await this.service.captureScreenshots(body);
     return c.json({ success: true, data, screenshots: data.screenshots }, 200);
   }
 
-  private async parseBody<T>(c: Context, schema: { parse: (data: unknown) => T }): Promise<T> {
+  private async parseBody<T>(
+    c: Context,
+    schema: { parse: (data: unknown) => T },
+  ): Promise<T> {
     let payload: unknown;
     try {
       payload = await c.req.json();
@@ -51,7 +57,10 @@ export class ScreenshotsController {
     }
   }
 
-  private asValidationError(message: string, error: unknown): ValidationException {
+  private asValidationError(
+    message: string,
+    error: unknown,
+  ): ValidationException {
     if (error instanceof ZodError) {
       const details = error.issues.map((issue) => ({
         field: issue.path.join("."),

@@ -44,7 +44,10 @@ export class ScreenService extends BaseService {
 
     if (screens.length === 0 && framework.detected.includes("cli-commander")) {
       this.logger.info("Trying CLI Commander extraction");
-      screens = this.extractor.extractCliCommanderScreens(files, packageContent);
+      screens = this.extractor.extractCliCommanderScreens(
+        files,
+        packageContent,
+      );
     }
 
     if (screens.length === 0) {

@@ -107,10 +107,12 @@ export function ProjectCard({ project, onDelete, onClick, onEdit }: ProjectCardP
             )}
           </div>
         )}
-        {project.supabase_project_id && (
+        {(project.database_type === "local" || project.supabase_project_id) && (
           <div className={styles.metaRow}>
             <Database className={styles.icon} aria-hidden="true" />
-            <span className={styles.metaRowText}>{project.supabase_project_id}</span>
+            <span className={styles.metaRowText}>
+              {project.database_type === "local" ? "Lokale Datenbank" : project.supabase_project_id}
+            </span>
           </div>
         )}
         <div className={styles.metaRow}>

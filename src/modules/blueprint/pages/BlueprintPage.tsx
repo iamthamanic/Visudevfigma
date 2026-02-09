@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, Download, Loader2, RefreshCw } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
 import { blueprintAPI } from "../../../utils/api";
@@ -63,7 +63,10 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
   const violations: RuleViolation[] = Array.isArray(blueprint?.violations)
     ? blueprint.violations
     : [];
-  const cycles: BlueprintCycle[] = Array.isArray(blueprint?.cycles) ? blueprint.cycles : [];
+  const cycles = useMemo<BlueprintCycle[]>(
+    () => (Array.isArray(blueprint?.cycles) ? blueprint.cycles : []),
+    [blueprint?.cycles],
+  );
 
   function severityClass(severity: RuleViolation["severity"]) {
     if (severity === "error") return styles.severityError;

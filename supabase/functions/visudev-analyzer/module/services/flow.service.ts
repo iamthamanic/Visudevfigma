@@ -55,7 +55,8 @@ export class FlowService {
         }
       }
 
-      const funcRegex = /(const|function)\s+(handle\w+|on\w+)\s*=?\s*(?:async\s*)?\(/;
+      const funcRegex =
+        /(const|function)\s+(handle\w+|on\w+)\s*=?\s*(?:async\s*)?\(/;
       if (funcRegex.test(line)) {
         const funcMatch = line.match(/(handle\w+|on\w+)/);
         if (funcMatch) {
@@ -73,7 +74,9 @@ export class FlowService {
       }
 
       if (line.includes("fetch(") || line.includes("axios.")) {
-        const apiMatch = line.match(/(?:fetch|axios\.\w+)\s*\(\s*["'`]([^"'`]+)["'`]/);
+        const apiMatch = line.match(
+          /(?:fetch|axios\.\w+)\s*\(\s*["'`]([^"'`]+)["'`]/,
+        );
         if (apiMatch) {
           const url = apiMatch[1];
           let method = "GET";
@@ -126,7 +129,9 @@ export class FlowService {
       }
 
       if (line.match(/\.(query|execute)\s*\(\s*["'`]/)) {
-        const sqlMatch = line.match(/\.(query|execute)\s*\(\s*["'`]([^"'`]+)["'`]/);
+        const sqlMatch = line.match(
+          /\.(query|execute)\s*\(\s*["'`]([^"'`]+)["'`]/,
+        );
         if (sqlMatch) {
           const sql = sqlMatch[2].substring(0, 60);
           flows.push({
@@ -158,7 +163,11 @@ export class FlowService {
     return flows;
   }
 
-  public mapFlowsToScreens(screens: Screen[], flows: CodeFlow[], commitSha: string): Screen[] {
+  public mapFlowsToScreens(
+    screens: Screen[],
+    flows: CodeFlow[],
+    commitSha: string,
+  ): Screen[] {
     return screens.map((screen) => {
       const screenFlows = flows
         .filter((flow) => flow.file === screen.filePath)

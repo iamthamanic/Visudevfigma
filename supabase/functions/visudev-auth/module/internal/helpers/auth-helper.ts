@@ -22,7 +22,8 @@ function isLocalUrl(url: string): boolean {
   try {
     const u = new URL(url);
     const h = u.hostname.toLowerCase();
-    return h === "127.0.0.1" || h === "localhost" || h === "host.docker.internal";
+    return h === "127.0.0.1" || h === "localhost" ||
+      h === "host.docker.internal";
   } catch {
     return false;
   }
@@ -47,7 +48,8 @@ function getAuthBaseUrl(c: Context): string {
   if (fromHeader && isAllowedSupabaseUrl(fromHeader)) {
     return urlReachableFromDocker(fromHeader.replace(/\/$/, ""));
   }
-  const fromEnv = Deno.env.get("VISUDEV_PUBLIC_URL") ?? Deno.env.get("SUPABASE_URL");
+  const fromEnv = Deno.env.get("VISUDEV_PUBLIC_URL") ??
+    Deno.env.get("SUPABASE_URL");
   if (fromEnv) return urlReachableFromDocker(fromEnv.replace(/\/$/, ""));
   try {
     return urlReachableFromDocker(new URL(c.req.url).origin);
@@ -63,15 +65,18 @@ function getSubFromJwtPayload(token: string): string | null {
     if (parts.length !== 3) return null;
     const payload = JSON.parse(
       new TextDecoder().decode(
-        Uint8Array.from(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")), (c) =>
-          c.charCodeAt(0),
+        Uint8Array.from(
+          atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")),
+          (c) => c.charCodeAt(0),
         ),
       ),
     );
     const sub = payload?.sub;
     return typeof sub === "string" && sub.length > 0 ? sub : null;
   } catch (e) {
-    console.error("[visudev-auth] getSubFromJwtPayload failed", { message: String(e) });
+    console.error("[visudev-auth] getSubFromJwtPayload failed", {
+      message: String(e),
+    });
     return null;
   }
 }
@@ -86,7 +91,9 @@ export async function getAuthUserIdFromContext(
   console.info("[visudev-auth] getAuthUserIdFromContext", {
     hasAuth: !!authHeader,
     authPrefix: authHeader?.slice(0, 10) ?? null,
-    tokenLength: authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim().length : 0,
+    tokenLength: authHeader?.startsWith("Bearer ")
+      ? authHeader.slice(7).trim().length
+      : 0,
     xSupabaseUrl: xSupabaseUrl ?? null,
   });
 
@@ -114,10 +121,14 @@ export async function getAuthUserIdFromContext(
   if (localUrl) {
     const subFromPayload = getSubFromJwtPayload(token);
     if (subFromPayload) {
-      console.info("[visudev-auth] local dev: using sub from JWT payload", { sub: subFromPayload });
+      console.info("[visudev-auth] local dev: using sub from JWT payload", {
+        sub: subFromPayload,
+      });
       return subFromPayload;
     }
-    console.warn("[visudev-auth] local dev: getSubFromJwtPayload returned null, trying getUser");
+    console.warn(
+      "[visudev-auth] local dev: getSubFromJwtPayload returned null, trying getUser",
+    );
   }
 
   const supabase = createClient(baseUrl, serviceRoleKey);
@@ -126,13 +137,19 @@ export async function getAuthUserIdFromContext(
     return data.user.id;
   }
   if (error) {
-    console.warn("[visudev-auth] getUser failed", { message: error.message, name: error.name });
+    console.warn("[visudev-auth] getUser failed", {
+      message: error.message,
+      name: error.name,
+    });
   }
   if (localUrl) {
     const sub = getSubFromJwtPayload(token);
     if (sub) return sub;
   }
-  console.error("[visudev-auth] 401: no user id", { hadGetUserError: !!error, localUrl });
+  console.error("[visudev-auth] 401: no user id", {
+    hadGetUserError: !!error,
+    localUrl,
+  });
   throw new UnauthorizedException(
     "Session invalid or from another environment. Sign out and sign in again (use the same Supabase URL as this API).",
   );

@@ -31,7 +31,9 @@ import { RepositoryException } from "../exceptions/index.ts";
 
 export class IntegrationsRepository extends BaseService {
   public async getIntegrations(projectId: string): Promise<IntegrationsRecord> {
-    const data = await this.getValue<IntegrationsRecord>(this.getKey(projectId));
+    const data = await this.getValue<IntegrationsRecord>(
+      this.getKey(projectId),
+    );
     return data ?? {};
   }
 
@@ -99,7 +101,9 @@ export class IntegrationsRepository extends BaseService {
     await this.setValue(this.getKey(projectId), integrations);
   }
 
-  public async getSupabaseInfo(projectId: string): Promise<SupabaseInfoDto | null> {
+  public async getSupabaseInfo(
+    projectId: string,
+  ): Promise<SupabaseInfoDto | null> {
     const integrations = await this.getIntegrations(projectId);
     if (!integrations.supabase?.url) {
       return null;

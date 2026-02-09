@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-export const projectIdSchema = z.string().min(1, "project id is required").trim();
+export const projectIdSchema = z.string().min(1, "project id is required")
+  .trim();
 export const createProjectBodySchema = z.record(z.unknown());
 export const updateProjectBodySchema = z.record(z.unknown());
 

@@ -2,7 +2,7 @@
  * Tests for React Router screen extraction (nested routes, Navigate skip, full paths).
  * Run: deno test module/services/screen-extraction.service.test.ts
  */
-import { assertEquals } from "https://deno.land/std@0.208.0/assert/assert_equals.ts";
+import { assertEquals } from "std/assert";
 import type { FileContent } from "../dto/index.ts";
 import { ScreenExtractionService } from "./screen-extraction.service.ts";
 
@@ -30,8 +30,14 @@ Deno.test("extractReactRouterScreens: nested routes get full path", () => {
   assertEquals(paths.includes("/login"), true);
   assertEquals(paths.includes("/dashboard"), true);
   assertEquals(paths.includes("/learning/video/:videoId"), true);
-  assertEquals(paths.includes("/admin/team-und-mitarbeiterverwaltung/user/:userId"), true);
-  assertEquals(screens.some((s) => s.name === "Navigate" || s.path === "*"), false);
+  assertEquals(
+    paths.includes("/admin/team-und-mitarbeiterverwaltung/user/:userId"),
+    true,
+  );
+  assertEquals(
+    screens.some((s) => s.name === "Navigate" || s.path === "*"),
+    false,
+  );
   assertEquals(screens.some((s) => s.path === "/"), false);
 });
 
@@ -59,7 +65,10 @@ Deno.test("extractReactRouterScreens: layout-only routes (ProtectedRoute, MainLa
   const files: FileContent[] = [{ path: "App.tsx", content: jsx }];
   const screens = service.extractReactRouterScreens(files);
 
-  assertEquals(screens.some((s) => s.path === "/" && s.name === "ProtectedRoute"), false);
+  assertEquals(
+    screens.some((s) => s.path === "/" && s.name === "ProtectedRoute"),
+    false,
+  );
   assertEquals(screens.some((s) => s.path === "/dashboard"), true);
 });
 

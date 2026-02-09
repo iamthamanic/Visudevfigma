@@ -1,6 +1,6 @@
-# E2E Tests (Playwright) – T2-020
+# E2E Tests – T2-020
 
-Kritische User-Flows werden mit Playwright automatisch getestet.
+Kritische User-Flows werden mit **Playwright** automatisch getestet. Zusätzlich können **Maestro**-Flows (YAML) die VisuDEV-UI und die Preview-App (verbundenes Repo) testen – siehe [MAESTRO.md](MAESTRO.md).
 
 ## Voraussetzungen
 

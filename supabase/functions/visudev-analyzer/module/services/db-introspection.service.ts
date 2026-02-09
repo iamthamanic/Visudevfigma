@@ -20,7 +20,15 @@ const EXEC_SQL_QUERY = `
   ORDER BY t.table_name;
 `;
 
-const FALLBACK_TABLES = ["projects", "scenes", "characters", "worlds", "shots", "beats", "films"];
+const FALLBACK_TABLES = [
+  "projects",
+  "scenes",
+  "characters",
+  "worlds",
+  "shots",
+  "beats",
+  "films",
+];
 
 export class DbIntrospectionService extends BaseService {
   public async introspectDatabase(): Promise<DbSchema> {
@@ -82,15 +90,17 @@ export class DbIntrospectionService extends BaseService {
     }
 
     const record = row as Record<string, unknown>;
-    const name = typeof record.table_name === "string" ? record.table_name : null;
+    const name = typeof record.table_name === "string"
+      ? record.table_name
+      : null;
     if (!name) {
       return null;
     }
 
     const columns = Array.isArray(record.columns)
       ? record.columns
-          .map((column) => this.parseColumn(column))
-          .filter((column): column is DbColumn => Boolean(column))
+        .map((column) => this.parseColumn(column))
+        .filter((column): column is DbColumn => Boolean(column))
       : [];
 
     return {
@@ -108,7 +118,9 @@ export class DbIntrospectionService extends BaseService {
     const record = column as Record<string, unknown>;
     const name = typeof record.name === "string" ? record.name : null;
     const type = typeof record.type === "string" ? record.type : "unknown";
-    const nullable = typeof record.nullable === "boolean" ? record.nullable : false;
+    const nullable = typeof record.nullable === "boolean"
+      ? record.nullable
+      : false;
 
     if (!name) {
       return null;

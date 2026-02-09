@@ -1,8 +1,15 @@
 import { BaseService } from "./base.service.ts";
-import type { CaptureRequestDto, CaptureResponseDto, ScreenshotResultDto } from "../dto/index.ts";
+import type {
+  CaptureRequestDto,
+  CaptureResponseDto,
+  ScreenshotResultDto,
+} from "../dto/index.ts";
 import { StorageRepository } from "../internal/repositories/storage.repository.ts";
 import { ScreenshotApiService } from "./screenshot-api.service.ts";
-import { ConfigException, ServiceException } from "../internal/exceptions/index.ts";
+import {
+  ConfigException,
+  ServiceException,
+} from "../internal/exceptions/index.ts";
 
 export class ScreenshotsService extends BaseService {
   constructor(
@@ -12,12 +19,17 @@ export class ScreenshotsService extends BaseService {
     super();
   }
 
-  public async captureScreenshots(request: CaptureRequestDto): Promise<CaptureResponseDto> {
+  public async captureScreenshots(
+    request: CaptureRequestDto,
+  ): Promise<CaptureResponseDto> {
     if (!this.config.apiKey) {
       throw new ConfigException("SCREENSHOT_API_KEY not configured");
     }
 
-    await this.storageRepository.ensureBucket(this.config.bucketName, this.config.bucketPublic);
+    await this.storageRepository.ensureBucket(
+      this.config.bucketName,
+      this.config.bucketPublic,
+    );
 
     const results: ScreenshotResultDto[] = [];
     const normalizedPrefix = this.normalizePrefix(request.routePrefix);
@@ -34,7 +46,8 @@ export class ScreenshotsService extends BaseService {
           normalizedPrefix && !screenPath.startsWith(normalizedPrefix)
             ? `${normalizedPrefix}${screenPath}`
             : screenPath;
-        const targetUrl = new URL(pathWithPrefix, request.deployedUrl).toString();
+        const targetUrl = new URL(pathWithPrefix, request.deployedUrl)
+          .toString();
 
         this.logger.info("Processing screen", {
           screenId: screen.id,
@@ -77,7 +90,8 @@ export class ScreenshotsService extends BaseService {
       }
     }
 
-    const successCount = results.filter((result) => result.status === "ok").length;
+    const successCount =
+      results.filter((result) => result.status === "ok").length;
     this.logger.info("Screenshot capture complete", {
       successCount,
       total: results.length,
@@ -91,12 +105,18 @@ export class ScreenshotsService extends BaseService {
       return null;
     }
     const normalized = prefix.startsWith("/") ? prefix : `/${prefix}`;
-    return normalized.endsWith("/") && normalized !== "/" ? normalized.slice(0, -1) : normalized;
+    return normalized.endsWith("/") && normalized !== "/"
+      ? normalized.slice(0, -1)
+      : normalized;
   }
 
   private normalizePath(path: string): string {
     if (!path) {
-      throw new ServiceException("Screen path is required", 400, "INVALID_PATH");
+      throw new ServiceException(
+        "Screen path is required",
+        400,
+        "INVALID_PATH",
+      );
     }
     return path.startsWith("/") ? path : `/${path}`;
   }

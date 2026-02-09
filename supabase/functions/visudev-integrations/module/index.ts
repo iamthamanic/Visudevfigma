@@ -19,7 +19,8 @@ export function createIntegrationsModule(config: IntegrationsModuleConfig): {
   const controller = new IntegrationsController(service);
 
   return {
-    registerRoutes: (app: Hono): void => registerIntegrationsRoutes(app, controller),
+    registerRoutes: (app: Hono): void =>
+      registerIntegrationsRoutes(app, controller),
     controller,
     service,
     repository,

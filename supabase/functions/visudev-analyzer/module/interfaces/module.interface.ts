@@ -26,11 +26,16 @@ export interface SupabaseMutationResult {
 
 export interface SupabaseTableClient {
   select(column: string): SupabaseTableClient;
-  select(column: string, options: { count: "exact"; head: true }): Promise<SupabaseCountResult>;
+  select(
+    column: string,
+    options: { count: "exact"; head: true },
+  ): Promise<SupabaseCountResult>;
   eq(column: string, value: string): SupabaseTableClient;
   like(column: string, pattern: string): SupabaseTableClient;
   maybeSingle(): Promise<SupabaseQueryResult<{ value: unknown }>>;
-  upsert(payload: { key: string; value: unknown }): Promise<SupabaseMutationResult>;
+  upsert(
+    payload: { key: string; value: unknown },
+  ): Promise<SupabaseMutationResult>;
   delete(): SupabaseTableClient;
 }
 
@@ -47,18 +52,28 @@ export interface SupabaseStorageBucketClient {
   createSignedUrl(
     path: string,
     expiresIn: number,
-  ): Promise<{ data: { signedUrl: string } | null; error: SupabaseError | null }>;
+  ): Promise<
+    { data: { signedUrl: string } | null; error: SupabaseError | null }
+  >;
 }
 
 export interface SupabaseStorageClient {
-  listBuckets(): Promise<{ data: SupabaseStorageBucket[] | null; error: SupabaseError | null }>;
-  createBucket(name: string, options?: { public?: boolean }): Promise<SupabaseMutationResult>;
+  listBuckets(): Promise<
+    { data: SupabaseStorageBucket[] | null; error: SupabaseError | null }
+  >;
+  createBucket(
+    name: string,
+    options?: { public?: boolean },
+  ): Promise<SupabaseMutationResult>;
   from(bucket: string): SupabaseStorageBucketClient;
 }
 
 export interface SupabaseClientLike {
   from(table: string): SupabaseTableClient;
-  rpc<T = unknown>(fn: string, params: Record<string, unknown>): Promise<SupabaseQueryResult<T>>;
+  rpc<T = unknown>(
+    fn: string,
+    params: Record<string, unknown>,
+  ): Promise<SupabaseQueryResult<T>>;
   storage: SupabaseStorageClient;
 }
 

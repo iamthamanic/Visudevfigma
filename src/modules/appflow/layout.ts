@@ -17,6 +17,20 @@ export interface GraphEdge {
   type: "navigate" | "call";
 }
 
+export function normalizePreviewUrl(base: string, screenPath: string): string {
+  const trimmed = (base || "").trim();
+  if (!trimmed || (!trimmed.startsWith("http://") && !trimmed.startsWith("https://"))) return "";
+  const path = (screenPath || "/").trim();
+  const safePath =
+    path.startsWith("/") && !path.includes("//") && !path.toLowerCase().includes("javascript:")
+      ? path
+      : path.startsWith("/")
+        ? path
+        : `/${path}`;
+  const baseClean = trimmed.replace(/\/$/, "");
+  return `${baseClean}${safePath}`;
+}
+
 export function getScreenDepths(screens: Screen[]): Map<string, number> {
   const depths = new Map<string, number>();
   const visited = new Set<string>();

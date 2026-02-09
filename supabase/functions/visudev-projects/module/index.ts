@@ -19,7 +19,8 @@ export function createProjectsModule(config: ProjectsModuleConfig): {
   const controller = new ProjectsController(service);
 
   return {
-    registerRoutes: (app: Hono): void => registerProjectsRoutes(app, controller),
+    registerRoutes: (app: Hono): void =>
+      registerProjectsRoutes(app, controller),
     controller,
     service,
     repository,

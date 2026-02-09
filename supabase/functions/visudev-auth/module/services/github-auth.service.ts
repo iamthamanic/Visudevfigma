@@ -222,6 +222,6 @@ export class GitHubAuthService extends BaseService {
   }
 
   public async getAuthUserIdFromContext(c: Context): Promise<string> {
-    return getAuthUserIdFromContext(c, this.supabase as unknown);
+    return await getAuthUserIdFromContext(c, this.supabase as unknown);
   }
 }

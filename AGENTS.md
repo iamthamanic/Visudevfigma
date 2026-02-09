@@ -7,14 +7,14 @@ This repo enforces strict modular architecture and quality gates. Agents must fo
 ## Mandatory Workflow (Do NOT bypass)
 
 - Always run checks before push/deploy.
- - Preferred: `npm run checks`
- - `npm run push` or `git push` run pre-push checks automatically (AI review required; no skip).
- - `supabase ...` uses the shim and runs checks automatically before invoking Supabase.
+- Preferred: `npm run checks`
+- `npm run push` or `git push` run pre-push checks automatically (AI review required; no skip).
+- `supabase ...` uses the shim and runs checks automatically before invoking Supabase.
 - Never call the real Supabase binary directly. Use the shim (`supabase`) or `npm run supabase:checked`. The package exposes `supabase` and `push` in `bin` (postinstall symlinks in `node_modules/.bin`).
 - If any check fails, fix it before proceeding. Do not bypass the shim or hooks.
 - **Zero warnings policy:** Lint and AI review must pass with **no warnings**. ESLint is run with `--max-warnings 0`; any warning fails the pipeline. Push/deploy is only allowed when all checks pass.
 - AI review (Codex) runs by default after checks. You can skip it for the shim with `--no-ai-review` or `SKIP_AI_REVIEW=1`, but **pushes require AI review** (no skip). AI review is a **required** check in the pipeline (not optional): if it fails, the pipeline fails.
-- **AI review pass criteria:** Only **95% or higher** with **no warnings and no errors** counts as PASS. If the review fails, fix the code and re-run (`bash scripts/run-checks.sh` or push again) until the review passes (rating ≥ 95%, WARNINGS: None, ERRORS: None). No push with &lt; 95% or with any warnings/errors.
+- **AI review pass criteria:** Strict architect checklist (SOLID, performance, security, robustness, maintainability). Only **score ≥ 95%** and **verdict ACCEPT** count as PASS. Deductions are listed per checklist point; fix and re-run until the review passes. No push with verdict REJECT or score &lt; 95%.
 - Reviews are saved to `.shimwrapper/reviews/` (gitignored). If the shim or push prints Token usage + review output, include it in your response.
 
 ## Repository Structure
@@ -126,10 +126,13 @@ src/supabase/functions/<domain>/
 - Backend (only when backend files change): `deno fmt --check`, `deno lint`.
 - Shim/push add-ons: AI review (Codex), `npm audit` (frontend), `deno audit` (backend), optional Snyk (`SKIP_SNYK=1` to skip).
 
-## Required Setup
+## Required Setup (damit alles funktioniert)
 
-- Run `npm run hooks:setup` once to install git hooks.
-- Ensure `~/.local/bin` is first in `PATH` so the Supabase shim is used.
+1. **Git Hooks (einmalig):** `npm run hooks:setup` — setzt `core.hooksPath=.githooks`, damit bei `git push` der Pre-Push-Hook (Checks + AI-Review) läuft.
+2. **Supabase-Shim:** `~/.local/bin` zuerst in der `PATH`, damit `supabase` das Projekt-Shim (checks vor Supabase-Befehlen) nutzt.
+3. **AI-Review (Codex):** Codex CLI installieren und `codex login` — sonst wird die AI-Review übersprungen (Push kann dann trotzdem durchgehen, wenn der Hook sie nicht erzwingt). Für vollständige Bewertung (inkl. Deductions-Parsing) optional **jq** installieren.
+4. **Runner (optional):** Für AppFlow/Preview: `npx visudev-runner` starten (oder im Repo `npm run dev`, dann startet der Runner mit). Keine weiteren Code-Änderungen nötig.
+5. **Push mit Checks:** `npm run push` oder `git push` — beides läuft über Checks; bei Push ist AI-Review Pflicht (kein Skip). Bei Problemen: `npm run checks` einzeln ausführen und Fehler beheben.
 
 ## Notes
 

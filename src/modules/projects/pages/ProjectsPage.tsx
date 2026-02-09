@@ -13,9 +13,16 @@ import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { Button } from "../../../components/ui/button";
 import { Skeleton } from "../../../components/ui/Skeleton";
-import { useAuth } from "../../../contexts/AuthContext";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../components/ui/select";
+import { useAuth } from "../../../contexts/useAuth";
 import { useVisudev } from "../../../lib/visudev/store";
-import type { Project } from "../../../lib/visudev/types";
+import type { PreviewMode, Project } from "../../../lib/visudev/types";
 import { api } from "../../../utils/api";
 import { ProjectCard } from "../components/ProjectCard";
 import { ProjectListRow } from "../components/ProjectListRow";
@@ -31,9 +38,22 @@ interface ProjectsPageProps {
 
 export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: ProjectsPageProps) {
   const { session, user, signInWithPassword } = useAuth();
-  const { projects, projectsLoading, setActiveProject, addProject, updateProject, deleteProject } =
-    useVisudev();
+  const {
+    projects,
+    projectsLoading,
+    setActiveProject,
+    addProject,
+    updateProject,
+    deleteProject,
+    startPreview,
+  } = useVisudev();
   const accessToken = session?.access_token ?? null;
+  const defaultPreviewMode: PreviewMode = (() => {
+    const localUrl =
+      (typeof import.meta !== "undefined" && import.meta.env?.VITE_PREVIEW_RUNNER_URL) ||
+      (typeof import.meta !== "undefined" && import.meta.env?.DEV ? "http://localhost:4000" : "");
+    return localUrl ? "local" : "central";
+  })();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -52,6 +72,8 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
   const [githubBranch, setGithubBranch] = useState("main");
   const [githubAccessToken, setGithubAccessToken] = useState("");
   const [deployedUrl, setDeployedUrl] = useState("");
+  const [previewMode, setPreviewMode] = useState<PreviewMode>(defaultPreviewMode);
+  const [databaseType, setDatabaseType] = useState<"supabase" | "local">("supabase");
   const [supabaseProjectId, setSupabaseProjectId] = useState("");
   const [supabaseAnonKey, setSupabaseAnonKey] = useState("");
   const [supabaseManagementToken, setSupabaseManagementToken] = useState("");
@@ -65,9 +87,12 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
         github_branch: githubBranch,
         github_access_token: githubAccessToken,
         deployed_url: deployedUrl,
-        supabase_project_id: supabaseProjectId,
-        supabase_anon_key: supabaseAnonKey,
-        supabase_management_token: supabaseManagementToken,
+        preview_mode: previewMode,
+        database_type: databaseType,
+        supabase_project_id: databaseType === "supabase" ? supabaseProjectId : undefined,
+        supabase_anon_key: databaseType === "supabase" ? supabaseAnonKey : undefined,
+        supabase_management_token:
+          databaseType === "supabase" ? supabaseManagementToken : undefined,
         description: `GitHub: ${githubRepo}${deployedUrl ? ` | Live: ${deployedUrl}` : ""}`,
       };
 
@@ -77,6 +102,15 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
           created.id,
           { repo: githubRepo, branch: githubBranch || "main" },
           accessToken,
+        );
+      }
+      // Preview sofort anstoßen, sobald Projekt mit Repo angelegt ist (außer Modus "deployed")
+      if (created.id && created.github_repo?.trim() && created.preview_mode !== "deployed") {
+        void startPreview(
+          created.id,
+          created.github_repo,
+          created.github_branch || "main",
+          undefined,
         );
       }
       setIsDialogOpen(false);
@@ -101,9 +135,12 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
         github_branch: githubBranch,
         github_access_token: githubAccessToken,
         deployed_url: deployedUrl,
-        supabase_project_id: supabaseProjectId,
-        supabase_anon_key: supabaseAnonKey,
-        supabase_management_token: supabaseManagementToken,
+        preview_mode: previewMode,
+        database_type: databaseType,
+        supabase_project_id: databaseType === "supabase" ? supabaseProjectId : undefined,
+        supabase_anon_key: databaseType === "supabase" ? supabaseAnonKey : undefined,
+        supabase_management_token:
+          databaseType === "supabase" ? supabaseManagementToken : undefined,
         description: `GitHub: ${githubRepo}${deployedUrl ? ` | Live: ${deployedUrl}` : ""}`,
       };
 
@@ -173,6 +210,8 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
     setGithubBranch(project.github_branch || "main");
     setGithubAccessToken(project.github_access_token || "");
     setDeployedUrl(project.deployed_url || "");
+    setPreviewMode(project.preview_mode ?? defaultPreviewMode);
+    setDatabaseType(project.database_type === "local" ? "local" : "supabase");
     setSupabaseProjectId(project.supabase_project_id || "");
     setSupabaseAnonKey(project.supabase_anon_key || "");
     setSupabaseManagementToken(project.supabase_management_token || "");
@@ -185,15 +224,22 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
     setGithubBranch("main");
     setGithubAccessToken("");
     setDeployedUrl("");
+    setPreviewMode(defaultPreviewMode);
+    setDatabaseType("supabase");
     setSupabaseProjectId("");
     setSupabaseAnonKey("");
     setSupabaseManagementToken("");
   };
 
   const handleNextStep = () => {
-    if (step === 1 && !projectName.trim()) {
-      alert("Bitte gib einen Projektnamen ein");
-      return;
+    if (step === 1) {
+      if (!githubRepo.trim()) {
+        alert("Bitte wähle zuerst ein GitHub-Repository aus.");
+        return;
+      }
+      if (!projectName.trim()) {
+        setProjectName(githubRepo.split("/").pop() ?? githubRepo);
+      }
     }
     setStep(step + 1);
   };
@@ -334,22 +380,16 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
         <DialogContent className={styles.dialogContent}>
           <DialogHeader>
             <DialogTitle>Neues Projekt erstellen</DialogTitle>
-            <DialogDescription>Schritt {step} von 3</DialogDescription>
+            <DialogDescription>
+              {step === 1 && "Schritt 1 von 3: Repository & Projektname"}
+              {step === 2 && "Schritt 2 von 3: Preview-Modus"}
+              {step === 3 && "Schritt 3 von 3: Datenbank (optional, nur für Daten-Ansicht)"}
+            </DialogDescription>
           </DialogHeader>
 
           <div className={styles.stackLg}>
             {step === 1 && (
               <div className={styles.stackMd}>
-                <div className={styles.stackSm}>
-                  <Label htmlFor="projectName">Projektname *</Label>
-                  <Input
-                    id="projectName"
-                    value={projectName}
-                    onChange={(event) => setProjectName(event.target.value)}
-                    placeholder="z.B. Meine App"
-                  />
-                </div>
-
                 <div className={styles.stackSm}>
                   <Label>GitHub Repository *</Label>
                   <GitHubRepoSelector
@@ -357,6 +397,8 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
                     onSelect={(repoFullName, branch) => {
                       setGithubRepo(repoFullName);
                       setGithubBranch(branch || "main");
+                      const nameFromRepo = repoFullName.split("/").pop() ?? repoFullName;
+                      setProjectName(nameFromRepo);
                     }}
                     onOpenSettings={onOpenSettings}
                     initialRepo={githubRepo}
@@ -368,6 +410,19 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
                     onChange={(event) => setGithubRepo(event.target.value)}
                     placeholder="username/repository"
                   />
+                </div>
+
+                <div className={styles.stackSm}>
+                  <Label htmlFor="projectName">Projektname *</Label>
+                  <Input
+                    id="projectName"
+                    value={projectName}
+                    onChange={(event) => setProjectName(event.target.value)}
+                    placeholder="z.B. Meine App (wird aus dem Repository übernommen)"
+                  />
+                  <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
+                    Wird beim Auswählen des Repositories gesetzt; kannst du anpassen.
+                  </p>
                 </div>
 
                 <div className={styles.stackSm}>
@@ -399,66 +454,121 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
             {step === 2 && (
               <div className={styles.stackMd}>
                 <div className={styles.stackSm}>
-                  <Label htmlFor="deployedUrl">Deployed URL (optional)</Label>
-                  <Input
-                    id="deployedUrl"
-                    value={deployedUrl}
-                    onChange={(event) => setDeployedUrl(event.target.value)}
-                    placeholder="https://myapp.vercel.app"
-                  />
+                  <Label htmlFor="previewMode">Preview-Modus</Label>
+                  <Select
+                    value={previewMode}
+                    onValueChange={(value) => setPreviewMode(value as PreviewMode)}
+                  >
+                    <SelectTrigger id="previewMode" className={styles.selectTrigger}>
+                      <SelectValue placeholder="Preview-Modus auswählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="central">Server (zentral)</SelectItem>
+                      <SelectItem value="local">Lokal (Docker erforderlich)</SelectItem>
+                      <SelectItem value="deployed">Deployed URL</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
-                    Für automatische Screenshots der Live-App
+                    Server: PREVIEW_RUNNER_URL in Supabase setzen. Lokal erfordert Docker.
                   </p>
                 </div>
+
+                {previewMode === "deployed" && (
+                  <div className={styles.stackSm}>
+                    <Label htmlFor="deployedUrl">Deployed URL</Label>
+                    <Input
+                      id="deployedUrl"
+                      value={deployedUrl}
+                      onChange={(event) => setDeployedUrl(event.target.value)}
+                      placeholder="https://myapp.vercel.app"
+                    />
+                    <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
+                      Für Live‑Screenshots aus der Deploy‑Preview
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
             {step === 3 && (
               <div className={styles.stackMd}>
+                <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
+                  Nur für die <strong>Daten-Ansicht</strong> (ERD / Tabellen & RLS). Entweder
+                  Supabase-Projekt verbinden oder lokale Datenbank auswählen.
+                </p>
                 <div className={styles.stackSm}>
-                  <Label>Supabase Projekt (optional)</Label>
-                  <SupabaseProjectSelector
-                    onSelect={(projectId, anonKey, managementToken) => {
-                      setSupabaseProjectId(projectId);
-                      setSupabaseAnonKey(anonKey);
-                      setSupabaseManagementToken(managementToken);
-                    }}
-                    initialProjectId={supabaseProjectId}
-                    initialAnonKey={supabaseAnonKey}
-                  />
+                  <Label>Datenbank-Typ</Label>
+                  <Select
+                    value={databaseType}
+                    onValueChange={(v) => setDatabaseType(v as "supabase" | "local")}
+                  >
+                    <SelectTrigger id="databaseType" className={styles.selectTrigger}>
+                      <SelectValue placeholder="Datenbank wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="supabase">Supabase (Cloud)</SelectItem>
+                      <SelectItem value="local">Lokal (z. B. PostgreSQL, SQLite)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                <div className={styles.stackSm}>
-                  <Label htmlFor="supabaseToken">Supabase Management Token</Label>
-                  <Input
-                    id="supabaseToken"
-                    type="password"
-                    value={supabaseManagementToken}
-                    onChange={(event) => setSupabaseManagementToken(event.target.value)}
-                    placeholder="sbp_..."
-                  />
-                </div>
+                {databaseType === "supabase" && (
+                  <>
+                    <div className={styles.stackSm}>
+                      <Label>Supabase Projekt</Label>
+                      <SupabaseProjectSelector
+                        onSelect={(projectId, anonKey, managementToken) => {
+                          setSupabaseProjectId(projectId);
+                          setSupabaseAnonKey(anonKey);
+                          setSupabaseManagementToken(managementToken);
+                        }}
+                        initialProjectId={supabaseProjectId}
+                        initialAnonKey={supabaseAnonKey}
+                      />
+                    </div>
 
-                <div className={styles.stackSm}>
-                  <Label htmlFor="supabaseProjectId">Supabase Project ID</Label>
-                  <Input
-                    id="supabaseProjectId"
-                    value={supabaseProjectId}
-                    onChange={(event) => setSupabaseProjectId(event.target.value)}
-                    placeholder="abc123..."
-                  />
-                </div>
+                    <div className={styles.stackSm}>
+                      <Label htmlFor="supabaseToken">Supabase Management Token</Label>
+                      <Input
+                        id="supabaseToken"
+                        type="password"
+                        value={supabaseManagementToken}
+                        onChange={(event) => setSupabaseManagementToken(event.target.value)}
+                        placeholder="sbp_..."
+                      />
+                    </div>
 
-                <div className={styles.stackSm}>
-                  <Label htmlFor="supabaseAnonKey">Supabase Anon Key</Label>
-                  <Input
-                    id="supabaseAnonKey"
-                    type="password"
-                    value={supabaseAnonKey}
-                    onChange={(event) => setSupabaseAnonKey(event.target.value)}
-                    placeholder="eyJ..."
-                  />
-                </div>
+                    <div className={styles.stackSm}>
+                      <Label htmlFor="supabaseProjectId">Supabase Project ID</Label>
+                      <Input
+                        id="supabaseProjectId"
+                        value={supabaseProjectId}
+                        onChange={(event) => setSupabaseProjectId(event.target.value)}
+                        placeholder="abc123..."
+                      />
+                    </div>
+
+                    <div className={styles.stackSm}>
+                      <Label htmlFor="supabaseAnonKey">Supabase Anon Key</Label>
+                      <Input
+                        id="supabaseAnonKey"
+                        type="password"
+                        value={supabaseAnonKey}
+                        onChange={(event) => setSupabaseAnonKey(event.target.value)}
+                        placeholder="eyJ..."
+                      />
+                    </div>
+                  </>
+                )}
+
+                {databaseType === "local" && (
+                  <div className={styles.stackSm}>
+                    <p className={styles.fieldHint}>
+                      Lokale Datenbank ausgewählt. Die Daten-Ansicht zeigt Platzhalter, bis die
+                      Schema-Erkennung für lokale DBs (z. B. Connection-String) ergänzt wird.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -540,13 +650,100 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
             </div>
 
             <div className={styles.stackSm}>
-              <Label htmlFor="editDeployedUrl">Deployed URL</Label>
-              <Input
-                id="editDeployedUrl"
-                value={deployedUrl}
-                onChange={(event) => setDeployedUrl(event.target.value)}
-              />
+              <Label htmlFor="editPreviewMode">Preview-Modus</Label>
+              <Select
+                value={previewMode}
+                onValueChange={(value) => setPreviewMode(value as PreviewMode)}
+              >
+                <SelectTrigger id="editPreviewMode" className={styles.selectTrigger}>
+                  <SelectValue placeholder="Preview-Modus auswählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="central">Server (zentral)</SelectItem>
+                  <SelectItem value="local">Lokal (Docker erforderlich)</SelectItem>
+                  <SelectItem value="deployed">Deployed URL</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
+                Server nutzt zentrale Runner‑Instanz. Lokal erfordert Docker.
+              </p>
             </div>
+
+            {previewMode === "deployed" && (
+              <div className={styles.stackSm}>
+                <Label htmlFor="editDeployedUrl">Deployed URL</Label>
+                <Input
+                  id="editDeployedUrl"
+                  value={deployedUrl}
+                  onChange={(event) => setDeployedUrl(event.target.value)}
+                />
+                <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
+                  Für Live‑Screenshots aus der Deploy‑Preview
+                </p>
+              </div>
+            )}
+
+            <div className={styles.stackSm}>
+              <Label>Datenbank-Typ (Daten-Ansicht)</Label>
+              <Select
+                value={databaseType}
+                onValueChange={(v) => setDatabaseType(v as "supabase" | "local")}
+              >
+                <SelectTrigger id="editDatabaseType" className={styles.selectTrigger}>
+                  <SelectValue placeholder="Datenbank wählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="supabase">Supabase (Cloud)</SelectItem>
+                  <SelectItem value="local">Lokal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {databaseType === "supabase" && (
+              <>
+                <div className={styles.stackSm}>
+                  <Label>Supabase Projekt</Label>
+                  <SupabaseProjectSelector
+                    onSelect={(projectId, anonKey, managementToken) => {
+                      setSupabaseProjectId(projectId);
+                      setSupabaseAnonKey(anonKey);
+                      setSupabaseManagementToken(managementToken);
+                    }}
+                    initialProjectId={supabaseProjectId}
+                    initialAnonKey={supabaseAnonKey}
+                  />
+                </div>
+                <div className={styles.stackSm}>
+                  <Label htmlFor="editSupabaseToken">Supabase Management Token</Label>
+                  <Input
+                    id="editSupabaseToken"
+                    type="password"
+                    value={supabaseManagementToken}
+                    onChange={(e) => setSupabaseManagementToken(e.target.value)}
+                    placeholder="sbp_..."
+                  />
+                </div>
+                <div className={styles.stackSm}>
+                  <Label htmlFor="editSupabaseProjectId">Supabase Project ID</Label>
+                  <Input
+                    id="editSupabaseProjectId"
+                    value={supabaseProjectId}
+                    onChange={(e) => setSupabaseProjectId(e.target.value)}
+                    placeholder="abc123..."
+                  />
+                </div>
+                <div className={styles.stackSm}>
+                  <Label htmlFor="editSupabaseAnonKey">Supabase Anon Key</Label>
+                  <Input
+                    id="editSupabaseAnonKey"
+                    type="password"
+                    value={supabaseAnonKey}
+                    onChange={(e) => setSupabaseAnonKey(e.target.value)}
+                    placeholder="eyJ..."
+                  />
+                </div>
+              </>
+            )}
 
             <div className={styles.actionsRow}>
               <div />

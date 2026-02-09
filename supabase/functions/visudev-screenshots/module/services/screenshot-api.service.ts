@@ -1,5 +1,8 @@
 import { BaseService } from "./base.service.ts";
-import { ConfigException, ExternalApiException } from "../internal/exceptions/index.ts";
+import {
+  ConfigException,
+  ExternalApiException,
+} from "../internal/exceptions/index.ts";
 
 export class ScreenshotApiService extends BaseService {
   public async capture(targetUrl: string): Promise<Uint8Array> {
@@ -11,10 +14,22 @@ export class ScreenshotApiService extends BaseService {
     apiUrl.searchParams.set("access_key", this.config.apiKey);
     apiUrl.searchParams.set("url", targetUrl);
     apiUrl.searchParams.set("format", this.config.format);
-    apiUrl.searchParams.set("viewport_width", String(this.config.viewportWidth));
-    apiUrl.searchParams.set("viewport_height", String(this.config.viewportHeight));
-    apiUrl.searchParams.set("device_scale_factor", String(this.config.deviceScaleFactor));
-    apiUrl.searchParams.set("full_page", this.booleanParam(this.config.fullPage));
+    apiUrl.searchParams.set(
+      "viewport_width",
+      String(this.config.viewportWidth),
+    );
+    apiUrl.searchParams.set(
+      "viewport_height",
+      String(this.config.viewportHeight),
+    );
+    apiUrl.searchParams.set(
+      "device_scale_factor",
+      String(this.config.deviceScaleFactor),
+    );
+    apiUrl.searchParams.set(
+      "full_page",
+      this.booleanParam(this.config.fullPage),
+    );
     apiUrl.searchParams.set("delay", String(this.config.delaySeconds));
 
     this.logger.info("Fetching screenshot", {
@@ -28,7 +43,10 @@ export class ScreenshotApiService extends BaseService {
       const snippet = body.substring(0, 500);
       const message = `HTTP ${response.status}: ${response.statusText}`;
       this.logger.warn("Screenshot API error", { message, body: snippet });
-      throw new ExternalApiException(`${message} - ${snippet}`, response.status);
+      throw new ExternalApiException(
+        `${message} - ${snippet}`,
+        response.status,
+      );
     }
 
     const buffer = await response.arrayBuffer();

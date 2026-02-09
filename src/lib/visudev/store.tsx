@@ -18,13 +18,17 @@ import {
 } from "./types";
 import type { PreviewStatus } from "./types";
 import { publicAnonKey, supabaseUrl } from "../../utils/supabase/info";
-import { api, previewAPI } from "../../utils/api";
+import { api, previewAPI, type PreviewStepLog } from "../../utils/api";
+
+export type { PreviewStepLog };
 
 export interface PreviewState {
   projectId: string | null;
   status: PreviewStatus;
   previewUrl: string | null;
   error: string | null;
+  /** Schritte vom Preview-Runner (Start/Refresh): Git, Build, Start, Bereit. */
+  refreshLogs: PreviewStepLog[];
 }
 
 interface VisudevStore {
@@ -49,10 +53,17 @@ interface VisudevStore {
 
   // Preview (Live App)
   preview: PreviewState;
-  startPreview: (projectId: string, repo?: string, branchOrCommit?: string) => Promise<void>;
-  refreshPreviewStatus: (projectId: string) => Promise<void>;
+  startPreview: (
+    projectId: string,
+    repo?: string,
+    branchOrCommit?: string,
+    commitSha?: string,
+  ) => Promise<void>;
+  refreshPreviewStatus: (projectId: string) => Promise<PreviewStatus | undefined>;
   refreshPreview: (projectId: string) => Promise<void>;
   stopPreview: (projectId: string) => Promise<void>;
+  /** Set preview to failed when stuck in "starting" (e.g. timeout). */
+  markPreviewStuck: (projectId: string, error: string) => void;
 }
 
 const VisudevContext = createContext<VisudevStore | null>(null);
@@ -89,7 +100,13 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     status: "idle",
     previewUrl: null,
     error: null,
+    refreshLogs: [],
   });
+
+  const getProjectPreviewMode = useCallback(
+    (projectId: string) => projects.find((project) => project.id === projectId)?.preview_mode,
+    [projects],
+  );
 
   const setActiveProject = useCallback((project: Project | null) => {
     setActiveProjectState(project);
@@ -312,11 +329,13 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
             },
           };
 
-          // Update project with new screens/flows
+          // Update project with new screens/flows and analysis commit (for C1: Preview at exact SHA)
           const updatedProject: Project = {
             ...activeProject,
             screens: result.screens,
             flows: result.flows,
+            lastAnalyzedCommitSha:
+              analysisData.data.commitSha ?? activeProject.lastAnalyzedCommitSha,
           };
 
           updateProject(updatedProject);
@@ -376,7 +395,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
   );
 
   const startPreview = useCallback(
-    async (projectId: string, repo?: string, branchOrCommit?: string) => {
+    async (projectId: string, repo?: string, branchOrCommit?: string, commitSha?: string) => {
       const setPreviewError = (error: string) => {
         setPreview((prev) => ({
           ...prev,
@@ -386,6 +405,11 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
           previewUrl: null,
         }));
       };
+      const previewMode = getProjectPreviewMode(projectId);
+      if (previewMode === "deployed") {
+        setPreviewError("Preview-Modus ist 'Deployed URL'. Bitte eine URL im Projekt setzen.");
+        return;
+      }
       if (repo) {
         if (repo.startsWith("http://") || repo.startsWith("https://")) {
           setPreviewError("Repo als 'owner/repo' angeben, keine URL.");
@@ -407,64 +431,125 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         status: "starting",
         previewUrl: null,
         error: null,
+        refreshLogs: [],
       }));
-      const res = await previewAPI.start(projectId, { repo, branchOrCommit });
+      await new Promise((r) => setTimeout(r, 0));
+      try {
+        const res = await previewAPI.start(
+          projectId,
+          { repo, branchOrCommit, commitSha },
+          getProjectPreviewMode(projectId),
+        );
+        if (!res.success) {
+          setPreview((prev) =>
+            prev.projectId === projectId
+              ? { ...prev, status: "failed", error: res.error ?? "Start failed" }
+              : prev,
+          );
+          return;
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setPreview((prev) =>
+          prev.projectId === projectId
+            ? { ...prev, status: "failed", error: message || "Start failed" }
+            : prev,
+        );
+      }
+      // Keep status "starting"; UI will poll refreshPreviewStatus
+    },
+    [getProjectPreviewMode],
+  );
+
+  const refreshPreviewStatus = useCallback(
+    async (projectId: string): Promise<PreviewStatus | undefined> => {
+      let res: Awaited<ReturnType<typeof previewAPI.status>>;
+      try {
+        res = await previewAPI.status(projectId, getProjectPreviewMode(projectId));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setPreview((prev) =>
+          prev.projectId === projectId && prev.status === "starting"
+            ? { ...prev, status: "failed" as const, error: message, previewUrl: null }
+            : prev,
+        );
+        return undefined;
+      }
+      if (!res.success) {
+        const error = (res as { error?: string }).error ?? "Status-Abfrage fehlgeschlagen";
+        setPreview((prev) =>
+          prev.projectId === projectId && prev.status === "starting"
+            ? { ...prev, status: "failed" as const, error, previewUrl: null }
+            : prev,
+        );
+        return undefined;
+      }
+      const payload = res as {
+        status?: PreviewStatus;
+        previewUrl?: string | null;
+        error?: string | null;
+        logs?: PreviewStepLog[];
+      };
+      const status = (payload.status as PreviewStatus) ?? "idle";
+      const logs = Array.isArray(payload.logs) ? payload.logs : [];
+      setPreview((prev) =>
+        prev.projectId === projectId
+          ? {
+              ...prev,
+              status,
+              previewUrl: status === "failed" ? null : (payload.previewUrl ?? prev.previewUrl),
+              error: payload.error ?? prev.error,
+              refreshLogs: logs,
+            }
+          : prev,
+      );
+      return status;
+    },
+    [getProjectPreviewMode],
+  );
+
+  const stopPreview = useCallback(
+    async (projectId: string) => {
+      try {
+        await previewAPI.stop(projectId, getProjectPreviewMode(projectId));
+      } catch {
+        // Runner unreachable etc. – trotzdem lokalen Zustand zurücksetzen, damit die UI reagiert
+      } finally {
+        setPreview((prev) =>
+          prev.projectId === projectId
+            ? { ...prev, status: "stopped", previewUrl: null, error: null, refreshLogs: [] }
+            : prev,
+        );
+      }
+    },
+    [getProjectPreviewMode],
+  );
+
+  const refreshPreview = useCallback(
+    async (projectId: string) => {
+      const res = await previewAPI.refresh(projectId, getProjectPreviewMode(projectId));
       if (!res.success) {
         setPreview((prev) =>
           prev.projectId === projectId
-            ? { ...prev, status: "failed", error: res.error ?? "Start failed" }
+            ? { ...prev, status: "failed", error: res.error ?? "Refresh failed" }
             : prev,
         );
         return;
       }
-      // Keep status "starting"; UI will poll refreshPreviewStatus
-    },
-    [],
-  );
-
-  const refreshPreviewStatus = useCallback(async (projectId: string) => {
-    const res = await previewAPI.status(projectId);
-    if (!res.success) return;
-    // Backend returns flat { success, status, previewUrl, error }
-    const payload = res as {
-      status?: PreviewStatus;
-      previewUrl?: string | null;
-      error?: string | null;
-    };
-    const status = (payload.status as PreviewStatus) ?? "idle";
-    setPreview((prev) =>
-      prev.projectId === projectId
-        ? {
-            ...prev,
-            status,
-            previewUrl: status === "failed" ? null : (payload.previewUrl ?? prev.previewUrl),
-            error: payload.error ?? prev.error,
-          }
-        : prev,
-    );
-  }, []);
-
-  const stopPreview = useCallback(async (projectId: string) => {
-    await previewAPI.stop(projectId);
-    setPreview((prev) =>
-      prev.projectId === projectId
-        ? { ...prev, status: "stopped", previewUrl: null, error: null }
-        : prev,
-    );
-  }, []);
-
-  const refreshPreview = useCallback(async (projectId: string) => {
-    const res = await previewAPI.refresh(projectId);
-    if (!res.success) {
       setPreview((prev) =>
         prev.projectId === projectId
-          ? { ...prev, status: "failed", error: res.error ?? "Refresh failed" }
+          ? { ...prev, status: "starting", error: null, refreshLogs: [] }
           : prev,
       );
-      return;
-    }
+    },
+    [getProjectPreviewMode],
+  );
+
+  const markPreviewStuck = useCallback((projectId: string, error: string) => {
     setPreview((prev) =>
-      prev.projectId === projectId ? { ...prev, status: "starting", error: null } : prev,
+      prev.projectId === projectId && prev.status === "starting"
+        ? { ...prev, status: "failed" as const, error, previewUrl: null }
+        : prev,
     );
   }, []);
 
@@ -487,6 +572,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     refreshPreviewStatus,
     refreshPreview,
     stopPreview,
+    markPreviewStuck,
   };
 
   return <VisudevContext.Provider value={value}>{children}</VisudevContext.Provider>;

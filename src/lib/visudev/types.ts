@@ -31,6 +31,8 @@ export interface Flow {
 
 /** Preview (Live App) status from Preview Runner */
 export type PreviewStatus = "idle" | "starting" | "ready" | "failed" | "stopped";
+/** Preview mode selection per project */
+export type PreviewMode = "auto" | "local" | "central" | "deployed";
 
 export interface Project {
   id: string;
@@ -40,6 +42,10 @@ export interface Project {
   github_branch?: string;
   github_access_token?: string;
   deployed_url?: string;
+  /** Preview mode: local runner (Docker), central runner (server), or auto */
+  preview_mode?: PreviewMode;
+  /** Data view (ERD): use Supabase project or local database */
+  database_type?: "supabase" | "local";
   supabase_project_id?: string;
   supabase_anon_key?: string;
   supabase_management_token?: string;
@@ -53,6 +59,8 @@ export interface Project {
   previewStatus?: PreviewStatus;
   /** When the preview expires (ISO) */
   previewExpiresAt?: string;
+  /** Commit SHA of last analysis (for Preview-Runner: start at this exact SHA) */
+  lastAnalyzedCommitSha?: string;
 }
 
 export interface AnalysisResult {

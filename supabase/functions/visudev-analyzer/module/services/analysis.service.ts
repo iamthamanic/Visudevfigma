@@ -22,7 +22,9 @@ export class AnalysisService extends BaseService {
     super();
   }
 
-  public async analyze(request: AnalysisRequestDto): Promise<AnalysisResultDto> {
+  public async analyze(
+    request: AnalysisRequestDto,
+  ): Promise<AnalysisResultDto> {
     const { access_token, repo, branch } = request;
     this.logger.info("Starting analysis", {
       repo,
@@ -30,8 +32,16 @@ export class AnalysisService extends BaseService {
       authenticated: Boolean(access_token),
     });
 
-    const commitSha = await this.gitHubService.getCurrentCommitSha(access_token, repo, branch);
-    const tree = await this.gitHubService.fetchRepoTree(access_token, repo, branch);
+    const commitSha = await this.gitHubService.getCurrentCommitSha(
+      access_token,
+      repo,
+      branch,
+    );
+    const tree = await this.gitHubService.fetchRepoTree(
+      access_token,
+      repo,
+      branch,
+    );
 
     const packageJsonNode = tree.find(
       (file) => file.type === "blob" && file.path === "package.json",
@@ -64,7 +74,11 @@ export class AnalysisService extends BaseService {
     let analyzed = 0;
     for (const file of filesToAnalyze) {
       try {
-        const content = await this.gitHubService.fetchFileContent(access_token, repo, file.path);
+        const content = await this.gitHubService.fetchFileContent(
+          access_token,
+          repo,
+          file.path,
+        );
         const flows = this.flowService.analyzeFile(file.path, content);
         allFlows.push(...flows);
         fileContents.push({ path: file.path, content });
@@ -92,8 +106,14 @@ export class AnalysisService extends BaseService {
       flows: allFlows.length,
     });
 
-    const { screens, framework } = this.screenService.extractScreens(fileContents);
-    const mappedScreens = this.flowService.mapFlowsToScreens(screens, allFlows, commitSha);
+    const { screens, framework } = this.screenService.extractScreens(
+      fileContents,
+    );
+    const mappedScreens = this.flowService.mapFlowsToScreens(
+      screens,
+      allFlows,
+      commitSha,
+    );
 
     const analysisId = crypto.randomUUID();
     const record: AnalysisRecord = {

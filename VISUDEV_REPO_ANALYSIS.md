@@ -266,7 +266,7 @@
 
 ### AI Audiobookmaker
 
-- **Hinweis:** Angegebener Pfad wurde nicht gefunden; ggf. anderer Ordnername oder nicht vorhanden.
+**Hinweis:** Angegebener Pfad wurde nicht gefunden; ggf. anderer Ordnername oder nicht vorhanden.
 
 ---
 

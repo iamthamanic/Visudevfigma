@@ -1,6 +1,6 @@
 {
   "name": "visudev-runner",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "VisuDEV Preview Runner: clone repo, build and run app for Live App. Later: full stack in package visudev.",
   "type": "module",
   "main": "index.js",

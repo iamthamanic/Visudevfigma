@@ -4,7 +4,7 @@
  */
 
 import { useState } from "react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/useAuth";
 import { AuthLoginForm } from "./AuthLoginForm";
 import { AuthSignupForm } from "./AuthSignupForm";
 import styles from "./AuthGate.module.css";

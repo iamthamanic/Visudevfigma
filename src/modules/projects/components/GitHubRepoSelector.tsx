@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../components/ui/select";
-import { useAuth } from "../../../contexts/AuthContext";
+import { useAuth } from "../../../contexts/useAuth";
 import { api } from "../../../utils/api";
 import type { GitHubRepo } from "../services/githubAuth";
 import { fetchGitHubReposWithBearer, getGitHubStatus } from "../services/githubAuth";

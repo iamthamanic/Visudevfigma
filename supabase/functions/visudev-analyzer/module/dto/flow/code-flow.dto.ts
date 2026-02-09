@@ -1,4 +1,8 @@
-export type CodeFlowType = "ui-event" | "function-call" | "api-call" | "db-query";
+export type CodeFlowType =
+  | "ui-event"
+  | "function-call"
+  | "api-call"
+  | "db-query";
 
 export interface CodeFlow {
   id: string;

@@ -2,6 +2,15 @@
 
 VisuDEV kann die angebundene App **aus dem Repo bauen und starten**, sodass du dich in der **echten laufenden App** im Tab **Live App** durchklicken kannst – ohne die App selbst zu starten oder auf Vercel/Netlify zu deployen.
 
+## User-Flow (lokal): Einmal starten, Rest automatisch
+
+**Der Nutzer soll nur sein Repo verbinden – VisuDEV erledigt die Arbeit.**
+
+- **Einmal:** Im VisuDEV-Projektordner `npm run dev` ausführen. Das startet VisuDEV (App + Preview-Dienst), öffnet den Browser und setzt die richtige Runner-URL automatisch.
+- **Danach:** Im UI nur noch **Repo verbinden** (Projekt anlegen/auswählen). Die Preview startet automatisch; kein weiterer Klick nötig. Technisch startet der Runner beim ersten Aufruf, die App ruft ihn mit der von `npm run dev` gesetzten URL auf.
+
+Die Web-App kann auf dem Rechner **keine Prozesse starten** (Browser-Sicherheit). Darum ist „VisuDEV starten“ (einmal `npm run dev`) der eine Einstieg; alles Weitere (Preview anstoßen, URL setzen, Build) passiert im Hintergrund, sobald ein Repo verbunden ist.
+
 ## Runner lokal vs. feste URL
 
 **Du kannst den Runner lokal hosten.** Es gibt zwei Wege:

@@ -19,7 +19,10 @@ export class DataService extends BaseService {
     return this.repository.getSchema(projectId);
   }
 
-  public updateSchema(projectId: string, dto: UpdateSchemaDto): Promise<SchemaResponseDto> {
+  public updateSchema(
+    projectId: string,
+    dto: UpdateSchemaDto,
+  ): Promise<SchemaResponseDto> {
     this.logger.info("Updating schema", { projectId });
     return this.repository.updateSchema(projectId, dto);
   }
@@ -42,7 +45,10 @@ export class DataService extends BaseService {
     return this.repository.getErd(projectId);
   }
 
-  public updateErd(projectId: string, dto: UpdateErdDto): Promise<ErdResponseDto> {
+  public updateErd(
+    projectId: string,
+    dto: UpdateErdDto,
+  ): Promise<ErdResponseDto> {
     this.logger.info("Updating ERD", { projectId });
     return this.repository.updateErd(projectId, dto);
   }

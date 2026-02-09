@@ -33,7 +33,8 @@ export function createAnalyzerModule(config: AnalyzerModuleConfig): {
   const controller = new AnalyzerController(analysisService, screenshotService);
 
   return {
-    registerRoutes: (app: Hono): void => registerAnalyzerRoutes(app, controller),
+    registerRoutes: (app: Hono): void =>
+      registerAnalyzerRoutes(app, controller),
     controller,
     analysisService,
     screenshotService,

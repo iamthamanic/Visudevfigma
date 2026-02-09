@@ -1,21 +1,15 @@
 /**
- * AuthContext: Supabase Auth (Session, signIn, signUp, signOut) für die App.
+ * AuthProvider: Supabase Auth (Session, signIn, signUp, signOut) für die App.
  * Liefert user, session, loading und Auth-Aktionen. Ort: src/contexts/AuthContext.tsx
  * Invalidates session when it was issued by a different Supabase (e.g. cloud vs local).
  */
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "../lib/supabase/client";
 import { supabaseUrl } from "../utils/supabase/info";
 import type { Session, User } from "@jsr/supabase__supabase-js";
+import { AuthContext } from "./authContextRef";
+import type { AuthContextValue } from "./authContextRef";
 
 function getIssuerFromJwt(token: string): string | null {
   try {
@@ -40,26 +34,6 @@ function shouldInvalidateSession(supabaseUrl: string, sessionIss: string | null)
   if (isCloudUrl && issIsLocal) return true;
   return false;
 }
-
-interface AuthErrorLike {
-  message: string;
-}
-
-interface AuthState {
-  user: User | null;
-  session: Session | null;
-  loading: boolean;
-}
-
-interface AuthActions {
-  signInWithPassword: (email: string, password: string) => Promise<{ error: AuthErrorLike | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: AuthErrorLike | null }>;
-  signOut: () => Promise<void>;
-}
-
-type AuthContextValue = AuthState & AuthActions;
-
-const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -131,12 +105,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (ctx == null) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-  return ctx;
 }

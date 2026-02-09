@@ -15,7 +15,10 @@ import { createClient } from "@jsr/supabase__supabase-js";
 
 // KV Store Implementation (inline for Dashboard compatibility)
 const kvClient = () =>
-  createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
 
 const kvSet = async (key: string, value: unknown): Promise<void> => {
   const supabase = kvClient();

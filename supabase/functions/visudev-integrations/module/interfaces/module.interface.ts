@@ -14,7 +14,9 @@ export interface SupabaseTableClient {
   select(column: string): SupabaseTableClient;
   eq(column: string, value: string): SupabaseTableClient;
   maybeSingle(): Promise<SupabaseQueryResult<{ value: unknown }>>;
-  upsert(payload: { key: string; value: unknown }): Promise<{ error: { message: string } | null }>;
+  upsert(
+    payload: { key: string; value: unknown },
+  ): Promise<{ error: { message: string } | null }>;
   delete(): SupabaseTableClient;
 }
 

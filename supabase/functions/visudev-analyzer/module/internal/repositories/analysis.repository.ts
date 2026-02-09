@@ -19,7 +19,10 @@ export class AnalysisRepository extends BaseService {
     return (data?.value as AnalysisRecord | null) ?? null;
   }
 
-  public async saveAnalysis(id: string, payload: AnalysisRecord): Promise<void> {
+  public async saveAnalysis(
+    id: string,
+    payload: AnalysisRecord,
+  ): Promise<void> {
     const key = this.buildKey(id);
     const { error } = await this.supabase
       .from(this.config.kvTableName)

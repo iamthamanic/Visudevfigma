@@ -95,7 +95,10 @@ Deno.serve(app.fetch);
 
 function createLogger(): LoggerLike {
   const encoder = new TextEncoder();
-  const write = (stream: "stdout" | "stderr", payload: Record<string, unknown>): void => {
+  const write = (
+    stream: "stdout" | "stderr",
+    payload: Record<string, unknown>,
+  ): void => {
     const line = JSON.stringify(payload);
     const data = encoder.encode(`${line}\n`);
     if (stream === "stderr") {
@@ -146,35 +149,57 @@ function loadEnvConfig(loggerInstance: LoggerLike): EnvConfig {
   const supabaseServiceRoleKey = getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY");
 
   const apiKey = Deno.env.get("SCREENSHOT_API_KEY") ?? undefined;
-  const apiBaseUrl =
-    Deno.env.get("SCREENSHOT_API_BASE_URL") ??
+  const apiBaseUrl = Deno.env.get("SCREENSHOT_API_BASE_URL") ??
     Deno.env.get("SCREENSHOTONE_API_BASE_URL") ??
     "https://api.screenshotone.com/take";
 
-  if (!Deno.env.get("SCREENSHOT_API_BASE_URL") && !Deno.env.get("SCREENSHOTONE_API_BASE_URL")) {
-    loggerInstance.warn("Screenshot API base URL not set. Falling back to default.", {
-      defaultValue: apiBaseUrl,
-    });
+  if (
+    !Deno.env.get("SCREENSHOT_API_BASE_URL") &&
+    !Deno.env.get("SCREENSHOTONE_API_BASE_URL")
+  ) {
+    loggerInstance.warn(
+      "Screenshot API base URL not set. Falling back to default.",
+      {
+        defaultValue: apiBaseUrl,
+      },
+    );
   }
 
-  const bucketName =
-    Deno.env.get("VISUDEV_SCREENSHOT_BUCKET") ??
+  const bucketName = Deno.env.get("VISUDEV_SCREENSHOT_BUCKET") ??
     Deno.env.get("SCREENSHOT_BUCKET_NAME") ??
     "visudev-screens";
 
-  if (!Deno.env.get("VISUDEV_SCREENSHOT_BUCKET") && !Deno.env.get("SCREENSHOT_BUCKET_NAME")) {
-    loggerInstance.warn("Screenshot bucket env not set. Falling back to default.", {
-      defaultValue: bucketName,
-    });
+  if (
+    !Deno.env.get("VISUDEV_SCREENSHOT_BUCKET") &&
+    !Deno.env.get("SCREENSHOT_BUCKET_NAME")
+  ) {
+    loggerInstance.warn(
+      "Screenshot bucket env not set. Falling back to default.",
+      {
+        defaultValue: bucketName,
+      },
+    );
   }
 
   const bucketPublic = parseBooleanEnv("SCREENSHOT_BUCKET_PUBLIC", true);
   const format = Deno.env.get("SCREENSHOT_FORMAT") ?? "png";
-  const viewportWidth = Math.max(1, parseNumberEnv("SCREENSHOT_VIEWPORT_WIDTH", 1440));
-  const viewportHeight = Math.max(1, parseNumberEnv("SCREENSHOT_VIEWPORT_HEIGHT", 900));
-  const deviceScaleFactor = Math.max(1, parseNumberEnv("SCREENSHOT_DEVICE_SCALE_FACTOR", 1));
+  const viewportWidth = Math.max(
+    1,
+    parseNumberEnv("SCREENSHOT_VIEWPORT_WIDTH", 1440),
+  );
+  const viewportHeight = Math.max(
+    1,
+    parseNumberEnv("SCREENSHOT_VIEWPORT_HEIGHT", 900),
+  );
+  const deviceScaleFactor = Math.max(
+    1,
+    parseNumberEnv("SCREENSHOT_DEVICE_SCALE_FACTOR", 1),
+  );
   const fullPage = parseBooleanEnv("SCREENSHOT_FULL_PAGE", false);
-  const delaySeconds = Math.max(0, parseNumberEnv("SCREENSHOT_DELAY_SECONDS", 1));
+  const delaySeconds = Math.max(
+    0,
+    parseNumberEnv("SCREENSHOT_DELAY_SECONDS", 1),
+  );
 
   return {
     supabaseUrl,

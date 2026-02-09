@@ -46,7 +46,10 @@ export class DataController {
 
   public async updateMigrations(c: Context): Promise<Response> {
     const projectId = this.parseProjectId(c);
-    const body = await this.parseBody<UpdateMigrationsDto>(c, migrationsBodySchema);
+    const body = await this.parseBody<UpdateMigrationsDto>(
+      c,
+      migrationsBodySchema,
+    );
     const data = await this.service.updateMigrations(projectId, body);
     return this.ok<MigrationsResponseDto>(c, data);
   }
@@ -72,7 +75,10 @@ export class DataController {
     }
   }
 
-  private async parseBody<T>(c: Context, schema: { parse: (data: unknown) => T }): Promise<T> {
+  private async parseBody<T>(
+    c: Context,
+    schema: { parse: (data: unknown) => T },
+  ): Promise<T> {
     let payload: unknown;
     try {
       payload = await c.req.json();
@@ -92,7 +98,10 @@ export class DataController {
     return c.json(payload, 200);
   }
 
-  private asValidationError(message: string, error: unknown): ValidationException {
+  private asValidationError(
+    message: string,
+    error: unknown,
+  ): ValidationException {
     if (error instanceof ZodError) {
       const details = error.issues.map((issue) => ({
         field: issue.path.join("."),

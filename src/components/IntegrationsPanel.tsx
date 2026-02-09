@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import clsx from "clsx";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/useAuth";
 import type { GitHubRepo } from "../lib/visudev/integrations";
 import { useIntegrations } from "../utils/useVisuDev";
 import { api } from "../utils/api";

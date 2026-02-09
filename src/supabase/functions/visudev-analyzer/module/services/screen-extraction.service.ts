@@ -8,7 +8,10 @@ export class ScreenExtractionService {
       const match = file.path.match(/app\/(.*?)\/page\.(tsx?|jsx?)$/);
       if (match) {
         let pathSegment = match[1] === "" ? "" : match[1];
-        pathSegment = pathSegment.replace(/\([^)]+\)\/?/g, "").replace(/\/+/g, "/").replace(/^\/|\/$/g, "");
+        pathSegment = pathSegment.replace(/\([^)]+\)\/?/g, "").replace(
+          /\/+/g,
+          "/",
+        ).replace(/^\/|\/$/g, "");
         let routePath = pathSegment ? `/${pathSegment}` : "/";
         routePath = routePath.replace(/\[([^\]]+)\]/g, ":$1");
         const nameSegment = routePath === "/"
@@ -177,8 +180,7 @@ export class ScreenExtractionService {
       const afterOpen = content.slice(startIndex);
       const openTagEnd = afterOpen.indexOf(">");
       const segmentToTagEnd = afterOpen.slice(0, openTagEnd + 1);
-      const isSelfClosingTag =
-        /\/\s*>/.test(segmentToTagEnd) &&
+      const isSelfClosingTag = /\/\s*>/.test(segmentToTagEnd) &&
         segmentToTagEnd.indexOf("</") === -1;
       const selfClosePos = this.findRouteSelfCloseEnd(afterOpen, 0);
 
@@ -222,8 +224,7 @@ export class ScreenExtractionService {
 
       const block = content.slice(startIndex, endIndex);
       const componentName = this.extractRouteElementComponentName(block);
-      const skip =
-        this.isRouteRedirect(block) ||
+      const skip = this.isRouteRedirect(block) ||
         path === "*" ||
         this.isLayoutOnlyRoute(block, componentName);
       raw.push({
@@ -329,7 +330,10 @@ export class ScreenExtractionService {
     return elementMatch != null && elementMatch[1] === "Navigate";
   }
 
-  private isLayoutOnlyRoute(routeBlock: string, componentName: string): boolean {
+  private isLayoutOnlyRoute(
+    routeBlock: string,
+    componentName: string,
+  ): boolean {
     const elementMatch = routeBlock.match(/element\s*=\s*\{\s*<\s*(\w+)/);
     const first = elementMatch?.[1];
     return (
@@ -373,9 +377,16 @@ export class ScreenExtractionService {
     return p;
   }
 
-  private screenNameFromPathOrComponent(path: string, componentName: string): string {
-    if (componentName && componentName !== "Unknown" && componentName !== "Redirect") {
-      return componentName.replace(/Screen$/, "").replace(/Page$/, "") || componentName;
+  private screenNameFromPathOrComponent(
+    path: string,
+    componentName: string,
+  ): string {
+    if (
+      componentName && componentName !== "Unknown" &&
+      componentName !== "Redirect"
+    ) {
+      return componentName.replace(/Screen$/, "").replace(/Page$/, "") ||
+        componentName;
     }
     const segment = path.split("/").filter(Boolean).pop() ?? "index";
     const name = segment.replace(/^:/, "").replace(/-/g, " ");
@@ -492,7 +503,8 @@ export class ScreenExtractionService {
         const path = `/hash/${page}`;
         if (seen.has(path)) continue;
         seen.add(path);
-        const name = page.charAt(0).toUpperCase() + page.slice(1).replace(/-/g, " ");
+        const name = page.charAt(0).toUpperCase() +
+          page.slice(1).replace(/-/g, " ");
         screens.push({
           id: `screen:hash:${page}`,
           name,
@@ -517,7 +529,8 @@ export class ScreenExtractionService {
         .filter(Boolean);
       for (const page of pageList) {
         const path = `/hash/${page}`;
-        const name = page.charAt(0).toUpperCase() + page.slice(1).replace(/-/g, " ");
+        const name = page.charAt(0).toUpperCase() +
+          page.slice(1).replace(/-/g, " ");
         if (!screens.some((s) => s.path === path)) {
           screens.push({
             id: `screen:hash:${page}`,
@@ -570,7 +583,8 @@ export class ScreenExtractionService {
     );
     if (!cliFile) return screens;
 
-    const commandRegex = /\.command\s*\(\s*["']([^"']+)["'](?:\s*,\s*["']([^"']*)["'])?/g;
+    const commandRegex =
+      /\.command\s*\(\s*["']([^"']+)["'](?:\s*,\s*["']([^"']*)["'])?/g;
     const seen = new Set<string>();
     let m: RegExpExecArray | null;
 
@@ -632,9 +646,7 @@ export class ScreenExtractionService {
       filePath: appFile?.path ?? "unknown",
       type: "screen",
       flows: [],
-      navigatesTo: appFile
-        ? this.extractNavigationLinks(appFile.content)
-        : [],
+      navigatesTo: appFile ? this.extractNavigationLinks(appFile.content) : [],
       framework: "single-page",
     }];
   }

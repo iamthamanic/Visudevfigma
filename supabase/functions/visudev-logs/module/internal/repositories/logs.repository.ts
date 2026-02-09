@@ -4,15 +4,23 @@ import { RepositoryException } from "../exceptions/index.ts";
 
 export class LogsRepository extends BaseService {
   public async listLogs(projectId: string): Promise<LogResponseDto[]> {
-    const records = await this.listByPrefix<LogResponseDto>(`logs:${projectId}:`);
+    const records = await this.listByPrefix<LogResponseDto>(
+      `logs:${projectId}:`,
+    );
     return records;
   }
 
-  public getLog(projectId: string, logId: string): Promise<LogResponseDto | null> {
+  public getLog(
+    projectId: string,
+    logId: string,
+  ): Promise<LogResponseDto | null> {
     return this.getValue<LogResponseDto>(this.getKey(projectId, logId));
   }
 
-  public async createLog(projectId: string, payload: CreateLogDto): Promise<LogResponseDto> {
+  public async createLog(
+    projectId: string,
+    payload: CreateLogDto,
+  ): Promise<LogResponseDto> {
     const timestamp = new Date().toISOString();
     const id = `${timestamp}:${crypto.randomUUID()}`;
     const log: LogResponseDto = {
@@ -71,7 +79,8 @@ export class LogsRepository extends BaseService {
   }
 
   private async deleteValue(key: string): Promise<void> {
-    const { error } = await this.supabase.from(this.config.kvTableName).delete().eq("key", key);
+    const { error } = await this.supabase.from(this.config.kvTableName).delete()
+      .eq("key", key);
 
     if (error) {
       this.logger.error("KV delete failed", { key, error: error.message });
@@ -80,7 +89,8 @@ export class LogsRepository extends BaseService {
   }
 
   private async deleteMany(keys: string[]): Promise<void> {
-    const { error } = await this.supabase.from(this.config.kvTableName).delete().in("key", keys);
+    const { error } = await this.supabase.from(this.config.kvTableName).delete()
+      .in("key", keys);
 
     if (error) {
       this.logger.error("KV bulk delete failed", {

@@ -11,7 +11,9 @@ function assert(condition: boolean, message: string): void {
 
 function assertEquals<T>(actual: T, expected: T, message?: string): void {
   if (actual !== expected) {
-    throw new Error(message ?? `Expected ${String(actual)} to equal ${String(expected)}`);
+    throw new Error(
+      message ?? `Expected ${String(actual)} to equal ${String(expected)}`,
+    );
   }
 }
 
@@ -68,7 +70,10 @@ class StubRepository extends DataRepository {
     return Promise.resolve(this.data.migrations);
   }
 
-  override updateMigrations(projectId: string, dto: unknown[]): Promise<unknown[]> {
+  override updateMigrations(
+    projectId: string,
+    dto: unknown[],
+  ): Promise<unknown[]> {
     this.calls.updateMigrations.push({ projectId, dto });
     return Promise.resolve(dto);
   }

@@ -2,7 +2,7 @@ import { Fragment, useState, type ComponentType, type SVGProps } from "react";
 import clsx from "clsx";
 import { File, Loader2 } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
-import { useAuth } from "../../../contexts/AuthContext";
+import { useAuth } from "../../../contexts/useAuth";
 import { AuthDialog } from "../../../components/AuthDialog";
 import svgPaths from "../../../imports/svg-mni0z0xtlg";
 import logoImage from "../../../assets/visudev-logo.png";

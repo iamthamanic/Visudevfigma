@@ -80,14 +80,20 @@ app.post("/preview/start", async (c) => {
 
     let repo = body.repo as string | undefined;
     let branch = (body.branchOrCommit as string) ?? "main";
-    const project = await kvGet(`project:${projectId}`) as Record<string, unknown> | null;
+    const commitSha = body.commitSha as string | undefined;
+    const project = await kvGet(`project:${projectId}`) as
+      | Record<string, unknown>
+      | null;
     if (project) {
       repo = (project.github_repo as string) ?? repo;
       branch = (project.github_branch as string) ?? branch;
     }
     if (!repo) {
       return c.json(
-        { success: false, error: "repo (or project with github_repo) is required" },
+        {
+          success: false,
+          error: "repo (or project with github_repo) is required",
+        },
         400,
       );
     }
@@ -99,6 +105,7 @@ app.post("/preview/start", async (c) => {
         repo,
         branchOrCommit: branch,
         projectId,
+        ...(commitSha ? { commitSha } : {}),
       }),
     });
 
@@ -117,7 +124,11 @@ app.post("/preview/start", async (c) => {
     } catch {
       console.error("Runner returned invalid JSON", runnerText.slice(0, 200));
       return c.json(
-        { success: false, error: "Preview Runner returned invalid response (not JSON). Is the Runner running and reachable?" },
+        {
+          success: false,
+          error:
+            "Preview Runner returned invalid response (not JSON). Is the Runner running and reachable?",
+        },
         502,
       );
     }
@@ -139,7 +150,10 @@ app.post("/preview/start", async (c) => {
   } catch (e) {
     console.error("preview/start", e);
     return c.json(
-      { success: false, error: e instanceof Error ? e.message : "Internal error" },
+      {
+        success: false,
+        error: e instanceof Error ? e.message : "Internal error",
+      },
       500,
     );
   }
@@ -174,14 +188,20 @@ app.get("/preview/status", async (c) => {
         );
         const statusText = await statusRes.text();
         if (statusRes.ok) {
-          let data: { status?: string; previewUrl?: string; error?: string } | null = null;
+          let data:
+            | { status?: string; previewUrl?: string; error?: string }
+            | null = null;
           try {
             data = JSON.parse(statusText) as NonNullable<typeof data>;
           } catch {
-            console.error("Runner status returned invalid JSON", statusText.slice(0, 200));
+            console.error(
+              "Runner status returned invalid JSON",
+              statusText.slice(0, 200),
+            );
           }
           if (data !== null) {
-            const newStatus = (data.status as PreviewState["status"]) ?? stored.status;
+            const newStatus = (data.status as PreviewState["status"]) ??
+              stored.status;
             const updated: PreviewState = {
               ...stored,
               status: newStatus,
@@ -215,7 +235,10 @@ app.get("/preview/status", async (c) => {
   } catch (e) {
     console.error("preview/status", e);
     return c.json(
-      { success: false, error: e instanceof Error ? e.message : "Internal error" },
+      {
+        success: false,
+        error: e instanceof Error ? e.message : "Internal error",
+      },
       500,
     );
   }
@@ -259,7 +282,10 @@ app.post("/preview/stop", async (c) => {
   } catch (e) {
     console.error("preview/stop", e);
     return c.json(
-      { success: false, error: e instanceof Error ? e.message : "Internal error" },
+      {
+        success: false,
+        error: e instanceof Error ? e.message : "Internal error",
+      },
       500,
     );
   }

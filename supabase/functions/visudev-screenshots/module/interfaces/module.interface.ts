@@ -26,7 +26,9 @@ export interface SupabaseStorageBucketClient {
 }
 
 export interface SupabaseStorageClient {
-  listBuckets(): Promise<{ data: SupabaseStorageBucket[] | null; error: SupabaseError | null }>;
+  listBuckets(): Promise<
+    { data: SupabaseStorageBucket[] | null; error: SupabaseError | null }
+  >;
   createBucket(
     name: string,
     options?: { public?: boolean },

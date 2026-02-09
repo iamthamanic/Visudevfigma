@@ -4,6 +4,7 @@
     "hono/cors": "npm:hono@^4.6.0/cors",
     "hono/logger": "npm:hono@^4.6.0/logger",
     "@jsr/supabase__supabase-js": "npm:@supabase/supabase-js@2.49.8",
-    "zod": "npm:zod@3.24.1"
+    "zod": "npm:zod@3.24.1",
+    "std/assert": "https://deno.land/std@0.208.0/assert/assert_equals.ts"
   }
 }

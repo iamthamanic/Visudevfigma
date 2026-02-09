@@ -1,5 +1,9 @@
 import { BaseService } from "../../services/base.service.ts";
-import type { CreateProjectDto, ProjectResponseDto, UpdateProjectDto } from "../../dto/index.ts";
+import type {
+  CreateProjectDto,
+  ProjectResponseDto,
+  UpdateProjectDto,
+} from "../../dto/index.ts";
 import { RepositoryException } from "../exceptions/index.ts";
 
 export class ProjectsRepository extends BaseService {
@@ -12,7 +16,10 @@ export class ProjectsRepository extends BaseService {
     return await this.getValue<ProjectResponseDto>(this.getKey(id));
   }
 
-  public async createProject(id: string, payload: CreateProjectDto): Promise<ProjectResponseDto> {
+  public async createProject(
+    id: string,
+    payload: CreateProjectDto,
+  ): Promise<ProjectResponseDto> {
     const now = new Date().toISOString();
     const project: ProjectResponseDto = {
       ...payload,
@@ -75,7 +82,8 @@ export class ProjectsRepository extends BaseService {
   }
 
   private async deleteValue(key: string): Promise<void> {
-    const { error } = await this.supabase.from(this.config.kvTableName).delete().eq("key", key);
+    const { error } = await this.supabase.from(this.config.kvTableName).delete()
+      .eq("key", key);
 
     if (error) {
       this.logger.error("KV delete failed", { key, error: error.message });

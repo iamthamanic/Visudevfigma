@@ -5,10 +5,14 @@
 
 import * as babelParser from "@babel/parser";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type BabelNode = any;
+/** Babel AST node (opaque for type safety; use type guards where needed). */
+type BabelNode = Record<string, unknown>;
 
-const parse = (babelParser as { default?: (code: string, opts: object) => BabelNode; parse?: (code: string, opts: object) => BabelNode }).default ?? (babelParser as { parse: (code: string, opts: object) => BabelNode }).parse;
+const parse = (babelParser as {
+  default?: (code: string, opts: object) => BabelNode;
+  parse?: (code: string, opts: object) => BabelNode;
+}).default ??
+  (babelParser as { parse: (code: string, opts: object) => BabelNode }).parse;
 
 export interface AstNavigationResult {
   navigatesTo: string[];
@@ -53,7 +57,8 @@ function getStringFromNode(node: BabelNode): string | null {
 }
 
 function isAbsolutePath(s: string): boolean {
-  return s.startsWith("/") && !s.startsWith("//") && !s.toLowerCase().startsWith("/javascript:");
+  return s.startsWith("/") && !s.startsWith("//") &&
+    !s.toLowerCase().startsWith("/javascript:");
 }
 
 function walk(
@@ -65,11 +70,16 @@ function walk(
   visitor(node);
   const keys = Object.keys(node);
   for (const key of keys) {
-    if (key === "loc" || key === "start" || key === "end" || key === "leadingComments" || key === "trailingComments") continue;
+    if (
+      key === "loc" || key === "start" || key === "end" ||
+      key === "leadingComments" || key === "trailingComments"
+    ) continue;
     const value = node[key];
     if (Array.isArray(value)) {
       for (const item of value) {
-        if (item && typeof item === "object" && item.type) walk(item, result, visitor);
+        if (item && typeof item === "object" && item.type) {
+          walk(item, result, visitor);
+        }
       }
     } else if (value && typeof value === "object" && value.type) {
       walk(value, result, visitor);
@@ -77,7 +87,10 @@ function walk(
   }
 }
 
-export function extractNavigationFromAst(content: string, _filePath: string): AstNavigationResult | null {
+export function extractNavigationFromAst(
+  content: string,
+  _filePath: string,
+): AstNavigationResult | null {
   let ast: BabelNode;
   try {
     ast = parse(content, {
@@ -97,10 +110,11 @@ export function extractNavigationFromAst(content: string, _filePath: string): As
     if (node.type === "CallExpression") {
       const calleeName = getCalleeName(node.callee);
       if (!calleeName) return;
-      const isNav =
-        NAVIGATION_CALLEES.has(calleeName) ||
-        (calleeName === "push" && node.callee?.object && ROUTER_OBJECTS.has(node.callee.object.name)) ||
-        (calleeName === "replace" && node.callee?.object && ROUTER_OBJECTS.has(node.callee.object.name));
+      const isNav = NAVIGATION_CALLEES.has(calleeName) ||
+        (calleeName === "push" && node.callee?.object &&
+          ROUTER_OBJECTS.has(node.callee.object.name)) ||
+        (calleeName === "replace" && node.callee?.object &&
+          ROUTER_OBJECTS.has(node.callee.object.name));
       if (!isNav) return;
       const firstArg = node.arguments?.[0];
       const path = getStringFromNode(firstArg);
@@ -119,11 +133,15 @@ export function extractNavigationFromAst(content: string, _filePath: string): As
       const isAnchor = name === "a";
       if (!isLink && !isAnchor) return;
       const attrName = isLink ? "to" : "href";
-      const attr = node.attributes?.find((a: BabelNode) => a.name?.name === attrName);
+      const attr = node.attributes?.find((a: BabelNode) =>
+        a.name?.name === attrName
+      );
       const valueNode = attr?.value;
       let path: string | null = null;
       if (valueNode?.type === "StringLiteral") path = valueNode.value;
-      if (valueNode?.type === "JSXExpressionContainer" && valueNode.expression) {
+      if (
+        valueNode?.type === "JSXExpressionContainer" && valueNode.expression
+      ) {
         path = getStringFromNode(valueNode.expression);
       }
       if (path && isAbsolutePath(path) && !seen.has(path)) {
@@ -145,7 +163,9 @@ export interface ReactRouterRoute {
 }
 
 /** Extract React Router routes from AST (<Route path element> and { path, element } config). */
-export function extractReactRouterRoutesFromAst(content: string): ReactRouterRoute[] | null {
+export function extractReactRouterRoutesFromAst(
+  content: string,
+): ReactRouterRoute[] | null {
   let ast: BabelNode;
   try {
     ast = parse(content, {
@@ -163,13 +183,16 @@ export function extractReactRouterRoutesFromAst(content: string): ReactRouterRou
     const attr = node.attributes?.find((a: BabelNode) => a.name?.name === name);
     if (!attr?.value) return null;
     if (attr.value.type === "StringLiteral") return attr.value.value;
-    if (attr.value.type === "JSXExpressionContainer" && attr.value.expression?.type === "StringLiteral") {
+    if (
+      attr.value.type === "JSXExpressionContainer" &&
+      attr.value.expression?.type === "StringLiteral"
+    ) {
       return attr.value.expression.value;
     }
     return null;
   }
 
-  function getElementComponentName(node: BabelNode): string | null {
+  function _getElementComponentName(node: BabelNode): string | null {
     if (!node?.expression) return null;
     const expr = node.expression;
     if (expr.type === "JSXElement" && expr.openingElement?.name) {
@@ -181,14 +204,19 @@ export function extractReactRouterRoutesFromAst(content: string): ReactRouterRou
   }
 
   function getObjProp(node: BabelNode, key: string): BabelNode | null {
-    const prop = node.properties?.find((p: BabelNode) => p.key?.name === key || p.key?.value === key);
+    const prop = node.properties?.find((p: BabelNode) =>
+      p.key?.name === key || p.key?.value === key
+    );
     return prop?.value ?? null;
   }
 
   function getStringFromNode(node: BabelNode): string | null {
     if (!node) return null;
     if (node.type === "StringLiteral") return node.value;
-    if (node.type === "TemplateLiteral" && node.quasis?.length === 1 && !node.expressions?.length) {
+    if (
+      node.type === "TemplateLiteral" && node.quasis?.length === 1 &&
+      !node.expressions?.length
+    ) {
       return node.quasis[0]?.value?.raw ?? null;
     }
     return null;
@@ -197,12 +225,15 @@ export function extractReactRouterRoutesFromAst(content: string): ReactRouterRou
   walk(ast, { navigatesTo: [], linkNodes: [] }, (node) => {
     if (node.type === "JSXOpeningElement" && node.name?.name === "Route") {
       const path = getAttr(node, "path");
-      const elementAttr = node.attributes?.find((a: BabelNode) => a.name?.name === "element");
+      const elementAttr = node.attributes?.find((a: BabelNode) =>
+        a.name?.name === "element"
+      );
       let componentName: string | null = null;
       if (elementAttr?.value?.type === "JSXExpressionContainer") {
         const inner = elementAttr.value.expression;
         if (inner?.type === "JSXElement" && inner.openingElement?.name) {
-          componentName = inner.openingElement.name.name ?? inner.openingElement.name.property?.name ?? null;
+          componentName = inner.openingElement.name.name ??
+            inner.openingElement.name.property?.name ?? null;
         }
       }
       if (path && componentName) {
@@ -219,8 +250,11 @@ export function extractReactRouterRoutesFromAst(content: string): ReactRouterRou
       const elementVal = getObjProp(node, "element");
       const path = pathVal ? getStringFromNode(pathVal) : null;
       let componentName: string | null = null;
-      if (elementVal?.type === "JSXElement" && elementVal.openingElement?.name) {
-        componentName = elementVal.openingElement.name.name ?? elementVal.openingElement.name.property?.name ?? null;
+      if (
+        elementVal?.type === "JSXElement" && elementVal.openingElement?.name
+      ) {
+        componentName = elementVal.openingElement.name.name ??
+          elementVal.openingElement.name.property?.name ?? null;
       }
       if (path && componentName) {
         const key = `${path}:${componentName}`;
@@ -258,7 +292,10 @@ const UI_EVENT_ATTRS = [
 ];
 
 /** Extract UI events (buttons, onClick etc.) from JSX via AST. Returns flows for ui-event type. */
-export function extractUiEventsFromAst(content: string, filePath: string): AstUiEventFlow[] | null {
+export function extractUiEventsFromAst(
+  content: string,
+  filePath: string,
+): AstUiEventFlow[] | null {
   let ast: BabelNode;
   try {
     ast = parse(content, {
@@ -277,7 +314,9 @@ export function extractUiEventsFromAst(content: string, filePath: string): AstUi
     if (attrValue.type === "JSXExpressionContainer" && attrValue.expression) {
       const expr = attrValue.expression;
       if (expr.type === "Identifier") return expr.name;
-      if (expr.type === "CallExpression" && expr.callee?.type === "Identifier") return expr.callee.name;
+      if (
+        expr.type === "CallExpression" && expr.callee?.type === "Identifier"
+      ) return expr.callee.name;
       return "handler";
     }
     return null;
@@ -287,14 +326,20 @@ export function extractUiEventsFromAst(content: string, filePath: string): AstUi
     if (node.type !== "JSXOpeningElement") return;
     const name = node.name?.name ?? node.name?.property?.name;
     const line = node.loc?.start?.line ?? 0;
-    const roleAttr = node.attributes?.find((a: BabelNode) => a.name?.name === "role");
-    const role = roleAttr?.value?.type === "StringLiteral" ? roleAttr.value.value : null;
+    const roleAttr = node.attributes?.find((a: BabelNode) =>
+      a.name?.name === "role"
+    );
+    const role = roleAttr?.value?.type === "StringLiteral"
+      ? roleAttr.value.value
+      : null;
     const isButton = name === "button" || role === "button";
 
     for (const eventName of UI_EVENT_ATTRS) {
-      const attr = node.attributes?.find((a: BabelNode) => a.name?.name === eventName);
+      const attr = node.attributes?.find((a: BabelNode) =>
+        a.name?.name === eventName
+      );
       if (!attr) continue;
-      const handlerRef = getHandlerRef(attr.value) ?? "handler";
+      const _handlerRef = getHandlerRef(attr.value) ?? "handler";
       const id = `${filePath}:${line}:event:${eventName}`;
       if (seen.has(id)) continue;
       seen.add(id);
@@ -311,7 +356,9 @@ export function extractUiEventsFromAst(content: string, filePath: string): AstUi
       });
     }
 
-    if (isButton && flows.some((f) => f.file === filePath && f.line === line)) return;
+    if (isButton && flows.some((f) => f.file === filePath && f.line === line)) {
+      return;
+    }
     if (isButton) {
       const id = `${filePath}:${line}:button`;
       if (!seen.has(id)) {
@@ -375,7 +422,10 @@ export function extractCallGraphFromAst(
       });
       return;
     }
-    if (node.type === "VariableDeclarator" && node.init && node.id?.type === "Identifier") {
+    if (
+      node.type === "VariableDeclarator" && node.init &&
+      node.id?.type === "Identifier"
+    ) {
       const initNode = node.init;
       if (
         initNode.type === "FunctionExpression" ||
@@ -404,7 +454,8 @@ export function extractCallGraphFromAst(
   const callsByFlowId = new Map<string, Set<string>>();
   const sortedFunctions = [...functions].sort(
     (a, b) =>
-      a.endLine - a.startLine - (b.endLine - b.startLine) || a.startLine - b.startLine,
+      a.endLine - a.startLine - (b.endLine - b.startLine) ||
+      a.startLine - b.startLine,
   );
 
   for (const { line, calleeName } of callSites) {

@@ -12,12 +12,18 @@ export class LogsService extends BaseService {
     return this.repository.listLogs(projectId);
   }
 
-  public getLog(projectId: string, logId: string): Promise<LogResponseDto | null> {
+  public getLog(
+    projectId: string,
+    logId: string,
+  ): Promise<LogResponseDto | null> {
     this.logger.info("Fetching log", { projectId, logId });
     return this.repository.getLog(projectId, logId);
   }
 
-  public createLog(projectId: string, payload: CreateLogDto): Promise<LogResponseDto> {
+  public createLog(
+    projectId: string,
+    payload: CreateLogDto,
+  ): Promise<LogResponseDto> {
     this.logger.info("Creating log", { projectId });
     return this.repository.createLog(projectId, payload);
   }

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, Download, Loader2, Map, Play, RefreshCw, Square, X } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
-import { SitemapFlowView } from "../../../components/SitemapFlowView";
-import { FlowGraphView } from "../components/FlowGraphView";
+import { discoverPreviewRunner } from "../../../utils/api";
 import { LiveFlowCanvas } from "../components/LiveFlowCanvas";
 import styles from "../styles/AppFlowPage.module.css";
 
@@ -23,6 +22,8 @@ interface AppFlowPageProps {
 
 const PREVIEW_POLL_INTERVAL_MS = 2500;
 const AUTO_PREVIEW_DELAY_MS = 800;
+/** Nach dieser Zeit wird "starting" als fehlgeschlagen markiert (Runner/Build reagiert nicht). */
+const PREVIEW_START_TIMEOUT_MS = 3 * 60 * 1000; // 3 Minuten
 
 export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPageProps) {
   const {
@@ -34,11 +35,14 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     refreshPreviewStatus,
     stopPreview,
     refreshPreview,
+    markPreviewStuck,
   } = useVisudev();
   const [isRescan, setIsRescan] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoPreviewDoneRef = useRef(false);
+  const autoPreviewRetryAtRef = useRef(0);
 
   const handleRescan = useCallback(async () => {
     setIsRescan(true);
@@ -49,27 +53,49 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     }
   }, [startScan]);
 
-  // Auto-scan when repo connected and no screens yet
+  // Auto-scan, sobald ein Projekt mit verbundenem Repo geladen ist und noch keine Screens (einmal pro Projekt)
   useEffect(() => {
     if (
-      activeProject &&
+      activeProject?.id === projectId &&
+      activeProject?.github_repo &&
       activeProject.screens.length === 0 &&
       scanStatuses.appflow.status === "idle"
     ) {
       handleRescan();
     }
-  }, [activeProject, projectId, scanStatuses.appflow.status, handleRescan]);
+  }, [activeProject?.id, activeProject?.github_repo, activeProject?.screens?.length, projectId, scanStatuses.appflow.status, handleRescan]);
 
-  // On mount: fetch current preview status
+  // Zuerst Runner ermitteln (4000, 4100, …), danach Preview-Status – sonst erscheint „nicht erreichbar“, obwohl Runner läuft
   useEffect(() => {
-    if (projectId) {
-      void refreshPreviewStatus(projectId);
-    }
+    let cancelled = false;
+    (async () => {
+      await discoverPreviewRunner();
+      if (cancelled || !projectId) return;
+      await refreshPreviewStatus(projectId);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [projectId, refreshPreviewStatus]);
+
+  // Wenn „Preview Runner nicht erreichbar“ angezeigt wird: periodisch Discovery + Status prüfen (Runner wurde nachträglich gestartet)
+  const isRunnerUnreachable =
+    preview.projectId === projectId &&
+    preview.status === "failed" &&
+    (preview.error?.includes("nicht erreichbar") ?? false);
+  useEffect(() => {
+    if (!isRunnerUnreachable || !projectId) return;
+    const interval = setInterval(async () => {
+      await discoverPreviewRunner();
+      await refreshPreviewStatus(projectId);
+    }, 10_000);
+    return () => clearInterval(interval);
+  }, [isRunnerUnreachable, projectId, refreshPreviewStatus]);
 
   // Auto-start preview when repo is connected (once per project; also when status not yet loaded)
   useEffect(() => {
     if (!activeProject?.github_repo || activeProject.id !== projectId) return;
+    if (activeProject.preview_mode === "deployed") return;
     if (preview.status === "ready" || preview.status === "starting") {
       autoPreviewDoneRef.current = true;
       return;
@@ -78,25 +104,92 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     const isIdle =
       preview.status === "idle" && (preview.projectId === null || preview.projectId === projectId);
     if (!isIdle) return;
+    autoPreviewDoneRef.current = true;
     const t = setTimeout(() => {
-      autoPreviewDoneRef.current = true;
-      void startPreview(projectId, activeProject.github_repo, activeProject.github_branch);
+      autoPreviewRetryAtRef.current = Date.now();
+      void startPreview(
+        projectId,
+        activeProject.github_repo,
+        activeProject.github_branch,
+        activeProject.lastAnalyzedCommitSha,
+      );
     }, AUTO_PREVIEW_DELAY_MS);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      autoPreviewDoneRef.current = false;
+    };
   }, [
     projectId,
     activeProject?.id,
     activeProject?.github_repo,
     activeProject?.github_branch,
+    activeProject?.lastAnalyzedCommitSha,
+    activeProject?.preview_mode,
     preview.projectId,
     preview.status,
     startPreview,
   ]);
 
+  // Reset retry button state when preview is failed again (after start attempt)
+  useEffect(() => {
+    if (preview.projectId === projectId && preview.status === "failed") {
+      setIsRetrying(false);
+    }
+  }, [projectId, preview.projectId, preview.status]);
+
   // Reset auto-preview flag when switching project
   useEffect(() => {
     autoPreviewDoneRef.current = false;
   }, [projectId]);
+
+  // If preview falls back to idle for this project (e.g. runner restart), allow auto-start again.
+  useEffect(() => {
+    if (preview.projectId === projectId && preview.status === "idle") {
+      autoPreviewDoneRef.current = false;
+    }
+  }, [projectId, preview.projectId, preview.status]);
+
+  // Fallback: if preview is idle and no live URL is available, retry auto-start (throttled).
+  useEffect(() => {
+    if (!activeProject?.github_repo || activeProject.id !== projectId) return;
+    if (activeProject.preview_mode === "deployed") return;
+    if (autoPreviewDoneRef.current) return;
+    const isIdle =
+      preview.status === "idle" && (preview.projectId === null || preview.projectId === projectId);
+    if (!isIdle) return;
+    const hasLiveUrl =
+      (preview.previewUrl != null && preview.previewUrl.trim() !== "") ||
+      (activeProject.deployed_url != null && activeProject.deployed_url.trim() !== "");
+    if (hasLiveUrl) return;
+    const now = Date.now();
+    if (now - autoPreviewRetryAtRef.current < 15_000) return;
+    autoPreviewDoneRef.current = true;
+    const t = setTimeout(() => {
+      autoPreviewRetryAtRef.current = Date.now();
+      void startPreview(
+        projectId,
+        activeProject.github_repo,
+        activeProject.github_branch,
+        activeProject.lastAnalyzedCommitSha,
+      );
+    }, AUTO_PREVIEW_DELAY_MS);
+    return () => {
+      clearTimeout(t);
+      autoPreviewDoneRef.current = false;
+    };
+  }, [
+    projectId,
+    activeProject?.id,
+    activeProject?.github_repo,
+    activeProject?.github_branch,
+    activeProject?.deployed_url,
+    activeProject?.lastAnalyzedCommitSha,
+    activeProject?.preview_mode,
+    preview.projectId,
+    preview.previewUrl,
+    preview.status,
+    startPreview,
+  ]);
 
   // Poll preview status when starting
   useEffect(() => {
@@ -115,6 +208,18 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
       pollRef.current = null;
     }
   }, [projectId, preview.projectId, preview.status, refreshPreviewStatus]);
+
+  // Timeout: wenn "starting" zu lange (Runner/Build reagiert nicht), auf "failed" setzen
+  useEffect(() => {
+    if (preview.projectId !== projectId || preview.status !== "starting") return;
+    const t = setTimeout(() => {
+      markPreviewStuck(
+        projectId,
+        "Timeout – Preview startet nicht. Bitte Runner (npm run dev) und ggf. Docker prüfen.",
+      );
+    }, PREVIEW_START_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [projectId, preview.projectId, preview.status, markPreviewStuck]);
 
   const handleExportJson = useCallback(() => {
     if (!activeProject) return;
@@ -165,8 +270,16 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     preview.projectId === projectId && preview.previewUrl && preview.status === "ready";
   const deployedUrl = activeProject.deployed_url?.trim() || null;
   const liveFlowBaseUrl = previewReady ? preview.previewUrl : deployedUrl;
-  const showLiveFlowCanvas = hasData && !!liveFlowBaseUrl;
   const liveFlowFromDeployed = !!deployedUrl && !previewReady;
+  const previewMode = activeProject.preview_mode ?? "auto";
+  const previewModeHint =
+    previewMode === "local"
+      ? "Preview-Modus: Lokal (Docker erforderlich)."
+      : previewMode === "central"
+        ? "Preview-Modus: Server (zentral). PREVIEW_RUNNER_URL in Supabase setzen."
+        : previewMode === "deployed"
+          ? "Preview-Modus: Deployed URL. Bitte im Projekt eine URL hinterlegen."
+          : "Preview-Modus: Auto (lokal wenn verfügbar, sonst Server).";
 
   return (
     <div className={styles.root}>
@@ -249,59 +362,124 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
         {hasData && !liveFlowBaseUrl && (
           <div className={`${styles.statusBar} ${styles.statusInfo}`} role="status">
             <p className={styles.statusMeta}>
-              💡 Für Inhalte in den Karten: <strong>Preview</strong> startet automatisch bei
-              verbundenem Repo (lokal bauen), oder im Projekt eine <strong>Deployed URL</strong>{" "}
-              setzen. Lokal: <code>npm run dev</code> ausführen – dann Runner + Vite; Preview nutzt
-              automatisch den lokalen Runner.
+              {preview.projectId === projectId &&
+              preview.status === "failed" &&
+              preview.error?.includes("nicht erreichbar")
+                ? "VisuDEV läuft nicht. Im VisuDEV-Projektordner im Terminal starten: "
+                : "Für Inhalte in den Karten: "}
+              {preview.projectId === projectId &&
+              preview.status === "failed" &&
+              preview.error?.includes("nicht erreichbar") ? (
+                <>
+                  <strong>
+                    <code>npm run dev</code>
+                  </strong>
+                  , dann diese Seite neu laden. Danach reicht Repo verbinden – VisuDEV erledigt den
+                  Rest.
+                </>
+              ) : (
+                <>
+                  <strong>Preview starten</strong> (Button bei „Sitemap") oder im Projekt eine{" "}
+                  <strong>Deployed URL</strong> setzen. {previewModeHint}
+                </>
+              )}
             </p>
+            {preview.projectId === projectId &&
+              preview.status === "failed" &&
+              preview.error &&
+              !preview.error.includes("nicht erreichbar") && (
+                <p className={styles.statusMetaSecondary}>
+                  <strong>Grund:</strong> {preview.error}
+                </p>
+              )}
           </div>
         )}
       </div>
 
       <div className={styles.content}>
-        {showLiveFlowCanvas ? (
+        {hasData ? (
           <div className={styles.liveAppWrap}>
             <div className={styles.liveAppBar}>
               <span className={styles.liveAppLabel}>
-                Live App Flow
+                Sitemap · {activeProject.screens.length} Screens · {activeProject.flows.length}{" "}
+                Flows
                 {liveFlowFromDeployed ? " (Deployed URL)" : " (Preview)"}
-                <span className={styles.liveAppBarUrl} title="Basis-URL für die Karten">
-                  {" "}
-                  · {liveFlowBaseUrl}
-                </span>
+                {liveFlowBaseUrl && (
+                  <span className={styles.liveAppBarUrl} title="Basis-URL für die Karten">
+                    {" "}
+                    · {liveFlowBaseUrl}
+                  </span>
+                )}
               </span>
               <div className={styles.liveAppBarRight}>
                 {!liveFlowFromDeployed && (
                   <div className={styles.liveAppBarActions}>
-                    <button
-                      type="button"
-                      onClick={() => refreshPreview(projectId)}
-                      disabled={preview.projectId === projectId && preview.status === "starting"}
-                      className={styles.secondaryButton}
-                      aria-label="Preview aktualisieren (Pull, Rebuild, Restart)"
-                    >
-                      {preview.projectId === projectId && preview.status === "starting" ? (
-                        <Loader2
-                          className={`${styles.inlineIcon} ${styles.spinner}`}
-                          aria-hidden="true"
-                        />
-                      ) : (
-                        <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
-                      )}
-                      {preview.projectId === projectId && preview.status === "starting"
-                        ? "Aktualisiere…"
-                        : "Preview aktualisieren"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => stopPreview(projectId)}
-                      disabled={preview.projectId === projectId && preview.status === "starting"}
-                      className={styles.secondaryButton}
-                      aria-label="Preview beenden"
-                    >
-                      <Square className={styles.inlineIcon} aria-hidden="true" />
-                      Preview beenden
-                    </button>
+                    {preview.projectId === projectId &&
+                    (preview.status === "ready" || preview.status === "starting") ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => refreshPreview(projectId)}
+                          disabled={preview.status === "starting"}
+                          className={styles.secondaryButton}
+                          aria-label="Preview aktualisieren (Pull, Rebuild, Restart)"
+                        >
+                          {preview.status === "starting" ? (
+                            <Loader2
+                              className={`${styles.inlineIcon} ${styles.spinner}`}
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
+                          )}
+                          {preview.status === "starting"
+                            ? "Aktualisiere…"
+                            : "Preview aktualisieren"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => stopPreview(projectId)}
+                          className={styles.secondaryButton}
+                          aria-label="Preview beenden"
+                        >
+                          <Square className={styles.inlineIcon} aria-hidden="true" />
+                          Preview beenden
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            startPreview(
+                              projectId,
+                              activeProject?.github_repo,
+                              activeProject?.github_branch,
+                              activeProject?.lastAnalyzedCommitSha,
+                            )
+                          }
+                          className={styles.secondaryButton}
+                          aria-label="Preview neu starten (frischer Start)"
+                        >
+                          <Play className={styles.inlineIcon} aria-hidden="true" />
+                          Preview neu starten
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          startPreview(
+                            projectId,
+                            activeProject?.github_repo,
+                            activeProject?.github_branch,
+                            activeProject?.lastAnalyzedCommitSha,
+                          )
+                        }
+                        className={styles.secondaryButton}
+                        aria-label="Preview starten"
+                      >
+                        <Play className={styles.inlineIcon} aria-hidden="true" />
+                        Preview starten
+                      </button>
+                    )}
                   </div>
                 )}
                 {liveFlowFromDeployed && (
@@ -315,13 +493,15 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
             <LiveFlowCanvas
               screens={activeProject.screens}
               flows={activeProject.flows}
-              previewUrl={liveFlowBaseUrl!}
+              previewUrl={liveFlowBaseUrl ?? ""}
               projectId={projectId}
               previewError={
                 preview.projectId === projectId && preview.status === "failed"
                   ? preview.error
                   : null
               }
+              refreshInProgress={preview.projectId === projectId && preview.status === "starting"}
+              refreshLogs={preview.projectId === projectId ? preview.refreshLogs : undefined}
             />
           </div>
         ) : (
@@ -340,7 +520,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                   </button>
                 </div>
                 <div className={styles.drawerBody}>
-                  {isScanning && !hasData ? (
+                  {isScanning ? (
                     <div className={styles.centerState}>
                       <Loader2
                         className={`${styles.emptyIcon} ${styles.spinner}`}
@@ -348,7 +528,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                       />
                       <p className={styles.emptyTitle}>Code wird analysiert...</p>
                     </div>
-                  ) : !hasData ? (
+                  ) : (
                     <div className={styles.centerState}>
                       <p className={styles.emptyTitle}>Noch keine Flows</p>
                       <button
@@ -361,31 +541,6 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                         Scan starten
                       </button>
                     </div>
-                  ) : (
-                    <>
-                      <div className={styles.sitemapSection}>
-                        <SitemapFlowView
-                          screens={activeProject.screens}
-                          flows={activeProject.flows}
-                          projectData={{
-                            id: activeProject.id,
-                            deployed_url:
-                              activeProject.deployed_url ?? preview.previewUrl ?? undefined,
-                          }}
-                        />
-                      </div>
-                      <div className={styles.flowGraphSection}>
-                        <p className={styles.graphHint}>
-                          Im Graph siehst du nur Screen-Namen und Pfade. Für echte Inhalte in den
-                          Karten: lokal Preview starten („Preview aktualisieren“) oder im Projekt
-                          eine Deployed URL setzen.
-                        </p>
-                        <FlowGraphView
-                          screens={activeProject.screens}
-                          flows={activeProject.flows}
-                        />
-                      </div>
-                    </>
                   )}
                 </div>
               </div>
@@ -436,17 +591,26 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                   <p className={styles.emptyHint}>{preview.error ?? "Unbekannter Fehler"}</p>
                   <button
                     type="button"
-                    onClick={() =>
-                      startPreview(
+                    disabled={isRetrying}
+                    onClick={() => {
+                      setIsRetrying(true);
+                      void startPreview(
                         projectId,
                         activeProject?.github_repo,
                         activeProject?.github_branch,
-                      )
-                    }
+                        activeProject?.lastAnalyzedCommitSha,
+                      );
+                    }}
                     className={styles.primaryButton}
+                    aria-busy={isRetrying}
+                    aria-label="Preview erneut starten"
                   >
-                    <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
-                    Erneut versuchen
+                    {isRetrying ? (
+                      <Loader2 className={`${styles.inlineIcon} ${styles.spinner}`} aria-hidden="true" />
+                    ) : (
+                      <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
+                    )}
+                    {isRetrying ? "Starte…" : "Erneut versuchen"}
                   </button>
                 </div>
               ) : (
@@ -463,6 +627,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                           projectId,
                           activeProject?.github_repo,
                           activeProject?.github_branch,
+                          activeProject?.lastAnalyzedCommitSha,
                         )
                       }
                       className={styles.primaryButton}

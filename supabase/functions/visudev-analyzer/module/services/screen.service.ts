@@ -1,5 +1,9 @@
 import { BaseService } from "./base.service.ts";
-import type { FileContent, FrameworkDetectionResult, Screen } from "../dto/index.ts";
+import type {
+  FileContent,
+  FrameworkDetectionResult,
+  Screen,
+} from "../dto/index.ts";
 import { ScreenExtractionService } from "./screen-extraction.service.ts";
 
 export class ScreenService extends BaseService {
@@ -29,7 +33,9 @@ export class ScreenService extends BaseService {
     }
 
     if (screens.length === 0) {
-      this.logger.info("No screens detected by framework rules, using heuristic fallback");
+      this.logger.info(
+        "No screens detected by framework rules, using heuristic fallback",
+      );
       screens = this.extractor.extractScreensHeuristic(files);
     }
 
@@ -62,7 +68,9 @@ export class ScreenService extends BaseService {
       try {
         const pkg = JSON.parse(packageJson.content) as Record<string, unknown>;
         const dependencies = this.normalizeDependencyMap(pkg.dependencies);
-        const devDependencies = this.normalizeDependencyMap(pkg.devDependencies);
+        const devDependencies = this.normalizeDependencyMap(
+          pkg.devDependencies,
+        );
         const deps = { ...dependencies, ...devDependencies };
 
         if (deps.next) {
@@ -124,11 +132,14 @@ export class ScreenService extends BaseService {
       return {};
     }
 
-    return Object.entries(value).reduce<Record<string, string>>((acc, [key, val]) => {
-      if (typeof val === "string") {
-        acc[key] = val;
-      }
-      return acc;
-    }, {});
+    return Object.entries(value).reduce<Record<string, string>>(
+      (acc, [key, val]) => {
+        if (typeof val === "string") {
+          acc[key] = val;
+        }
+        return acc;
+      },
+      {},
+    );
   }
 }
