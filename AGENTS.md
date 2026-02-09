@@ -15,6 +15,7 @@ This repo enforces strict modular architecture and quality gates. Agents must fo
 - **Zero warnings policy:** Lint and AI review must pass with **no warnings**. ESLint is run with `--max-warnings 0`; any warning fails the pipeline. Push/deploy is only allowed when all checks pass.
 - AI review (Codex) runs by default after checks. You can skip it for the shim with `--no-ai-review` or `SKIP_AI_REVIEW=1`, but **pushes require AI review** (no skip). AI review is a **required** check in the pipeline (not optional): if it fails, the pipeline fails.
 - **AI review pass criteria:** Strict architect checklist (SOLID, performance, security, robustness, maintainability). Only **score ≥ 95%** and **verdict ACCEPT** count as PASS. Deductions are listed per checklist point; fix and re-run until the review passes. No push with verdict REJECT or score &lt; 95%.
+- **AI review timeout:** If the AI review aborts with "timed out", increase `TIMEOUT_SEC` in `scripts/ai-code-review.sh` (e.g. 420 → 600) and re-run until the review completes. Do not reduce scope or skip the review; raise the timeout until it passes.
 - Reviews are saved to `.shimwrapper/reviews/` (gitignored). If the shim or push prints Token usage + review output, include it in your response.
 
 ## Repository Structure
