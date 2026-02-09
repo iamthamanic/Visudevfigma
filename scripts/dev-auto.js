@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
+/**
+ * dev-auto: Single dev entrypoint (Vite + optional Preview Runner).
+ * Responsibilities split into: parseHost/parsePort (input validation), tryListen/findFreePort (ports),
+ * findExistingRunner/waitForRunner/getOrStartRunner (runner), runViteWithShutdown (vite + signals), main (orchestration).
+ */
 const net = require("net");
-const path = require("path");
 const http = require("http");
 const { spawn, spawnSync } = require("child_process");
 
-const host = process.env.VITE_HOST || "127.0.0.1";
 const MIN_PORT = 1;
 const MAX_PORT = 65535;
 
@@ -22,6 +25,17 @@ function parsePort(envValue, defaultPort, name) {
   return n;
 }
 
+/** Allowed hostnames for dev (no command injection). Fallback on invalid. */
+function parseHost(envValue, defaultHost) {
+  const raw = (envValue ?? defaultHost).trim();
+  if (!raw) return defaultHost;
+  if (/^127\.\d+\.\d+\.\d+$/.test(raw) || raw === "localhost" || raw === "::1") return raw;
+  if (/^[a-zA-Z0-9.-]{1,253}$/.test(raw)) return raw;
+  console.warn(`[dev-auto] Ungültiger VITE_HOST=${raw}, nutze ${defaultHost}.`);
+  return defaultHost;
+}
+
+const host = parseHost(process.env.VITE_HOST, "127.0.0.1");
 const requestedVitePort = parsePort(process.env.VITE_PORT, 3005, "VITE_PORT");
 const requestedRunnerPort = parsePort(process.env.PREVIEW_RUNNER_PORT, 4000, "PREVIEW_RUNNER_PORT");
 
