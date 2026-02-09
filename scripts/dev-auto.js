@@ -6,8 +6,24 @@ const http = require("http");
 const { spawn, spawnSync } = require("child_process");
 
 const host = process.env.VITE_HOST || "127.0.0.1";
-const requestedVitePort = Number.parseInt(process.env.VITE_PORT || "3005", 10);
-const requestedRunnerPort = Number.parseInt(process.env.PREVIEW_RUNNER_PORT || "4000", 10);
+const MIN_PORT = 1;
+const MAX_PORT = 65535;
+
+/** Parse env port with validation; fallback on NaN or out-of-range, log warning. */
+function parsePort(envValue, defaultPort, name) {
+  const raw = envValue ?? String(defaultPort);
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < MIN_PORT || n > MAX_PORT) {
+    console.warn(
+      `[dev-auto] Ungültiger Port ${name}=${raw} (erwartet ${MIN_PORT}-${MAX_PORT}), nutze ${defaultPort}.`,
+    );
+    return defaultPort;
+  }
+  return n;
+}
+
+const requestedVitePort = parsePort(process.env.VITE_PORT, 3005, "VITE_PORT");
+const requestedRunnerPort = parsePort(process.env.PREVIEW_RUNNER_PORT, 4000, "PREVIEW_RUNNER_PORT");
 
 function tryListen(port, hostToCheck) {
   return new Promise((resolve) => {
@@ -30,14 +46,16 @@ async function isPortFree(port) {
 }
 
 async function findFreePort(startPort) {
-  let port = startPort;
+  const portStart =
+    Number.isFinite(startPort) && startPort >= MIN_PORT && startPort <= MAX_PORT ? startPort : 3005;
+  let port = portStart;
   for (let i = 0; i < 50; i += 1) {
     // eslint-disable-next-line no-await-in-loop
     const free = await isPortFree(port);
     if (free) return port;
     port += 1;
   }
-  throw new Error(`No free port found starting at ${startPort}`);
+  throw new Error(`No free port found starting at ${portStart}`);
 }
 
 /** Gleiche Port-Kandidaten wie der Runner (preview-runner/index.js RUNNER_PORT_CANDIDATES). */
