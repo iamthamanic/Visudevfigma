@@ -1,5 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "../../../contexts/useAuth";
 import { useVisudev } from "../../../lib/visudev/store";
 import { Sidebar } from "../components/Sidebar";
 import type { ShellScreen } from "../types";
@@ -20,7 +21,12 @@ const SettingsPage = lazy(() =>
 
 export function ShellPage() {
   const [activeScreen, setActiveScreen] = useState<ShellScreen>("projects");
-  const { activeProject } = useVisudev();
+  const { activeProject, setPreviewAccessToken } = useVisudev();
+  const { session } = useAuth();
+
+  useEffect(() => {
+    setPreviewAccessToken(session?.access_token ?? null);
+  }, [session?.access_token, setPreviewAccessToken]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

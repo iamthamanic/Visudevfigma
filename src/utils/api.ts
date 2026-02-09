@@ -651,7 +651,12 @@ export const previewAPI = {
   /** Start preview (build/run app from repo via Preview Runner). Pass repo/branch/commitSha when project not in backend KV. */
   start: async (
     projectId: string,
-    options?: { repo?: string; branchOrCommit?: string; commitSha?: string },
+    options?: {
+      repo?: string;
+      branchOrCommit?: string;
+      commitSha?: string;
+      accessToken?: string;
+    },
     previewMode?: PreviewMode,
   ): Promise<{ success: boolean; data?: { runId: string; status: string }; error?: string }> => {
     const mode = resolvePreviewMode(previewMode);
@@ -675,11 +680,12 @@ export const previewAPI = {
         branchOrCommit: options?.branchOrCommit,
         commitSha: options?.commitSha,
       }),
+      accessToken: options?.accessToken,
     });
   },
 
   /** Get preview status and URL */
-  status: async (projectId: string, previewMode?: PreviewMode) => {
+  status: async (projectId: string, previewMode?: PreviewMode, accessToken?: string) => {
     const mode = resolvePreviewMode(previewMode);
     if (mode === "deployed") {
       return { success: true, status: "idle" as const };
@@ -691,6 +697,7 @@ export const previewAPI = {
     }
     return apiRequest<PreviewStatusResponse>(
       `/visudev-preview/preview/status?projectId=${encodeURIComponent(projectId)}`,
+      { accessToken },
     );
   },
 
@@ -698,6 +705,7 @@ export const previewAPI = {
   stop: async (
     projectId: string,
     previewMode?: PreviewMode,
+    accessToken?: string,
   ): Promise<{ success: boolean; error?: string }> => {
     const mode = resolvePreviewMode(previewMode);
     if (mode === "deployed") {
@@ -711,6 +719,7 @@ export const previewAPI = {
     return apiRequest<{ status: string }>("/visudev-preview/preview/stop", {
       method: "POST",
       body: JSON.stringify({ projectId }),
+      accessToken,
     });
   },
 

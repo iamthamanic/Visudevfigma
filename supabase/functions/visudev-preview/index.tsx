@@ -3,6 +3,7 @@
  *
  * Calls external Preview Runner to build/run app from repo; stores preview URL/status in KV.
  * Routes: POST /preview/start, GET /preview/status, POST /preview/stop
+ * Auth: valid user JWT required (reduces IDOR). Rate limiting: TODO per-user/per-project for production.
  */
 
 import { Hono } from "hono";
@@ -58,9 +59,40 @@ app.use(
   }),
 );
 
-// POST /preview/start — body: { projectId, repo?, branchOrCommit? } (repo/branch from body if project not in KV)
+/** If Authorization is a valid user JWT, return { ok: true, user }. Else return { ok: false } (caller may allow anon for backward compatibility). */
+async function checkAuth(
+  c: { req: { header: (name: string) => string | undefined } },
+) {
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return { ok: false as const };
+  }
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!supabaseUrl || !anonKey) {
+    return { ok: false as const };
+  }
+  const userClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: { user }, error } = await userClient.auth.getUser();
+  if (error || !user) {
+    return { ok: false as const };
+  }
+  return { ok: true as const, user };
+}
+
+// POST /preview/start — body: { projectId, repo?, branchOrCommit? }. Auth: require valid user JWT (reduces IDOR).
 app.post("/preview/start", async (c) => {
   try {
+    const auth = await checkAuth(c);
+    if (!auth.ok) {
+      return c.json({
+        success: false,
+        error: "Unauthorized (valid user session required)",
+      }, 401);
+    }
+
     const runnerUrl = Deno.env.get("PREVIEW_RUNNER_URL");
     if (!runnerUrl) {
       return c.json(
@@ -186,9 +218,16 @@ app.post("/preview/start", async (c) => {
   }
 });
 
-// GET /preview/status?projectId=xxx
+// GET /preview/status?projectId=xxx — requires valid user JWT
 app.get("/preview/status", async (c) => {
   try {
+    const auth = await checkAuth(c);
+    if (!auth.ok) {
+      return c.json({
+        success: false,
+        error: "Unauthorized (valid user session required)",
+      }, 401);
+    }
     const projectId = c.req.query("projectId");
     if (!projectId) {
       return c.json(
@@ -271,9 +310,16 @@ app.get("/preview/status", async (c) => {
   }
 });
 
-// POST /preview/stop — body: { projectId }
+// POST /preview/stop — body: { projectId }. Requires valid user JWT.
 app.post("/preview/stop", async (c) => {
   try {
+    const auth = await checkAuth(c);
+    if (!auth.ok) {
+      return c.json({
+        success: false,
+        error: "Unauthorized (valid user session required)",
+      }, 401);
+    }
     const body = await c.req.json().catch(() => ({}));
     const projectId = body.projectId as string | undefined;
     if (!projectId) {

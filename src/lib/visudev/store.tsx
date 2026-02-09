@@ -3,6 +3,7 @@ import React, {
   createContext,
   useContext,
   useState,
+  useRef,
   ReactNode,
   useCallback,
   useEffect,
@@ -64,6 +65,8 @@ interface VisudevStore {
   stopPreview: (projectId: string) => Promise<void>;
   /** Set preview to failed when stuck in "starting" (e.g. timeout). */
   markPreviewStuck: (projectId: string, error: string) => void;
+  /** Set access token for preview Edge API (central mode). Call with session?.access_token when user logs in. */
+  setPreviewAccessToken: (token: string | null) => void;
 }
 
 const VisudevContext = createContext<VisudevStore | null>(null);
@@ -86,6 +89,11 @@ function apiErrorMsg(err: unknown): string {
 }
 
 export function VisudevProvider({ children }: { children: ReactNode }) {
+  const previewAccessTokenRef = useRef<string | null>(null);
+  const setPreviewAccessToken = useCallback((token: string | null) => {
+    previewAccessTokenRef.current = token;
+  }, []);
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [activeProject, setActiveProjectState] = useState<Project | null>(null);
@@ -438,7 +446,12 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
       try {
         const res = await previewAPI.start(
           projectId,
-          { repo, branchOrCommit, commitSha },
+          {
+            repo,
+            branchOrCommit,
+            commitSha,
+            accessToken: previewAccessTokenRef.current ?? undefined,
+          },
           getProjectPreviewMode(projectId),
         );
         if (!res.success) {
@@ -466,7 +479,11 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     async (projectId: string): Promise<PreviewStatus | undefined> => {
       let res: Awaited<ReturnType<typeof previewAPI.status>>;
       try {
-        res = await previewAPI.status(projectId, getProjectPreviewMode(projectId));
+        res = await previewAPI.status(
+          projectId,
+          getProjectPreviewMode(projectId),
+          previewAccessTokenRef.current ?? undefined,
+        );
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setPreview((prev) =>
@@ -512,7 +529,11 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
   const stopPreview = useCallback(
     async (projectId: string) => {
       try {
-        await previewAPI.stop(projectId, getProjectPreviewMode(projectId));
+        await previewAPI.stop(
+          projectId,
+          getProjectPreviewMode(projectId),
+          previewAccessTokenRef.current ?? undefined,
+        );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.warn("[VisuDEV] stopPreview failed (state reset anyway):", msg);
@@ -575,6 +596,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     refreshPreview,
     stopPreview,
     markPreviewStuck,
+    setPreviewAccessToken,
   };
 
   return <VisudevContext.Provider value={value}>{children}</VisudevContext.Provider>;

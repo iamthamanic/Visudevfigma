@@ -36,6 +36,8 @@ function parseHost(envValue, defaultHost) {
 }
 
 const host = parseHost(process.env.VITE_HOST, "127.0.0.1");
+/** Host for URL building: IPv6 (e.g. ::1) must be in brackets. */
+const hostForUrl = host.includes(":") ? `[${host}]` : host;
 const requestedVitePort = parsePort(process.env.VITE_PORT, 3005, "VITE_PORT");
 const requestedRunnerPort = parsePort(process.env.PREVIEW_RUNNER_PORT, 4000, "PREVIEW_RUNNER_PORT");
 
@@ -87,7 +89,7 @@ function findExistingRunner() {
         return;
       }
       const port = RUNNER_PORT_CANDIDATES[i++];
-      const url = `http://${host}:${port}`;
+      const url = `http://${hostForUrl}:${port}`;
       const opts = { hostname: host, port, path: "/health", method: "GET" };
       const req = http.request(opts, (res) => {
         res.resume();
@@ -165,7 +167,7 @@ async function getOrStartRunner() {
     return { previewUrl: existing, runner: null };
   }
   const runnerPort = await findFreePort(requestedRunnerPort);
-  const previewUrl = `http://${host}:${runnerPort}`;
+  const previewUrl = `http://${hostForUrl}:${runnerPort}`;
   const envForRunner = {
     ...process.env,
     VITE_PREVIEW_RUNNER_URL: previewUrl,
@@ -199,7 +201,7 @@ async function getOrStartRunner() {
 /** Start Vite with runner URL and wire shutdown on signals/child exit. */
 function runViteWithShutdown(previewUrl, runner, vitePort) {
   const envForVite = { ...process.env, VITE_PREVIEW_RUNNER_URL: previewUrl };
-  console.log(`[dev-auto] Vite: http://${host}:${vitePort}`);
+  console.log(`[dev-auto] Vite: http://${hostForUrl}:${vitePort}`);
   console.log(`[dev-auto] VITE_PREVIEW_RUNNER_URL=${previewUrl}`);
 
   const vite = spawn(
