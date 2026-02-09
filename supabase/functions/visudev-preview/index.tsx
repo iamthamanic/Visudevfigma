@@ -3,7 +3,7 @@
  *
  * Calls external Preview Runner to build/run app from repo; stores preview URL/status in KV.
  * Routes: POST /preview/start, GET /preview/status, POST /preview/stop
- * Auth: valid user JWT required (reduces IDOR). Rate limiting: TODO per-user/per-project for production.
+ * Auth: valid user JWT required (reduces IDOR). Per-user rate limit: 30 req/min per action (start/status/stop).
  */
 
 import { Hono } from "hono";
@@ -43,6 +43,33 @@ async function kvSet(key: string, value: unknown): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+const RATE_WINDOW_SEC = 60;
+const RATE_MAX_PER_WINDOW = 30;
+
+/** Returns true if request allowed, false if rate limited. Updates KV only when allowing. */
+async function checkRateLimit(
+  userId: string,
+  action: string,
+): Promise<boolean> {
+  const key = `rate:preview:${userId}:${action}`;
+  const raw = await kvGet(key) as
+    | { count?: number; windowStart?: string }
+    | null;
+  const now = Date.now();
+  const windowStartMs = raw?.windowStart
+    ? new Date(raw.windowStart).getTime()
+    : 0;
+  const inWindow = now - windowStartMs < RATE_WINDOW_SEC * 1000;
+  const prevCount = inWindow && typeof raw?.count === "number" ? raw.count : 0;
+  const count = prevCount + 1;
+  if (count > RATE_MAX_PER_WINDOW) return false;
+  const newWindowStart = inWindow
+    ? (raw?.windowStart ?? new Date(now).toISOString())
+    : new Date(now).toISOString();
+  await kvSet(key, { count, windowStart: newWindowStart });
+  return true;
+}
+
 type PreviewState = {
   runId: string;
   status: "starting" | "ready" | "failed" | "stopped";
@@ -50,6 +77,8 @@ type PreviewState = {
   error?: string;
   startedAt: string;
   expiresAt?: string;
+  /** Set on start; only this user may call status/stop (reduces IDOR). */
+  userId?: string;
 };
 
 const app = new Hono();
@@ -98,6 +127,12 @@ app.post("/preview/start", async (c) => {
         success: false,
         error: "Unauthorized (valid user session required)",
       }, 401);
+    }
+    if (!(await checkRateLimit(auth.user.id, "start"))) {
+      return c.json(
+        { success: false, error: "Too many requests; try again later" },
+        429,
+      );
     }
 
     const runnerUrl = Deno.env.get("PREVIEW_RUNNER_URL");
@@ -199,6 +234,7 @@ app.post("/preview/start", async (c) => {
       runId,
       status,
       startedAt: new Date().toISOString(),
+      userId: auth.user.id,
     };
     await kvSet(`preview:${projectId}`, previewState);
 
@@ -229,6 +265,12 @@ app.get("/preview/status", async (c) => {
         error: "Unauthorized (valid user session required)",
       }, 401);
     }
+    if (!(await checkRateLimit(auth.user.id, "status"))) {
+      return c.json(
+        { success: false, error: "Too many requests; try again later" },
+        429,
+      );
+    }
     const rawId = c.req.query("projectId");
     const projectId = validateProjectId(rawId);
     if (!projectId) {
@@ -249,6 +291,15 @@ app.get("/preview/status", async (c) => {
         previewUrl: undefined,
         error: undefined,
       });
+    }
+    if (stored.userId != null && stored.userId !== auth.user.id) {
+      return c.json(
+        {
+          success: false,
+          error: "Forbidden (preview belongs to another user)",
+        },
+        403,
+      );
     }
 
     const runnerUrl = Deno.env.get("PREVIEW_RUNNER_URL");
@@ -325,6 +376,12 @@ app.post("/preview/stop", async (c) => {
         error: "Unauthorized (valid user session required)",
       }, 401);
     }
+    if (!(await checkRateLimit(auth.user.id, "stop"))) {
+      return c.json(
+        { success: false, error: "Too many requests; try again later" },
+        429,
+      );
+    }
     const body = await c.req.json().catch(() => ({}));
     const projectId = validateProjectId(body.projectId);
     if (!projectId) {
@@ -340,6 +397,15 @@ app.post("/preview/stop", async (c) => {
     const stored = await kvGet(`preview:${projectId}`) as PreviewState | null;
     if (!stored) {
       return c.json({ success: true, status: "stopped" });
+    }
+    if (stored.userId != null && stored.userId !== auth.user.id) {
+      return c.json(
+        {
+          success: false,
+          error: "Forbidden (preview belongs to another user)",
+        },
+        403,
+      );
     }
 
     const runnerUrl = Deno.env.get("PREVIEW_RUNNER_URL");
