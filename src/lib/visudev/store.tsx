@@ -16,7 +16,7 @@ import {
   Screen,
   ScreenshotStatus,
 } from "./types";
-import type { PreviewStatus } from "./types";
+import type { PreviewMode, PreviewStatus } from "./types";
 import { publicAnonKey, supabaseUrl } from "../../utils/supabase/info";
 import { api, previewAPI, type PreviewStepLog } from "../../utils/api";
 
@@ -104,7 +104,8 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
   });
 
   const getProjectPreviewMode = useCallback(
-    (projectId: string) => projects.find((project) => project.id === projectId)?.preview_mode,
+    (projectId: string): PreviewMode =>
+      projects.find((project) => project.id === projectId)?.preview_mode ?? "auto",
     [projects],
   );
 

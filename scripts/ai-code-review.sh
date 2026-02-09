@@ -38,6 +38,12 @@ if [[ ! -s "$DIFF_FILE" ]]; then
   exit 0
 fi
 
+# Refuse to send diff to Codex if it might contain long literal secrets (Data Leakage prevention)
+if grep -iE '(password|api_key|secret|token|private_key)\s*=\s*['\''\"][^'\''\"]{16,}['\''\"]' "$DIFF_FILE" >/dev/null 2>&1; then
+  echo "AI review aborted: diff may contain literal secrets (long quoted values). Remove or redact before push." >&2
+  exit 1
+fi
+
 # Limit diff to first and last ~50KB to avoid token limits and timeouts
 LIMIT_BYTES=51200
 DIFF_LIMITED=""

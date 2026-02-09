@@ -137,60 +137,53 @@ function waitForRunner(url, maxAttempts = 30, intervalMs = 500) {
   });
 }
 
-async function main() {
-  const vitePort = await findFreePort(requestedVitePort);
-
-  // Wenn schon ein Runner läuft (z. B. npx visudev-runner), diesen nutzen – sonst eigenen starten
-  let previewUrl = await findExistingRunner();
-  let runner = null;
-
-  if (previewUrl) {
+/** Resolve preview URL: use existing runner if one responds on /health, otherwise start one. Returns { previewUrl, runner } (runner null if existing). */
+async function getOrStartRunner() {
+  const existing = await findExistingRunner();
+  if (existing) {
     console.log(
-      `[dev-auto] Vorhandenen Runner gefunden: ${previewUrl} (kein zweiter wird gestartet)`,
+      `[dev-auto] Vorhandenen Runner gefunden: ${existing} (kein zweiter wird gestartet)`,
     );
-  } else {
-    const runnerPort = await findFreePort(requestedRunnerPort);
-    previewUrl = `http://${host}:${runnerPort}`;
-    const envForRunner = {
-      ...process.env,
-      VITE_PREVIEW_RUNNER_URL: previewUrl,
-      PORT: String(runnerPort),
-      USE_REAL_BUILD: "1",
-    };
-    if (spawnSync("docker", ["info"], { stdio: "ignore", timeout: 5000 }).status === 0) {
-      envForRunner.USE_DOCKER = "1";
-    }
-    console.log(
-      `[dev-auto] Runner: ${previewUrl} (npx visudev-runner)${runnerPort !== requestedRunnerPort ? ` — port ${requestedRunnerPort} war belegt` : ""}`,
-    );
-    runner = spawn("npx", ["visudev-runner"], {
-      env: envForRunner,
-      stdio: "inherit",
-      shell: true,
-    });
-    await waitForRunner(previewUrl).catch((err) => {
-      console.error("[dev-auto] Runner nicht bereit:", err.message);
-      runner.kill("SIGTERM");
-      process.exit(1);
-    });
-    console.log("[dev-auto] Runner bereit, starte Vite …");
+    return { previewUrl: existing, runner: null };
   }
-
-  const envForVite = {
+  const runnerPort = await findFreePort(requestedRunnerPort);
+  const previewUrl = `http://${host}:${runnerPort}`;
+  const envForRunner = {
     ...process.env,
     VITE_PREVIEW_RUNNER_URL: previewUrl,
+    PORT: String(runnerPort),
+    USE_REAL_BUILD: "1",
   };
+  if (spawnSync("docker", ["info"], { stdio: "ignore", timeout: 5000 }).status === 0) {
+    envForRunner.USE_DOCKER = "1";
+  }
+  console.log(
+    `[dev-auto] Runner: ${previewUrl} (npx visudev-runner)${runnerPort !== requestedRunnerPort ? ` — port ${requestedRunnerPort} war belegt` : ""}`,
+  );
+  const runner = spawn("npx", ["visudev-runner"], {
+    env: envForRunner,
+    stdio: "inherit",
+    shell: true,
+  });
+  await waitForRunner(previewUrl).catch((err) => {
+    console.error("[dev-auto] Runner nicht bereit:", err.message);
+    runner.kill("SIGTERM");
+    process.exit(1);
+  });
+  console.log("[dev-auto] Runner bereit, starte Vite …");
+  return { previewUrl, runner };
+}
+
+/** Start Vite with runner URL and wire shutdown on signals/child exit. */
+function runViteWithShutdown(previewUrl, runner, vitePort) {
+  const envForVite = { ...process.env, VITE_PREVIEW_RUNNER_URL: previewUrl };
   console.log(`[dev-auto] Vite: http://${host}:${vitePort}`);
   console.log(`[dev-auto] VITE_PREVIEW_RUNNER_URL=${previewUrl}`);
 
   const vite = spawn(
     "npx",
     ["vite", "--host", host, "--port", String(vitePort), "--strictPort", "--open"],
-    {
-      env: envForVite,
-      stdio: "inherit",
-      shell: true,
-    },
+    { env: envForVite, stdio: "inherit", shell: true },
   );
 
   let shuttingDown = false;
@@ -221,6 +214,12 @@ async function main() {
       process.exit(code ?? 1);
     }
   });
+}
+
+async function main() {
+  const vitePort = await findFreePort(requestedVitePort);
+  const { previewUrl, runner } = await getOrStartRunner();
+  runViteWithShutdown(previewUrl, runner, vitePort);
 }
 
 main().catch((err) => {
