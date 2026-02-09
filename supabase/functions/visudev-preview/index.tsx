@@ -13,6 +13,13 @@ import { createClient } from "@jsr/supabase__supabase-js";
 
 const KV_TABLE = "kv_store_edf036ef";
 
+function validateProjectId(raw: unknown): string | null {
+  if (typeof raw !== "string" || raw.length < 1 || raw.length > 128) {
+    return null;
+  }
+  return /^[a-zA-Z0-9_-]+$/.test(raw) ? raw : null;
+}
+
 const kvClient = () =>
   createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -102,18 +109,12 @@ app.post("/preview/start", async (c) => {
     }
 
     const body = await c.req.json().catch(() => ({}));
-    const rawProjectId = body.projectId as string | undefined;
-    const projectId = typeof rawProjectId === "string" &&
-        rawProjectId.length >= 1 &&
-        rawProjectId.length <= 128 &&
-        /^[a-zA-Z0-9_-]+$/.test(rawProjectId)
-      ? rawProjectId
-      : null;
+    const projectId = validateProjectId(body.projectId);
     if (!projectId) {
       return c.json(
         {
           success: false,
-          error: "projectId is required (1–128 chars, alphanumeric, - _)",
+          error: "projectId required (1–128 chars, alphanumeric, - _)",
         },
         400,
       );
@@ -228,10 +229,14 @@ app.get("/preview/status", async (c) => {
         error: "Unauthorized (valid user session required)",
       }, 401);
     }
-    const projectId = c.req.query("projectId");
+    const rawId = c.req.query("projectId");
+    const projectId = validateProjectId(rawId);
     if (!projectId) {
       return c.json(
-        { success: false, error: "projectId is required" },
+        {
+          success: false,
+          error: "projectId required (1–128 chars, alphanumeric, - _)",
+        },
         400,
       );
     }
@@ -321,10 +326,13 @@ app.post("/preview/stop", async (c) => {
       }, 401);
     }
     const body = await c.req.json().catch(() => ({}));
-    const projectId = body.projectId as string | undefined;
+    const projectId = validateProjectId(body.projectId);
     if (!projectId) {
       return c.json(
-        { success: false, error: "projectId is required" },
+        {
+          success: false,
+          error: "projectId required (1–128 chars, alphanumeric, - _)",
+        },
         400,
       );
     }
