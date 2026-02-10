@@ -98,8 +98,8 @@ if [[ "$USE_CHUNKED" -eq 1 ]]; then
     exit 0
   fi
   TIMEOUT_SEC=600
-  # Larger chunks so IDOR/redaction/rate-limit fixes in middle of files are visible to the reviewer
-  CHUNK_LIMIT_BYTES=204800
+  # Larger chunks so IDOR/redaction/rate-limit fixes are visible (head+tail each; increase if chunks still truncated)
+  CHUNK_LIMIT_BYTES=256000
   REVIEWS_DIR="$ROOT_DIR/.shimwrapper/reviews"
   mkdir -p "$REVIEWS_DIR"
   REVIEW_FILE="$REVIEWS_DIR/review-$(date +%Y%m%d-%H%M%S)-$$.md"

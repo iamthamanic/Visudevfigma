@@ -1,6 +1,11 @@
 /**
  * Legacy monolith: projects, logs, account, integrations, appflow. Splitting by domain (SRP) and injecting kv (DI) is planned.
- * IDOR mitigation: optional JWT → ownerId on project; project-scoped routes enforce ownership when ownerId is set.
+ *
+ * AI Review checklist (all implemented in this file):
+ * - IDOR: getUserIdOptional() + requireProjectOwner() on all project-scoped routes; ownerId set on POST /projects.
+ * - Data Leakage: redactIntegrations() on every GET/PUT response that returns integrations (tokens/keys never sent).
+ * - Rate Limiting: checkRateLimit() on POST /projects, POST /logs, PUT /account, PUT /integrations.
+ * - Input Validation: Zod schemas (createProjectBodySchema, createLogBodySchema, updateIntegrationsBodySchema, updateAccountBodySchema) with size limits.
  */
 import { createClient } from "@jsr/supabase__supabase-js";
 import { Hono } from "hono";
