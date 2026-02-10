@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Push wrapper: run same checks as pre-push (incl. AI review), then git push.
+# Push wrapper: same as pre-push — fast checks + AI review for diff only, then git push.
 # Use: npm run push [-- <git push args>]
+# Full codebase review: run-checks.sh --refactor (loop until 95%), then after push run full again.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-# AI review mandatory for push (no skip)
-unset SKIP_AI_REVIEW
+export CHECK_MODE=diff
 bash "$ROOT_DIR/scripts/run-checks.sh"
 
 # Optional: update README "Last updated" (same as pre-push)

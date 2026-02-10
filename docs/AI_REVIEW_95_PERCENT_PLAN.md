@@ -5,13 +5,20 @@
 - `CHECK_MODE=full` mit **allen drei Chunks** (src, supabase, scripts) ≥95% Score und Verdict ACCEPT.
 - Der Review läuft **immer über committed Code** (`git diff EMPTY_TREE..HEAD`). Uncommittedes wird ignoriert.
 
-## Durchlauf bis 95% (Full-Modus mit Loop)
+## Mix: Full-Scan + Diff-Review beim Push
 
-**`run-checks.sh --until-95`** (Teil des Full-Modus) führt den vollen Check (Frontend, Backend, AI-Review **alle Chunks**) in einer Schleife aus und stoppt erst, wenn alle Chunks ≥95% haben:
+- **Pre-push** (`git push` / `npm run push`): Schnelle Checks + **AI-Review nur fürs Diff** (genau die Änderungen, die gepusht werden). Dadurch bleibt der Push schnell (kein Full-Codebase-Timeout), aber jede Änderung wird per AI geprüft.
+- **Refactor-Modus:** Full-Scan (alle Chunks) im Loop → Teile fixen → commit → bis ≥95% → **pushen** (dabei läuft Diff-Review in der Pipeline) → **wieder Full-Scan** (`npm run checks` oder `--refactor`). Noch nicht ≥95%? → weiter fixen → push (Diff-Review) → Full-Scan. Wiederholt sich bis der Full-Scan durchgeht.
+
+## Durchlauf bis 95% (Full-Modus mit Loop / Refactor-Modus)
+
+**`run-checks.sh --refactor`** (oder `--until-95`) führt den vollen Check (Frontend, Backend, AI-Review **alle Chunks**) in einer Schleife aus und stoppt erst, wenn alle Chunks ≥95% haben:
 
 ```bash
-GIT_CMD=/usr/bin/git bash scripts/run-checks.sh --until-95
+GIT_CMD=/usr/bin/git bash scripts/run-checks.sh --refactor
 ```
+
+(Oder `--until-95`; bei Erfolg zeigt `--refactor` zusätzlich den Hinweis: pushen, dann `npm run checks` erneut ausführen.)
 
 Alternativ der Thin-Wrapper (ruft dasselbe auf):
 

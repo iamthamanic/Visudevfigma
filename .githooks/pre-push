@@ -41,11 +41,11 @@ if [ "$run_frontend" = false ] && [ "$run_backend" = false ]; then
   exit 0
 fi
 
-# On push: AI review is mandatory. Do not allow skip.
+# Pre-push: fast checks + AI review only for the diff (what is being pushed). Full codebase review runs separately (refactor mode).
 CHECK_ARGS=()
 [ "$run_frontend" = true ] && CHECK_ARGS+=(--frontend)
 [ "$run_backend" = true ] && CHECK_ARGS+=(--backend)
-unset SKIP_AI_REVIEW
+export CHECK_MODE=diff
 bash scripts/run-checks.sh "${CHECK_ARGS[@]}"
 
 # Update README (e.g. "Last updated" line) so it stays in sync on push

@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 # Shared checks for pre-push (GitHub) and supabase-checked (Supabase deploy).
-# Usage: run-checks.sh [--frontend] [--backend] [--no-ai-review] [--ai-review] [--chunk=src|supabase|scripts] [--until-95]
+# Usage: run-checks.sh [--frontend] [--backend] [--no-ai-review] [--ai-review] [--chunk=src|supabase|scripts] [--until-95] [--refactor]
 #   With no args: run frontend and backend checks (same as --frontend --backend).
-#   With args: run only the requested checks.
-#   AI review runs by default after frontend/backend checks; use --no-ai-review to disable (or SKIP_AI_REVIEW=1).
-#   --chunk: bei full-Codebase-Review nur diesen Chunk prüfen (schnellere Iteration auf 95%). Setzt CHECK_MODE=full.
-#   --until-95: Full-Modus mit Loop — führt den vollen Check (alle Chunks) wiederholt aus, bis AI-Review für alle
-#               Chunks ≥95%. Nach jedem Fehlschlag: Review-Pfad anzeigen, „Fix, commit, Enter zum Retry“. Kein --chunk.
-# If a check fails, only that check is skipped (recorded); all following checks still run. Hook fails at the end only if a required check failed.
-# Required (fail hook if any fails): format, lint, typecheck, test, rules, build, npm audit, backend checks.
-# Optional (run but don't fail hook): Snyk only. AI review is required when run_ai_review=true.
+#   AI review runs by default unless SKIP_AI_REVIEW=1 (pre-push sets this so push does not time out).
+#   --chunk: bei full-Codebase-Review nur diesen Chunk prüfen. Setzt CHECK_MODE=full.
+#   --until-95: Full-Modus mit Loop — alle Chunks bis ≥95%. Nach Fehlschlag: Fix, commit, Enter zum Retry. Kein --chunk.
+#   --refactor: Refactor-Modus (wie --until-95). Alle Probleme identifizieren → fixen → committen → Loop bis alle Chunks ≥95%.
+#               Bei Erfolg: Hinweis „git push“, danach erneut alle Checks laufen lassen; schlagen sie fehl, Spiel von vorne (fix, commit, push, checks).
+# Pre-push runs only fast checks (no AI review). Use refactor mode to reach 95%, then push; run full checks again after push.
 set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -21,6 +19,7 @@ run_backend=false
 run_ai_review=true
 ai_review_chunk=""
 until_95=false
+refactor_mode=false
 
 if [[ $# -eq 0 ]]; then
   run_frontend=true
@@ -33,6 +32,7 @@ else
       --ai-review) run_ai_review=true ;;
       --no-ai-review) run_ai_review=false ;;
       --until-95) until_95=true ;;
+      --refactor) until_95=true; refactor_mode=true ;;
       --chunk=*)
         ai_review_chunk="${arg#--chunk=}"
         if [[ "$ai_review_chunk" != "src" && "$ai_review_chunk" != "supabase" && "$ai_review_chunk" != "scripts" ]]; then
@@ -42,26 +42,39 @@ else
         run_ai_review=true
         ;;
       *)
-        echo "Unknown option: $arg. Use --frontend, --backend, --no-ai-review, --ai-review, --chunk=..., or --until-95." >&2
+        echo "Unknown option: $arg. Use --frontend, --backend, --no-ai-review, --ai-review, --chunk=..., --until-95, or --refactor." >&2
         exit 1
         ;;
     esac
   done
 fi
 
-# --until-95: Loop bis alle Chunks ≥95% (nur Full-Modus, alle Chunks; kein --chunk)
+# --until-95 / --refactor: Loop bis alle Chunks ≥95% (Full-Modus, alle Chunks; kein --chunk)
 if [[ "$until_95" = true ]]; then
   if [[ -n "$ai_review_chunk" ]]; then
-    echo "Invalid: --until-95 and --chunk cannot be used together. Use --until-95 for full codebase (all chunks)." >&2
+    echo "Invalid: --until-95/--refactor and --chunk cannot be used together. Use full codebase (all chunks)." >&2
     exit 1
   fi
   export CHECK_MODE=full
   export GIT_CMD="${GIT_CMD:-/usr/bin/git}"
   mkdir -p "$REVIEWS_DIR"
+  if [[ "$refactor_mode" = true ]]; then
+    echo "========== Refactor-Modus: Full-Scan → Teile fixen → committen → Loop bis ≥95% → push (dann Diff-Review) → wieder Full-Scan ==========" >&2
+    echo "Beim Push: Check-Pipeline mit AI-Review nur fürs Diff (gepushte Änderungen). Danach Full-Scan erneut; nicht ≥95% → weiter fixen, push, wiederholen." >&2
+    echo "" >&2
+  fi
   while true; do
     if bash "$ROOT_DIR/scripts/run-checks.sh" 2>&1; then
       echo "" >&2
       echo "All checks and AI review passed (all chunks ≥95%)." >&2
+      if [[ "$refactor_mode" = true ]]; then
+        echo "" >&2
+        echo "========== Refactor-Phase abgeschlossen ==========" >&2
+        echo "1. Pushen:  git push  (dabei läuft Check-Pipeline inkl. AI-Review nur fürs Diff)" >&2
+        echo "2. Danach wieder Full-Scan:  npm run checks  (oder run-checks.sh --refactor)" >&2
+        echo "   Noch nicht ≥95%? → Weitere Teile fixen → Commit → Push (Diff-Review) → Schritt 2. Wiederholt sich bis Full-Scan durchgeht." >&2
+        echo "" >&2
+      fi
       exit 0
     fi
     LATEST_REVIEW=""
@@ -165,7 +178,8 @@ fi
 
 if [[ "$run_ai_review" = true ]] && { [[ "$run_frontend" = true ]] || [[ "$run_backend" = true ]]; }; then
   echo "Running AI code review..."
-  export CHECK_MODE=full
+  # Pre-push sets CHECK_MODE=diff (review only pushed changes); else default full (whole codebase per chunk).
+  export CHECK_MODE="${CHECK_MODE:-full}"
   [[ -n "$ai_review_chunk" ]] && export AI_REVIEW_CHUNK="$ai_review_chunk"
   run_required "AI review" bash "$ROOT_DIR/scripts/ai-code-review.sh"
 fi
