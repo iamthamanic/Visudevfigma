@@ -8,6 +8,8 @@
 #   CHECK_MODE=full: Gesamte Codebase — pro Verzeichnis (src, supabase, scripts) ein eigener
 #                    Review; die AI sieht jedes Chunk vollständig (bis CHUNK_LIMIT_BYTES), kein
 #                    willkürliches Kopf/Schwanz-Kürzen. Ehrliches Feedback pro Bereich.
+# AI_REVIEW_CHUNK (nur bei CHECK_MODE=full): Nur diesen Chunk prüfen (src|supabase|scripts).
+#                    Schnellere Iteration auf 95% ohne alle drei Chunks pro Lauf. Siehe docs/AI_REVIEW_95_PERCENT_PLAN.md.
 # Alle anderen Checks (format, lint, typecheck, …) laufen immer auf der ganzen Codebase.
 #
 # Timeout: bei full pro Chunk TIMEOUT_SEC; bei diff einmal TIMEOUT_SEC.
@@ -28,6 +30,8 @@ fi
 
 # CHECK_MODE: "full" = AI prüft ganze Codebase; "diff" oder unset = AI prüft nur Änderungen
 CHECK_MODE="${CHECK_MODE:-full}"
+# AI_REVIEW_CHUNK: bei CHECK_MODE=full nur diesen Chunk prüfen (src | supabase | scripts). Schnellere Iteration auf 95%.
+AI_REVIEW_CHUNK="${AI_REVIEW_CHUNK:-}"
 
 # Redact long token-like strings before writing review to disk (Data Leakage prevention)
 redact_review_text() {
@@ -57,9 +61,23 @@ if [[ "$CHECK_MODE" == "full" ]]; then
   for d in src supabase scripts; do
     [[ -d "$d" ]] && CHUNK_DIRS+=("$d")
   done
+  # Einzel-Chunk-Modus: nur einen Bereich prüfen (z. B. AI_REVIEW_CHUNK=src für schnelle Iteration)
+  if [[ -n "$AI_REVIEW_CHUNK" ]]; then
+    if [[ "$AI_REVIEW_CHUNK" != "src" && "$AI_REVIEW_CHUNK" != "supabase" && "$AI_REVIEW_CHUNK" != "scripts" ]]; then
+      echo "AI review: AI_REVIEW_CHUNK must be src, supabase, or scripts (got: $AI_REVIEW_CHUNK)." >&2
+      exit 1
+    fi
+    if [[ -d "$AI_REVIEW_CHUNK" ]]; then
+      CHUNK_DIRS=("$AI_REVIEW_CHUNK")
+      echo "AI review: CHECK_MODE=full (single chunk: $AI_REVIEW_CHUNK — nur committed Code)." >&2
+    else
+      echo "AI review: chunk dir $AI_REVIEW_CHUNK not found, skip." >&2
+      exit 0
+    fi
+  fi
   if [[ ${#CHUNK_DIRS[@]} -gt 0 ]]; then
     USE_CHUNKED=1
-    echo "AI review: CHECK_MODE=full (chunked: ${CHUNK_DIRS[*]} — nur committed Code)." >&2
+    [[ -z "$AI_REVIEW_CHUNK" ]] && echo "AI review: CHECK_MODE=full (chunked: ${CHUNK_DIRS[*]} — nur committed Code)." >&2
   else
     # Fallback: ein Diff über alles (z. B. Repo ohne src/supabase/scripts)
     git diff --no-color "$EMPTY_TREE"..HEAD -- . >> "$DIFF_FILE" 2>/dev/null || true
@@ -253,7 +271,11 @@ $(tail -c $CHUNK_LIMIT_BYTES "$CHUNK_DIFF_FILE")"
     echo "# AI Code Review (Full Codebase, Chunked) — $(date -Iseconds 2>/dev/null || date '+%Y-%m-%dT%H:%M:%S%z')"
     echo ""
     [[ "$CHUNK_TRUNCATED_ANY" -eq 1 ]] && echo "> **Note:** One or more chunks had diff truncated (head+tail only); the middle of those chunks was not sent for review." && echo ""
-    echo "- **Mode:** full (chunked)"
+    if [[ -n "$AI_REVIEW_CHUNK" ]]; then
+      echo "- **Mode:** full (single chunk: $AI_REVIEW_CHUNK)"
+    else
+      echo "- **Mode:** full (chunked)"
+    fi
     echo "- **Branch:** $BRANCH"
     echo "- **Verdict:** $([ "$OVERALL_PASS" -eq 1 ] && echo "ACCEPT (PASS)" || echo "REJECT (FAIL)")"
     echo "- **Tokens:** ${TOTAL_IN} input, ${TOTAL_OUT} output (total $((TOTAL_IN + TOTAL_OUT)))"
