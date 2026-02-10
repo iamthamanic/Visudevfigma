@@ -12,9 +12,17 @@ export class ProjectsService extends BaseService {
     super();
   }
 
-  public listProjects(): Promise<ProjectResponseDto[]> {
-    this.logger.info("Listing projects");
-    return this.repository.listProjects();
+  /** When userId is set, filter to projects with no owner or ownerId === userId (IDOR mitigation). */
+  public async listProjects(
+    userId?: string | null,
+  ): Promise<ProjectResponseDto[]> {
+    this.logger.info("Listing projects", { hasUserId: userId != null });
+    const all = await this.repository.listProjects();
+    if (userId == null) return all;
+    return all.filter(
+      (p) => (p as { ownerId?: string }).ownerId == null ||
+        (p as { ownerId?: string }).ownerId === userId,
+    );
   }
 
   public getProject(id: string): Promise<ProjectResponseDto | null> {

@@ -36,6 +36,14 @@ export class NotFoundException extends ModuleException {
   }
 }
 
+/** IDOR mitigation: caller is not the project owner. */
+export class ForbiddenException extends ModuleException {
+  constructor(message: string = "Forbidden") {
+    super(message, 403, "FORBIDDEN");
+    this.name = "ForbiddenException";
+  }
+}
+
 export class RepositoryException extends ModuleException {
   constructor(message: string) {
     super(message, 500, "REPOSITORY_ERROR");

@@ -6,9 +6,11 @@ import type {
   UpdateProjectDto,
 } from "../dto/index.ts";
 import {
+  ForbiddenException,
   NotFoundException,
   ValidationException,
 } from "../internal/exceptions/index.ts";
+import { getUserIdOptional } from "../internal/helpers/auth-helper.ts";
 import { ProjectsService } from "../services/projects.service.ts";
 import {
   createProjectBodySchema,
@@ -24,42 +26,73 @@ interface SuccessResponse<T> {
 export class ProjectsController {
   constructor(private readonly service: ProjectsService) {}
 
+  /** IDOR: when JWT present, filter to owned projects only. */
   public async listProjects(c: Context): Promise<Response> {
-    const data = await this.service.listProjects();
+    const userId = await getUserIdOptional(c);
+    const data = await this.service.listProjects(userId);
     return this.ok<ProjectResponseDto[]>(c, data);
   }
 
+  /** IDOR: require ownership when project has ownerId. */
   public async getProject(c: Context): Promise<Response> {
     const id = this.parseProjectId(c);
     const project = await this.service.getProject(id);
     if (!project) {
       throw new NotFoundException("Project");
     }
+    const userId = await getUserIdOptional(c);
+    const ownerId = (project as ProjectResponseDto & { ownerId?: string }).ownerId;
+    if (ownerId != null && (userId === null || userId !== ownerId)) {
+      throw new ForbiddenException("Not authorized to access this project");
+    }
     return this.ok<ProjectResponseDto>(c, project);
   }
 
+  /** Set ownerId from JWT when present (IDOR mitigation). */
   public async createProject(c: Context): Promise<Response> {
     const body = await this.parseBody<CreateProjectDto>(
       c,
       createProjectBodySchema,
     );
+    const userId = await getUserIdOptional(c);
+    const payload = { ...body, ownerId: userId ?? undefined };
     const id = this.extractId(body);
-    const project = await this.service.createProject(id, body);
+    const project = await this.service.createProject(id, payload);
     return this.ok<ProjectResponseDto>(c, project);
   }
 
+  /** IDOR: require ownership when project has ownerId. */
   public async updateProject(c: Context): Promise<Response> {
     const id = this.parseProjectId(c);
+    const project = await this.service.getProject(id);
+    if (!project) {
+      throw new NotFoundException("Project");
+    }
+    const userId = await getUserIdOptional(c);
+    const ownerId = (project as ProjectResponseDto & { ownerId?: string }).ownerId;
+    if (ownerId != null && (userId === null || userId !== ownerId)) {
+      throw new ForbiddenException("Not authorized to access this project");
+    }
     const body = await this.parseBody<UpdateProjectDto>(
       c,
       updateProjectBodySchema,
     );
-    const project = await this.service.updateProject(id, body);
-    return this.ok<ProjectResponseDto>(c, project);
+    const updated = await this.service.updateProject(id, body);
+    return this.ok<ProjectResponseDto>(c, updated);
   }
 
+  /** IDOR: require ownership when project has ownerId. */
   public async deleteProject(c: Context): Promise<Response> {
     const id = this.parseProjectId(c);
+    const project = await this.service.getProject(id);
+    if (!project) {
+      throw new NotFoundException("Project");
+    }
+    const userId = await getUserIdOptional(c);
+    const ownerId = (project as ProjectResponseDto & { ownerId?: string }).ownerId;
+    if (ownerId != null && (userId === null || userId !== ownerId)) {
+      throw new ForbiddenException("Not authorized to access this project");
+    }
     await this.service.deleteProject(id);
     return c.json({ success: true }, 200);
   }
