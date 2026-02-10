@@ -12,13 +12,13 @@ export class ProjectsService extends BaseService {
     super();
   }
 
-  /** When userId is set, filter to projects with no owner or ownerId === userId (IDOR mitigation). */
+  /** IDOR: when no JWT, return empty list; otherwise filter to owned or unowned projects. */
   public async listProjects(
     userId?: string | null,
   ): Promise<ProjectResponseDto[]> {
     this.logger.info("Listing projects", { hasUserId: userId != null });
+    if (userId == null) return [];
     const all = await this.repository.listProjects();
-    if (userId == null) return all;
     return all.filter(
       (p) =>
         (p as { ownerId?: string }).ownerId == null ||

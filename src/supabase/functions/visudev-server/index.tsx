@@ -229,16 +229,17 @@ app.get("/health", (c) => {
 });
 
 // ==================== PROJECTS ====================
-// Get all projects (IDOR: filter by owner when JWT present)
+// Get all projects (IDOR: no JWT → empty list; with JWT → filter by owner)
 app.get("/projects", async (c) => {
   try {
-    let projects = (await kv.getByPrefix("project:")) as ProjectRecord[];
     const userId = await getUserIdOptional(c);
-    if (userId != null) {
-      projects = projects.filter(
-        (p) => p.ownerId == null || p.ownerId === userId,
-      );
+    if (userId == null) {
+      return c.json({ success: true, data: [] });
     }
+    let projects = (await kv.getByPrefix("project:")) as ProjectRecord[];
+    projects = projects.filter(
+      (p) => p.ownerId == null || p.ownerId === userId,
+    );
     return c.json({ success: true, data: projects });
   } catch (error) {
     console.log(`Error fetching projects: ${error}`);
