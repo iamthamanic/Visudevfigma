@@ -33,7 +33,7 @@ export class ProjectsController {
     return this.ok<ProjectResponseDto[]>(c, data);
   }
 
-  /** IDOR: require ownership when project has ownerId. */
+  /** IDOR: require auth; require ownership when project has ownerId. */
   public async getProject(c: Context): Promise<Response> {
     const id = this.parseProjectId(c);
     const project = await this.service.getProject(id);
@@ -41,9 +41,12 @@ export class ProjectsController {
       throw new NotFoundException("Project");
     }
     const userId = await getUserIdOptional(c);
+    if (userId === null) {
+      throw new ForbiddenException("Not authorized to access this project");
+    }
     const ownerId =
       (project as ProjectResponseDto & { ownerId?: string }).ownerId;
-    if (ownerId != null && (userId === null || userId !== ownerId)) {
+    if (ownerId != null && userId !== ownerId) {
       throw new ForbiddenException("Not authorized to access this project");
     }
     return this.ok<ProjectResponseDto>(c, project);
@@ -62,7 +65,7 @@ export class ProjectsController {
     return this.ok<ProjectResponseDto>(c, project);
   }
 
-  /** IDOR: require ownership when project has ownerId. */
+  /** IDOR: require auth; require ownership when project has ownerId. */
   public async updateProject(c: Context): Promise<Response> {
     const id = this.parseProjectId(c);
     const project = await this.service.getProject(id);
@@ -70,9 +73,12 @@ export class ProjectsController {
       throw new NotFoundException("Project");
     }
     const userId = await getUserIdOptional(c);
+    if (userId === null) {
+      throw new ForbiddenException("Not authorized to access this project");
+    }
     const ownerId =
       (project as ProjectResponseDto & { ownerId?: string }).ownerId;
-    if (ownerId != null && (userId === null || userId !== ownerId)) {
+    if (ownerId != null && userId !== ownerId) {
       throw new ForbiddenException("Not authorized to access this project");
     }
     const body = await this.parseBody<UpdateProjectDto>(
@@ -83,7 +89,7 @@ export class ProjectsController {
     return this.ok<ProjectResponseDto>(c, updated);
   }
 
-  /** IDOR: require ownership when project has ownerId. */
+  /** IDOR: require auth; require ownership when project has ownerId. */
   public async deleteProject(c: Context): Promise<Response> {
     const id = this.parseProjectId(c);
     const project = await this.service.getProject(id);
@@ -91,9 +97,12 @@ export class ProjectsController {
       throw new NotFoundException("Project");
     }
     const userId = await getUserIdOptional(c);
+    if (userId === null) {
+      throw new ForbiddenException("Not authorized to access this project");
+    }
     const ownerId =
       (project as ProjectResponseDto & { ownerId?: string }).ownerId;
-    if (ownerId != null && (userId === null || userId !== ownerId)) {
+    if (ownerId != null && userId !== ownerId) {
       throw new ForbiddenException("Not authorized to access this project");
     }
     await this.service.deleteProject(id);

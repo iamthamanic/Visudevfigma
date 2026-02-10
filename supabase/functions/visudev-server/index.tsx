@@ -200,9 +200,9 @@ async function requireProjectOwner(
     | null;
   if (!project) return { ok: false, status: 404 };
   const ownerId = project.ownerId;
-  if (ownerId == null) return { ok: true, project };
   const userId = await getUserIdOptional(c);
-  if (userId === null || userId !== ownerId) return { ok: false, status: 403 };
+  if (userId === null) return { ok: false, status: 403 };
+  if (ownerId != null && userId !== ownerId) return { ok: false, status: 403 };
   return { ok: true, project };
 }
 

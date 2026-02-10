@@ -73,9 +73,11 @@ app.use("*", async (c, next) => {
   const projectId = c.req.param("projectId");
   if (!projectId) return next();
   const ownerId = await getProjectOwnerId(projectId);
-  if (ownerId == null) return next();
   const userId = await getUserIdOptional(c);
-  if (userId === null || userId !== ownerId) {
+  if (userId === null) {
+    return c.json({ success: false, error: "Forbidden" }, 403);
+  }
+  if (ownerId != null && userId !== ownerId) {
     return c.json({ success: false, error: "Forbidden" }, 403);
   }
   return next();
