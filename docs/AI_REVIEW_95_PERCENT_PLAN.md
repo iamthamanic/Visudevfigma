@@ -5,6 +5,25 @@
 - `CHECK_MODE=full` mit **allen drei Chunks** (src, supabase, scripts) ≥95% Score und Verdict ACCEPT.
 - Der Review läuft **immer über committed Code** (`git diff EMPTY_TREE..HEAD`). Uncommittedes wird ignoriert.
 
+## Durchlauf bis 95% (Full-Modus mit Loop)
+
+**`run-checks.sh --until-95`** (Teil des Full-Modus) führt den vollen Check (Frontend, Backend, AI-Review **alle Chunks**) in einer Schleife aus und stoppt erst, wenn alle Chunks ≥95% haben:
+
+```bash
+GIT_CMD=/usr/bin/git bash scripts/run-checks.sh --until-95
+```
+
+Alternativ der Thin-Wrapper (ruft dasselbe auf):
+
+```bash
+GIT_CMD=/usr/bin/git bash scripts/run-checks-until-95.sh
+```
+
+- Bei Fehlschlag: zeigt Chunk-Scores und Pfad zum Review, dann **„Fix the issues, commit if needed, then press Enter to retry“**.
+- Du fixst (oder lässt fixen), committest, drückst Enter → nächster Lauf.
+- Erst wenn der komplette Check durchläuft (inkl. AI-Review alle Chunks ≥95%), beendet sich das Skript mit Exit 0.
+- `--until-95` und `--chunk=...` dürfen nicht zusammen verwendet werden (Full-Modus = alle Chunks).
+
 ---
 
 ## Schritt 1: Sauberen Stand herstellen
