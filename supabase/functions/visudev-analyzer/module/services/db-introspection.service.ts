@@ -30,6 +30,14 @@ const FALLBACK_TABLES = [
   "films",
 ];
 
+/** Single-query fallback: table names + approximate row counts (avoids N+1). */
+const PG_STAT_TABLES_QUERY = `
+  SELECT relname AS table_name, n_live_tup::bigint AS row_count
+  FROM pg_stat_user_tables
+  WHERE schemaname = 'public'
+  ORDER BY relname;
+`;
+
 export class DbIntrospectionService extends BaseService {
   public async introspectDatabase(): Promise<DbSchema> {
     this.logger.info("Introspecting database schema");
@@ -59,24 +67,49 @@ export class DbIntrospectionService extends BaseService {
   }
 
   private async fallbackIntrospection(): Promise<DbSchema> {
-    const tables: DbTable[] = [];
+    const { data: statData, error: statError } = await this.supabase.rpc<
+      unknown
+    >(
+      "exec_sql",
+      { sql: PG_STAT_TABLES_QUERY },
+    );
 
-    for (const tableName of FALLBACK_TABLES) {
-      const { count, error } = await this.supabase
-        .from(tableName)
-        .select("*", { count: "exact", head: true });
-
-      if (error || count === null) {
-        continue;
-      }
-
-      tables.push({
-        name: tableName,
-        columns: [],
-        rowCount: count,
+    if (!statError && Array.isArray(statData) && statData.length > 0) {
+      const tables: DbTable[] = statData
+        .filter((r) => {
+          if (!r || typeof r !== "object") return false;
+          const row = r as Record<string, unknown>;
+          const name = row.table_name;
+          return name != null && !String(name).startsWith("kv_store");
+        })
+        .map((r) => {
+          const row = r as Record<string, unknown>;
+          const name = String(row.table_name ?? "");
+          const rowCount = Number(row.row_count) || 0;
+          return { name, columns: [] as DbColumn[], rowCount };
+        });
+      this.logger.info("Schema introspection (pg_stat) complete", {
+        tables: tables.length,
       });
-      this.logger.info("Table detected", { tableName, rowCount: count });
+      return {
+        tables,
+        timestamp: new Date().toISOString(),
+      };
     }
+
+    // Last-resort when RPC unavailable: parallel count queries (no sequential N+1).
+    const results = await Promise.all(
+      FALLBACK_TABLES.map(async (tableName) => {
+        const { count, error } = await this.supabase
+          .from(tableName)
+          .select("*", { count: "exact", head: true });
+        if (error || count === null) return null;
+        return { name: tableName, columns: [] as DbColumn[], rowCount: count };
+      }),
+    );
+    const tables: DbTable[] = results.filter(
+      (row): row is DbTable => row !== null,
+    );
 
     return {
       tables,

@@ -17,6 +17,7 @@ export class LogsRepository extends BaseService {
     return this.getValue<LogResponseDto>(this.getKey(projectId, logId));
   }
 
+  /** Stores log with id so deleteAllLogs can build KV keys from log.id. */
   public async createLog(
     projectId: string,
     payload: CreateLogDto,

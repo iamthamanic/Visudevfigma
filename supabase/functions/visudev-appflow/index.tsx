@@ -5,13 +5,21 @@
  * @created 2025-11-06T12:00:00.000Z
  * @updated 2025-11-06T12:00:00.000Z
  *
- * @description Flow trace visualization and UI-to-code mapping API
+ * @description Flow trace visualization and UI-to-code mapping API.
+ * IDOR: All routes are project-scoped; middleware enforces project ownership (JWT must match project.ownerId).
  */
 
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { createClient } from "@jsr/supabase__supabase-js";
+import { z } from "zod";
+
+const flowBodySchema = z.record(z.unknown()).refine(
+  (obj) => JSON.stringify(obj).length <= 100_000,
+  { message: "Flow payload too large" },
+);
 
 // KV Store Implementation (inline for Dashboard compatibility)
 const kvClient = () =>
@@ -74,6 +82,43 @@ app.use(
   }),
 );
 
+async function getUserIdOptional(c: Context): Promise<string | null> {
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = authHeader.slice(7).trim();
+  if (!token) return null;
+  try {
+    const supabase = kvClient();
+    const { data } = await supabase.auth.getUser(token);
+    return data?.user?.id ?? null;
+  } catch (e) {
+    console.warn("[getUserIdOptional] auth.getUser failed", {
+      message: e instanceof Error ? e.message : String(e),
+    });
+    return null;
+  }
+}
+
+async function getProjectOwnerId(projectId: string): Promise<string | null> {
+  const project = await kvGet(`project:${projectId}`) as
+    | { ownerId?: string }
+    | null
+    | undefined;
+  return project?.ownerId ?? null;
+}
+
+app.use("*", async (c, next) => {
+  const projectId = c.req.param("projectId");
+  if (!projectId) return next();
+  const ownerId = await getProjectOwnerId(projectId);
+  if (ownerId == null) return next();
+  const userId = await getUserIdOptional(c);
+  if (userId === null || userId !== ownerId) {
+    return c.json({ success: false, error: "Forbidden" }, 403);
+  }
+  return next();
+});
+
 // Get flows for project
 app.get("/:projectId", async (c) => {
   try {
@@ -106,8 +151,13 @@ app.get("/:projectId/:flowId", async (c) => {
 app.post("/:projectId", async (c) => {
   try {
     const projectId = c.req.param("projectId");
-    const body = await c.req.json();
-    const flowId = body.flowId || crypto.randomUUID();
+    const raw = await c.req.json();
+    const parsed = flowBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return c.json({ success: false, error: parsed.error.message }, 400);
+    }
+    const body = parsed.data as Record<string, unknown>;
+    const flowId = (body.flowId as string) || crypto.randomUUID();
     const flow = {
       ...body,
       flowId,
@@ -127,7 +177,12 @@ app.put("/:projectId/:flowId", async (c) => {
   try {
     const projectId = c.req.param("projectId");
     const flowId = c.req.param("flowId");
-    const body = await c.req.json();
+    const raw = await c.req.json();
+    const parsed = flowBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return c.json({ success: false, error: parsed.error.message }, 400);
+    }
+    const body = parsed.data as Record<string, unknown>;
     const existing = await kvGet(`appflow:${projectId}:${flowId}`);
     if (!existing) {
       return c.json({ success: false, error: "Flow not found" }, 404);

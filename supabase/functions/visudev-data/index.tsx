@@ -2,9 +2,11 @@
  * VisuDEV Edge Function: Data (DDD/DI Refactor)
  *
  * @version 2.0.0
- * @description Database schema, ERD, and migrations management API
+ * @description Database schema, ERD, and migrations management API.
+ * IDOR: All routes are project-scoped; middleware enforces project ownership (JWT must match project.ownerId).
  */
 
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createClient } from "@jsr/supabase__supabase-js";
@@ -36,6 +38,45 @@ const logger: LoggerLike = createLogger();
 const env = loadEnvConfig(logger);
 
 const supabase = createClient(env.supabaseUrl, env.supabaseServiceRoleKey);
+
+async function getUserIdOptional(c: Context): Promise<string | null> {
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = authHeader.slice(7).trim();
+  if (!token) return null;
+  try {
+    const { data } = await supabase.auth.getUser(token);
+    return data?.user?.id ?? null;
+  } catch (e) {
+    logger.warn("auth.getUser failed", {
+      message: e instanceof Error ? e.message : String(e),
+    });
+    return null;
+  }
+}
+
+async function getProjectOwnerId(projectId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from(env.kvTableName)
+    .select("value")
+    .eq("key", `project:${projectId}`)
+    .maybeSingle();
+  if (error) return null;
+  const value = data?.value as { ownerId?: string } | null;
+  return value?.ownerId ?? null;
+}
+
+app.use("*", async (c, next) => {
+  const projectId = c.req.param("projectId");
+  if (!projectId) return next();
+  const ownerId = await getProjectOwnerId(projectId);
+  if (ownerId == null) return next();
+  const userId = await getUserIdOptional(c);
+  if (userId === null || userId !== ownerId) {
+    return c.json({ success: false, error: "Forbidden" }, 403);
+  }
+  return next();
+});
 
 const dataModule = createDataModule({
   supabase,

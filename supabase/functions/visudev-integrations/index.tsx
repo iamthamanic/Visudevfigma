@@ -2,9 +2,12 @@
  * VisuDEV Edge Function: Integrations (DDD/DI Refactor)
  *
  * @version 2.0.0
- * @description Platform integrations (GitHub, Supabase, GitLab, etc.) API
+ * @description Platform integrations (GitHub, Supabase, GitLab, etc.) API.
+ * IDOR: All routes are project-scoped; middleware enforces project ownership (JWT must match project.ownerId).
+ * Data Leakage: Controller uses redactForResponse(); tokens/keys never sent to client.
  */
 
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createClient } from "@jsr/supabase__supabase-js";
@@ -37,6 +40,46 @@ const logger: LoggerLike = createLogger();
 const env = loadEnvConfig(logger);
 
 const supabase = createClient(env.supabaseUrl, env.supabaseServiceRoleKey);
+
+/** IDOR: require project ownership for all project-scoped routes. */
+async function getUserIdOptional(c: Context): Promise<string | null> {
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = authHeader.slice(7).trim();
+  if (!token) return null;
+  try {
+    const { data } = await supabase.auth.getUser(token);
+    return data?.user?.id ?? null;
+  } catch (e) {
+    logger.warn("auth.getUser failed", {
+      message: e instanceof Error ? e.message : String(e),
+    });
+    return null;
+  }
+}
+
+async function getProjectOwnerId(projectId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from(env.kvTableName)
+    .select("value")
+    .eq("key", `project:${projectId}`)
+    .maybeSingle();
+  if (error) return null;
+  const value = data?.value as { ownerId?: string } | null;
+  return value?.ownerId ?? null;
+}
+
+app.use("*", async (c, next) => {
+  const projectId = c.req.param("projectId");
+  if (!projectId) return next();
+  const ownerId = await getProjectOwnerId(projectId);
+  if (ownerId == null) return next();
+  const userId = await getUserIdOptional(c);
+  if (userId === null || userId !== ownerId) {
+    return c.json({ success: false, error: "Forbidden" }, 403);
+  }
+  return next();
+});
 
 const integrationsModule = createIntegrationsModule({
   supabase,

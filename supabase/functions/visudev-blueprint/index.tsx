@@ -5,9 +5,11 @@
  * @created 2025-11-06T12:00:00.000Z
  * @updated 2025-11-06T12:00:00.000Z
  *
- * @description Architecture blueprint and layer visualization API
+ * @description Architecture blueprint and layer visualization API.
+ * IDOR: All routes are project-scoped; middleware enforces project ownership (JWT must match project.ownerId).
  */
 
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
@@ -63,6 +65,43 @@ app.use(
     maxAge: 600,
   }),
 );
+
+async function getUserIdOptional(c: Context): Promise<string | null> {
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = authHeader.slice(7).trim();
+  if (!token) return null;
+  try {
+    const supabase = kvClient();
+    const { data } = await supabase.auth.getUser(token);
+    return data?.user?.id ?? null;
+  } catch (e) {
+    console.warn("[getUserIdOptional] auth.getUser failed", {
+      message: e instanceof Error ? e.message : String(e),
+    });
+    return null;
+  }
+}
+
+async function getProjectOwnerId(projectId: string): Promise<string | null> {
+  const project = await kvGet(`project:${projectId}`) as
+    | { ownerId?: string }
+    | null
+    | undefined;
+  return project?.ownerId ?? null;
+}
+
+app.use("*", async (c, next) => {
+  const projectId = c.req.param("projectId");
+  if (!projectId) return next();
+  const ownerId = await getProjectOwnerId(projectId);
+  if (ownerId == null) return next();
+  const userId = await getUserIdOptional(c);
+  if (userId === null || userId !== ownerId) {
+    return c.json({ success: false, error: "Forbidden" }, 403);
+  }
+  return next();
+});
 
 // Get blueprint for project
 app.get("/:projectId", async (c) => {
