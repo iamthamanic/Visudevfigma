@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Syncs setup changes (run-checks.sh, ai-code-review.sh, push-checked.sh, .githooks/pre-push) from this repo
 # into the shimwrappercheck repo and pushes. Use after extending the check or AI review setup.
+# Templates include: single-chunk AI review (AI_REVIEW_CHUNK, run-checks.sh --chunk=src|supabase|scripts).
 # Requires: shimwrappercheck repo clone, push access.
 # Usage: SHIMWRAPPER_REPO_PATH=/path/to/shimwrappercheck bash scripts/sync-shimwrapper-repo.sh
 #        or clone at ../shimwrappercheck (sibling of this repo).
