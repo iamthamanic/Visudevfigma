@@ -1,7 +1,77 @@
+/**
+ * Legacy monolith: KV, projects, appflow, blueprint, data, logs, account, integrations, scans. Splitting by domain (SRP) and injecting kv (DI) is planned.
+ * IDOR: getUserIdOptional + requireProjectOwner on all project-scoped routes; ownerId on POST /projects. Data Leakage: redactIntegrations on all GET/PUT integrations.
+ */
+import { createClient } from "@jsr/supabase__supabase-js";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { createClient } from "@jsr/supabase__supabase-js";
+import { z } from "zod";
+
+const createProjectBodySchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().max(500).optional(),
+}).passthrough();
+
+const createLogBodySchema = z.object({
+  message: z.string().max(10_000).optional(),
+  level: z.enum(["info", "warn", "error", "debug"]).optional(),
+}).passthrough();
+
+const updateIntegrationsBodySchema = z.record(z.unknown()).refine(
+  (obj) =>
+    Object.keys(obj).length <= 20 && JSON.stringify(obj).length <= 50_000,
+  { message: "Integrations payload too large" },
+);
+const updateAccountBodySchema = z.record(z.unknown()).refine(
+  (obj) => JSON.stringify(obj).length <= 20_000,
+  { message: "Account payload too large" },
+);
+
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX_LOGS_PER_WINDOW = 120;
+const RATE_MAX_PROJECTS_PER_WINDOW = 30;
+
+/** Returns true if under limit; otherwise false. Uses KV for sliding window. */
+async function checkRateLimit(
+  key: string,
+  maxPerWindow: number,
+): Promise<boolean> {
+  const raw = (await kv.get(key)) as
+    | { count?: number; windowStart?: string }
+    | null;
+  const now = Date.now();
+  const windowStartMs = raw?.windowStart
+    ? new Date(raw.windowStart).getTime()
+    : 0;
+  const inWindow = now - windowStartMs < RATE_WINDOW_MS;
+  const prevCount = inWindow && typeof raw?.count === "number" ? raw.count : 0;
+  const count = prevCount + 1;
+  if (count > maxPerWindow) return false;
+  const newWindowStart = inWindow
+    ? (raw?.windowStart ?? new Date(now).toISOString())
+    : new Date(now).toISOString();
+  await kv.set(key, { count, windowStart: newWindowStart });
+  return true;
+}
+
+// ==================== HELPERS ====================
+/** Redact sensitive fields before sending to client (Data Leakage prevention). Never return raw tokens/keys. */
+function redactIntegrations(data: unknown): Record<string, unknown> {
+  if (!data || typeof data !== "object") return {};
+  const out = { ...(data as Record<string, unknown>) };
+  if (out.github && typeof out.github === "object") {
+    out.github = { ...(out.github as Record<string, unknown>) };
+    (out.github as Record<string, unknown>).token = "***";
+  }
+  if (out.supabase && typeof out.supabase === "object") {
+    out.supabase = { ...(out.supabase as Record<string, unknown>) };
+    const s = out.supabase as Record<string, unknown>;
+    s.anonKey = "***";
+    s.serviceKey = "***";
+  }
+  return out;
+}
 
 // ==================== KV STORE ====================
 const kvClient = () =>
@@ -92,6 +162,47 @@ const kv = {
   },
 };
 
+/** Optional auth: returns user id from Bearer JWT or null (IDOR mitigation). */
+async function getUserIdOptional(
+  c: { req: { header: (name: string) => string | undefined } },
+): Promise<string | null> {
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = authHeader.slice(7).trim();
+  if (!token) return null;
+  const url = Deno.env.get("SUPABASE_URL");
+  const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !serviceRole) return null;
+  try {
+    const supabase = createClient(url, serviceRole);
+    const { data } = await supabase.auth.getUser(token);
+    return data?.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+type ProjectRecord = Record<string, unknown> & { ownerId?: string };
+
+/** Ownership check for project-scoped routes (IDOR mitigation). */
+async function requireProjectOwner(
+  c: Parameters<typeof getUserIdOptional>[0],
+  projectId: string,
+): Promise<
+  | { ok: true; project: ProjectRecord }
+  | { ok: false; status: 403 | 404 }
+> {
+  const project = (await kv.get(`project:${projectId}`)) as
+    | ProjectRecord
+    | null;
+  if (!project) return { ok: false, status: 404 };
+  const ownerId = project.ownerId;
+  if (ownerId == null) return { ok: true, project };
+  const userId = await getUserIdOptional(c);
+  if (userId === null || userId !== ownerId) return { ok: false, status: 403 };
+  return { ok: true, project };
+}
+
 const app = new Hono();
 
 // Enable logger
@@ -115,10 +226,16 @@ app.get("/health", (c) => {
 });
 
 // ==================== PROJECTS ====================
-// Get all projects
+// Get all projects (IDOR: filter by owner when JWT present)
 app.get("/projects", async (c) => {
   try {
-    const projects = await kv.getByPrefix("project:");
+    let projects = (await kv.getByPrefix("project:")) as ProjectRecord[];
+    const userId = await getUserIdOptional(c);
+    if (userId != null) {
+      projects = projects.filter(
+        (p) => p.ownerId == null || p.ownerId === userId,
+      );
+    }
     return c.json({ success: true, data: projects });
   } catch (error) {
     console.log(`Error fetching projects: ${error}`);
@@ -126,29 +243,50 @@ app.get("/projects", async (c) => {
   }
 });
 
-// Get single project
+// Get single project (IDOR: ownership required when project has ownerId)
 app.get("/projects/:id", async (c) => {
   try {
     const id = c.req.param("id");
-    const project = await kv.get(`project:${id}`);
-    if (!project) {
-      return c.json({ success: false, error: "Project not found" }, 404);
+    const own = await requireProjectOwner(c, id);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
     }
-    return c.json({ success: true, data: project });
+    return c.json({ success: true, data: own.project });
   } catch (error) {
     console.log(`Error fetching project: ${error}`);
     return c.json({ success: false, error: String(error) }, 500);
   }
 });
 
-// Create project
+// Create project (set ownerId from JWT when present)
 app.post("/projects", async (c) => {
   try {
-    const body = await c.req.json();
-    const id = body.id || crypto.randomUUID();
+    if (
+      !(await checkRateLimit(
+        "rate:projects:create",
+        RATE_MAX_PROJECTS_PER_WINDOW,
+      ))
+    ) {
+      return c.json({ success: false, error: "Rate limit exceeded" }, 429);
+    }
+    const raw = await c.req.json();
+    const parsed = createProjectBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return c.json({ success: false, error: parsed.error.message }, 400);
+    }
+    const body = parsed.data as Record<string, unknown>;
+    const id = (body.id as string) || crypto.randomUUID();
+    const ownerId = (await getUserIdOptional(c)) ?? undefined;
     const project = {
       ...body,
       id,
+      ownerId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -160,17 +298,23 @@ app.post("/projects", async (c) => {
   }
 });
 
-// Update project
+// Update project (IDOR: ownership required)
 app.put("/projects/:id", async (c) => {
   try {
     const id = c.req.param("id");
-    const body = await c.req.json();
-    const existing = await kv.get(`project:${id}`);
-    if (!existing) {
-      return c.json({ success: false, error: "Project not found" }, 404);
+    const own = await requireProjectOwner(c, id);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
     }
+    const body = await c.req.json();
     const updated = {
-      ...existing,
+      ...own.project,
       ...body,
       id,
       updatedAt: new Date().toISOString(),
@@ -183,10 +327,20 @@ app.put("/projects/:id", async (c) => {
   }
 });
 
-// Delete project
+// Delete project (IDOR: ownership required)
 app.delete("/projects/:id", async (c) => {
   try {
     const id = c.req.param("id");
+    const own = await requireProjectOwner(c, id);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     await kv.del(`project:${id}`);
     return c.json({ success: true });
   } catch (error) {
@@ -196,10 +350,20 @@ app.delete("/projects/:id", async (c) => {
 });
 
 // ==================== APP FLOW ====================
-// Get flows for project
+// Get flows for project (IDOR: ownership check)
 app.get("/appflow/:projectId", async (c) => {
   try {
     const projectId = c.req.param("projectId");
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     const flows = await kv.getByPrefix(`appflow:${projectId}:`);
     return c.json({ success: true, data: flows });
   } catch (error) {
@@ -208,10 +372,20 @@ app.get("/appflow/:projectId", async (c) => {
   }
 });
 
-// Get single flow
+// Get single flow (IDOR: ownership check)
 app.get("/appflow/:projectId/:flowId", async (c) => {
   try {
     const projectId = c.req.param("projectId");
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     const flowId = c.req.param("flowId");
     const flow = await kv.get(`appflow:${projectId}:${flowId}`);
     if (!flow) {
@@ -224,10 +398,20 @@ app.get("/appflow/:projectId/:flowId", async (c) => {
   }
 });
 
-// Create flow
+// Create flow (IDOR: ownership check)
 app.post("/appflow/:projectId", async (c) => {
   try {
     const projectId = c.req.param("projectId");
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     const body = await c.req.json();
     const flowId = body.flowId || crypto.randomUUID();
     const flow = {
@@ -244,10 +428,20 @@ app.post("/appflow/:projectId", async (c) => {
   }
 });
 
-// Delete flow
+// Delete flow (IDOR: ownership check)
 app.delete("/appflow/:projectId/:flowId", async (c) => {
   try {
     const projectId = c.req.param("projectId");
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     const flowId = c.req.param("flowId");
     await kv.del(`appflow:${projectId}:${flowId}`);
     return c.json({ success: true });
@@ -258,10 +452,20 @@ app.delete("/appflow/:projectId/:flowId", async (c) => {
 });
 
 // ==================== BLUEPRINT ====================
-// Get blueprint for project
+// Get blueprint for project (IDOR: ownership check)
 app.get("/blueprint/:projectId", async (c) => {
   try {
     const projectId = c.req.param("projectId");
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     const blueprint = await kv.get(`blueprint:${projectId}`);
     return c.json({ success: true, data: blueprint || {} });
   } catch (error) {
@@ -270,10 +474,20 @@ app.get("/blueprint/:projectId", async (c) => {
   }
 });
 
-// Update blueprint
+// Update blueprint (IDOR: ownership check)
 app.put("/blueprint/:projectId", async (c) => {
   try {
     const projectId = c.req.param("projectId");
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     const body = await c.req.json();
     const blueprint = {
       ...body,
@@ -289,10 +503,20 @@ app.put("/blueprint/:projectId", async (c) => {
 });
 
 // ==================== DATA ====================
-// Get schema for project
+// Get schema for project (IDOR: ownership check)
 app.get("/data/:projectId/schema", async (c) => {
   try {
     const projectId = c.req.param("projectId");
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     const schema = await kv.get(`data:${projectId}:schema`);
     return c.json({ success: true, data: schema || {} });
   } catch (error) {
@@ -301,10 +525,20 @@ app.get("/data/:projectId/schema", async (c) => {
   }
 });
 
-// Update schema
+// Update schema (IDOR: ownership check)
 app.put("/data/:projectId/schema", async (c) => {
   try {
     const projectId = c.req.param("projectId");
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     const body = await c.req.json();
     const schema = {
       ...body,
@@ -319,10 +553,20 @@ app.put("/data/:projectId/schema", async (c) => {
   }
 });
 
-// Get migrations for project
+// Get migrations for project (IDOR: ownership check)
 app.get("/data/:projectId/migrations", async (c) => {
   try {
     const projectId = c.req.param("projectId");
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     const migrations = await kv.get(`data:${projectId}:migrations`);
     return c.json({ success: true, data: migrations || [] });
   } catch (error) {
@@ -331,10 +575,20 @@ app.get("/data/:projectId/migrations", async (c) => {
   }
 });
 
-// Update migrations
+// Update migrations (IDOR: ownership check)
 app.put("/data/:projectId/migrations", async (c) => {
   try {
     const projectId = c.req.param("projectId");
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     const body = await c.req.json();
     await kv.set(`data:${projectId}:migrations`, body);
     return c.json({ success: true, data: body });
@@ -345,10 +599,20 @@ app.put("/data/:projectId/migrations", async (c) => {
 });
 
 // ==================== LOGS ====================
-// Get logs for project
+// Get logs for project (IDOR: ownership check)
 app.get("/logs/:projectId", async (c) => {
   try {
     const projectId = c.req.param("projectId");
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     const logs = await kv.getByPrefix(`logs:${projectId}:`);
     return c.json({ success: true, data: logs });
   } catch (error) {
@@ -357,18 +621,43 @@ app.get("/logs/:projectId", async (c) => {
   }
 });
 
-// Create log entry
+// Create log entry (IDOR: ownership check)
 app.post("/logs/:projectId", async (c) => {
   try {
     const projectId = c.req.param("projectId");
-    const body = await c.req.json();
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
+    if (
+      !(await checkRateLimit(
+        `rate:logs:${projectId}`,
+        RATE_MAX_LOGS_PER_WINDOW,
+      ))
+    ) {
+      return c.json({ success: false, error: "Rate limit exceeded" }, 429);
+    }
+    const raw = await c.req.json();
+    const parsed = createLogBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return c.json({ success: false, error: parsed.error.message }, 400);
+    }
+    const body = parsed.data as Record<string, unknown>;
     const timestamp = new Date().toISOString();
     const logId = `${timestamp}:${crypto.randomUUID()}`;
     const log = {
       ...body,
+      id: logId,
       projectId,
       timestamp,
     };
+    // id stored so DELETE /logs/:projectId can build KV keys (logs:projectId:id)
     await kv.set(`logs:${projectId}:${logId}`, log);
     return c.json({ success: true, data: log });
   } catch (error) {
@@ -377,15 +666,26 @@ app.post("/logs/:projectId", async (c) => {
   }
 });
 
-// Delete logs for project
+// Delete logs for project (IDOR: ownership check)
 app.delete("/logs/:projectId", async (c) => {
   try {
     const projectId = c.req.param("projectId");
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     const logs = await kv.getByPrefix(`logs:${projectId}:`);
-    const keys = logs.map(
-      (log: { timestamp?: string; id?: string }) =>
-        `logs:${projectId}:${log.timestamp}:${log.id}`,
-    );
+    const keys = logs
+      .map((log: { id?: string }) =>
+        log?.id ? `logs:${projectId}:${log.id}` : null
+      )
+      .filter((k): k is string => k != null);
     if (keys.length > 0) {
       await kv.mdel(keys);
     }
@@ -413,7 +713,15 @@ app.get("/account/:userId", async (c) => {
 app.put("/account/:userId", async (c) => {
   try {
     const userId = c.req.param("userId");
-    const body = await c.req.json();
+    if (!(await checkRateLimit(`rate:account:${userId}`, 30))) {
+      return c.json({ success: false, error: "Rate limit exceeded" }, 429);
+    }
+    const raw = await c.req.json();
+    const parsed = updateAccountBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return c.json({ success: false, error: parsed.error.message }, 400);
+    }
+    const body = parsed.data as Record<string, unknown>;
     const account = {
       ...body,
       userId,
@@ -428,40 +736,81 @@ app.put("/account/:userId", async (c) => {
 });
 
 // ==================== INTEGRATIONS ====================
-// Get integrations for project
+// Get integrations for project (IDOR: ownership check; Data Leakage: redactIntegrations)
 app.get("/integrations/:projectId", async (c) => {
   try {
     const projectId = c.req.param("projectId");
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     const integrations = await kv.get(`integrations:${projectId}`);
-    return c.json({ success: true, data: integrations || {} });
+    return c.json({
+      success: true,
+      data: redactIntegrations(integrations ?? {}),
+    });
   } catch (error) {
     console.log(`Error fetching integrations: ${error}`);
     return c.json({ success: false, error: String(error) }, 500);
   }
 });
 
-// Update integrations (GitHub, Supabase, etc.)
+// Update integrations (IDOR: ownership check; GitHub, Supabase, etc.)
 app.put("/integrations/:projectId", async (c) => {
   try {
     const projectId = c.req.param("projectId");
-    const body = await c.req.json();
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
+    if (!(await checkRateLimit(`rate:integrations:${projectId}`, 30))) {
+      return c.json({ success: false, error: "Rate limit exceeded" }, 429);
+    }
+    const raw = await c.req.json();
+    const parsed = updateIntegrationsBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return c.json({ success: false, error: parsed.error.message }, 400);
+    }
+    const body = parsed.data as Record<string, unknown>;
     const integrations = {
       ...body,
       projectId,
       updatedAt: new Date().toISOString(),
     };
     await kv.set(`integrations:${projectId}`, integrations);
-    return c.json({ success: true, data: integrations });
+    return c.json({ success: true, data: redactIntegrations(integrations) });
   } catch (error) {
     console.log(`Error updating integrations: ${error}`);
     return c.json({ success: false, error: String(error) }, 500);
   }
 });
 
-// GitHub: Get repositories
+// GitHub: Get repositories (IDOR: ownership check)
 app.get("/integrations/:projectId/github/repos", async (c) => {
   try {
     const projectId = c.req.param("projectId");
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     const integrations = await kv.get(`integrations:${projectId}`);
 
     if (!integrations?.github?.token) {
@@ -487,10 +836,20 @@ app.get("/integrations/:projectId/github/repos", async (c) => {
   }
 });
 
-// GitHub: Get file content
+// GitHub: Get file content (IDOR: ownership check)
 app.get("/integrations/:projectId/github/content", async (c) => {
   try {
     const projectId = c.req.param("projectId");
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     const owner = c.req.query("owner");
     const repo = c.req.query("repo");
     const path = c.req.query("path");
@@ -528,10 +887,20 @@ app.get("/integrations/:projectId/github/content", async (c) => {
   }
 });
 
-// Supabase: Get project info
+// Supabase: Get project info (IDOR: ownership check; no raw keys in response)
 app.get("/integrations/:projectId/supabase/info", async (c) => {
   try {
     const projectId = c.req.param("projectId");
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     const integrations = await kv.get(`integrations:${projectId}`);
 
     if (!integrations?.supabase?.url || !integrations?.supabase?.serviceKey) {
@@ -554,10 +923,20 @@ app.get("/integrations/:projectId/supabase/info", async (c) => {
 });
 
 // ==================== SCANS ====================
-// Get scan status for a project
+// Get scan status for a project (IDOR: ownership check)
 app.get("/scans/:projectId/status", async (c) => {
   try {
     const projectId = c.req.param("projectId");
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
+    }
     const appflowStatus = await kv.get(`scan:${projectId}:appflow`);
     const blueprintStatus = await kv.get(`scan:${projectId}:blueprint`);
     const dataStatus = await kv.get(`scan:${projectId}:data`);
@@ -576,19 +955,22 @@ app.get("/scans/:projectId/status", async (c) => {
   }
 });
 
-// Start AppFlow scan
+// Start AppFlow scan (IDOR: ownership check)
 app.post("/scans/:projectId/appflow", async (c) => {
   try {
     const projectId = c.req.param("projectId");
-    console.log(`[AppFlow Scan] Starting scan for project: ${projectId}`);
-
-    const project = await kv.get(`project:${projectId}`);
-    console.log(`[AppFlow Scan] Project data:`, project);
-
-    if (!project) {
-      console.log(`[AppFlow Scan] Project not found: ${projectId}`);
-      return c.json({ success: false, error: "Project not found" }, 404);
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
     }
+    const project = own.project;
+    console.log(`[AppFlow Scan] Starting scan for project: ${projectId}`);
 
     // For now, allow scan even without github_repo (we'll use sample data)
     if (!project.github_repo) {
@@ -775,14 +1157,21 @@ app.post("/scans/:projectId/appflow", async (c) => {
 });
 
 // Start Blueprint scan
+// Start Blueprint scan (IDOR: ownership check)
 app.post("/scans/:projectId/blueprint", async (c) => {
   try {
     const projectId = c.req.param("projectId");
-    const project = await kv.get(`project:${projectId}`);
-
-    if (!project) {
-      return c.json({ success: false, error: "Project not found" }, 404);
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
     }
+    const project = own.project;
 
     if (!project.github_repo) {
       return c.json(
@@ -853,14 +1242,21 @@ app.post("/scans/:projectId/blueprint", async (c) => {
 });
 
 // Start Data scan
+// Start Data scan (IDOR: ownership check)
 app.post("/scans/:projectId/data", async (c) => {
   try {
     const projectId = c.req.param("projectId");
-    const project = await kv.get(`project:${projectId}`);
-
-    if (!project) {
-      return c.json({ success: false, error: "Project not found" }, 404);
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
     }
+    const project = own.project;
 
     if (!project.supabase_project_id) {
       return c.json(
@@ -930,14 +1326,21 @@ app.post("/scans/:projectId/data", async (c) => {
 });
 
 // Start all scans for a project
+// Start all scans (IDOR: ownership check)
 app.post("/scans/:projectId/all", async (c) => {
   try {
     const projectId = c.req.param("projectId");
-    const project = await kv.get(`project:${projectId}`);
-
-    if (!project) {
-      return c.json({ success: false, error: "Project not found" }, 404);
+    const own = await requireProjectOwner(c, projectId);
+    if (!own.ok) {
+      return c.json(
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
+        own.status,
+      );
     }
+    const project = own.project;
 
     const results = {
       appflow: false,
