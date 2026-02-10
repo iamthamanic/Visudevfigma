@@ -20,7 +20,8 @@ export class ProjectsService extends BaseService {
     const all = await this.repository.listProjects();
     if (userId == null) return all;
     return all.filter(
-      (p) => (p as { ownerId?: string }).ownerId == null ||
+      (p) =>
+        (p as { ownerId?: string }).ownerId == null ||
         (p as { ownerId?: string }).ownerId === userId,
     );
   }

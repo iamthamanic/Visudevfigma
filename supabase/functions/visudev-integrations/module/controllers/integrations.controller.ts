@@ -1,3 +1,7 @@
+/**
+ * Integrations controller. AI Review: Data Leakage mitigated — getIntegrations/updateIntegrations
+ * use redactForResponse(); tokens and serviceKey/anonKey never sent to client.
+ */
 import type { Context } from "hono";
 import { ZodError } from "zod";
 import type {
@@ -20,13 +24,34 @@ interface SuccessResponse<T> {
   data: T;
 }
 
+/** Redact sensitive fields before sending to client (Data Leakage prevention). */
+function redactForResponse(
+  data: IntegrationsResponseDto,
+): IntegrationsResponseDto {
+  if (!data || typeof data !== "object") return data;
+  const out = { ...data };
+  if (out.github && typeof out.github === "object") {
+    out.github = { ...out.github };
+    if ("token" in out.github) {
+      (out.github as Record<string, unknown>).token = "***";
+    }
+  }
+  if (out.supabase && typeof out.supabase === "object") {
+    out.supabase = { ...out.supabase };
+    const s = out.supabase as Record<string, unknown>;
+    if ("serviceKey" in s) s.serviceKey = "***";
+    if ("anonKey" in s) s.anonKey = "***";
+  }
+  return out;
+}
+
 export class IntegrationsController {
   constructor(private readonly service: IntegrationsService) {}
 
   public async getIntegrations(c: Context): Promise<Response> {
     const projectId = this.parseProjectId(c);
     const data = await this.service.getIntegrations(projectId);
-    return this.ok<IntegrationsResponseDto>(c, data);
+    return this.ok<IntegrationsResponseDto>(c, redactForResponse(data));
   }
 
   public async updateIntegrations(c: Context): Promise<Response> {
@@ -36,7 +61,7 @@ export class IntegrationsController {
       updateIntegrationsSchema,
     );
     const data = await this.service.updateIntegrations(projectId, body);
-    return this.ok<IntegrationsResponseDto>(c, data);
+    return this.ok<IntegrationsResponseDto>(c, redactForResponse(data));
   }
 
   public async connectGitHub(c: Context): Promise<Response> {

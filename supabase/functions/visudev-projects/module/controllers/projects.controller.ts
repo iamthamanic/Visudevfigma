@@ -41,7 +41,8 @@ export class ProjectsController {
       throw new NotFoundException("Project");
     }
     const userId = await getUserIdOptional(c);
-    const ownerId = (project as ProjectResponseDto & { ownerId?: string }).ownerId;
+    const ownerId =
+      (project as ProjectResponseDto & { ownerId?: string }).ownerId;
     if (ownerId != null && (userId === null || userId !== ownerId)) {
       throw new ForbiddenException("Not authorized to access this project");
     }
@@ -69,7 +70,8 @@ export class ProjectsController {
       throw new NotFoundException("Project");
     }
     const userId = await getUserIdOptional(c);
-    const ownerId = (project as ProjectResponseDto & { ownerId?: string }).ownerId;
+    const ownerId =
+      (project as ProjectResponseDto & { ownerId?: string }).ownerId;
     if (ownerId != null && (userId === null || userId !== ownerId)) {
       throw new ForbiddenException("Not authorized to access this project");
     }
@@ -89,7 +91,8 @@ export class ProjectsController {
       throw new NotFoundException("Project");
     }
     const userId = await getUserIdOptional(c);
-    const ownerId = (project as ProjectResponseDto & { ownerId?: string }).ownerId;
+    const ownerId =
+      (project as ProjectResponseDto & { ownerId?: string }).ownerId;
     if (ownerId != null && (userId === null || userId !== ownerId)) {
       throw new ForbiddenException("Not authorized to access this project");
     }

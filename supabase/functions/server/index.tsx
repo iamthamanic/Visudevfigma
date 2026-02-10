@@ -109,7 +109,9 @@ async function requireProjectOwner(
   | { ok: true; project: ProjectRecord }
   | { ok: false; status: 403 | 404 }
 > {
-  const project = (await kv.get(`project:${projectId}`)) as ProjectRecord | null;
+  const project = (await kv.get(`project:${projectId}`)) as
+    | ProjectRecord
+    | null;
   if (!project) return { ok: false, status: 404 };
   const ownerId = project.ownerId;
   if (ownerId == null) return { ok: true, project };
@@ -148,7 +150,9 @@ app.get("/projects", async (c) => {
     const userId = await getUserIdOptional(c);
     if (userId != null) {
       projects = projects.filter(
-        (p) => (p as ProjectRecord).ownerId == null || (p as ProjectRecord).ownerId === userId,
+        (p) =>
+          (p as ProjectRecord).ownerId == null ||
+          (p as ProjectRecord).ownerId === userId,
       );
     }
     return c.json({ success: true, data: projects });
@@ -165,7 +169,10 @@ app.get("/projects/:id", async (c) => {
     const own = await requireProjectOwner(c, id);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -217,7 +224,10 @@ app.put("/projects/:id", async (c) => {
     const own = await requireProjectOwner(c, id);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -243,7 +253,10 @@ app.delete("/projects/:id", async (c) => {
     const own = await requireProjectOwner(c, id);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -263,7 +276,10 @@ app.get("/appflow/:projectId", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -282,7 +298,10 @@ app.get("/appflow/:projectId/:flowId", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -305,7 +324,10 @@ app.post("/appflow/:projectId", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -332,7 +354,10 @@ app.delete("/appflow/:projectId/:flowId", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -353,7 +378,10 @@ app.get("/blueprint/:projectId", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -372,7 +400,10 @@ app.put("/blueprint/:projectId", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -398,7 +429,10 @@ app.get("/data/:projectId/schema", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -417,7 +451,10 @@ app.put("/data/:projectId/schema", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -442,7 +479,10 @@ app.get("/data/:projectId/migrations", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -461,7 +501,10 @@ app.put("/data/:projectId/migrations", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -482,7 +525,10 @@ app.get("/logs/:projectId", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -501,7 +547,10 @@ app.post("/logs/:projectId", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -543,7 +592,10 @@ app.delete("/logs/:projectId", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -612,7 +664,10 @@ app.get("/integrations/:projectId", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -634,7 +689,10 @@ app.put("/integrations/:projectId", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -669,7 +727,10 @@ app.get("/integrations/:projectId/github/repos", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -705,7 +766,10 @@ app.get("/integrations/:projectId/github/content", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -753,7 +817,10 @@ app.get("/integrations/:projectId/supabase/info", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -786,7 +853,10 @@ app.get("/scans/:projectId/status", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -815,7 +885,10 @@ app.post("/scans/:projectId/appflow", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -933,7 +1006,10 @@ app.post("/scans/:projectId/blueprint", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -1014,7 +1090,10 @@ app.post("/scans/:projectId/data", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }
@@ -1094,7 +1173,10 @@ app.post("/scans/:projectId/all", async (c) => {
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
-        { success: false, error: own.status === 404 ? "Project not found" : "Forbidden" },
+        {
+          success: false,
+          error: own.status === 404 ? "Project not found" : "Forbidden",
+        },
         own.status,
       );
     }

@@ -1,7 +1,7 @@
 # Supabase config (Repo-Root, Standard-Layout für Backup/Restore)
 # https://supabase.com/docs/guides/functions/function-configuration
 # Edge Functions: entrypoint index.tsx
-# verify_jwt = false: Gateway prüft kein JWT; Auth ggf. in der Function (Bearer + getUser).
+# verify_jwt = false: Gateway prüft kein JWT; Auth/Ownership in Handlern. server + visudev-projects: IDOR mitigation via getUserIdOptional/requireProjectOwner (ownerId) in handlers.
 
 [functions.visudev-analyzer]
 entrypoint = "./functions/visudev-analyzer/index.tsx"
