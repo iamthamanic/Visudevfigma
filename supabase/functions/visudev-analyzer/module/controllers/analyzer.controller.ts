@@ -7,7 +7,11 @@ import type {
   ScreenshotRequestDto,
   ScreenshotResponseDto,
 } from "../dto/index.ts";
-import { ValidationException } from "../internal/exceptions/index.ts";
+import {
+  ForbiddenException,
+  ValidationException,
+} from "../internal/exceptions/index.ts";
+import { getUserIdOptional } from "../internal/helpers/auth-helper.ts";
 import { AnalysisService } from "../services/analysis.service.ts";
 import { ScreenshotService } from "../services/screenshot.service.ts";
 import type { SuccessResponse } from "../types/index.ts";
@@ -40,7 +44,12 @@ export class AnalyzerController {
     return this.ok<AnalysisResultDto>(c, result);
   }
 
+  /** IDOR: require JWT so only authenticated callers can fetch analysis by id. */
   public async getAnalysis(c: Context): Promise<Response> {
+    const userId = await getUserIdOptional(c);
+    if (userId === null) {
+      throw new ForbiddenException("Not authorized to access analysis");
+    }
     const id = this.parseId(c);
     const analysis = await this.analysisService.getAnalysis(id);
     return this.ok<AnalysisRecord>(c, analysis);

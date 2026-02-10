@@ -18,12 +18,13 @@ export class ProjectsRepository extends BaseService {
 
   public async createProject(
     id: string,
-    payload: CreateProjectDto,
+    payload: CreateProjectDto & { ownerId?: string },
   ): Promise<ProjectResponseDto> {
     const now = new Date().toISOString();
     const project: ProjectResponseDto = {
       ...payload,
       id,
+      ownerId: payload.ownerId,
       createdAt: now,
       updatedAt: now,
     };

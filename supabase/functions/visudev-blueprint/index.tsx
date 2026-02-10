@@ -14,6 +14,21 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { createClient } from "@jsr/supabase__supabase-js";
+import { z } from "zod";
+
+const MAX_BLUEPRINT_BODY_BYTES = 500_000;
+
+const blueprintPutBodySchema = z
+  .record(z.unknown())
+  .refine(
+    (obj) =>
+      new TextEncoder().encode(JSON.stringify(obj)).length <=
+        MAX_BLUEPRINT_BODY_BYTES,
+    {
+      message:
+        `Blueprint body must be at most ${MAX_BLUEPRINT_BODY_BYTES} bytes`,
+    },
+  );
 
 // KV Store Implementation (inline for Dashboard compatibility)
 const kvClient = () =>
@@ -117,11 +132,19 @@ app.get("/:projectId", async (c) => {
   }
 });
 
-// Update blueprint
+// Update blueprint (input validated with Zod to avoid invalid payloads and size abuse)
 app.put("/:projectId", async (c) => {
   try {
     const projectId = c.req.param("projectId");
-    const body = await c.req.json();
+    const raw = await c.req.json();
+    const parseResult = blueprintPutBodySchema.safeParse(raw);
+    if (!parseResult.success) {
+      return c.json(
+        { success: false, error: parseResult.error.message },
+        400,
+      );
+    }
+    const body = parseResult.data;
     const blueprint = {
       ...body,
       projectId,
