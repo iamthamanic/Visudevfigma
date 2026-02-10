@@ -177,7 +177,10 @@ async function getUserIdOptional(
     const supabase = createClient(url, serviceRole);
     const { data } = await supabase.auth.getUser(token);
     return data?.user?.id ?? null;
-  } catch {
+  } catch (e) {
+    console.warn("[getUserIdOptional] auth.getUser failed", {
+      message: e instanceof Error ? e.message : String(e),
+    });
     return null;
   }
 }
@@ -697,10 +700,14 @@ app.delete("/logs/:projectId", async (c) => {
 });
 
 // ==================== ACCOUNT ====================
-// Get account settings
+// Get account (IDOR: only owner can read; require JWT matching userId)
 app.get("/account/:userId", async (c) => {
   try {
     const userId = c.req.param("userId");
+    const authUserId = await getUserIdOptional(c);
+    if (authUserId === null || authUserId !== userId) {
+      return c.json({ success: false, error: "Forbidden" }, 403);
+    }
     const account = await kv.get(`account:${userId}`);
     return c.json({ success: true, data: account || {} });
   } catch (error) {
@@ -709,10 +716,14 @@ app.get("/account/:userId", async (c) => {
   }
 });
 
-// Update account settings
+// Update account settings (IDOR: only owner can update)
 app.put("/account/:userId", async (c) => {
   try {
     const userId = c.req.param("userId");
+    const authUserId = await getUserIdOptional(c);
+    if (authUserId === null || authUserId !== userId) {
+      return c.json({ success: false, error: "Forbidden" }, 403);
+    }
     if (!(await checkRateLimit(`rate:account:${userId}`, 30))) {
       return c.json({ success: false, error: "Rate limit exceeded" }, 429);
     }
