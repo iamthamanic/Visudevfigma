@@ -49,23 +49,23 @@ Empfohlene **Reihenfolge nach Wirkung**:
 
 ### A) Zuerst: **src**-Chunk (größte Abzüge, klare Fixes)
 
-| Abzug        | Fix |
-|-------------|-----|
-| IDOR −25    | **visudev-projects in src angleichen**: Controller + ggf. Service/Repo so wie in `supabase/functions/visudev-projects` (getUserIdOptional, listProjects(userId), Ownership bei get/update/delete). |
-| DataLeakage −20 | Sicherstellen, dass **Integrations-Redaction** im src-Mirror sichtbar ist (Controller-Kommentar + `redactForResponse`); ggf. gleichen Kommentar wie in supabase oben in die Datei. |
-| Rest (SRP, DI, Rate Limit, Input) | Optional später; erst wenn IDOR/DataLeakage weg sind. |
+| Abzug                             | Fix                                                                                                                                                                                                |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| IDOR −25                          | **visudev-projects in src angleichen**: Controller + ggf. Service/Repo so wie in `supabase/functions/visudev-projects` (getUserIdOptional, listProjects(userId), Ownership bei get/update/delete). |
+| DataLeakage −20                   | Sicherstellen, dass **Integrations-Redaction** im src-Mirror sichtbar ist (Controller-Kommentar + `redactForResponse`); ggf. gleichen Kommentar wie in supabase oben in die Datei.                 |
+| Rest (SRP, DI, Rate Limit, Input) | Optional später; erst wenn IDOR/DataLeakage weg sind.                                                                                                                                              |
 
 Nach den Fixes: **commit + push**, dann **Full-Review** ausführen.
 
 ### B) Danach: **scripts**-Chunk
 
-| Abzug           | Fix |
-|----------------|-----|
-| SilentFails −15 | In `supabase-checked.sh`: `|| true` bei ping/fetch-edge durch **Logging** ersetzen (z. B. `|| { echo "Warning: ..." >&2; }`), keine stillen Ignores. |
-| InputValidation −15 | In `scripts/smoke/analyzer.sh`: **Escaping/Validierung** für `--repo`, `--branch`, `--github-token` vor dem Einbau in den Python-Heredoc (keine rohe Interpolation). |
-| SideEffects −10 | In `supabase-checked.sh` **dokumentieren**, wann `git push` ausgeführt wird (z. B. Kommentar + ggf. Env-Flag wie `SUPABASE_AUTO_PUSH`), damit es kein „unerwarteter“ Side-Effect ist. |
-| EdgeCases −10  | `scripts/dev-auto.js`: Port-Clamp (z. B. max 65535), ggf. `net.listen` in try/catch. |
-| SRP/DI         | Optional; aufwändiger (Skripte aufteilen, Abhängigkeiten injizierbar machen). |
+| Abzug               | Fix                                                                                                                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ----------------------------------------------------------- | --- | ------------------------------------------------------ |
+| SilentFails −15     | In `supabase-checked.sh`: `                                                                                                                                                           |     | true`bei ping/fetch-edge durch **Logging** ersetzen (z. B.` |     | { echo "Warning: ..." >&2; }`), keine stillen Ignores. |
+| InputValidation −15 | In `scripts/smoke/analyzer.sh`: **Escaping/Validierung** für `--repo`, `--branch`, `--github-token` vor dem Einbau in den Python-Heredoc (keine rohe Interpolation).                  |
+| SideEffects −10     | In `supabase-checked.sh` **dokumentieren**, wann `git push` ausgeführt wird (z. B. Kommentar + ggf. Env-Flag wie `SUPABASE_AUTO_PUSH`), damit es kein „unerwarteter“ Side-Effect ist. |
+| EdgeCases −10       | `scripts/dev-auto.js`: Port-Clamp (z. B. max 65535), ggf. `net.listen` in try/catch.                                                                                                  |
+| SRP/DI              | Optional; aufwändiger (Skripte aufteilen, Abhängigkeiten injizierbar machen).                                                                                                         |
 
 Nach den Fixes: **commit + push**, dann **Full-Review**.
 
@@ -113,7 +113,7 @@ Wiederholen, bis **alle drei Chunks** (einzeln oder gemeinsam) Score ≥95% und 
 
 ## Truncation beachten
 
-- Im Report steht ggf.: *"One or more chunks had diff truncated (head+tail only)"*.
+- Im Report steht ggf.: _"One or more chunks had diff truncated (head+tail only)"_.
 - Dann sieht die AI **nicht** die komplette Datei; Fixes in der **Mitte** großer Dateien können „unsichtbar“ bleiben.
 - **Gegenmaßnahmen**:
   - Wichtige Sicherheits-Kommentare (IDOR, Redaction, Rate Limit) **am Dateianfang** platzieren.
