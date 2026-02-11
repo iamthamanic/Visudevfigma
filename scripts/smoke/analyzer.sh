@@ -111,12 +111,35 @@ if [ "$ACTION" = "analyze" ]; then
   if [ -z "$BRANCH" ]; then
     BRANCH="main"
   fi
-
-  PAYLOAD=$(python3 - <<PY
+  # Input validation: avoid injection into JSON (repo/branch/token from args)
+  if ! echo "$REPO" | grep -qE '^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$'; then
+    echo "Invalid --repo (expected owner/name, alphanumeric, dots, underscores, hyphens)" >&2
+    exit 1
+  fi
+  if ! echo "$BRANCH" | grep -qE '^[a-zA-Z0-9/_.-]{1,512}$'; then
+    echo "Invalid --branch (max 512 chars, alphanumeric, /._-)" >&2
+    exit 1
+  fi
+  if [ -n "$GITHUB_TOKEN" ] && ! echo "$GITHUB_TOKEN" | grep -qE '^[a-zA-Z0-9_-]{1,512}$'; then
+    echo "Invalid --github-token (max 512 chars, alphanumeric, _-)" >&2
+    exit 1
+  fi
+  # Pass via env so Python builds JSON safely (no CLI interpolation). Prefer env GITHUB_TOKEN over --github-token to avoid history/process listing.
+  export REPO BRANCH GITHUB_TOKEN
+  PAYLOAD=$(python3 - <<'PY'
 import json
-payload = {"repo": "$REPO", "branch": "$BRANCH"}
-if "$GITHUB_TOKEN":
-    payload["access_token"] = "$GITHUB_TOKEN"
+import os
+import re
+repo = (os.environ.get("REPO") or "").strip()
+branch = (os.environ.get("BRANCH") or "main").strip()
+token = (os.environ.get("GITHUB_TOKEN") or "").strip()
+if not re.match(r"^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$", repo):
+    raise SystemExit("Invalid REPO")
+if not re.match(r"^[a-zA-Z0-9/_.-]{1,512}$", branch):
+    raise SystemExit("Invalid BRANCH")
+payload = {"repo": repo, "branch": branch}
+if token and re.match(r"^[a-zA-Z0-9_-]{1,512}$", token):
+    payload["access_token"] = token
 print(json.dumps(payload))
 PY
 )
