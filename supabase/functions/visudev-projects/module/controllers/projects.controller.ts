@@ -85,7 +85,10 @@ export class ProjectsController {
       c,
       updateProjectBodySchema,
     );
-    const updated = await this.service.updateProject(id, body);
+    const { ownerId: _omit, ...safeBody } = body as UpdateProjectDto & {
+      ownerId?: string;
+    };
+    const updated = await this.service.updateProject(id, safeBody);
     return this.ok<ProjectResponseDto>(c, updated);
   }
 

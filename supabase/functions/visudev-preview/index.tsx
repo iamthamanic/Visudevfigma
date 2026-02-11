@@ -165,6 +165,13 @@ app.post("/preview/start", async (c) => {
     const project = await kvGet(`project:${projectId}`) as
       | Record<string, unknown>
       | null;
+    const ownerId = project?.ownerId as string | undefined;
+    if (ownerId != null && ownerId !== auth.user.id) {
+      return c.json(
+        { success: false, error: "Forbidden (not project owner)" },
+        403,
+      );
+    }
     if (project) {
       repo = (project.github_repo as string) ?? repo;
       branch = (project.github_branch as string) ?? branch;
@@ -341,8 +348,11 @@ app.get("/preview/status", async (c) => {
             });
           }
         }
-      } catch (_e) {
-        // keep stored state
+      } catch (e) {
+        console.warn(
+          "preview/status: runner fetch failed, using stored state",
+          e,
+        );
       }
     }
 
@@ -414,8 +424,11 @@ app.post("/preview/stop", async (c) => {
         await fetch(`${runnerUrl.replace(/\/$/, "")}/stop/${stored.runId}`, {
           method: "POST",
         });
-      } catch (_e) {
-        // continue to update KV
+      } catch (e) {
+        console.warn(
+          "preview/stop: runner stop request failed, updating KV anyway",
+          e,
+        );
       }
     }
 

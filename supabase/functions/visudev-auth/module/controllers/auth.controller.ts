@@ -65,13 +65,15 @@ export class AuthController {
     }
   }
 
+  /** Data Leakage: do not send raw access_token to client; redact in response. */
   public async githubSession(c: Context): Promise<Response> {
     const body = await this.parseBody<{ state: string }>(
       c,
       githubSessionSchema,
     );
     const data = await this.githubService.getSession(body.state);
-    return this.ok<GitHubSessionDto>(c, data);
+    const redacted: GitHubSessionDto = { ...data, access_token: "***" };
+    return this.ok<GitHubSessionDto>(c, redacted);
   }
 
   public async githubStatus(c: Context): Promise<Response> {
