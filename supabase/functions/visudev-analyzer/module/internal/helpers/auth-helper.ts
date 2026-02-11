@@ -17,7 +17,10 @@ export async function getUserIdOptional(c: Context): Promise<string | null> {
     const { data } = await supabase.auth.getUser(token);
     return data?.user?.id ?? null;
   } catch (e) {
-    console.warn("[getUserIdOptional] auth.getUser failed", e instanceof Error ? e.message : String(e));
+    console.warn(
+      "[getUserIdOptional] auth.getUser failed",
+      e instanceof Error ? e.message : String(e),
+    );
     return null;
   }
 }
