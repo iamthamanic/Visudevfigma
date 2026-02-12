@@ -65,7 +65,11 @@ async function findFreePort(startPort) {
   const portStart =
     Number.isFinite(startPort) && startPort >= MIN_PORT && startPort <= MAX_PORT ? startPort : 3005;
   let port = portStart;
-  for (let i = 0; i < 50; i += 1) {
+  const maxAttempts = 50;
+  for (let i = 0; i < maxAttempts; i += 1) {
+    if (port > MAX_PORT) {
+      throw new Error(`No free port in range ${portStart}..${MAX_PORT}`);
+    }
     // eslint-disable-next-line no-await-in-loop
     const free = await isPortFree(port);
     if (free) return port;

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Beendet alle Prozesse auf Port 3005 (Vite) und 4000 (Preview-Runner).
-# Wird vor jedem "npm run dev" ausgeführt – so starten immer die richtigen Prozesse.
+# Beendet Prozesse auf Port 3005 (Vite) und 4000 (Preview-Runner).
+# Warum: Diese Ports sind für dieses Projekt reserviert; blockierte Ports führen bei
+# "npm run dev" zu Fehlern. Ein sauberer Zustand vor Start verhindert "port in use".
 set -e
 for port in 3005 4000; do
   pids=$(lsof -ti :$port 2>/dev/null || true)

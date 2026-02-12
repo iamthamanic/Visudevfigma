@@ -163,22 +163,23 @@ export class FlowService {
     return flows;
   }
 
+  /** O(flows + screens): build filePath -> flowIds map once, then map screens. */
   public mapFlowsToScreens(
     screens: Screen[],
     flows: CodeFlow[],
     commitSha: string,
   ): Screen[] {
-    return screens.map((screen) => {
-      const screenFlows = flows
-        .filter((flow) => flow.file === screen.filePath)
-        .map((flow) => flow.id);
-
-      return {
-        ...screen,
-        flows: screenFlows,
-        lastAnalyzedCommit: commitSha,
-        screenshotStatus: "none",
-      };
-    });
+    const flowsByFile = new Map<string, string[]>();
+    for (const flow of flows) {
+      const list = flowsByFile.get(flow.file) ?? [];
+      list.push(flow.id);
+      flowsByFile.set(flow.file, list);
+    }
+    return screens.map((screen) => ({
+      ...screen,
+      flows: flowsByFile.get(screen.filePath) ?? [],
+      lastAnalyzedCommit: commitSha,
+      screenshotStatus: "none",
+    }));
   }
 }

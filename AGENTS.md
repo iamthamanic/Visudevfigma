@@ -18,10 +18,12 @@ This repo enforces strict modular architecture and quality gates. Agents must fo
 - **When AI review REJECTs — address broadly:** Do not fix only the single mentioned point. For each **affected file** from the deductions, do **one pass** over the full checklist (IDOR / auth, rate limiting, input validation, error handling, edge cases). Then commit and re-run. This avoids the loop where the next run flags another item in the same code. See `docs/AI_REVIEW_WHY_NEW_ERRORS_AFTER_FIXES.md` for rationale and a per-route checklist.
 - **Agent after failed AI review (diff or full):** When the AI review fails (REJECT or score &lt; 95%), the agent must **automatically** read the latest review in `.shimwrapper/reviews/` (most recent file), address all deductions in the affected files (broad pass per file as above), then **re-run the full check pipeline** (including AI review in the same mode: diff or full). Repeat until the review passes or the user instructs otherwise. This applies to both CHECK_MODE=diff and CHECK_MODE=full (chunked); in full mode, fix issues from all chunk sections before re-running.
 - **AI review timeout:** If the AI review aborts with "timed out", increase `TIMEOUT_SEC` in `scripts/ai-code-review.sh` (e.g. 420 → 600) and re-run until the review completes. Do not reduce scope or skip the review; raise the timeout until it passes.
-- **Refactor-Modus (Mix: Full-Scan + Diff-Review beim Push):**
-  1. **Full-Scan:** `bash scripts/run-checks.sh --refactor`. Loop: Full-Codebase-Check (alle Chunks). Fehlschlag → Fix → Commit → Enter zum Retry, bis alle Chunks ≥95%.
-  2. **Pushen:** `git push`. Dabei läuft die Check-Pipeline inkl. **AI-Review nur fürs Diff** (gepushte Änderungen) — schnell, bricht nicht ab.
-  3. **Wieder Full-Scan:** `npm run checks` (oder erneut `--refactor`). Noch nicht ≥95%? → Weitere Teile fixen → Commit → Push (Diff-Review) → Schritt 3. Wiederholt sich, bis der Full-Scan durchgeht.
+- **Refactor-Modus (Full-Scan → To-do → Diff pro Fix → Full-Scan):**
+  1. **Phase 1:** `bash scripts/run-checks.sh --refactor`. Full-Scan (alle Chunks). Bei Pass ≥95%: fertig, Hinweis zum Pushen.
+  2. **Bei Fehlschlag:** Review wird geparst → To-do-Liste (`.shimwrapper/refactor-todo.json`). **Phase 2:** Pro To-do-Item: Fix umsetzen, **ein Fix pro Commit**, Enter drücken → Diff-Check nur für den letzten Commit (`AI_REVIEW_DIFF_RANGE=HEAD~1..HEAD`). Bei ≥95%: Item erledigt, nächstes. Bei Fail: erneut fixen, commit, Retry.
+  3. **Phase 3:** Alle Items erledigt → Full-Scan zur Verifikation. Bei Pass: Hinweis `git push`. Bei Fail: neue To-do aus Review, zurück zu Phase 2.
+  4. **Pushen:** `git push`. Pipeline läuft AI-Review nur fürs Diff. Danach erneut Full-Scan; nicht ≥95% → weiter fixen → Push → Schritt 4.
+  5. **Resume:** Wenn `refactor-todo.json` mit offenen Items existiert, Phase 1 wird übersprungen und direkt Phase 2 fortgesetzt.
 - **CHECK_MODE (AI review scope):** `full` = pro Verzeichnis (src, supabase, scripts) ein Chunk; `diff` = nur Änderungen. **Single-Chunk:** `--chunk=src` (oder supabase/scripts) für schnellere Iteration. Format, lint, typecheck, etc. laufen immer auf der ganzen Codebase.
 - Reviews are saved to `.shimwrapper/reviews/` (gitignored). If the shim or push prints Token usage + review output, include it in your response.
 
@@ -138,7 +140,7 @@ src/supabase/functions/<domain>/
 
 1. **Git Hooks (einmalig):** `npm run hooks:setup` — setzt `core.hooksPath=.githooks`, damit bei `git push` der Pre-Push-Hook (Checks + AI-Review) läuft.
 2. **Supabase-Shim:** `~/.local/bin` zuerst in der `PATH`, damit `supabase` das Projekt-Shim (checks vor Supabase-Befehlen) nutzt.
-3. **AI-Review (Codex):** Codex CLI installieren und `codex login` — sonst wird die AI-Review übersprungen (Push kann dann trotzdem durchgehen, wenn der Hook sie nicht erzwingt). Für vollständige Bewertung (inkl. Deductions-Parsing) optional **jq** installieren.
+3. **AI-Review (Codex):** Codex CLI installieren und `codex login` — sonst wird die AI-Review übersprungen (Push kann dann trotzdem durchgehen, wenn der Hook sie nicht erzwingt). **jq** wird für Refactor-Modus (To-do-Extraktion und Item-Updates) sowie für vollständige Bewertung benötigt.
 4. **Runner (optional):** Für AppFlow/Preview: `npx visudev-runner` starten (oder im Repo `npm run dev`, dann startet der Runner mit). Keine weiteren Code-Änderungen nötig.
 5. **Push mit Checks:** `npm run push` oder `git push` — beides läuft über Checks; bei Push ist AI-Review Pflicht (kein Skip). Bei Problemen: `npm run checks` einzeln ausführen und Fehler beheben.
 

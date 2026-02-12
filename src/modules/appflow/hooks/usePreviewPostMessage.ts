@@ -1,0 +1,65 @@
+/**
+ * usePreviewPostMessage – postMessage-Listener für Preview-Iframes (Fehler, DOM-Report, Navigation).
+ * Location: src/modules/appflow/hooks/usePreviewPostMessage.ts
+ */
+
+import { useEffect } from "react";
+import type { Screen } from "../../../lib/visudev/types";
+import type { VisudevDomReport } from "../types";
+import type { GraphEdge } from "../layout";
+import { SCREEN_FAIL_REASONS } from "./useScreenLoadState";
+
+export function usePreviewPostMessage(
+  iframeToScreenRef: React.MutableRefObject<Map<Window, string>>,
+  screens: Screen[],
+  edges: GraphEdge[],
+  markScreenFailed: (screenId: string, reason: string, screenName?: string, url?: string) => void,
+  setDomReportsByScreenId: React.Dispatch<React.SetStateAction<Record<string, VisudevDomReport>>>,
+  setAnimatingEdge: React.Dispatch<React.SetStateAction<GraphEdge | null>>,
+): void {
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || typeof data !== "object") return;
+
+      if (data.type === "visudev-preview-error") {
+        const sourceScreenId = iframeToScreenRef.current.get(event.source as Window);
+        const reason =
+          typeof (data as { reason?: string }).reason === "string"
+            ? (data as { reason: string }).reason
+            : SCREEN_FAIL_REASONS.LOAD_ERROR;
+        if (sourceScreenId) markScreenFailed(sourceScreenId, reason);
+        return;
+      }
+
+      if (data.type === "visudev-dom-report") {
+        const report = data as VisudevDomReport;
+        if (typeof report.route !== "string") return;
+        const sourceScreenId = iframeToScreenRef.current.get(event.source as Window);
+        if (!sourceScreenId) return;
+        setDomReportsByScreenId((prev) => ({ ...prev, [sourceScreenId]: report }));
+        return;
+      }
+
+      if (data.type !== "visudev-navigate" || typeof data.path !== "string") return;
+      const targetPath = data.path;
+      const targetScreen = screens.find(
+        (s) => s.path === targetPath || (targetPath && s.path.includes(targetPath)),
+      );
+      if (!targetScreen) return;
+      const sourceScreenId = iframeToScreenRef.current.get(event.source as Window);
+      if (!sourceScreenId) return;
+      const edge = edges.find((e) => e.fromId === sourceScreenId && e.toId === targetScreen.id);
+      if (edge) setAnimatingEdge(edge);
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [
+    screens,
+    edges,
+    markScreenFailed,
+    setDomReportsByScreenId,
+    setAnimatingEdge,
+    iframeToScreenRef,
+  ]);
+}

@@ -89,24 +89,34 @@ if [[ "$CHECK_MODE" == "full" ]]; then
   fi
 else
   # --- Diff-Modus: nur geänderte/zu pushende Inhalte ---
-  git diff --no-color >> "$DIFF_FILE" 2>/dev/null || echo "Warning: git diff (unstaged) failed." >&2
-  git diff --cached --no-color >> "$DIFF_FILE" 2>/dev/null || echo "Warning: git diff (cached) failed." >&2
-  if [[ ! -s "$DIFF_FILE" ]] && command -v git >/dev/null 2>&1; then
-    RANGE=""
-    if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
-      RANGE="@{u}...HEAD"
-    elif git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
-      RANGE="HEAD~1...HEAD"
+  # AI_REVIEW_DIFF_RANGE: wenn gesetzt, nur diese Range (z.B. HEAD~1..HEAD für Refactor-Item-Check)
+  if [[ -n "${AI_REVIEW_DIFF_RANGE:-}" ]]; then
+    git diff --no-color "$AI_REVIEW_DIFF_RANGE" >> "$DIFF_FILE" 2>/dev/null || echo "Warning: git diff $AI_REVIEW_DIFF_RANGE failed." >&2
+    echo "AI review: CHECK_MODE=diff (range: $AI_REVIEW_DIFF_RANGE)." >&2
+  else
+    git diff --no-color >> "$DIFF_FILE" 2>/dev/null || echo "Warning: git diff (unstaged) failed." >&2
+    git diff --cached --no-color >> "$DIFF_FILE" 2>/dev/null || echo "Warning: git diff (cached) failed." >&2
+    if [[ ! -s "$DIFF_FILE" ]] && command -v git >/dev/null 2>&1; then
+      RANGE=""
+      if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
+        RANGE="@{u}...HEAD"
+      elif git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+        RANGE="HEAD~1...HEAD"
+      fi
+      if [[ -n "$RANGE" ]]; then
+        git diff --no-color "$RANGE" >> "$DIFF_FILE" 2>/dev/null || echo "Warning: git diff $RANGE failed." >&2
+      fi
     fi
-    if [[ -n "$RANGE" ]]; then
-      git diff --no-color "$RANGE" >> "$DIFF_FILE" 2>/dev/null || echo "Warning: git diff $RANGE failed." >&2
+    if [[ ! -s "$DIFF_FILE" ]]; then
+      echo "Skipping AI review: no staged, unstaged, or pushed changes (CHECK_MODE=diff)." >&2
+      exit 0
     fi
+    echo "AI review: CHECK_MODE=diff (changes only)." >&2
   fi
   if [[ ! -s "$DIFF_FILE" ]]; then
-    echo "Skipping AI review: no staged, unstaged, or pushed changes (CHECK_MODE=diff)." >&2
+    echo "Skipping AI review: no diff for range (CHECK_MODE=diff)." >&2
     exit 0
   fi
-  echo "AI review: CHECK_MODE=diff (changes only)." >&2
 fi
 
 # ---------- Chunked Full-Review: pro Verzeichnis ein Durchlauf, AI sieht jedes Chunk vollständig ----------
@@ -290,6 +300,13 @@ $(tail -c $CHUNK_LIMIT_BYTES "$CHUNK_DIFF_FILE")"
     echo "Codex AI review: PASS (all chunks)" >&2
   else
     echo "Codex AI review: FAIL (see deductions per chunk in $REVIEW_FILE)" >&2
+  fi
+  if [[ -n "${REFACTOR_REPORT_FILE:-}" ]] && [[ -f "${REFACTOR_REPORT_FILE:-}" ]]; then
+    REVIEW_SCORE_CHUNKED="$(echo "$REVIEW_SECTIONS" | grep -oE 'Score: [0-9]+' | grep -oE '[0-9]+' | sort -n | head -1)"
+    [[ -z "$REVIEW_SCORE_CHUNKED" ]] && REVIEW_SCORE_CHUNKED=0
+    echo "AI_REVIEW_FILE:$(basename "$REVIEW_FILE")" >> "$REFACTOR_REPORT_FILE"
+    echo "AI_REVIEW_SCORE:${REVIEW_SCORE_CHUNKED}" >> "$REFACTOR_REPORT_FILE"
+    echo "AI_REVIEW_VERDICT:$([ "$OVERALL_PASS" -eq 1 ] && echo ACCEPT || echo REJECT)" >> "$REFACTOR_REPORT_FILE"
   fi
   [[ $OVERALL_PASS -eq 1 ]] && exit 0 || exit 1
 fi
@@ -506,5 +523,11 @@ fi
 echo "Score: ${REVIEW_RATING}%" >&2
 echo "Verdict: ${REVIEW_VERDICT}" >&2
 [[ -n "$REVIEW_DEDUCTIONS" ]] && echo "Deductions: ${REVIEW_DEDUCTIONS}" >&2
+
+if [[ -n "${REFACTOR_REPORT_FILE:-}" ]] && [[ -f "${REFACTOR_REPORT_FILE:-}" ]] && [[ -n "$REVIEW_FILE" ]]; then
+  echo "AI_REVIEW_FILE:$(basename "$REVIEW_FILE")" >> "$REFACTOR_REPORT_FILE"
+  echo "AI_REVIEW_SCORE:${REVIEW_RATING:-0}" >> "$REFACTOR_REPORT_FILE"
+  echo "AI_REVIEW_VERDICT:${REVIEW_VERDICT:-REJECT}" >> "$REFACTOR_REPORT_FILE"
+fi
 
 [[ $PASS -eq 1 ]] && exit 0 || exit 1

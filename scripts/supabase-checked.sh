@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Supabase CLI wrapper: runs checks when backend/frontend files changed, then invokes Supabase.
+# Optional: ping-edge-health and fetch-edge-logs run for functions/db/migration; failures are logged (not silent).
+# Git push runs only when SUPABASE_AUTO_PUSH=1 to avoid unexpected side effects; use npm run push for normal push.
 # AI review runs by default when checks run; use --no-ai-review or SKIP_AI_REVIEW=1 to disable.
 set -euo pipefail
 
@@ -193,22 +196,19 @@ while true; do
 done
 
 if [[ "$ARGS_TEXT" == *" functions "* ]] || [[ "$ARGS_TEXT" == *" db "* ]] || [[ "$ARGS_TEXT" == *" migration "* ]]; then
-  bash "$ROOT_DIR/scripts/ping-edge-health.sh" "${ARGS[@]}" || true
-  bash "$ROOT_DIR/scripts/fetch-edge-logs.sh" "${ARGS[@]}" || true
+  bash "$ROOT_DIR/scripts/ping-edge-health.sh" "${ARGS[@]}" || echo "[supabase-checked] ping-edge-health failed (optional)." >&2
+  bash "$ROOT_DIR/scripts/fetch-edge-logs.sh" "${ARGS[@]}" || echo "[supabase-checked] fetch-edge-logs failed (optional)." >&2
 fi
 
-if command -v git >/dev/null 2>&1; then
+# Auto-push only when explicitly enabled (avoids unexpected side effect; use npm run push for normal push).
+if [[ -n "${SUPABASE_AUTO_PUSH:-}" ]] && command -v git >/dev/null 2>&1; then
   if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
       ahead=$(git rev-list --count @{u}..HEAD)
       if [ "${ahead:-0}" -gt 0 ]; then
-        echo "Pushing commits to remote..."
+        echo "Pushing commits to remote (SUPABASE_AUTO_PUSH)..."
         git push
-      else
-        echo "No commits to push."
       fi
-    else
-      echo "No upstream configured; skipping git push."
     fi
   fi
 fi

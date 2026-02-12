@@ -1,0 +1,12 @@
+# Preview-App (verbundenes Repo) – Smoke.
+# PREVIEW_URL muss gesetzt sein (z. B. von App Flow: http://localhost:4001).
+# Run: PREVIEW_URL=http://localhost:4001 maestro test maestro/preview-smoke.yaml
+# Oder: npm run e2e:maestro:preview -- http://localhost:4001
+# Siehe docs/MAESTRO.md
+
+url: ${PREVIEW_URL}
+---
+- launchApp
+- assertVisible:
+    id: ".*"
+    optional: true

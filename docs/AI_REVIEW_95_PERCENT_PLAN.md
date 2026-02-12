@@ -8,27 +8,25 @@
 ## Mix: Full-Scan + Diff-Review beim Push
 
 - **Pre-push** (`git push` / `npm run push`): Schnelle Checks + **AI-Review nur fürs Diff** (genau die Änderungen, die gepusht werden). Dadurch bleibt der Push schnell (kein Full-Codebase-Timeout), aber jede Änderung wird per AI geprüft.
-- **Refactor-Modus:** Full-Scan (alle Chunks) im Loop → Teile fixen → commit → bis ≥95% → **pushen** (dabei läuft Diff-Review in der Pipeline) → **wieder Full-Scan** (`npm run checks` oder `--refactor`). Noch nicht ≥95%? → weiter fixen → push (Diff-Review) → Full-Scan. Wiederholt sich bis der Full-Scan durchgeht.
+- **Refactor-Modus** (`run-checks.sh --refactor`): **Full-Scan** → bei Fehlschlag: Parse Review → **To-do-Liste** (`.shimwrapper/refactor-todo.json`). **Item-Loop:** Pro Item anzeigen → User fixiert, committet (ein Fix pro Commit) → **Diff-Check nur letzter Commit** (`AI_REVIEW_DIFF_RANGE=HEAD~1..HEAD`) → bei ≥95% Item erledigt. **Phase 3:** Alle erledigt → Full-Scan zur Verifikation → bei Pass Hinweis zum Pushen. Bei Fail: neue To-do, zurück zum Item-Loop. **Resume:** Existiert `refactor-todo.json` mit offenen Items, Phase 1 wird übersprungen.
 
 ## Durchlauf bis 95% (Full-Modus mit Loop / Refactor-Modus)
 
-**`run-checks.sh --refactor`** (oder `--until-95`) führt den vollen Check (Frontend, Backend, AI-Review **alle Chunks**) in einer Schleife aus und stoppt erst, wenn alle Chunks ≥95% haben:
+**`run-checks.sh --refactor`** (neu: Full-Scan → To-do-Liste → gezielter Diff-Check pro Fix → Full-Scan):
 
 ```bash
 GIT_CMD=/usr/bin/git bash scripts/run-checks.sh --refactor
 ```
 
-(Oder `--until-95`; bei Erfolg zeigt `--refactor` zusätzlich den Hinweis: pushen, dann `npm run checks` erneut ausführen.)
+**Ablauf:**
 
-Alternativ der Thin-Wrapper (ruft dasselbe auf):
+- **Phase 1:** Full-Scan (Frontend, Backend, AI-Review alle Chunks). Bei Pass ≥95%: Erfolg, Hinweis zum Pushen.
+- **Bei Fehlschlag:** Review wird geparst, To-do-Liste nach `.shimwrapper/refactor-todo.json` geschrieben. **Phase 2:** Pro To-do-Item (Chunk, Point, Reason) → User fixiert, committet (**ein Fix pro Commit**) → Enter → Diff-Check nur für den letzten Commit (`CHECK_MODE=diff`, `AI_REVIEW_DIFF_RANGE=HEAD~1..HEAD`). Bei ≥95%: Item erledigt, nächstes. Bei Fail: „Fix erneut, commit, Enter zum Retry“.
+- **Phase 3:** Alle Items erledigt → Full-Scan zur Verifikation. Bei Pass: Hinweis `git push`. Bei Fail: neue To-do aus aktuellem Review, zurück zu Phase 2.
+- **Resume:** Existiert `refactor-todo.json` mit offenen Items, Phase 1 wird übersprungen, direkt Phase 2.
 
-```bash
-GIT_CMD=/usr/bin/git bash scripts/run-checks-until-95.sh
-```
+**`--until-95`** (ohne `--refactor`): Einfacher Loop wie bisher: Full-Scan → Fix → Commit → Enter zum Retry, bis alle Chunks ≥95%.
 
-- Bei Fehlschlag: zeigt Chunk-Scores und Pfad zum Review, dann **„Fix the issues, commit if needed, then press Enter to retry“**.
-- Du fixst (oder lässt fixen), committest, drückst Enter → nächster Lauf.
-- Erst wenn der komplette Check durchläuft (inkl. AI-Review alle Chunks ≥95%), beendet sich das Skript mit Exit 0.
 - `--until-95` und `--chunk=...` dürfen nicht zusammen verwendet werden (Full-Modus = alle Chunks).
 
 ---

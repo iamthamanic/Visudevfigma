@@ -14,14 +14,19 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
-# Echten Supabase-CLI (nicht den npm-Wrapper) nutzen
-SUPABASE_BIN=""
-for candidate in /opt/homebrew/bin/supabase /usr/local/bin/supabase; do
-  if [[ -x "$candidate" ]]; then
-    SUPABASE_BIN="$candidate"
-    break
-  fi
-done
+# Prefer SUPABASE_CMD or PATH supabase; fallback to common install paths (so CI/local can override).
+SUPABASE_BIN="${SUPABASE_CMD:-}"
+if [[ -z "$SUPABASE_BIN" ]] && command -v supabase >/dev/null 2>&1; then
+  SUPABASE_BIN="supabase"
+fi
+if [[ -z "$SUPABASE_BIN" ]]; then
+  for candidate in /opt/homebrew/bin/supabase /usr/local/bin/supabase; do
+    if [[ -x "$candidate" ]]; then
+      SUPABASE_BIN="$candidate"
+      break
+    fi
+  done
+fi
 if [[ -z "$SUPABASE_BIN" ]]; then
   SUPABASE_BIN="supabase"
 fi
@@ -77,14 +82,16 @@ ENV_GH="${ENV_GH_FILE:-.env.gh-secrets}"
 if [[ -f "$ENV_GH" ]]; then
   echo "Reading extra secrets from $ENV_GH ..."
   while IFS= read -r line; do
-    line="${line%%#*}"
     line="${line#"${line%%[![:space:]]*}"}"
     line="${line%"${line##*[![:space:]]}"}"
     if [[ -z "$line" ]]; then continue; fi
+    if [[ "$line" =~ ^[[:space:]]*# ]]; then continue; fi
     if [[ "$line" == *=* ]]; then
       name="${line%%=*}"
       name="${name%"${name##*[![:space:]]}"}"
       value="${line#*=}"
+      value="${value#"${value%%[![:space:]]*}"}"
+      value="${value%"${value##*[![:space:]]}"}"
       value="${value#\"}"
       value="${value%\"}"
       if [[ -n "$name" && "$name" != "SUPABASE_URL" && "$name" != "SUPABASE_SERVICE_ROLE_KEY" ]]; then

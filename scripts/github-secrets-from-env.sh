@@ -22,16 +22,20 @@ fi
 
 count=0
 while IFS= read -r line; do
-  line="${line%%#*}"
   line="${line#"${line%%[![:space:]]*}"}"
   line="${line%"${line##*[![:space:]]}"}"
   if [[ -z "$line" ]]; then
     continue
   fi
+  if [[ "$line" =~ ^[[:space:]]*# ]]; then
+    continue
+  fi
   if [[ "$line" == *=* ]]; then
     name="${line%%=*}"
     name="${name%"${name##*[![:space:]]}"}"
-    value="${line#*=}"   # alles nach erstem =
+    value="${line#*=}"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
     value="${value#\"}"
     value="${value%\"}"
     if [[ -n "$name" ]]; then

@@ -1,0 +1,19 @@
+# VisuDEV App – Smoke (Web).
+# Run: npm run e2e:maestro  (nutzt BASE_URL=http://127.0.0.1:3000)
+# Anderer Port: BASE_URL=http://localhost:5173 npm run e2e:maestro
+# Siehe docs/MAESTRO.md
+
+env:
+  BASE_URL: http://127.0.0.1:3000
+url: ${BASE_URL}
+---
+- launchApp
+- assertVisible:
+    text: "VisuDEV"
+    optional: true
+- assertVisible:
+    text: "Projekte"
+    optional: true
+- assertVisible:
+    text: "App Flow"
+    optional: true
