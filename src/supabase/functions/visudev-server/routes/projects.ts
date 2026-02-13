@@ -18,11 +18,9 @@ projectsRouter.get("/", async (c) => {
   try {
     const userId = await getUserIdOptional(c);
     if (userId == null) return c.json({ success: true, data: [] });
-    let projects = (await kv.getByPrefix("project:")) as ProjectRecord[];
-    projects = projects.filter(
-      (p) => p.ownerId == null || p.ownerId === userId,
-    );
-    return c.json({ success: true, data: projects });
+    const projects = (await kv.getByPrefix("project:")) as ProjectRecord[];
+    const owned = projects.filter((p) => p.ownerId === userId);
+    return c.json({ success: true, data: owned });
   } catch (error) {
     console.log(`Error fetching projects: ${error}`);
     return c.json({ success: false, error: "Internal error" }, 500);
@@ -65,12 +63,18 @@ projectsRouter.post("/", async (c) => {
       return c.json({ success: false, error: parsed.error.message }, 400);
     }
     const body = parsed.data as Record<string, unknown>;
+    const userId = await getUserIdOptional(c);
+    if (userId == null) {
+      return c.json({
+        success: false,
+        error: "Authentication required to create project",
+      }, 401);
+    }
     const id = (body.id as string) || crypto.randomUUID();
-    const ownerId = (await getUserIdOptional(c)) ?? undefined;
     const project = {
       ...body,
       id,
-      ownerId,
+      ownerId: userId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

@@ -39,6 +39,7 @@ export async function requireProjectOwner(
   const ownerId = project.ownerId;
   const userId = await getUserIdOptional(c);
   if (userId === null) return { ok: false, status: 403 };
-  if (ownerId != null && userId !== ownerId) return { ok: false, status: 403 };
+  if (ownerId == null || ownerId === "") return { ok: false, status: 403 };
+  if (userId !== ownerId) return { ok: false, status: 403 };
   return { ok: true, project };
 }
