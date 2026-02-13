@@ -1,5 +1,5 @@
 /**
- * Data schema and migrations validation. Validates tables structure and size.
+ * Data schema validation. Strict whitelist (tables only) to prevent mass assignment.
  */
 import { z } from "zod";
 
@@ -17,7 +17,7 @@ export const updateDataSchemaBodySchema = z
   .object({
     tables: z.array(dataTableSchema).max(500).optional(),
   })
-  .passthrough()
+  .strict()
   .refine((obj) => Object.keys(obj).length > 0, {
     message: "Update body must contain at least one field",
   })

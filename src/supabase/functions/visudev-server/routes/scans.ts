@@ -2,10 +2,10 @@
  * Scans routes for visudev-server. Single responsibility: AppFlow, Blueprint, Data scans.
  */
 import { Hono } from "hono";
-import { kv } from "../lib/kv.ts";
+import type { AppDeps } from "../lib/deps-middleware.ts";
 import { requireProjectOwner } from "../lib/auth.ts";
 
-export const scansRouter = new Hono();
+export const scansRouter = new Hono<{ Variables: AppDeps }>();
 
 const SAMPLE_FLOW_DATA = {
   screens: [
@@ -119,6 +119,7 @@ const SAMPLE_FLOW_DATA = {
 
 scansRouter.get("/:projectId/status", async (c) => {
   try {
+    const kv = c.get("kv");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -149,6 +150,7 @@ scansRouter.get("/:projectId/status", async (c) => {
 
 scansRouter.post("/:projectId/appflow", async (c) => {
   try {
+    const kv = c.get("kv");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -216,6 +218,7 @@ scansRouter.post("/:projectId/appflow", async (c) => {
 
 scansRouter.post("/:projectId/blueprint", async (c) => {
   try {
+    const kv = c.get("kv");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -289,6 +292,7 @@ scansRouter.post("/:projectId/blueprint", async (c) => {
 
 scansRouter.post("/:projectId/data", async (c) => {
   try {
+    const kv = c.get("kv");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {

@@ -2,16 +2,16 @@
  * AppFlow routes for visudev-server. Single responsibility: app flow CRUD.
  */
 import { Hono } from "hono";
-import { kv } from "../lib/kv.ts";
-import { checkRateLimit } from "../lib/rate-limit.ts";
+import type { AppDeps } from "../lib/deps-middleware.ts";
 import { requireProjectOwner } from "../lib/auth.ts";
 import { parseJsonBody } from "../lib/parse.ts";
 import { createAppFlowBodySchema } from "../lib/schemas/appflow.ts";
 
-export const appflowRouter = new Hono();
+export const appflowRouter = new Hono<{ Variables: AppDeps }>();
 
 appflowRouter.get("/:projectId", async (c) => {
   try {
+    const kv = c.get("kv");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -33,6 +33,7 @@ appflowRouter.get("/:projectId", async (c) => {
 
 appflowRouter.get("/:projectId/:flowId", async (c) => {
   try {
+    const kv = c.get("kv");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -58,6 +59,8 @@ appflowRouter.get("/:projectId/:flowId", async (c) => {
 
 appflowRouter.post("/:projectId", async (c) => {
   try {
+    const kv = c.get("kv");
+    const checkRateLimit = c.get("checkRateLimit");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -80,12 +83,19 @@ appflowRouter.post("/:projectId", async (c) => {
     if (!parseResult.ok) {
       return c.json({ success: false, error: parseResult.error }, 400);
     }
-    const body = parseResult.data as Record<string, unknown>;
-    const flowId = (body.flowId as string) || crypto.randomUUID();
+    const body = parseResult.data as {
+      flowId?: string;
+      screens?: unknown[];
+      flows?: unknown[];
+      framework?: string;
+    };
+    const flowId = body.flowId || crypto.randomUUID();
     const flow = {
-      ...body,
       flowId,
       projectId,
+      screens: body.screens,
+      flows: body.flows,
+      framework: body.framework,
       createdAt: new Date().toISOString(),
     };
     await kv.set(`appflow:${projectId}:${flowId}`, flow);
@@ -98,6 +108,7 @@ appflowRouter.post("/:projectId", async (c) => {
 
 appflowRouter.delete("/:projectId/:flowId", async (c) => {
   try {
+    const kv = c.get("kv");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {

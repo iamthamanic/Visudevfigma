@@ -2,17 +2,17 @@
  * Integrations routes for visudev-server. Single responsibility: GitHub, Supabase integrations.
  */
 import { Hono } from "hono";
-import { kv } from "../lib/kv.ts";
-import { checkRateLimit } from "../lib/rate-limit.ts";
+import type { AppDeps } from "../lib/deps-middleware.ts";
 import { requireProjectOwner } from "../lib/auth.ts";
 import { redactIntegrations } from "../lib/redact.ts";
 import { parseJsonBody } from "../lib/parse.ts";
 import { updateIntegrationsBodySchema } from "../lib/schemas/integrations.ts";
 
-export const integrationsRouter = new Hono();
+export const integrationsRouter = new Hono<{ Variables: AppDeps }>();
 
 integrationsRouter.get("/:projectId", async (c) => {
   try {
+    const kv = c.get("kv");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -37,6 +37,8 @@ integrationsRouter.get("/:projectId", async (c) => {
 
 integrationsRouter.put("/:projectId", async (c) => {
   try {
+    const kv = c.get("kv");
+    const checkRateLimit = c.get("checkRateLimit");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -59,9 +61,13 @@ integrationsRouter.put("/:projectId", async (c) => {
     if (!parseResult.ok) {
       return c.json({ success: false, error: parseResult.error }, 400);
     }
-    const body = parseResult.data as Record<string, unknown>;
+    const body = parseResult.data as {
+      github?: { token?: string };
+      supabase?: { url?: string; serviceKey?: string; projectRef?: string };
+    };
     const integrations = {
-      ...body,
+      github: body.github,
+      supabase: body.supabase,
       projectId,
       updatedAt: new Date().toISOString(),
     };
@@ -75,6 +81,7 @@ integrationsRouter.put("/:projectId", async (c) => {
 
 integrationsRouter.get("/:projectId/github/repos", async (c) => {
   try {
+    const kv = c.get("kv");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -115,6 +122,7 @@ integrationsRouter.get("/:projectId/github/repos", async (c) => {
 
 integrationsRouter.get("/:projectId/github/content", async (c) => {
   try {
+    const kv = c.get("kv");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -167,6 +175,7 @@ integrationsRouter.get("/:projectId/github/content", async (c) => {
 
 integrationsRouter.get("/:projectId/supabase/info", async (c) => {
   try {
+    const kv = c.get("kv");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {

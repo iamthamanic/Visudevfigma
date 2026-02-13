@@ -13,10 +13,12 @@ import { logsRouter } from "./routes/logs.ts";
 import { accountRouter } from "./routes/account.ts";
 import { integrationsRouter } from "./routes/integrations.ts";
 import { scansRouter } from "./routes/scans.ts";
+import { type AppDeps, depsMiddleware } from "./lib/deps-middleware.ts";
 
-const app = new Hono();
+const app = new Hono<{ Variables: AppDeps }>();
 
 app.use("*", logger(console.log));
+app.use("*", depsMiddleware);
 app.use(
   "/*",
   cors({

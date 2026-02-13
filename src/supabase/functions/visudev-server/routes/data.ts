@@ -2,8 +2,7 @@
  * Data routes for visudev-server. Single responsibility: schema and migrations.
  */
 import { Hono } from "hono";
-import { kv } from "../lib/kv.ts";
-import { checkRateLimit } from "../lib/rate-limit.ts";
+import type { AppDeps } from "../lib/deps-middleware.ts";
 import { requireProjectOwner } from "../lib/auth.ts";
 import { parseJsonBody } from "../lib/parse.ts";
 import {
@@ -11,10 +10,11 @@ import {
   updateMigrationsBodySchema,
 } from "../lib/schemas/data.ts";
 
-export const dataRouter = new Hono();
+export const dataRouter = new Hono<{ Variables: AppDeps }>();
 
 dataRouter.get("/:projectId/schema", async (c) => {
   try {
+    const kv = c.get("kv");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -36,6 +36,8 @@ dataRouter.get("/:projectId/schema", async (c) => {
 
 dataRouter.put("/:projectId/schema", async (c) => {
   try {
+    const kv = c.get("kv");
+    const checkRateLimit = c.get("checkRateLimit");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -58,9 +60,9 @@ dataRouter.put("/:projectId/schema", async (c) => {
     if (!parseResult.ok) {
       return c.json({ success: false, error: parseResult.error }, 400);
     }
-    const body = parseResult.data as Record<string, unknown>;
+    const body = parseResult.data as { tables?: unknown[] };
     const schema = {
-      ...body,
+      tables: body.tables,
       projectId,
       updatedAt: new Date().toISOString(),
     };
@@ -74,6 +76,7 @@ dataRouter.put("/:projectId/schema", async (c) => {
 
 dataRouter.get("/:projectId/migrations", async (c) => {
   try {
+    const kv = c.get("kv");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -95,6 +98,8 @@ dataRouter.get("/:projectId/migrations", async (c) => {
 
 dataRouter.put("/:projectId/migrations", async (c) => {
   try {
+    const kv = c.get("kv");
+    const checkRateLimit = c.get("checkRateLimit");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {

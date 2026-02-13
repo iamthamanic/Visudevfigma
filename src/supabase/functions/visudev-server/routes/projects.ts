@@ -2,11 +2,8 @@
  * Projects routes for visudev-server. Single responsibility: project CRUD.
  */
 import { Hono } from "hono";
-import { kv } from "../lib/kv.ts";
-import {
-  checkRateLimit,
-  RATE_MAX_PROJECTS_PER_WINDOW,
-} from "../lib/rate-limit.ts";
+import type { AppDeps } from "../lib/deps-middleware.ts";
+import { RATE_MAX_PROJECTS_PER_WINDOW } from "../lib/rate-limit.ts";
 import { getUserIdOptional, requireProjectOwner } from "../lib/auth.ts";
 import { parseJsonBody } from "../lib/parse.ts";
 import {
@@ -16,10 +13,11 @@ import {
 
 type ProjectRecord = Record<string, unknown> & { ownerId?: string };
 
-export const projectsRouter = new Hono();
+export const projectsRouter = new Hono<{ Variables: AppDeps }>();
 
 projectsRouter.get("/", async (c) => {
   try {
+    const kv = c.get("kv");
     const userId = await getUserIdOptional(c);
     if (userId == null) return c.json({ success: true, data: [] });
     const projects = (await kv.getByPrefix("project:")) as ProjectRecord[];
@@ -53,6 +51,8 @@ projectsRouter.get("/:id", async (c) => {
 
 projectsRouter.post("/", async (c) => {
   try {
+    const kv = c.get("kv");
+    const checkRateLimit = c.get("checkRateLimit");
     if (
       !(await checkRateLimit(
         "rate:projects:create",
@@ -91,6 +91,8 @@ projectsRouter.post("/", async (c) => {
 
 projectsRouter.put("/:id", async (c) => {
   try {
+    const kv = c.get("kv");
+    const checkRateLimit = c.get("checkRateLimit");
     const id = c.req.param("id");
     const own = await requireProjectOwner(c, id);
     if (!own.ok) {
@@ -130,6 +132,7 @@ projectsRouter.put("/:id", async (c) => {
 
 projectsRouter.delete("/:id", async (c) => {
   try {
+    const kv = c.get("kv");
     const id = c.req.param("id");
     const own = await requireProjectOwner(c, id);
     if (!own.ok) {

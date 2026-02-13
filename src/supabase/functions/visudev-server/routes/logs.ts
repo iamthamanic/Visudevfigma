@@ -2,16 +2,17 @@
  * Logs routes for visudev-server. Single responsibility: project logs CRUD.
  */
 import { Hono } from "hono";
-import { kv } from "../lib/kv.ts";
-import { checkRateLimit, RATE_MAX_LOGS_PER_WINDOW } from "../lib/rate-limit.ts";
+import type { AppDeps } from "../lib/deps-middleware.ts";
+import { RATE_MAX_LOGS_PER_WINDOW } from "../lib/rate-limit.ts";
 import { requireProjectOwner } from "../lib/auth.ts";
 import { parseJsonBody } from "../lib/parse.ts";
 import { createLogBodySchema } from "../lib/schemas/log.ts";
 
-export const logsRouter = new Hono();
+export const logsRouter = new Hono<{ Variables: AppDeps }>();
 
 logsRouter.get("/:projectId", async (c) => {
   try {
+    const kv = c.get("kv");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -33,6 +34,8 @@ logsRouter.get("/:projectId", async (c) => {
 
 logsRouter.post("/:projectId", async (c) => {
   try {
+    const kv = c.get("kv");
+    const checkRateLimit = c.get("checkRateLimit");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -75,6 +78,7 @@ logsRouter.post("/:projectId", async (c) => {
 
 logsRouter.delete("/:projectId", async (c) => {
   try {
+    const kv = c.get("kv");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {

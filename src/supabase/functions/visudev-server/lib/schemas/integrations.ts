@@ -1,5 +1,6 @@
 /**
- * Integrations update validation. Validates github/supabase structure and payload size.
+ * Integrations update validation. Strict whitelist (github, supabase only)
+ * to prevent mass assignment; size limit prevents abuse.
  */
 import { z } from "zod";
 
@@ -22,7 +23,7 @@ export const updateIntegrationsBodySchema = z
     github: githubIntegrationSchema,
     supabase: supabaseIntegrationSchema,
   })
-  .passthrough()
+  .strict()
   .refine((obj) => Object.keys(obj).length > 0, {
     message: "Update body must contain at least one field",
   })

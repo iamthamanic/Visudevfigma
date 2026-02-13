@@ -2,16 +2,16 @@
  * Account routes for visudev-server. Single responsibility: user account CRUD.
  */
 import { Hono } from "hono";
-import { kv } from "../lib/kv.ts";
-import { checkRateLimit } from "../lib/rate-limit.ts";
+import type { AppDeps } from "../lib/deps-middleware.ts";
 import { getUserIdOptional } from "../lib/auth.ts";
 import { parseJsonBody } from "../lib/parse.ts";
 import { updateAccountBodySchema } from "../lib/schemas/account.ts";
 
-export const accountRouter = new Hono();
+export const accountRouter = new Hono<{ Variables: AppDeps }>();
 
 accountRouter.get("/:userId", async (c) => {
   try {
+    const kv = c.get("kv");
     const userId = c.req.param("userId");
     const authUserId = await getUserIdOptional(c);
     if (authUserId === null || authUserId !== userId) {
@@ -27,6 +27,8 @@ accountRouter.get("/:userId", async (c) => {
 
 accountRouter.put("/:userId", async (c) => {
   try {
+    const kv = c.get("kv");
+    const checkRateLimit = c.get("checkRateLimit");
     const userId = c.req.param("userId");
     const authUserId = await getUserIdOptional(c);
     if (authUserId === null) {
@@ -42,9 +44,10 @@ accountRouter.put("/:userId", async (c) => {
     if (!parseResult.ok) {
       return c.json({ success: false, error: parseResult.error }, 400);
     }
-    const body = parseResult.data as Record<string, unknown>;
+    const body = parseResult.data as { displayName?: string; email?: string };
     const account = {
-      ...body,
+      displayName: body.displayName,
+      email: body.email,
       userId,
       updatedAt: new Date().toISOString(),
     };

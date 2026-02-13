@@ -1,5 +1,6 @@
 /**
- * Account update validation. Validates displayName, email and payload size.
+ * Account update validation. Strict whitelist (displayName, email only)
+ * to prevent mass assignment; at least one field required.
  */
 import { z } from "zod";
 
@@ -8,11 +9,7 @@ export const updateAccountBodySchema = z
     displayName: z.string().max(200).optional(),
     email: z.string().email().max(320).optional(),
   })
-  .passthrough()
+  .strict()
   .refine((obj) => Object.keys(obj).length > 0, {
     message: "Update body must contain at least one field",
-  })
-  .refine(
-    (obj) => JSON.stringify(obj).length <= 20_000,
-    { message: "Account payload too large" },
-  );
+  });

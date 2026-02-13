@@ -2,16 +2,16 @@
  * Blueprint routes for visudev-server. Single responsibility: blueprint CRUD.
  */
 import { Hono } from "hono";
-import { kv } from "../lib/kv.ts";
-import { checkRateLimit } from "../lib/rate-limit.ts";
+import type { AppDeps } from "../lib/deps-middleware.ts";
 import { requireProjectOwner } from "../lib/auth.ts";
 import { parseJsonBody } from "../lib/parse.ts";
 import { updateBlueprintBodySchema } from "../lib/schemas/blueprint.ts";
 
-export const blueprintRouter = new Hono();
+export const blueprintRouter = new Hono<{ Variables: AppDeps }>();
 
 blueprintRouter.get("/:projectId", async (c) => {
   try {
+    const kv = c.get("kv");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -33,6 +33,8 @@ blueprintRouter.get("/:projectId", async (c) => {
 
 blueprintRouter.put("/:projectId", async (c) => {
   try {
+    const kv = c.get("kv");
+    const checkRateLimit = c.get("checkRateLimit");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -55,9 +57,15 @@ blueprintRouter.put("/:projectId", async (c) => {
     if (!parseResult.ok) {
       return c.json({ success: false, error: parseResult.error }, 400);
     }
-    const body = parseResult.data as Record<string, unknown>;
+    const body = parseResult.data as {
+      components?: unknown[];
+      violations?: unknown[];
+      cycles?: unknown[];
+    };
     const blueprint = {
-      ...body,
+      components: body.components,
+      violations: body.violations,
+      cycles: body.cycles,
       projectId,
       updatedAt: new Date().toISOString(),
     };
