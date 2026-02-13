@@ -1,7 +1,7 @@
 /**
  * Auth helpers for visudev-server. Single responsibility: JWT validation and project ownership checks.
  */
-import { createClient } from "@jsr/supabase__supabase-js";
+import { getSupabase } from "./deps.ts";
 import { kv } from "./kv.ts";
 
 export type ProjectRecord = Record<string, unknown> & { ownerId?: string };
@@ -13,11 +13,8 @@ export async function getUserIdOptional(
   if (!authHeader?.startsWith("Bearer ")) return null;
   const token = authHeader.slice(7).trim();
   if (!token) return null;
-  const url = Deno.env.get("SUPABASE_URL");
-  const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceRole) return null;
   try {
-    const supabase = createClient(url, serviceRole);
+    const supabase = getSupabase();
     const { data } = await supabase.auth.getUser(token);
     return data?.user?.id ?? null;
   } catch (e) {
