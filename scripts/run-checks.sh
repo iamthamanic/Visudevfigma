@@ -63,6 +63,7 @@ if [[ "$until_95" = true ]]; then
 
   if [[ "$refactor_mode" = true ]]; then
     REFACTOR_STATUS="$ROOT_DIR/.shimwrapper/refactor-status.txt"
+    REFACTOR_CURRENT_ITEM="$ROOT_DIR/.shimwrapper/refactor-current-item.json"
     refactor_notify() {
       local msg="$1"
       local ts
@@ -167,6 +168,7 @@ if [[ "$until_95" = true ]]; then
     if [[ "$DO_PHASE1" = true ]]; then
       refactor_notify "Phase 1: Full-Scan läuft..."
       if bash "$ROOT_DIR/scripts/run-checks.sh" 2>&1; then
+        rm -f "$REFACTOR_CURRENT_ITEM"
         refactor_notify "✅ Alles erledigt (Full-Scan bestanden). Nächster Schritt: git push"
         refactor_success_msg
         exit 0
@@ -191,6 +193,7 @@ if [[ "$until_95" = true ]]; then
     while true; do
       NEXT_ITEM="$(jq -r '[.items[]? | select(.done != true)] | .[0] | select(. != null) | .id' "$TODO_FILE" 2>/dev/null)"
       if [[ -z "$NEXT_ITEM" ]]; then
+        rm -f "$REFACTOR_CURRENT_ITEM"
         break
       fi
       ITEM_JSON="$(jq -r '[.items[]? | select(.id == "'"$NEXT_ITEM"'")] | .[0]' "$TODO_FILE" 2>/dev/null)"
@@ -203,21 +206,20 @@ if [[ "$until_95" = true ]]; then
       MINUS="$(echo "$ITEM_JSON" | jq -r '.minus')"
       REASON="$(echo "$ITEM_JSON" | jq -r '.reason' | head -3)"
       refactor_status_line "$DONE_COUNT" "$TOTAL_ITEMS"
-      refactor_notify "Item $CURR von $TOTAL: [$CHUNK] $POINT (-$MINUS%) — Fix umsetzen, Commit, Enter"
+      refactor_notify "Item $CURR von $TOTAL: [$CHUNK] $POINT (-$MINUS%) — Agent macht Fix + Commit, dann automatischer Diff-Check"
       refactor_notify "Item fix run (Item $CURR)"
+      COMMIT_MSG_REFACTOR="refactor: ${NEXT_ITEM} [${CHUNK}] ${POINT} (-${MINUS}%)"
+      echo "$ITEM_JSON" | jq -c --arg cm "$COMMIT_MSG_REFACTOR" '. + {commit_message: $cm, instruction: "Implement the fix described in reason. Then run: git add -A && git commit -m <commit_message> (use the commit_message field). The refactor script will detect the commit and run the diff check automatically."}' > "$REFACTOR_CURRENT_ITEM" 2>/dev/null || true
       echo "" >&2
       echo "========== Item $CURR von $TOTAL: [$CHUNK] $POINT (-$MINUS%) ==========" >&2
       echo "$REASON" >&2
       echo "" >&2
-      echo "Fixe dieses Item, committe (ein Fix pro Commit). Drücke Enter wenn bereit." >&2
+      echo "Agent/User macht Fix und Commit. Skript startet Diff-Check automatisch bei neuem Commit (kein Enter nötig)." >&2
       INITIAL_HEAD="$("${GIT_CMD:-git}" rev-parse HEAD 2>/dev/null || echo "")"
       LAST_NOTIFIED_COMMIT="$INITIAL_HEAD"
-      HEARTBEAT_COUNTER=0
+      LAST_HEARTBEAT_TS="$(date +%s 2>/dev/null || echo "")"
       while true; do
-        if read -r -t 15 2>/dev/null; then
-          break
-        fi
-        HEARTBEAT_COUNTER=$((HEARTBEAT_COUNTER + 1))
+        sleep 15
         CURR_HEAD="$("${GIT_CMD:-git}" rev-parse HEAD 2>/dev/null || echo "")"
         if [[ -n "$CURR_HEAD" && "$CURR_HEAD" != "$INITIAL_HEAD" ]]; then
           if [[ "$CURR_HEAD" != "$LAST_NOTIFIED_COMMIT" ]]; then
@@ -225,7 +227,11 @@ if [[ "$until_95" = true ]]; then
             COMMIT_MSG="$("${GIT_CMD:-git}" log -1 --pretty=format:"%h %s" 2>/dev/null || echo "commit")"
             refactor_notify "Item fix run (Item $CURR) – Teilfortschritt: $COMMIT_MSG"
           fi
-        elif [[ "$LAST_NOTIFIED_COMMIT" = "$INITIAL_HEAD" ]]; then
+          refactor_notify "Neuer Commit erkannt – starte Diff-Check in 15 s (weitere Commits möglich)."
+          sleep 15
+          break
+        fi
+        if [[ "$LAST_NOTIFIED_COMMIT" = "$INITIAL_HEAD" ]]; then
           STAGED="$("${GIT_CMD:-git}" diff --cached --name-only 2>/dev/null | wc -l | tr -d ' ')"
           MODIFIED="$("${GIT_CMD:-git}" status -s 2>/dev/null | wc -l | tr -d ' ')"
           if [[ "${STAGED:-0}" -gt 0 ]] || [[ "${MODIFIED:-0}" -gt 0 ]]; then
@@ -233,9 +239,10 @@ if [[ "$until_95" = true ]]; then
             LAST_NOTIFIED_COMMIT="__in_progress__"
           fi
         fi
-        # Heartbeat alle ~60 Sekunden, falls keine neuen Commits erkannt wurden
-        if [[ $((HEARTBEAT_COUNTER % 4)) -eq 0 ]] && [[ "$LAST_NOTIFIED_COMMIT" = "$INITIAL_HEAD" || "$LAST_NOTIFIED_COMMIT" = "__in_progress__" ]]; then
-          refactor_notify "Item fix run (Item $CURR) – Prozess läuft noch (warte auf Fix/Commit)..."
+        NOW_TS="$(date +%s 2>/dev/null || echo "")"
+        if [[ -n "$LAST_HEARTBEAT_TS" ]] && [[ -n "$NOW_TS" ]] && [[ $((NOW_TS - LAST_HEARTBEAT_TS)) -ge 60 ]] && { [[ "$LAST_NOTIFIED_COMMIT" = "$INITIAL_HEAD" ]] || [[ "$LAST_NOTIFIED_COMMIT" = "__in_progress__" ]]; }; then
+          refactor_notify "Item fix run (Item $CURR) – Prozess läuft noch (warte auf Commit vom Agent)..."
+          LAST_HEARTBEAT_TS="$NOW_TS"
         fi
       done
       refactor_notify "Item fix done (Item $CURR)"
@@ -288,15 +295,12 @@ if [[ "$until_95" = true ]]; then
           ITEM_DONE=true
         else
           echo "" >&2
-          echo "Diff-Review fehlgeschlagen. Fix erneut, commit, Enter zum Retry." >&2
+          echo "Diff-Review fehlgeschlagen. Agent macht erneut Fix + Commit – Skript startet Check automatisch bei neuem Commit." >&2
           INITIAL_HEAD="$("${GIT_CMD:-git}" rev-parse HEAD 2>/dev/null || echo "")"
           LAST_NOTIFIED_COMMIT="$INITIAL_HEAD"
-          HEARTBEAT_COUNTER=0
+          LAST_HEARTBEAT_TS="$(date +%s 2>/dev/null || echo "")"
           while true; do
-            if read -r -t 15 2>/dev/null; then
-              break
-            fi
-            HEARTBEAT_COUNTER=$((HEARTBEAT_COUNTER + 1))
+            sleep 15
             CURR_HEAD="$("${GIT_CMD:-git}" rev-parse HEAD 2>/dev/null || echo "")"
             if [[ -n "$CURR_HEAD" && "$CURR_HEAD" != "$INITIAL_HEAD" ]]; then
               if [[ "$CURR_HEAD" != "$LAST_NOTIFIED_COMMIT" ]]; then
@@ -304,7 +308,11 @@ if [[ "$until_95" = true ]]; then
                 COMMIT_MSG="$("${GIT_CMD:-git}" log -1 --pretty=format:"%h %s" 2>/dev/null || echo "commit")"
                 refactor_notify "Item fix run (Item $CURR) – Teilfortschritt: $COMMIT_MSG"
               fi
-            elif [[ "$LAST_NOTIFIED_COMMIT" = "$INITIAL_HEAD" ]]; then
+              refactor_notify "Neuer Commit erkannt (Retry) – starte Diff-Check in 15 s."
+              sleep 15
+              break
+            fi
+            if [[ "$LAST_NOTIFIED_COMMIT" = "$INITIAL_HEAD" ]]; then
               STAGED="$("${GIT_CMD:-git}" diff --cached --name-only 2>/dev/null | wc -l | tr -d ' ')"
               MODIFIED="$("${GIT_CMD:-git}" status -s 2>/dev/null | wc -l | tr -d ' ')"
               if [[ "${STAGED:-0}" -gt 0 ]] || [[ "${MODIFIED:-0}" -gt 0 ]]; then
@@ -312,9 +320,10 @@ if [[ "$until_95" = true ]]; then
                 LAST_NOTIFIED_COMMIT="__in_progress__"
               fi
             fi
-            # Heartbeat alle ~60 Sekunden auch im Retry-Fall
-            if [[ $((HEARTBEAT_COUNTER % 4)) -eq 0 ]] && [[ "$LAST_NOTIFIED_COMMIT" = "$INITIAL_HEAD" || "$LAST_NOTIFIED_COMMIT" = "__in_progress__" ]]; then
-              refactor_notify "Item fix run (Item $CURR) – Prozess läuft noch (Retry, warte auf Fix/Commit)..."
+            NOW_TS="$(date +%s 2>/dev/null || echo "")"
+            if [[ -n "$LAST_HEARTBEAT_TS" ]] && [[ -n "$NOW_TS" ]] && [[ $((NOW_TS - LAST_HEARTBEAT_TS)) -ge 60 ]] && { [[ "$LAST_NOTIFIED_COMMIT" = "$INITIAL_HEAD" ]] || [[ "$LAST_NOTIFIED_COMMIT" = "__in_progress__" ]]; }; then
+              refactor_notify "Item fix run (Item $CURR) – Prozess läuft noch (Retry, warte auf Commit vom Agent)..."
+              LAST_HEARTBEAT_TS="$NOW_TS"
             fi
           done
         fi
@@ -322,6 +331,7 @@ if [[ "$until_95" = true ]]; then
     done
 
     # Phase 3: Verifikation per Full-Scan
+    rm -f "$REFACTOR_CURRENT_ITEM"
     echo "" >&2
     DONE_TOTAL="$(jq '.items | length' "$TODO_FILE" 2>/dev/null || echo "?")"
     refactor_notify "Alle $DONE_TOTAL Items erledigt. Phase 3: Full-Scan Verifikation läuft..."
@@ -329,6 +339,7 @@ if [[ "$until_95" = true ]]; then
     export CHECK_MODE=full
     unset AI_REVIEW_DIFF_RANGE
     if bash "$ROOT_DIR/scripts/run-checks.sh" 2>&1; then
+      rm -f "$REFACTOR_CURRENT_ITEM"
       refactor_notify "✅ REFACTOR-TODO ABGEARBEITET — Full-Scan bestanden. Nächster Schritt: git push"
       refactor_success_msg
       exit 0
