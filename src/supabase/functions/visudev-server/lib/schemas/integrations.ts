@@ -4,6 +4,27 @@
  */
 import { z } from "zod";
 
+/** GitHub repo path segment: alphanumeric, hyphens, underscores, dots */
+const repoPartSchema = z
+  .string()
+  .min(1, "Required")
+  .max(200)
+  .regex(/^[a-zA-Z0-9._-]+$/, "Invalid format");
+
+/** File path: alphanumeric, slashes, dots, hyphens, underscores */
+const filePathSchema = z
+  .string()
+  .min(1, "Required")
+  .max(500)
+  .regex(/^[a-zA-Z0-9/._-]+$/, "Invalid path format");
+
+export const githubContentQuerySchema = z.object({
+  owner: repoPartSchema,
+  repo: repoPartSchema,
+  path: filePathSchema,
+  ref: z.string().max(200).regex(/^[a-zA-Z0-9/._-]+$/).optional(),
+});
+
 const githubIntegrationSchema = z
   .object({
     token: z.string().max(500).optional(),

@@ -45,9 +45,20 @@ accountRouter.put("/:userId", async (c) => {
       return c.json({ success: false, error: parseResult.error }, 400);
     }
     const body = parseResult.data as { displayName?: string; email?: string };
+    const existing = (await kv.get(`account:${userId}`)) as
+      | Record<string, unknown>
+      | null;
+    const base = (existing && typeof existing === "object"
+      ? { ...existing }
+      : {}) as Record<string, unknown>;
+    if (body.displayName !== undefined) {
+      base.displayName = body.displayName;
+    }
+    if (body.email !== undefined) {
+      base.email = body.email;
+    }
     const account = {
-      displayName: body.displayName,
-      email: body.email,
+      ...base,
       userId,
       updatedAt: new Date().toISOString(),
     };

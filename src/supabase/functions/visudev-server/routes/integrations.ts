@@ -6,7 +6,10 @@ import type { AppDeps } from "../lib/deps-middleware.ts";
 import { requireProjectOwner } from "../lib/auth.ts";
 import { redactIntegrations } from "../lib/redact.ts";
 import { parseJsonBody } from "../lib/parse.ts";
-import { updateIntegrationsBodySchema } from "../lib/schemas/integrations.ts";
+import {
+  githubContentQuerySchema,
+  updateIntegrationsBodySchema,
+} from "../lib/schemas/integrations.ts";
 
 export const integrationsRouter = new Hono<{ Variables: AppDeps }>();
 
@@ -62,12 +65,25 @@ integrationsRouter.put("/:projectId", async (c) => {
       return c.json({ success: false, error: parseResult.error }, 400);
     }
     const body = parseResult.data as {
-      github?: { token?: string };
-      supabase?: { url?: string; serviceKey?: string; projectRef?: string };
+      github?: { token?: string } | undefined;
+      supabase?:
+        | { url?: string; serviceKey?: string; projectRef?: string }
+        | undefined;
     };
+    const existing = (await kv.get(`integrations:${projectId}`)) as
+      | Record<string, unknown>
+      | null;
+    const base = (existing && typeof existing === "object"
+      ? { ...existing }
+      : {}) as Record<string, unknown>;
+    if (body.github !== undefined) {
+      base.github = body.github;
+    }
+    if (body.supabase !== undefined) {
+      base.supabase = body.supabase;
+    }
     const integrations = {
-      github: body.github,
-      supabase: body.supabase,
+      ...base,
       projectId,
       updatedAt: new Date().toISOString(),
     };
@@ -157,14 +173,20 @@ integrationsRouter.get("/:projectId/github/content", async (c) => {
     ) {
       return c.json({ success: false, error: "Rate limit exceeded" }, 429);
     }
-    const owner = c.req.query("owner");
-    const repo = c.req.query("repo");
-    const path = c.req.query("path");
-    const ref = c.req.query("ref") || "main";
-
-    if (!owner || !repo || !path) {
-      return c.json({ success: false, error: "Missing parameters" }, 400);
+    const raw = {
+      owner: c.req.query("owner"),
+      repo: c.req.query("repo"),
+      path: c.req.query("path"),
+      ref: c.req.query("ref") || "main",
+    };
+    const parsed = githubContentQuerySchema.safeParse(raw);
+    if (!parsed.success) {
+      return c.json(
+        { success: false, error: parsed.error.message },
+        400,
+      );
     }
+    const { owner, repo, path, ref } = parsed.data;
 
     const integrations = await kv.get(`integrations:${projectId}`) as {
       github?: { token?: string };

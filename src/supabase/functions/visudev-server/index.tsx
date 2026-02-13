@@ -1,10 +1,13 @@
 /**
  * visudev-server: HTTP routing only. Domain logic in lib/ and routes/.
- * SRP: index.tsx mounts routes; each route module has single responsibility.
+ * SRP: index.tsx mounts routes; composition root injects deps into middleware.
  */
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { kv } from "./lib/kv.ts";
+import { createCheckRateLimit } from "./lib/rate-limit.ts";
+import { type AppDeps, createDepsMiddleware } from "./lib/deps-middleware.ts";
 import { projectsRouter } from "./routes/projects.ts";
 import { appflowRouter } from "./routes/appflow.ts";
 import { blueprintRouter } from "./routes/blueprint.ts";
@@ -13,12 +16,16 @@ import { logsRouter } from "./routes/logs.ts";
 import { accountRouter } from "./routes/account.ts";
 import { integrationsRouter } from "./routes/integrations.ts";
 import { scansRouter } from "./routes/scans.ts";
-import { type AppDeps, depsMiddleware } from "./lib/deps-middleware.ts";
+
+const deps: AppDeps = {
+  kv,
+  checkRateLimit: createCheckRateLimit(kv),
+};
 
 const app = new Hono<{ Variables: AppDeps }>();
 
 app.use("*", logger(console.log));
-app.use("*", depsMiddleware);
+app.use("*", createDepsMiddleware(deps));
 app.use(
   "/*",
   cors({

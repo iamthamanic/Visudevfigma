@@ -151,6 +151,7 @@ scansRouter.get("/:projectId/status", async (c) => {
 scansRouter.post("/:projectId/appflow", async (c) => {
   try {
     const kv = c.get("kv");
+    const checkRateLimit = c.get("checkRateLimit");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -161,6 +162,13 @@ scansRouter.post("/:projectId/appflow", async (c) => {
         },
         own.status,
       );
+    }
+    const ownerId =
+      typeof own.project.ownerId === "string" && own.project.ownerId
+        ? own.project.ownerId
+        : projectId;
+    if (!(await checkRateLimit(`rate:scans:appflow:${ownerId}`, 10))) {
+      return c.json({ success: false, error: "Rate limit exceeded" }, 429);
     }
     await kv.set(`scan:${projectId}:appflow`, {
       status: "running",
@@ -219,6 +227,7 @@ scansRouter.post("/:projectId/appflow", async (c) => {
 scansRouter.post("/:projectId/blueprint", async (c) => {
   try {
     const kv = c.get("kv");
+    const checkRateLimit = c.get("checkRateLimit");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -229,6 +238,13 @@ scansRouter.post("/:projectId/blueprint", async (c) => {
         },
         own.status,
       );
+    }
+    const ownerId =
+      typeof own.project.ownerId === "string" && own.project.ownerId
+        ? own.project.ownerId
+        : projectId;
+    if (!(await checkRateLimit(`rate:scans:blueprint:${ownerId}`, 10))) {
+      return c.json({ success: false, error: "Rate limit exceeded" }, 429);
     }
     const project = own.project;
     if (!project.github_repo) {
@@ -293,6 +309,7 @@ scansRouter.post("/:projectId/blueprint", async (c) => {
 scansRouter.post("/:projectId/data", async (c) => {
   try {
     const kv = c.get("kv");
+    const checkRateLimit = c.get("checkRateLimit");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -303,6 +320,13 @@ scansRouter.post("/:projectId/data", async (c) => {
         },
         own.status,
       );
+    }
+    const ownerId =
+      typeof own.project.ownerId === "string" && own.project.ownerId
+        ? own.project.ownerId
+        : projectId;
+    if (!(await checkRateLimit(`rate:scans:data:${ownerId}`, 10))) {
+      return c.json({ success: false, error: "Rate limit exceeded" }, 429);
     }
     const project = own.project;
     if (!project.supabase_project_id) {
@@ -362,6 +386,7 @@ scansRouter.post("/:projectId/data", async (c) => {
 
 scansRouter.post("/:projectId/all", async (c) => {
   try {
+    const checkRateLimit = c.get("checkRateLimit");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -372,6 +397,13 @@ scansRouter.post("/:projectId/all", async (c) => {
         },
         own.status,
       );
+    }
+    const ownerId =
+      typeof own.project.ownerId === "string" && own.project.ownerId
+        ? own.project.ownerId
+        : projectId;
+    if (!(await checkRateLimit(`rate:scans:all:${ownerId}`, 5))) {
+      return c.json({ success: false, error: "Rate limit exceeded" }, 429);
     }
     const project = own.project;
     const base = c.req.url.split("/scans/")[0];
