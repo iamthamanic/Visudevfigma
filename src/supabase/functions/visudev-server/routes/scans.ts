@@ -202,7 +202,7 @@ scansRouter.post("/:projectId/appflow", async (c) => {
         await kv.set(`scan:${projectId}:appflow`, {
           status: "failed",
           progress: 0,
-          error: String(e),
+          error: "Scan failed",
           failedAt: new Date().toISOString(),
         });
       }
@@ -275,7 +275,7 @@ scansRouter.post("/:projectId/blueprint", async (c) => {
         await kv.set(`scan:${projectId}:blueprint`, {
           status: "failed",
           progress: 0,
-          error: String(e),
+          error: "Scan failed",
           failedAt: new Date().toISOString(),
         });
       }
@@ -344,7 +344,7 @@ scansRouter.post("/:projectId/data", async (c) => {
         await kv.set(`scan:${projectId}:data`, {
           status: "failed",
           progress: 0,
-          error: String(e),
+          error: "Scan failed",
           failedAt: new Date().toISOString(),
         });
       }
