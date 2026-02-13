@@ -65,7 +65,16 @@ projectsRouter.post("/", async (c) => {
     if (!parseResult.ok) {
       return c.json({ success: false, error: parseResult.error }, 400);
     }
-    const body = parseResult.data as Record<string, unknown>;
+    const body = parseResult.data as {
+      id?: string;
+      name?: string;
+      description?: string;
+      github_repo?: string;
+      github_branch?: string;
+      preview_mode?: string;
+      database_type?: string;
+      supabase_project_id?: string;
+    };
     const userId = await getUserIdOptional(c);
     if (userId == null) {
       return c.json({
@@ -73,11 +82,19 @@ projectsRouter.post("/", async (c) => {
         error: "Authentication required to create project",
       }, 401);
     }
-    const id = (body.id as string) || crypto.randomUUID();
+    const id = body.id || crypto.randomUUID();
     const project = {
-      ...body,
       id,
       ownerId: userId,
+      name: body.name,
+      description: body.description,
+      github_repo: body.github_repo,
+      github_branch: body.github_branch,
+      preview_mode: body.preview_mode,
+      database_type: body.database_type,
+      supabase_project_id: body.supabase_project_id,
+      screens: [],
+      flows: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

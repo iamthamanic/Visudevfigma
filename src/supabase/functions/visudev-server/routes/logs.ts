@@ -59,14 +59,15 @@ logsRouter.post("/:projectId", async (c) => {
     if (!parseResult.ok) {
       return c.json({ success: false, error: parseResult.error }, 400);
     }
-    const body = parseResult.data as Record<string, unknown>;
+    const body = parseResult.data as { message?: string; level?: string };
     const timestamp = new Date().toISOString();
     const logId = `${timestamp}:${crypto.randomUUID()}`;
     const log = {
-      ...body,
       id: logId,
       projectId,
       timestamp,
+      message: body.message,
+      level: body.level,
     };
     await kv.set(`logs:${projectId}:${logId}`, log);
     return c.json({ success: true, data: log });

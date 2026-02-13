@@ -82,6 +82,7 @@ integrationsRouter.put("/:projectId", async (c) => {
 integrationsRouter.get("/:projectId/github/repos", async (c) => {
   try {
     const kv = c.get("kv");
+    const checkRateLimit = c.get("checkRateLimit");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -92,6 +93,15 @@ integrationsRouter.get("/:projectId/github/repos", async (c) => {
         },
         own.status,
       );
+    }
+    const ownerId =
+      typeof own.project.ownerId === "string" && own.project.ownerId
+        ? own.project.ownerId
+        : projectId;
+    if (
+      !(await checkRateLimit(`rate:integrations:github:repos:${ownerId}`, 30))
+    ) {
+      return c.json({ success: false, error: "Rate limit exceeded" }, 429);
     }
     const integrations = await kv.get(`integrations:${projectId}`) as {
       github?: { token?: string };
@@ -123,6 +133,7 @@ integrationsRouter.get("/:projectId/github/repos", async (c) => {
 integrationsRouter.get("/:projectId/github/content", async (c) => {
   try {
     const kv = c.get("kv");
+    const checkRateLimit = c.get("checkRateLimit");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -133,6 +144,18 @@ integrationsRouter.get("/:projectId/github/content", async (c) => {
         },
         own.status,
       );
+    }
+    const ownerId =
+      typeof own.project.ownerId === "string" && own.project.ownerId
+        ? own.project.ownerId
+        : projectId;
+    if (
+      !(await checkRateLimit(
+        `rate:integrations:github:content:${ownerId}`,
+        30,
+      ))
+    ) {
+      return c.json({ success: false, error: "Rate limit exceeded" }, 429);
     }
     const owner = c.req.query("owner");
     const repo = c.req.query("repo");
@@ -176,6 +199,7 @@ integrationsRouter.get("/:projectId/github/content", async (c) => {
 integrationsRouter.get("/:projectId/supabase/info", async (c) => {
   try {
     const kv = c.get("kv");
+    const checkRateLimit = c.get("checkRateLimit");
     const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
@@ -186,6 +210,13 @@ integrationsRouter.get("/:projectId/supabase/info", async (c) => {
         },
         own.status,
       );
+    }
+    const ownerId =
+      typeof own.project.ownerId === "string" && own.project.ownerId
+        ? own.project.ownerId
+        : projectId;
+    if (!(await checkRateLimit(`rate:integrations:supabase:${ownerId}`, 30))) {
+      return c.json({ success: false, error: "Rate limit exceeded" }, 429);
     }
     const integrations = await kv.get(`integrations:${projectId}`) as {
       supabase?: { url?: string; serviceKey?: string; projectRef?: string };
