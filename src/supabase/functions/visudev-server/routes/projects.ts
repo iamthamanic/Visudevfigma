@@ -3,12 +3,16 @@
  */
 import { Hono } from "hono";
 import { kv } from "../lib/kv.ts";
-import { getUserIdOptional, requireProjectOwner } from "../lib/auth.ts";
 import {
   checkRateLimit,
   RATE_MAX_PROJECTS_PER_WINDOW,
 } from "../lib/rate-limit.ts";
-import { createProjectBodySchema } from "../lib/schemas.ts";
+import { getUserIdOptional, requireProjectOwner } from "../lib/auth.ts";
+import { parseJsonBody } from "../lib/parse.ts";
+import {
+  createProjectBodySchema,
+  updateProjectBodySchema,
+} from "../lib/schemas/project.ts";
 
 type ProjectRecord = Record<string, unknown> & { ownerId?: string };
 
@@ -57,12 +61,11 @@ projectsRouter.post("/", async (c) => {
     ) {
       return c.json({ success: false, error: "Rate limit exceeded" }, 429);
     }
-    const raw = await c.req.json();
-    const parsed = createProjectBodySchema.safeParse(raw);
-    if (!parsed.success) {
-      return c.json({ success: false, error: parsed.error.message }, 400);
+    const parseResult = await parseJsonBody(c, createProjectBodySchema);
+    if (!parseResult.ok) {
+      return c.json({ success: false, error: parseResult.error }, 400);
     }
-    const body = parsed.data as Record<string, unknown>;
+    const body = parseResult.data as Record<string, unknown>;
     const userId = await getUserIdOptional(c);
     if (userId == null) {
       return c.json({
@@ -99,7 +102,18 @@ projectsRouter.put("/:id", async (c) => {
         own.status,
       );
     }
-    const body = (await c.req.json()) as Record<string, unknown>;
+    const ownerId =
+      typeof own.project.ownerId === "string" && own.project.ownerId
+        ? own.project.ownerId
+        : id;
+    if (!(await checkRateLimit(`rate:projects:update:${ownerId}`, 30))) {
+      return c.json({ success: false, error: "Rate limit exceeded" }, 429);
+    }
+    const parseResult = await parseJsonBody(c, updateProjectBodySchema);
+    if (!parseResult.ok) {
+      return c.json({ success: false, error: parseResult.error }, 400);
+    }
+    const body = parseResult.data as Record<string, unknown>;
     const updated = {
       ...own.project,
       ...body,

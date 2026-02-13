@@ -3,9 +3,10 @@
  */
 import { Hono } from "hono";
 import { kv } from "../lib/kv.ts";
-import { getUserIdOptional } from "../lib/auth.ts";
 import { checkRateLimit } from "../lib/rate-limit.ts";
-import { updateAccountBodySchema } from "../lib/schemas.ts";
+import { getUserIdOptional } from "../lib/auth.ts";
+import { parseJsonBody } from "../lib/parse.ts";
+import { updateAccountBodySchema } from "../lib/schemas/account.ts";
 
 export const accountRouter = new Hono();
 
@@ -28,18 +29,20 @@ accountRouter.put("/:userId", async (c) => {
   try {
     const userId = c.req.param("userId");
     const authUserId = await getUserIdOptional(c);
-    if (authUserId === null || authUserId !== userId) {
+    if (authUserId === null) {
+      return c.json({ success: false, error: "Authentication required" }, 401);
+    }
+    if (authUserId !== userId) {
       return c.json({ success: false, error: "Forbidden" }, 403);
     }
     if (!(await checkRateLimit(`rate:account:${userId}`, 30))) {
       return c.json({ success: false, error: "Rate limit exceeded" }, 429);
     }
-    const raw = await c.req.json();
-    const parsed = updateAccountBodySchema.safeParse(raw);
-    if (!parsed.success) {
-      return c.json({ success: false, error: parsed.error.message }, 400);
+    const parseResult = await parseJsonBody(c, updateAccountBodySchema);
+    if (!parseResult.ok) {
+      return c.json({ success: false, error: parseResult.error }, 400);
     }
-    const body = parsed.data as Record<string, unknown>;
+    const body = parseResult.data as Record<string, unknown>;
     const account = {
       ...body,
       userId,

@@ -3,10 +3,11 @@
  */
 import { Hono } from "hono";
 import { kv } from "../lib/kv.ts";
-import { requireProjectOwner } from "../lib/auth.ts";
 import { checkRateLimit } from "../lib/rate-limit.ts";
+import { requireProjectOwner } from "../lib/auth.ts";
 import { redactIntegrations } from "../lib/redact.ts";
-import { updateIntegrationsBodySchema } from "../lib/schemas.ts";
+import { parseJsonBody } from "../lib/parse.ts";
+import { updateIntegrationsBodySchema } from "../lib/schemas/integrations.ts";
 
 export const integrationsRouter = new Hono();
 
@@ -47,15 +48,18 @@ integrationsRouter.put("/:projectId", async (c) => {
         own.status,
       );
     }
-    if (!(await checkRateLimit(`rate:integrations:${projectId}`, 30))) {
+    const ownerId =
+      typeof own.project.ownerId === "string" && own.project.ownerId
+        ? own.project.ownerId
+        : projectId;
+    if (!(await checkRateLimit(`rate:integrations:${ownerId}`, 30))) {
       return c.json({ success: false, error: "Rate limit exceeded" }, 429);
     }
-    const raw = await c.req.json();
-    const parsed = updateIntegrationsBodySchema.safeParse(raw);
-    if (!parsed.success) {
-      return c.json({ success: false, error: parsed.error.message }, 400);
+    const parseResult = await parseJsonBody(c, updateIntegrationsBodySchema);
+    if (!parseResult.ok) {
+      return c.json({ success: false, error: parseResult.error }, 400);
     }
-    const body = parsed.data as Record<string, unknown>;
+    const body = parseResult.data as Record<string, unknown>;
     const integrations = {
       ...body,
       projectId,

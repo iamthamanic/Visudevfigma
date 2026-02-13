@@ -3,9 +3,10 @@
  */
 import { Hono } from "hono";
 import { kv } from "../lib/kv.ts";
-import { requireProjectOwner } from "../lib/auth.ts";
 import { checkRateLimit, RATE_MAX_LOGS_PER_WINDOW } from "../lib/rate-limit.ts";
-import { createLogBodySchema } from "../lib/schemas.ts";
+import { requireProjectOwner } from "../lib/auth.ts";
+import { parseJsonBody } from "../lib/parse.ts";
+import { createLogBodySchema } from "../lib/schemas/log.ts";
 
 export const logsRouter = new Hono();
 
@@ -51,12 +52,11 @@ logsRouter.post("/:projectId", async (c) => {
     ) {
       return c.json({ success: false, error: "Rate limit exceeded" }, 429);
     }
-    const raw = await c.req.json();
-    const parsed = createLogBodySchema.safeParse(raw);
-    if (!parsed.success) {
-      return c.json({ success: false, error: parsed.error.message }, 400);
+    const parseResult = await parseJsonBody(c, createLogBodySchema);
+    if (!parseResult.ok) {
+      return c.json({ success: false, error: parseResult.error }, 400);
     }
-    const body = parsed.data as Record<string, unknown>;
+    const body = parseResult.data as Record<string, unknown>;
     const timestamp = new Date().toISOString();
     const logId = `${timestamp}:${crypto.randomUUID()}`;
     const log = {

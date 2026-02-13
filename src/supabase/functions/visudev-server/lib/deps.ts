@@ -1,7 +1,6 @@
 /**
- * Central dependency provider for visudev-server.
- * Infrastruktur-Abhängigkeiten (Supabase-Client) werden hier einmal erstellt
- * und an Route-Logik/Libs injiziert (Dependency Inversion).
+ * Supabase client provider for visudev-server.
+ * Single responsibility: create and provide Supabase client (Dependency Inversion).
  */
 import { createClient, type SupabaseClient } from "@jsr/supabase__supabase-js";
 
