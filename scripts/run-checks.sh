@@ -283,13 +283,23 @@ if [[ "$until_95" = true ]]; then
         refactor_notify "  Ergebnis: $REVIEW_RESULT"
         if [[ "$SUCCESS" -eq 1 ]]; then
           if ! refactor_auto_commit_and_push "$NEXT_ITEM" "$CHUNK" "$POINT" "$MINUS"; then
+            refactor_notify "Auto-Push fehlgeschlagen. Bitte beheben (z. B. manuell git push). Skript wartet auf erfolgreichen Push."
             echo "" >&2
-            echo "Auto-Commit/Push für Item \"$NEXT_ITEM\" ist fehlgeschlagen. Bitte Status und Git-Remote prüfen." >&2
-            exit 1
+            echo "Auto-Push fehlgeschlagen. Bitte beheben (z. B. manuell: git push origin main). Skript wartet, bis Push erfolgreich war." >&2
+            BRANCH="$("${GIT_CMD:-git}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")"
+            while true; do
+              sleep 30
+              AHEAD="$("${GIT_CMD:-git}" rev-list "origin/${BRANCH}..HEAD" 2>/dev/null | wc -l | tr -d ' ')"
+              if [[ "${AHEAD:-1}" -eq 0 ]]; then
+                refactor_notify "Push erfolgreich erkannt – markiere Item $CURR erledigt."
+                break
+              fi
+              refactor_notify "Item $CURR – warte auf erfolgreichen Push (noch ${AHEAD} Commit(s) vor origin/${BRANCH})..."
+            done
           fi
           jq --arg id "$NEXT_ITEM" '.items |= map(if .id == $id then . + {done: true} else . end)' "$TODO_FILE" > "$TODO_FILE.tmp" && mv "$TODO_FILE.tmp" "$TODO_FILE"
           refactor_status_line "$((DONE_COUNT + 1))" "$TOTAL_ITEMS"
-          refactor_notify "Item $CURR von $TOTAL erledigt: [$CHUNK] $POINT (Auto-Commit & Push ausgeführt)"
+          refactor_notify "Item $CURR von $TOTAL erledigt: [$CHUNK] $POINT"
           echo "" >&2
           echo "Item \"$NEXT_ITEM\" erledigt." >&2
           ITEM_DONE=true
