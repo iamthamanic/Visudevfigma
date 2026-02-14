@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Shared checks for pre-push (GitHub) and supabase-checked (Supabase deploy).
+# Verantwortlichkeiten: Frontend/Backend-Checks, AI-Review-Ansteuerung, Refactor-Loop (siehe docs/AI_REVIEW_ACCEPTED_TRADEOFFS.md § Scripts).
 # Usage: run-checks.sh [--frontend] [--backend] [--no-ai-review] [--ai-review] [--chunk=src|supabase|scripts] [--until-95] [--refactor]
 #   With no args: run frontend and backend checks (same as --frontend --backend).
 #   AI review runs by default unless SKIP_AI_REVIEW=1 (pre-push sets this so push does not time out).

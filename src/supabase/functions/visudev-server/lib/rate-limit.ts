@@ -1,5 +1,6 @@
 /**
  * Rate limiting for visudev-server. Single responsibility: sliding-window rate checks.
+ * Warum: DoS- und Cost-Schutz für schreibende und teure Endpunkte (Create/Delete, externe APIs).
  * Only createCheckRateLimit is exported; the composition root (index) injects kv to avoid hard deps.
  * Note: get-then-set is not atomic; under high concurrency the limit can be exceeded briefly (trade-off for no KV locking).
  * Future: use a KV/store with atomic increment when available to enforce strict limits.

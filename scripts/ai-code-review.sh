@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # AI code review: Codex only (Cursor disabled). Called from run-checks.sh.
+# Verantwortlichkeiten: Diff-Ermittlung, Prompting, Parsing, Persistenz (siehe docs/AI_REVIEW_ACCEPTED_TRADEOFFS.md § Scripts).
 # Prompt: senior-dev, decades-of-expertise, best-code bar.
 # Codex: codex in PATH; use session after codex login (ChatGPT account, no API key in terminal).
 #

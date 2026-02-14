@@ -3,6 +3,7 @@ import type {
   LoggerLike,
 } from "../interfaces/module.interface.ts";
 
+/** Request-scoped deps: set once per request in index; no cross-request state in Deno. */
 let moduleDeps: DataModuleConfig | null = null;
 
 export function initModuleServices(deps: DataModuleConfig): void {

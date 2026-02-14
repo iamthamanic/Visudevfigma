@@ -3,6 +3,7 @@ import type {
   ScreenshotsModuleConfig,
 } from "../interfaces/module.interface.ts";
 
+/** Request-scoped deps: set once per request in index; no cross-request state in Deno. */
 let moduleDeps: ScreenshotsModuleConfig | null = null;
 
 export function initModuleServices(deps: ScreenshotsModuleConfig): void {

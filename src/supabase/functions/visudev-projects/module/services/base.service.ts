@@ -3,6 +3,7 @@ import type {
   ProjectsModuleConfig,
 } from "../interfaces/module.interface.ts";
 
+/** Request-scoped deps: set once per request in index; no cross-request state in Deno. */
 let moduleDeps: ProjectsModuleConfig | null = null;
 
 export function initModuleServices(deps: ProjectsModuleConfig): void {

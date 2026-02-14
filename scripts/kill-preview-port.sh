@@ -2,6 +2,7 @@
 # Beendet Prozesse auf Port 3005 (Vite) und 4000 (Preview-Runner).
 # Warum: Diese Ports sind für dieses Projekt reserviert; blockierte Ports führen bei
 # "npm run dev" zu Fehlern. Ein sauberer Zustand vor Start verhindert "port in use".
+# Nur für bekannte Dev-Ports (3005, 4000). Nicht auf Shared-Hosts verwenden; dynamische Ports nicht unterstützt.
 set -e
 for port in 3005 4000; do
   pids=$(lsof -ti :$port 2>/dev/null || true)

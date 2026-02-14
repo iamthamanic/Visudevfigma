@@ -1,5 +1,6 @@
 /**
  * Auth helpers for visudev-server. Single responsibility: JWT validation and project ownership checks.
+ * Warum: IDOR-Vermeidung – Zugriff nur auf eigene Ressourcen; ownerId-Check vor jedem projekt-/ressourcenbezogenen Zugriff.
  */
 import { getSupabase } from "./deps.ts";
 import { kv } from "./kv.ts";

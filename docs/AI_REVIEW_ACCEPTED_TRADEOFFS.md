@@ -37,3 +37,23 @@ Diese Trade-offs sind bewusst eingegangen und dürfen in der AI-Review **nicht**
 
 - **Umsetzung:** Param-Validierung + AuthZ + ein Service-Call in einer Handler-Funktion bewusst für Nachvollziehbarkeit; optional zukünftig Param-Middleware.
 - **SRP-Abzug nur**, wenn eine Funktion klar **mehrere unabhängige** Verantwortlichkeiten bündelt (nicht schon bei „Validierung + ein Service-Call“).
+
+---
+
+## Module-Init (moduleDeps in base.service.ts)
+
+- **Umsetzung:** Pro Edge-Function ein Modulzustand `moduleDeps`, einmal pro Request in `index.tsx` mit `initModuleServices(deps)` gesetzt. In Deno Deploy gibt es keine gemeinsame Laufzeit zwischen Requests; jeder Invoke bekommt frischen Kontext.
+- **Bewertung:** Kein Cross-Request-State; Tests müssen `initModuleServices()` vor Nutzung aufrufen.
+- **Kein Abzug** für Side Effects, solange dieses Muster (einmal init pro Request) eingehalten wird.
+
+---
+
+## Scripts (Tooling)
+
+- **SRP (scripts-1):** `ai-code-review.sh` und `run-checks.sh` bündeln Diff, Prompt, Parse, Retry in einer Datei für einfache Nutzung in Hooks/CI. Bewusst ein Skript pro Tool.
+- **Dependency Inversion (scripts-2):** Pfade wie `git`, `supabase`, `npx` sind für Hook-/CI-Kontext gewählt; Override über `PATH` möglich.
+- **YAGNI (scripts-3):** Modi (diff, full, --until-95, --refactor) werden für CI und Refactor-Runs genutzt; kein Abzug.
+- **Data Leakage (scripts-4):** Review-Artefakte in `.shimwrapper/reviews/` sind lokal, gitignored, nicht deployed; Redaction best-effort.
+- **Silent Fails (scripts-5):** AI-Review-Skip bei fehlendem Codex ist optional; Push erfordert weiterhin AI-Review. Kein Abzug.
+- **Side Effects (scripts-8):** `push-checked.sh` / `supabase-checked.sh` erzeugen bewusst Commit/Push nach bestandenen Checks; dokumentiert in AGENTS.md.
+- **Kein Abzug** für die genannten Punkte, solange Verhalten wie beschrieben.

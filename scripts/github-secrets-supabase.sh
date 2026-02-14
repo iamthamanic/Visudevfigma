@@ -94,9 +94,14 @@ if [[ -f "$ENV_GH" ]]; then
       value="${value%"${value##*[![:space:]]}"}"
       value="${value#\"}"
       value="${value%\"}"
-      if [[ -n "$name" && "$name" != "SUPABASE_URL" && "$name" != "SUPABASE_SERVICE_ROLE_KEY" ]]; then
-        set_secret "$name" "$value"
+      if [[ -z "$name" || "$name" == "SUPABASE_URL" || "$name" == "SUPABASE_SERVICE_ROLE_KEY" ]]; then
+        continue
       fi
+      if [[ ! "$name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+        echo "Skip invalid name: $name (use [A-Za-z_][A-Za-z0-9_]*)"
+        continue
+      fi
+      set_secret "$name" "$value"
     fi
   done < "$ENV_GH"
 fi

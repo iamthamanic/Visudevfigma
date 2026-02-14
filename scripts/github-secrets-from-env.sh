@@ -38,11 +38,21 @@ while IFS= read -r line; do
     value="${value%"${value##*[![:space:]]}"}"
     value="${value#\"}"
     value="${value%\"}"
-    if [[ -n "$name" ]]; then
-      echo -n "$value" | gh secret set "$name"
-      echo "Set secret: $name"
-      (( count++ )) || true
+    # Stricte Namensvalidierung: nur gültige Env-Variablennamen (Schema)
+    if [[ -z "$name" ]]; then
+      continue
     fi
+    if [[ ! "$name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+      echo "Skip invalid name: $name (use [A-Za-z_][A-Za-z0-9_]*)"
+      continue
+    fi
+    if [[ -z "${value:-}" ]]; then
+      echo "Skip empty value for: $name"
+      continue
+    fi
+    echo -n "$value" | gh secret set "$name"
+    echo "Set secret: $name"
+    (( count++ )) || true
   fi
 done < "$ENV_FILE"
 
