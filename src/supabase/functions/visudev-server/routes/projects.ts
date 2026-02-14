@@ -6,6 +6,7 @@ import type { AppDeps } from "../lib/deps-middleware.ts";
 import { RATE_MAX_PROJECTS_PER_WINDOW } from "../lib/rate-limit.ts";
 import { getUserIdOptional, requireProjectOwner } from "../lib/auth.ts";
 import { parseJsonBody } from "../lib/parse.ts";
+import { parseParam, projectIdParamSchema } from "../lib/params.ts";
 import {
   createProjectBodySchema,
   updateProjectBodySchema,
@@ -21,17 +22,19 @@ projectsRouter.get("/", async (c) => {
     const userId = await getUserIdOptional(c);
     if (userId == null) return c.json({ success: true, data: [] });
     const projects = (await kv.getByPrefix("project:")) as ProjectRecord[];
-    const owned = projects.filter((p) => p.ownerId === userId);
+    const owned = projects.filter((project) => project.ownerId === userId);
     return c.json({ success: true, data: owned });
   } catch (error) {
-    console.log(`Error fetching projects: ${error}`);
+    c.get("logError")("Error fetching projects.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });
 
 projectsRouter.get("/:id", async (c) => {
   try {
-    const id = c.req.param("id");
+    const parsed = parseParam(c.req.param("id"), projectIdParamSchema);
+    if (!parsed.ok) return c.json({ success: false, error: parsed.error }, 400);
+    const id = parsed.data;
     const own = await requireProjectOwner(c, id);
     if (!own.ok) {
       return c.json(
@@ -44,7 +47,7 @@ projectsRouter.get("/:id", async (c) => {
     }
     return c.json({ success: true, data: own.project });
   } catch (error) {
-    console.log(`Error fetching project: ${error}`);
+    c.get("logError")("Error fetching project.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });
@@ -101,16 +104,18 @@ projectsRouter.post("/", async (c) => {
     await kv.set(`project:${id}`, project);
     return c.json({ success: true, data: project });
   } catch (error) {
-    console.log(`Error creating project: ${error}`);
+    c.get("logError")("Error creating project.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });
 
 projectsRouter.put("/:id", async (c) => {
   try {
+    const parsed = parseParam(c.req.param("id"), projectIdParamSchema);
+    if (!parsed.ok) return c.json({ success: false, error: parsed.error }, 400);
+    const id = parsed.data;
     const kv = c.get("kv");
     const checkRateLimit = c.get("checkRateLimit");
-    const id = c.req.param("id");
     const own = await requireProjectOwner(c, id);
     if (!own.ok) {
       return c.json(
@@ -142,15 +147,17 @@ projectsRouter.put("/:id", async (c) => {
     await kv.set(`project:${id}`, updated);
     return c.json({ success: true, data: updated });
   } catch (error) {
-    console.log(`Error updating project: ${error}`);
+    c.get("logError")("Error updating project.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });
 
 projectsRouter.delete("/:id", async (c) => {
   try {
+    const parsed = parseParam(c.req.param("id"), projectIdParamSchema);
+    if (!parsed.ok) return c.json({ success: false, error: parsed.error }, 400);
+    const id = parsed.data;
     const kv = c.get("kv");
-    const id = c.req.param("id");
     const own = await requireProjectOwner(c, id);
     if (!own.ok) {
       return c.json(
@@ -164,7 +171,7 @@ projectsRouter.delete("/:id", async (c) => {
     await kv.del(`project:${id}`);
     return c.json({ success: true });
   } catch (error) {
-    console.log(`Error deleting project: ${error}`);
+    c.get("logError")("Error deleting project.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });

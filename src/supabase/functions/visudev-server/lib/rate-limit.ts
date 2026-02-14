@@ -1,5 +1,8 @@
 /**
  * Rate limiting for visudev-server. Single responsibility: sliding-window rate checks.
+ * Only createCheckRateLimit is exported; the composition root (index) injects kv to avoid hard deps.
+ * Note: get-then-set is not atomic; under high concurrency the limit can be exceeded briefly (trade-off for no KV locking).
+ * Future: use a KV/store with atomic increment when available to enforce strict limits.
  */
 const RATE_WINDOW_MS = 60_000;
 
@@ -33,9 +36,6 @@ export function createCheckRateLimit(kvStore: KvLike) {
     return true;
   };
 }
-
-import { kv } from "./kv.ts";
-export const checkRateLimit = createCheckRateLimit(kv);
 
 export const RATE_MAX_LOGS_PER_WINDOW = 120;
 export const RATE_MAX_PROJECTS_PER_WINDOW = 30;

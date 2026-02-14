@@ -1,5 +1,6 @@
 /**
- * Data schema validation. Strict whitelist (tables only) to prevent mass assignment.
+ * Data schema validation. Only "tables" is allowed (strict whitelist) so the frontend
+ * cannot persist arbitrary keys into KV; we avoid schema drift and key injection.
  */
 import { z } from "zod";
 

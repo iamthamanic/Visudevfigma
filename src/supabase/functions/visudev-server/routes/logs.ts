@@ -5,6 +5,7 @@ import { Hono } from "hono";
 import type { AppDeps } from "../lib/deps-middleware.ts";
 import { RATE_MAX_LOGS_PER_WINDOW } from "../lib/rate-limit.ts";
 import { requireProjectOwner } from "../lib/auth.ts";
+import { parseParam, projectIdParamSchema } from "../lib/params.ts";
 import { parseJsonBody } from "../lib/parse.ts";
 import { createLogBodySchema } from "../lib/schemas/log.ts";
 
@@ -12,8 +13,15 @@ export const logsRouter = new Hono<{ Variables: AppDeps }>();
 
 logsRouter.get("/:projectId", async (c) => {
   try {
+    const projectIdResult = parseParam(
+      c.req.param("projectId"),
+      projectIdParamSchema,
+    );
+    if (!projectIdResult.ok) {
+      return c.json({ success: false, error: projectIdResult.error }, 400);
+    }
+    const projectId = projectIdResult.data;
     const kv = c.get("kv");
-    const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
@@ -27,16 +35,23 @@ logsRouter.get("/:projectId", async (c) => {
     const logs = await kv.getByPrefix(`logs:${projectId}:`);
     return c.json({ success: true, data: logs });
   } catch (error) {
-    console.log(`Error fetching logs: ${error}`);
+    c.get("logError")("Error fetching logs.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });
 
 logsRouter.post("/:projectId", async (c) => {
   try {
+    const projectIdResult = parseParam(
+      c.req.param("projectId"),
+      projectIdParamSchema,
+    );
+    if (!projectIdResult.ok) {
+      return c.json({ success: false, error: projectIdResult.error }, 400);
+    }
+    const projectId = projectIdResult.data;
     const kv = c.get("kv");
     const checkRateLimit = c.get("checkRateLimit");
-    const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
@@ -72,15 +87,22 @@ logsRouter.post("/:projectId", async (c) => {
     await kv.set(`logs:${projectId}:${logId}`, log);
     return c.json({ success: true, data: log });
   } catch (error) {
-    console.log(`Error creating log: ${error}`);
+    c.get("logError")("Error creating log.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });
 
 logsRouter.delete("/:projectId", async (c) => {
   try {
+    const projectIdResult = parseParam(
+      c.req.param("projectId"),
+      projectIdParamSchema,
+    );
+    if (!projectIdResult.ok) {
+      return c.json({ success: false, error: projectIdResult.error }, 400);
+    }
+    const projectId = projectIdResult.data;
     const kv = c.get("kv");
-    const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
@@ -100,7 +122,7 @@ logsRouter.delete("/:projectId", async (c) => {
     if (keys.length > 0) await kv.mdel(keys);
     return c.json({ success: true });
   } catch (error) {
-    console.log(`Error deleting logs: ${error}`);
+    c.get("logError")("Error deleting logs.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });

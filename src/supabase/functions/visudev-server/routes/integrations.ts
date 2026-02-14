@@ -4,6 +4,7 @@
 import { Hono } from "hono";
 import type { AppDeps } from "../lib/deps-middleware.ts";
 import { requireProjectOwner } from "../lib/auth.ts";
+import { parseParam, projectIdParamSchema } from "../lib/params.ts";
 import { redactIntegrations } from "../lib/redact.ts";
 import { parseJsonBody } from "../lib/parse.ts";
 import {
@@ -15,8 +16,15 @@ export const integrationsRouter = new Hono<{ Variables: AppDeps }>();
 
 integrationsRouter.get("/:projectId", async (c) => {
   try {
+    const projectIdResult = parseParam(
+      c.req.param("projectId"),
+      projectIdParamSchema,
+    );
+    if (!projectIdResult.ok) {
+      return c.json({ success: false, error: projectIdResult.error }, 400);
+    }
+    const projectId = projectIdResult.data;
     const kv = c.get("kv");
-    const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
@@ -33,16 +41,23 @@ integrationsRouter.get("/:projectId", async (c) => {
       data: redactIntegrations(integrations ?? {}),
     });
   } catch (error) {
-    console.log(`Error fetching integrations: ${error}`);
+    c.get("logError")("Error fetching integrations.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });
 
 integrationsRouter.put("/:projectId", async (c) => {
   try {
+    const projectIdResult = parseParam(
+      c.req.param("projectId"),
+      projectIdParamSchema,
+    );
+    if (!projectIdResult.ok) {
+      return c.json({ success: false, error: projectIdResult.error }, 400);
+    }
+    const projectId = projectIdResult.data;
     const kv = c.get("kv");
     const checkRateLimit = c.get("checkRateLimit");
-    const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
@@ -90,16 +105,23 @@ integrationsRouter.put("/:projectId", async (c) => {
     await kv.set(`integrations:${projectId}`, integrations);
     return c.json({ success: true, data: redactIntegrations(integrations) });
   } catch (error) {
-    console.log(`Error updating integrations: ${error}`);
+    c.get("logError")("Error updating integrations.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });
 
 integrationsRouter.get("/:projectId/github/repos", async (c) => {
   try {
+    const projectIdResult = parseParam(
+      c.req.param("projectId"),
+      projectIdParamSchema,
+    );
+    if (!projectIdResult.ok) {
+      return c.json({ success: false, error: projectIdResult.error }, 400);
+    }
+    const projectId = projectIdResult.data;
     const kv = c.get("kv");
     const checkRateLimit = c.get("checkRateLimit");
-    const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
@@ -141,16 +163,23 @@ integrationsRouter.get("/:projectId/github/repos", async (c) => {
     const repos = await response.json();
     return c.json({ success: true, data: repos });
   } catch (error) {
-    console.log(`Error fetching GitHub repos: ${error}`);
+    c.get("logError")("Error fetching GitHub repos.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });
 
 integrationsRouter.get("/:projectId/github/content", async (c) => {
   try {
+    const projectIdResult = parseParam(
+      c.req.param("projectId"),
+      projectIdParamSchema,
+    );
+    if (!projectIdResult.ok) {
+      return c.json({ success: false, error: projectIdResult.error }, 400);
+    }
+    const projectId = projectIdResult.data;
     const kv = c.get("kv");
     const checkRateLimit = c.get("checkRateLimit");
-    const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
@@ -173,6 +202,7 @@ integrationsRouter.get("/:projectId/github/content", async (c) => {
     ) {
       return c.json({ success: false, error: "Rate limit exceeded" }, 429);
     }
+    // Query params validated and sanitized via schema (prevents injection/oversized inputs)
     const raw = {
       owner: c.req.query("owner"),
       repo: c.req.query("repo"),
@@ -213,16 +243,23 @@ integrationsRouter.get("/:projectId/github/content", async (c) => {
     const content = await response.json();
     return c.json({ success: true, data: content });
   } catch (error) {
-    console.log(`Error fetching GitHub content: ${error}`);
+    c.get("logError")("Error fetching GitHub content.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });
 
 integrationsRouter.get("/:projectId/supabase/info", async (c) => {
   try {
+    const projectIdResult = parseParam(
+      c.req.param("projectId"),
+      projectIdParamSchema,
+    );
+    if (!projectIdResult.ok) {
+      return c.json({ success: false, error: projectIdResult.error }, 400);
+    }
+    const projectId = projectIdResult.data;
     const kv = c.get("kv");
     const checkRateLimit = c.get("checkRateLimit");
-    const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
@@ -257,7 +294,7 @@ integrationsRouter.get("/:projectId/supabase/info", async (c) => {
       },
     });
   } catch (error) {
-    console.log(`Error fetching Supabase info: ${error}`);
+    c.get("logError")("Error fetching Supabase info.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });

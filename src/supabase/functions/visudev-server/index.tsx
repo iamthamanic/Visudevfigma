@@ -20,6 +20,12 @@ import { scansRouter } from "./routes/scans.ts";
 const deps: AppDeps = {
   kv,
   checkRateLimit: createCheckRateLimit(kv),
+  logError: (msg: string, err?: unknown) => {
+    console.log(msg);
+    if (err != null && typeof (err as Error).message === "string") {
+      console.log((err as Error).message);
+    }
+  },
 };
 
 const app = new Hono<{ Variables: AppDeps }>();

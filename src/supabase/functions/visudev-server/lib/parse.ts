@@ -1,9 +1,9 @@
 /**
  * Request body parsing helper. Single responsibility: JSON parse + Zod validation.
  *
- * Why centralized: Invalid JSON or schema violations return 400 (client error) instead of
- * 500 (server error), so clients get actionable feedback. Route handlers stay focused
- * on business logic instead of parsing/validation boilerplate.
+ * Centralized so invalid JSON or schema violations return 400 (client error) instead of
+ * 500 (server error), giving clients actionable feedback. Trade-off: all routes must
+ * pass a schema; benefit is consistent error shape and no try/catch parse in handlers.
  */
 import type { Context } from "hono";
 import type { z } from "zod";

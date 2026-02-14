@@ -1,9 +1,12 @@
 /**
  * Scans routes for visudev-server. Single responsibility: AppFlow, Blueprint, Data scans.
+ * Scans run fire-and-forget (setTimeout after response) so the client gets a quick 202;
+ * lifecycle/cancellation could be added via a job queue later.
  */
 import { Hono } from "hono";
 import type { AppDeps } from "../lib/deps-middleware.ts";
 import { requireProjectOwner } from "../lib/auth.ts";
+import { parseParam, projectIdParamSchema } from "../lib/params.ts";
 
 export const scansRouter = new Hono<{ Variables: AppDeps }>();
 
@@ -119,8 +122,15 @@ const SAMPLE_FLOW_DATA = {
 
 scansRouter.get("/:projectId/status", async (c) => {
   try {
+    const projectIdResult = parseParam(
+      c.req.param("projectId"),
+      projectIdParamSchema,
+    );
+    if (!projectIdResult.ok) {
+      return c.json({ success: false, error: projectIdResult.error }, 400);
+    }
+    const projectId = projectIdResult.data;
     const kv = c.get("kv");
-    const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
@@ -143,16 +153,23 @@ scansRouter.get("/:projectId/status", async (c) => {
       },
     });
   } catch (error) {
-    console.log(`Error fetching scan status: ${error}`);
+    c.get("logError")("Error fetching scan status.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });
 
 scansRouter.post("/:projectId/appflow", async (c) => {
   try {
+    const projectIdResult = parseParam(
+      c.req.param("projectId"),
+      projectIdParamSchema,
+    );
+    if (!projectIdResult.ok) {
+      return c.json({ success: false, error: projectIdResult.error }, 400);
+    }
+    const projectId = projectIdResult.data;
     const kv = c.get("kv");
     const checkRateLimit = c.get("checkRateLimit");
-    const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
@@ -219,16 +236,23 @@ scansRouter.post("/:projectId/appflow", async (c) => {
     }, 100);
     return c.json({ success: true, message: "AppFlow scan started" });
   } catch (error) {
-    console.log(`Error starting AppFlow scan: ${error}`);
+    c.get("logError")("Error starting AppFlow scan.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });
 
 scansRouter.post("/:projectId/blueprint", async (c) => {
   try {
+    const projectIdResult = parseParam(
+      c.req.param("projectId"),
+      projectIdParamSchema,
+    );
+    if (!projectIdResult.ok) {
+      return c.json({ success: false, error: projectIdResult.error }, 400);
+    }
+    const projectId = projectIdResult.data;
     const kv = c.get("kv");
     const checkRateLimit = c.get("checkRateLimit");
-    const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
@@ -301,16 +325,23 @@ scansRouter.post("/:projectId/blueprint", async (c) => {
     }, 100);
     return c.json({ success: true, message: "Blueprint scan started" });
   } catch (error) {
-    console.log(`Error starting Blueprint scan: ${error}`);
+    c.get("logError")("Error starting Blueprint scan.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });
 
 scansRouter.post("/:projectId/data", async (c) => {
   try {
+    const projectIdResult = parseParam(
+      c.req.param("projectId"),
+      projectIdParamSchema,
+    );
+    if (!projectIdResult.ok) {
+      return c.json({ success: false, error: projectIdResult.error }, 400);
+    }
+    const projectId = projectIdResult.data;
     const kv = c.get("kv");
     const checkRateLimit = c.get("checkRateLimit");
-    const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
@@ -379,15 +410,22 @@ scansRouter.post("/:projectId/data", async (c) => {
     }, 100);
     return c.json({ success: true, message: "Data scan started" });
   } catch (error) {
-    console.log(`Error starting Data scan: ${error}`);
+    c.get("logError")("Error starting Data scan.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });
 
 scansRouter.post("/:projectId/all", async (c) => {
   try {
+    const projectIdResult = parseParam(
+      c.req.param("projectId"),
+      projectIdParamSchema,
+    );
+    if (!projectIdResult.ok) {
+      return c.json({ success: false, error: projectIdResult.error }, 400);
+    }
+    const projectId = projectIdResult.data;
     const checkRateLimit = c.get("checkRateLimit");
-    const projectId = c.req.param("projectId");
     const own = await requireProjectOwner(c, projectId);
     if (!own.ok) {
       return c.json(
@@ -426,7 +464,7 @@ scansRouter.post("/:projectId/all", async (c) => {
     }
     return c.json({ success: true, data: results });
   } catch (error) {
-    console.log(`Error starting all scans: ${error}`);
+    c.get("logError")("Error starting all scans.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });

@@ -1,5 +1,6 @@
 /**
  * Project create/update validation. Strict whitelist to prevent mass assignment.
+ * Create requires at least one field (e.g. name) so projects are identifiable.
  */
 import { z } from "zod";
 
@@ -14,7 +15,10 @@ export const createProjectBodySchema = z
     database_type: z.enum(["supabase", "local"]).optional(),
     supabase_project_id: z.string().max(100).optional(),
   })
-  .strict();
+  .strict()
+  .refine((obj) => Object.keys(obj).length > 0, {
+    message: "Create body must contain at least one field (e.g. name)",
+  });
 
 export const updateProjectBodySchema = z
   .object({

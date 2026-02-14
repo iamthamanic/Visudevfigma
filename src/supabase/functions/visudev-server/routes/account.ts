@@ -5,14 +5,17 @@ import { Hono } from "hono";
 import type { AppDeps } from "../lib/deps-middleware.ts";
 import { getUserIdOptional } from "../lib/auth.ts";
 import { parseJsonBody } from "../lib/parse.ts";
+import { parseParam, userIdParamSchema } from "../lib/params.ts";
 import { updateAccountBodySchema } from "../lib/schemas/account.ts";
 
 export const accountRouter = new Hono<{ Variables: AppDeps }>();
 
 accountRouter.get("/:userId", async (c) => {
   try {
+    const parsed = parseParam(c.req.param("userId"), userIdParamSchema);
+    if (!parsed.ok) return c.json({ success: false, error: parsed.error }, 400);
+    const userId = parsed.data;
     const kv = c.get("kv");
-    const userId = c.req.param("userId");
     const authUserId = await getUserIdOptional(c);
     if (authUserId === null || authUserId !== userId) {
       return c.json({ success: false, error: "Forbidden" }, 403);
@@ -20,16 +23,18 @@ accountRouter.get("/:userId", async (c) => {
     const account = await kv.get(`account:${userId}`);
     return c.json({ success: true, data: account || {} });
   } catch (error) {
-    console.log(`Error fetching account: ${error}`);
+    c.get("logError")("Error fetching account.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });
 
 accountRouter.put("/:userId", async (c) => {
   try {
+    const parsed = parseParam(c.req.param("userId"), userIdParamSchema);
+    if (!parsed.ok) return c.json({ success: false, error: parsed.error }, 400);
+    const userId = parsed.data;
     const kv = c.get("kv");
     const checkRateLimit = c.get("checkRateLimit");
-    const userId = c.req.param("userId");
     const authUserId = await getUserIdOptional(c);
     if (authUserId === null) {
       return c.json({ success: false, error: "Authentication required" }, 401);
@@ -65,7 +70,7 @@ accountRouter.put("/:userId", async (c) => {
     await kv.set(`account:${userId}`, account);
     return c.json({ success: true, data: account });
   } catch (error) {
-    console.log(`Error updating account: ${error}`);
+    c.get("logError")("Error updating account.", error);
     return c.json({ success: false, error: "Internal error" }, 500);
   }
 });

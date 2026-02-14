@@ -79,8 +79,8 @@ if [[ "$CHECK_MODE" == "full" ]]; then
     USE_CHUNKED=1
     [[ -z "$AI_REVIEW_CHUNK" ]] && echo "AI review: CHECK_MODE=full (chunked: ${CHUNK_DIRS[*]} — nur committed Code)." >&2
   else
-    # Fallback: ein Diff über alles (z. B. Repo ohne src/supabase/scripts)
-    git diff --no-color "$EMPTY_TREE"..HEAD -- . >> "$DIFF_FILE" 2>/dev/null || true
+    # Fallback: ein Diff über alles. Nur 0 (diff ok) und 1 (kein diff) akzeptieren; alle anderen Exit-Codes (2, 128, …) → abbrechen.
+    "$GIT_CMD" diff --no-color "$EMPTY_TREE"..HEAD -- . >> "$DIFF_FILE" 2>/dev/null; r=$?; [[ $r -ne 0 && $r -ne 1 ]] && { echo "AI review: git diff (full fallback) failed (exit $r)." >&2; exit 1; }
     if [[ ! -s "$DIFF_FILE" ]]; then
       echo "Skipping AI review (CHECK_MODE=full): no diff (empty repo?)." >&2
       exit 0
@@ -89,22 +89,36 @@ if [[ "$CHECK_MODE" == "full" ]]; then
   fi
 else
   # --- Diff-Modus: nur geänderte/zu pushende Inhalte ---
+  # AI_REVIEW_DIFF_FILE: wenn gesetzt und lesbar, diesen Diff verwenden (z.B. git diff > .review-diff-snapshot; AI_REVIEW_DIFF_FILE=.review-diff-snapshot)
+  if [[ -n "${AI_REVIEW_DIFF_FILE:-}" ]] && [[ -r "${AI_REVIEW_DIFF_FILE}" ]]; then
+    if ! cp "$AI_REVIEW_DIFF_FILE" "$DIFF_FILE"; then
+      echo "AI review: AI_REVIEW_DIFF_FILE not readable or copy failed." >&2
+      exit 1
+    fi
+    echo "AI review: CHECK_MODE=diff (from file: $AI_REVIEW_DIFF_FILE)." >&2
+  elif [[ -n "${AI_REVIEW_DIFF_RANGE:-}" ]]; then
   # AI_REVIEW_DIFF_RANGE: wenn gesetzt, nur diese Range (z.B. HEAD~1..HEAD für Refactor-Item-Check)
-  if [[ -n "${AI_REVIEW_DIFF_RANGE:-}" ]]; then
-    git diff --no-color "$AI_REVIEW_DIFF_RANGE" >> "$DIFF_FILE" 2>/dev/null || echo "Warning: git diff $AI_REVIEW_DIFF_RANGE failed." >&2
+    if ! "$GIT_CMD" diff --no-color "$AI_REVIEW_DIFF_RANGE" >> "$DIFF_FILE" 2>/dev/null; then
+      echo "AI review: git diff $AI_REVIEW_DIFF_RANGE failed. Abort to avoid review with empty/incomplete diff." >&2
+      exit 1
+    fi
     echo "AI review: CHECK_MODE=diff (range: $AI_REVIEW_DIFF_RANGE)." >&2
   else
-    git diff --no-color >> "$DIFF_FILE" 2>/dev/null || echo "Warning: git diff (unstaged) failed." >&2
-    git diff --cached --no-color >> "$DIFF_FILE" 2>/dev/null || echo "Warning: git diff (cached) failed." >&2
-    if [[ ! -s "$DIFF_FILE" ]] && command -v git >/dev/null 2>&1; then
+    # git diff exit: 0=has diff, 1=no diff; any other (2, 128, …) → abort to avoid empty/incomplete diff
+    "$GIT_CMD" diff --no-color >> "$DIFF_FILE" 2>/dev/null; r=$?; [[ $r -ne 0 && $r -ne 1 ]] && { echo "AI review: git diff (unstaged) failed (exit $r)." >&2; exit 1; }
+    "$GIT_CMD" diff --cached --no-color >> "$DIFF_FILE" 2>/dev/null; r=$?; [[ $r -ne 0 && $r -ne 1 ]] && { echo "AI review: git diff (cached) failed (exit $r)." >&2; exit 1; }
+    if [[ ! -s "$DIFF_FILE" ]]; then
       RANGE=""
-      if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
+      if "$GIT_CMD" rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
         RANGE="@{u}...HEAD"
-      elif git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+      elif "$GIT_CMD" rev-parse --verify HEAD~1 >/dev/null 2>&1; then
         RANGE="HEAD~1...HEAD"
       fi
       if [[ -n "$RANGE" ]]; then
-        git diff --no-color "$RANGE" >> "$DIFF_FILE" 2>/dev/null || echo "Warning: git diff $RANGE failed." >&2
+        if ! "$GIT_CMD" diff --no-color "$RANGE" >> "$DIFF_FILE" 2>/dev/null; then
+          echo "AI review: git diff $RANGE failed. Abort to avoid review with empty/incomplete diff." >&2
+          exit 1
+        fi
       fi
     fi
     if [[ ! -s "$DIFF_FILE" ]]; then
@@ -188,6 +202,10 @@ Format:
 {"score": number, "deductions": [{"point": "Kurzname", "minus": number, "reason": "..."}], "verdict": "REJECT" | "ACCEPT"}
 
 Regel: verdict muss "ACCEPT" sein nur wenn score >= 95 und keine kritischen Verstöße unadressiert; sonst verdict "REJECT".
+
+Akzeptierte Trade-offs (keine Abzüge): Logger = injizierte logError(message, err?); nur message + optional err.message (kein Stack). Rate Limiting = get-then-set im Code dokumentiert. Scans = fire-and-forget dokumentiert. Route-Handler = Validierung + ein Service-Call in einer Funktion = kein SRP-Abzug.
+Konflikte: Silent Fails vs Data Leakage: Wenn Fehler an injizierte Logging-Funktion übergeben werden und nur feste Meldung plus optional err.message geloggt wird: weder Silent Fails noch Data Leakage abziehen. Nur abziehen: Silent Fails wenn Fehler weder weitergereicht noch geloggt; Data Leakage wenn Passwörter, Tokens, PII oder Stack/volle Objekte in Logs. Dependency Inversion: Logging über injizierte Funktion (z.B. c.get('\''logError'\'')) gilt als erfüllt; kein Abzug nur weil die Implementierung console.log verwendet.
+Verwende für Abzüge ausschließlich die in der Checkliste genannten Werte (z.B. SRP -15, DI -10, Data Leakage -20). Keine anderen Werte. Jeder Eintrag in deductions muss einen point-Kurznamen aus der Checkliste haben und exakt den zugehörigen minus-Wert.
 
 --- DIFF ---
 '
@@ -374,6 +392,10 @@ Format:
 {\"score\": number, \"deductions\": [{\"point\": \"Kurzname\", \"minus\": number, \"reason\": \"...\"}], \"verdict\": \"REJECT\" | \"ACCEPT\"}
 
 Regel: verdict muss \"ACCEPT\" sein nur wenn score >= 95 und keine kritischen Verstöße unadressiert; sonst verdict \"REJECT\".
+
+Akzeptierte Trade-offs (keine Abzüge): Logger = injizierte logError(message, err?); nur message + optional err.message (kein Stack). Rate Limiting = get-then-set im Code dokumentiert. Scans = fire-and-forget dokumentiert. Route-Handler = Validierung + ein Service-Call in einer Funktion = kein SRP-Abzug.
+Konflikte: Silent Fails vs Data Leakage: Wenn Fehler an injizierte Logging-Funktion übergeben werden und nur feste Meldung plus optional err.message geloggt wird: weder Silent Fails noch Data Leakage abziehen. Nur abziehen: Silent Fails wenn Fehler weder weitergereicht noch geloggt; Data Leakage wenn Passwörter, Tokens, PII oder Stack/volle Objekte in Logs. Dependency Inversion: Logging über injizierte Funktion (z.B. c.get(\\\"logError\\\")) gilt als erfüllt; kein Abzug nur weil die Implementierung console.log verwendet.
+Verwende für Abzüge ausschließlich die in der Checkliste genannten Werte (z.B. SRP -15, Dependency Inversion -10, Data Leakage -20). Keine anderen Werte (z.B. -7 oder -12). Jeder Eintrag in deductions muss einen point-Kurznamen aus der Checkliste haben und exakt den zugehörigen minus-Wert.
 
 --- DIFF ---
 $DIFF_LIMITED"
