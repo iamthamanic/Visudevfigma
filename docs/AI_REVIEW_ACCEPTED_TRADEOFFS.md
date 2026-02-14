@@ -14,8 +14,8 @@ Diese Trade-offs sind bewusst eingegangen und dürfen in der AI-Review **nicht**
 
 ## Rate Limiting
 
-- **Umsetzung:** Get-then-set (nicht atomar); im Code dokumentiert (z.B. Kommentar „get-then-set is not atomic“ / „Future: atomic increment when available“). Throttling für schreibende/heavy Endpunkte vorhanden.
-- **Kein Abzug**, solange im Code kommentiert und Throttling aktiv ist.
+- **Umsetzung:** Get-then-set (nicht atomar); im Code dokumentiert (z.B. Kommentar „get-then-set is not atomic“ / „Future: atomic increment when available“). Throttling für schreibende/heavy Endpunkte vorhanden. Read-Endpunkte (GET) ohne Throttling sind akzeptiert.
+- **Kein Abzug**, solange im Code kommentiert und Throttling für Schreib-Endpunkte aktiv ist; kein Abzug für ungedrosselte GETs.
 
 ---
 
@@ -23,6 +23,13 @@ Diese Trade-offs sind bewusst eingegangen und dürfen in der AI-Review **nicht**
 
 - **Umsetzung:** Scans starten per setTimeout nach HTTP-Response; im Code/Kommentar erwähnt, dass Lifecycle/Cancellation später per Job-Queue kommen kann.
 - **Kein Abzug**, solange dokumentiert.
+
+---
+
+## Externe APIs (fetch / URL-Building)
+
+- **Umsetzung:** Externe API-Aufrufe (fetch, URL-Building) in Route-Handlern (z.B. integrations.ts, scans.ts) sind erlaubt; optional später in injizierte Clients auslagern.
+- **Kein Abzug** für Dependency Inversion nur wegen direktem fetch/URL-Building in diesen Handlern.
 
 ---
 

@@ -203,7 +203,7 @@ Format:
 
 Regel: verdict muss "ACCEPT" sein nur wenn score >= 95 und keine kritischen Verstöße unadressiert; sonst verdict "REJECT".
 
-Akzeptierte Trade-offs (keine Abzüge): Logger = injizierte logError(message, err?); nur message + optional err.message (kein Stack). Rate Limiting = get-then-set im Code dokumentiert. Scans = fire-and-forget dokumentiert. Route-Handler = Validierung + ein Service-Call in einer Funktion = kein SRP-Abzug.
+Akzeptierte Trade-offs (keine Abzüge): Logger = injizierte logError(message, err?); nur message + optional err.message (kein Stack). Rate Limiting = get-then-set dokumentiert; Schreib-Endpunkte gedrosselt; GET-Endpunkte ohne Throttling = kein Abzug. Scans = fire-and-forget dokumentiert. Externe API (fetch/URL in integrations/scans) = kein DI-Abzug. Route-Handler = Validierung + ein Service-Call = kein SRP-Abzug.
 Konflikte: Silent Fails vs Data Leakage: Wenn Fehler an injizierte Logging-Funktion übergeben werden und nur feste Meldung plus optional err.message geloggt wird: weder Silent Fails noch Data Leakage abziehen. Nur abziehen: Silent Fails wenn Fehler weder weitergereicht noch geloggt; Data Leakage wenn Passwörter, Tokens, PII oder Stack/volle Objekte in Logs. Dependency Inversion: Logging über injizierte Funktion (z.B. c.get('\''logError'\'')) gilt als erfüllt; kein Abzug nur weil die Implementierung console.log verwendet.
 Verwende für Abzüge ausschließlich die in der Checkliste genannten Werte (z.B. SRP -15, DI -10, Data Leakage -20). Keine anderen Werte. Jeder Eintrag in deductions muss einen point-Kurznamen aus der Checkliste haben und exakt den zugehörigen minus-Wert.
 
@@ -393,7 +393,7 @@ Format:
 
 Regel: verdict muss \"ACCEPT\" sein nur wenn score >= 95 und keine kritischen Verstöße unadressiert; sonst verdict \"REJECT\".
 
-Akzeptierte Trade-offs (keine Abzüge): Logger = injizierte logError(message, err?); nur message + optional err.message (kein Stack). Rate Limiting = get-then-set im Code dokumentiert. Scans = fire-and-forget dokumentiert. Route-Handler = Validierung + ein Service-Call in einer Funktion = kein SRP-Abzug.
+Akzeptierte Trade-offs (keine Abzüge): Logger = injizierte logError(message, err?); nur message + optional err.message (kein Stack). Rate Limiting = get-then-set dokumentiert; Schreib-Endpunkte gedrosselt; GET-Endpunkte ohne Throttling = kein Abzug. Scans = fire-and-forget dokumentiert. Externe API (fetch/URL in integrations/scans) = kein DI-Abzug. Route-Handler = Validierung + ein Service-Call = kein SRP-Abzug.
 Konflikte: Silent Fails vs Data Leakage: Wenn Fehler an injizierte Logging-Funktion übergeben werden und nur feste Meldung plus optional err.message geloggt wird: weder Silent Fails noch Data Leakage abziehen. Nur abziehen: Silent Fails wenn Fehler weder weitergereicht noch geloggt; Data Leakage wenn Passwörter, Tokens, PII oder Stack/volle Objekte in Logs. Dependency Inversion: Logging über injizierte Funktion (z.B. c.get(\\\"logError\\\")) gilt als erfüllt; kein Abzug nur weil die Implementierung console.log verwendet.
 Verwende für Abzüge ausschließlich die in der Checkliste genannten Werte (z.B. SRP -15, Dependency Inversion -10, Data Leakage -20). Keine anderen Werte (z.B. -7 oder -12). Jeder Eintrag in deductions muss einen point-Kurznamen aus der Checkliste haben und exakt den zugehörigen minus-Wert.
 
