@@ -162,6 +162,14 @@ appflowRouter.delete("/:projectId/:flowId", async (c) => {
         own.status,
       );
     }
+    const checkRateLimit = c.get("checkRateLimit");
+    const ownerId =
+      typeof own.project.ownerId === "string" && own.project.ownerId
+        ? own.project.ownerId
+        : projectId;
+    if (!(await checkRateLimit(`rate:appflow:delete:${ownerId}`, 30))) {
+      return c.json({ success: false, error: "Rate limit exceeded" }, 429);
+    }
     await kv.del(`appflow:${projectId}:${flowId}`);
     return c.json({ success: true });
   } catch (error) {

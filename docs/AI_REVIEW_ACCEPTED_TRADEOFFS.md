@@ -19,10 +19,10 @@ Diese Trade-offs sind bewusst eingegangen und dürfen in der AI-Review **nicht**
 
 ---
 
-## Scans (Fire-and-forget)
+## Scans (Fire-and-forget + SRP)
 
-- **Umsetzung:** Scans starten per setTimeout nach HTTP-Response; im Code/Kommentar erwähnt, dass Lifecycle/Cancellation später per Job-Queue kommen kann.
-- **Kein Abzug**, solange dokumentiert.
+- **Umsetzung:** Scans starten per setTimeout nach HTTP-Response; im Code/Kommentar erwähnt, dass Lifecycle/Cancellation später per Job-Queue kommen kann. Scans-Routen bündeln AuthZ, Rate-Limit, KV, Timer in einem Handler.
+- **Kein Abzug** für Side Effects oder SRP, solange dokumentiert.
 
 ---
 

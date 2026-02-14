@@ -113,6 +113,14 @@ logsRouter.delete("/:projectId", async (c) => {
         own.status,
       );
     }
+    const checkRateLimit = c.get("checkRateLimit");
+    const ownerId =
+      typeof own.project.ownerId === "string" && own.project.ownerId
+        ? own.project.ownerId
+        : projectId;
+    if (!(await checkRateLimit(`rate:logs:delete:${ownerId}`, 30))) {
+      return c.json({ success: false, error: "Rate limit exceeded" }, 429);
+    }
     const logs = await kv.getByPrefix(`logs:${projectId}:`);
     const keys = logs
       .map((log: { id?: string }) =>

@@ -85,7 +85,7 @@ projectsRouter.post("/", async (c) => {
         error: "Authentication required to create project",
       }, 401);
     }
-    const id = body.id || crypto.randomUUID();
+    const id = crypto.randomUUID();
     const project = {
       id,
       ownerId: userId,
@@ -167,6 +167,14 @@ projectsRouter.delete("/:id", async (c) => {
         },
         own.status,
       );
+    }
+    const checkRateLimit = c.get("checkRateLimit");
+    const ownerId =
+      typeof own.project.ownerId === "string" && own.project.ownerId
+        ? own.project.ownerId
+        : id;
+    if (!(await checkRateLimit(`rate:projects:delete:${ownerId}`, 30))) {
+      return c.json({ success: false, error: "Rate limit exceeded" }, 429);
     }
     await kv.del(`project:${id}`);
     return c.json({ success: true });
