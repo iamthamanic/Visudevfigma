@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { detectSupabaseUsage } from "./build-candidates.js";
 import { warnNonFatal } from "./build-logging.js";
+import { detectSupabaseUsage } from "./build-supabase-scan.js";
 
 const DEV_ENV_FILES = [".env", ".env.local", ".env.development", ".env.development.local"];
 const SUPABASE_PREVIEW_PLACEHOLDERS = {

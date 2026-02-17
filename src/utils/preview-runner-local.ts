@@ -6,12 +6,9 @@ export type {
   RunnerPreviewStatus,
 } from "./preview-runner-types";
 
-export {
-  discoverPreviewRunner,
-  getPreviewRunnerRuntimeStatus,
-  localRunnerGuard,
-  resolvePreviewMode,
-} from "./preview-runner-core";
+export { discoverPreviewRunner, getPreviewRunnerRuntimeStatus } from "./preview-runner-core";
+
+export { localRunnerGuard, resolvePreviewMode } from "./preview-runner-mode";
 
 export {
   localPreviewRefresh,

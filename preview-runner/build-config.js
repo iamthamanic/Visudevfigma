@@ -10,6 +10,7 @@ const DEFAULT_START = "npx serve dist";
 const MIN_PREVIEW_PORT = 1024;
 const MAX_PREVIEW_PORT = 65535;
 const FORBIDDEN_COMMAND_CHARS = /[|;<>`$\n\r]/;
+const SINGLE_AMPERSAND_PATTERN = /(^|[^&])&([^&]|$)/;
 const ALLOWED_COMMAND_PREFIXES = [
   /^npm\s+(run|ci|install|exec)\b/i,
   /^pnpm\s+(run|install|exec)\b/i,
@@ -45,6 +46,7 @@ function isAllowedCommandSegment(segment) {
 function isSafeConfigCommand(cmd) {
   if (!isSaneCommand(cmd)) return false;
   const normalized = String(cmd).trim();
+  if (SINGLE_AMPERSAND_PATTERN.test(normalized)) return false;
   const segments = normalized
     .split("&&")
     .map((segment) => segment.trim())
