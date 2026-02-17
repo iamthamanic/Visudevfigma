@@ -1,4 +1,5 @@
 import type { PreviewMode } from "../lib/visudev/types";
+import { getPreviewRunnerClientDeps } from "./preview-runner-deps";
 
 /** When set (e.g. http://localhost:4000), frontend calls the Preview Runner directly; no Edge Function or Supabase secret needed. In dev we default to localhost:4000 so "npm run dev" works without .env. */
 const localRunnerUrl =
@@ -6,15 +7,59 @@ const localRunnerUrl =
   (typeof import.meta !== "undefined" && import.meta.env?.DEV ? "http://localhost:4000" : "") ||
   "";
 
-/** Nach fehlgeschlagenem Request ggf. gefundene Runner-URL (z. B. wenn Runner auf 4100 läuft). */
-let discoveredRunnerUrl: string | null = null;
+const DISCOVERED_RUNNER_KEY = "visudev_preview_runner_discovered_url";
+
+function normalizeRunnerUrl(url: string): string | null {
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch {
+    return null;
+  }
+}
+
+function getDiscoveryStorage(): Storage | null {
+  const deps = getPreviewRunnerClientDeps();
+  return deps.getSessionStorage() ?? deps.getLocalStorage();
+}
+
+function getDiscoveredRunnerUrl(): string | null {
+  const storage = getDiscoveryStorage();
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(DISCOVERED_RUNNER_KEY);
+    if (!raw) return null;
+    const normalized = normalizeRunnerUrl(raw);
+    if (!normalized) {
+      storage.removeItem(DISCOVERED_RUNNER_KEY);
+      return null;
+    }
+    return normalized;
+  } catch {
+    return null;
+  }
+}
 
 export function getEffectiveRunnerUrl(): string {
-  return discoveredRunnerUrl ?? localRunnerUrl;
+  return getDiscoveredRunnerUrl() ?? localRunnerUrl;
 }
 
 export function setDiscoveredRunnerUrl(url: string): void {
-  discoveredRunnerUrl = url;
+  const storage = getDiscoveryStorage();
+  if (!storage) return;
+  const normalized = normalizeRunnerUrl(url);
+  try {
+    if (!normalized) {
+      storage.removeItem(DISCOVERED_RUNNER_KEY);
+      return;
+    }
+    storage.setItem(DISCOVERED_RUNNER_KEY, normalized);
+  } catch {
+    // ignore storage write errors
+  }
 }
 
 export function shouldDiscoverRunner(): boolean {

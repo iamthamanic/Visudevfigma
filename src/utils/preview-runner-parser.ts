@@ -3,6 +3,11 @@ import type {
   PreviewStepLog,
   RunnerPreviewStatus,
 } from "./preview-runner-types";
+import {
+  sanitizeProjectId,
+  sanitizeProjectToken,
+  sanitizeRunId,
+} from "./preview-runner-validation";
 
 const RUNNER_PREVIEW_STATUS_SET = new Set<RunnerPreviewStatus>([
   "idle",
@@ -11,7 +16,6 @@ const RUNNER_PREVIEW_STATUS_SET = new Set<RunnerPreviewStatus>([
   "failed",
   "stopped",
 ]);
-const runnerWarningCache = new Set<string>();
 
 export interface RunnerHealthPayload {
   ok?: boolean;
@@ -25,9 +29,6 @@ export interface RunnerHealthPayload {
 export function warnRunnerOnce(context: string, error?: unknown): void {
   const message =
     error instanceof Error ? error.message : error != null ? String(error) : "unknown error";
-  const cacheKey = `${context}::${message}`;
-  if (runnerWarningCache.has(cacheKey)) return;
-  runnerWarningCache.add(cacheKey);
   console.warn(`[preview-runner-api] ${context}: ${message}`);
 }
 
@@ -88,11 +89,14 @@ function parseRunnerStepLogs(value: unknown): PreviewStepLog[] | undefined {
 
 function parseRunnerRunInfo(value: unknown): PreviewRunnerRunInfo | null {
   if (!isRecord(value)) return null;
-  const runId = readString(value.runId);
+  const runIdRaw = readString(value.runId);
+  const runId = runIdRaw ? sanitizeRunId(runIdRaw) : null;
   if (!runId) return null;
+  const projectIdRaw = readString(value.projectId);
+  const projectId = projectIdRaw ? (sanitizeProjectId(projectIdRaw) ?? "") : "";
   return {
     runId,
-    projectId: readString(value.projectId) ?? "",
+    projectId,
     repo: readString(value.repo) ?? "",
     branchOrCommit: readString(value.branchOrCommit) ?? "",
     status: readString(value.status) ?? "unknown",
@@ -151,10 +155,12 @@ export function parseRunnerStartPayload(value: unknown): {
   projectToken: string | null;
 } | null {
   if (!isRecord(value)) return null;
-  const runId = readString(value.runId);
+  const runIdRaw = readString(value.runId);
+  const runId = runIdRaw ? sanitizeRunId(runIdRaw) : null;
   if (!runId) return null;
   const status = parseRunnerStatus(value.status) ?? "starting";
-  const projectToken = readString(value.projectToken);
+  const projectTokenRaw = readString(value.projectToken);
+  const projectToken = projectTokenRaw ? sanitizeProjectToken(projectTokenRaw) : null;
   return { runId, status, projectToken };
 }
 

@@ -11,6 +11,7 @@ import {
   type RunnerHealthPayload,
 } from "./preview-runner-parser";
 import type { PreviewRunnerRuntimeStatus } from "./preview-runner-types";
+import { getPreviewRunnerClientDeps } from "./preview-runner-deps";
 
 const RUNNER_PORT_CANDIDATES = [4000, 4100, 4110, 4120, 4130, 4140];
 const RUNNER_REQUEST_TIMEOUT_MS = 1500;
@@ -22,7 +23,8 @@ async function requestRunnerJson(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), RUNNER_REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetch(`${baseUrl.replace(/\/$/, "")}${pathname}`, {
+    const deps = getPreviewRunnerClientDeps();
+    const response = await deps.fetch(`${baseUrl.replace(/\/$/, "")}${pathname}`, {
       method: "GET",
       signal: controller.signal,
     });
