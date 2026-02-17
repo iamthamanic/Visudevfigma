@@ -1328,7 +1328,7 @@ async function handleStart(req, res, _url) {
     previewUrl,
     error: null,
     startedAt: new Date().toISOString(),
-    repo,
+    repo: normalizedRepo,
     branchOrCommit: normalizedBranchOrCommit,
     projectId: normalizedProjectId,
     commitSha: commitShaTrimmed,
@@ -1376,6 +1376,11 @@ function handleStatus(req, res, url) {
   if (!run) {
     // Run not found (e.g. runner restarted): return 200 idle so frontend gets no 404 and can clear runId
     send(res, 200, { success: true, status: "idle" });
+    return;
+  }
+  const access = ensureRunAccess(run, readProjectTokenFromRequest(req));
+  if (!access.ok) {
+    send(res, access.statusCode, { success: false, error: access.error });
     return;
   }
 
@@ -1441,6 +1446,8 @@ async function stopRun(runId, run) {
   }
   run.status = "stopped";
   run.stoppedAt = new Date().toISOString();
+  run.logs = [];
+  runs.delete(runId);
 }
 
 async function handleStopProject(req, res, url) {
@@ -1487,13 +1494,31 @@ function handleHealth(_req, res) {
   });
 }
 
-function handleRuns(_req, res, url) {
+function handleRuns(req, res, url) {
   const includeStopped =
     url.searchParams.get("includeStopped") === "1" ||
     url.searchParams.get("includeStopped") === "true";
+  const requestedProjectIdRaw = url.searchParams.get("projectId");
+  const requestedProjectId =
+    requestedProjectIdRaw == null ? null : normalizeProjectIdValue(requestedProjectIdRaw);
+  if (requestedProjectIdRaw != null && !requestedProjectId) {
+    send(res, 400, { success: false, error: "Invalid projectId" });
+    return;
+  }
+  const requestToken = readProjectTokenFromRequest(req);
+  if (requestedProjectId) {
+    const projectAccess = ensureProjectAccess(requestedProjectId, requestToken);
+    if (!projectAccess.ok) {
+      send(res, projectAccess.statusCode, { success: false, error: projectAccess.error });
+      return;
+    }
+  }
 
   const runEntries = [];
   for (const [runId, run] of runs) {
+    if (requestedProjectId && String(run.projectId) !== requestedProjectId) continue;
+    const runAccess = ensureRunAccess(run, requestToken);
+    if (!runAccess.ok) continue;
     if (!includeStopped && run.status === "stopped") continue;
     runEntries.push({
       runId,
@@ -1663,6 +1688,19 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === "POST" && pathname === "/webhook/github") {
+    const webhookRateLimit = enforceWriteRateLimit(req, "/webhook/github");
+    if (!webhookRateLimit.ok) {
+      send(
+        res,
+        429,
+        {
+          success: false,
+          error: "Rate limit exceeded for write operations. Please retry shortly.",
+        },
+        { "Retry-After": String(webhookRateLimit.retryAfterSec) },
+      );
+      return;
+    }
     try {
       const rawBody = await readRawBody(req);
       handleWebhookGitHub(req, res, rawBody);
