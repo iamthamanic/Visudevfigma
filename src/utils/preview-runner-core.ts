@@ -39,14 +39,12 @@ async function requestRunnerJson(
   }
 }
 
-/** Prüft, ob eine URL mit /health erreichbar ist (kurzer Timeout). */
 async function checkRunnerHealth(baseUrl: string): Promise<RunnerHealthPayload | null> {
   const out = await requestRunnerJson(baseUrl, "/health");
   if (!out.ok || !out.data) return null;
   return parseRunnerHealthPayload(out.data);
 }
 
-/** Sucht unter Kandidaten-Ports (4000, 4100, …) nach einem laufenden Runner; setzt discoveredRunnerUrl. */
 export async function discoverRunnerUrl(): Promise<string | null> {
   const hosts = ["localhost", "127.0.0.1"];
   for (const port of RUNNER_PORT_CANDIDATES) {
@@ -61,7 +59,6 @@ export async function discoverRunnerUrl(): Promise<string | null> {
   return null;
 }
 
-/** Runner runtime status for UI (sidebar badge / modal). */
 export async function getPreviewRunnerRuntimeStatus(): Promise<PreviewRunnerRuntimeStatus> {
   const checkedAt = new Date().toISOString();
   const primaryBase = getEffectiveRunnerUrl();
@@ -115,7 +112,6 @@ export async function getPreviewRunnerRuntimeStatus(): Promise<PreviewRunnerRunt
   };
 }
 
-/** Läuft einmal im Hintergrund, um den Runner zu finden (z. B. auf Port 4100), wenn 4000 nicht erreichbar ist. Beim ersten Start/Status wird die gefundene URL gecacht. */
 export async function discoverPreviewRunner(): Promise<void> {
   if (shouldDiscoverRunner()) {
     await discoverRunnerUrl();

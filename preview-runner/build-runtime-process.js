@@ -2,6 +2,25 @@ import { warnNonFatal } from "./build-logging.js";
 import { getBuildRuntimeDeps } from "./build-runtime-deps.js";
 import { redactRuntimeOutput } from "./build-runtime-redact.js";
 
+const MAX_CAPTURED_OUTPUT_CHARS = 262_144;
+
+function appendCapturedOutput(current, chunk) {
+  const merged = current + chunk;
+  if (merged.length <= MAX_CAPTURED_OUTPUT_CHARS) {
+    return { text: merged, truncated: false };
+  }
+  return {
+    text: merged.slice(merged.length - MAX_CAPTURED_OUTPUT_CHARS),
+    truncated: true,
+  };
+}
+
+function finalizeOutput(text, mergedEnv, truncated) {
+  const redacted = redactRuntimeOutput(text, mergedEnv);
+  if (!truncated) return redacted;
+  return `[output truncated to last ${MAX_CAPTURED_OUTPUT_CHARS} chars]\n${redacted}`;
+}
+
 export function runCommand(cwd, command, env = {}) {
   const runtimeDeps = getBuildRuntimeDeps();
   const mergedEnv = { ...runtimeDeps.env(), ...env };
@@ -14,15 +33,21 @@ export function runCommand(cwd, command, env = {}) {
     });
     let stderr = "";
     let stdout = "";
+    let stdoutTruncated = false;
+    let stderrTruncated = false;
     child.stdout?.on("data", (d) => {
-      stdout += d.toString();
+      const next = appendCapturedOutput(stdout, d.toString());
+      stdout = next.text;
+      stdoutTruncated = stdoutTruncated || next.truncated;
     });
     child.stderr?.on("data", (d) => {
-      stderr += d.toString();
+      const next = appendCapturedOutput(stderr, d.toString());
+      stderr = next.text;
+      stderrTruncated = stderrTruncated || next.truncated;
     });
     child.on("close", (code) => {
-      const stdoutSafe = redactRuntimeOutput(stdout, mergedEnv);
-      const stderrSafe = redactRuntimeOutput(stderr, mergedEnv);
+      const stdoutSafe = finalizeOutput(stdout, mergedEnv, stdoutTruncated);
+      const stderrSafe = finalizeOutput(stderr, mergedEnv, stderrTruncated);
       if (code === 0) resolve({ stdout: stdoutSafe, stderr: stderrSafe });
       else reject(new Error(stderrSafe || stdoutSafe || `Exit ${code}`));
     });
@@ -42,15 +67,21 @@ export function runPackageManager(cwd, cmd, args, env = {}) {
     });
     let stderr = "";
     let stdout = "";
+    let stdoutTruncated = false;
+    let stderrTruncated = false;
     child.stdout?.on("data", (d) => {
-      stdout += d.toString();
+      const next = appendCapturedOutput(stdout, d.toString());
+      stdout = next.text;
+      stdoutTruncated = stdoutTruncated || next.truncated;
     });
     child.stderr?.on("data", (d) => {
-      stderr += d.toString();
+      const next = appendCapturedOutput(stderr, d.toString());
+      stderr = next.text;
+      stderrTruncated = stderrTruncated || next.truncated;
     });
     child.on("close", (code) => {
-      const stdoutSafe = redactRuntimeOutput(stdout, mergedEnv);
-      const stderrSafe = redactRuntimeOutput(stderr, mergedEnv);
+      const stdoutSafe = finalizeOutput(stdout, mergedEnv, stdoutTruncated);
+      const stderrSafe = finalizeOutput(stderr, mergedEnv, stderrTruncated);
       if (code === 0) resolve({ stdout: stdoutSafe, stderr: stderrSafe });
       else reject(new Error(stderrSafe || stdoutSafe || `${cmd} exit ${code}`));
     });
