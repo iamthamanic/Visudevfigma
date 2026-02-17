@@ -6,6 +6,8 @@ export interface VisudevDomReport {
   links?: { href: string; text?: string }[];
 }
 
+export type NodeViewportMode = "fit-desktop" | "fit-mobile";
+
 export interface AppFlowRecord extends Record<string, unknown> {
   flowId: string;
   projectId: string;

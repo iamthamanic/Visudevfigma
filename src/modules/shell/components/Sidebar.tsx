@@ -4,7 +4,15 @@ import { File, Loader2 } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
 import { useAuth } from "../../../contexts/useAuth";
 import { AuthDialog } from "../../../components/AuthDialog";
-import svgPaths from "../../../imports/svg-mni0z0xtlg";
+import { RunnerStatusControl } from "./RunnerStatusControl";
+import {
+  AppFlowIcon,
+  BlueprintIcon,
+  DataIcon,
+  LogsIcon,
+  PlusIcon,
+  SettingsIcon,
+} from "./SidebarIcons";
 import logoImage from "../../../assets/visudev-logo.png";
 import type { ShellScreen } from "../types";
 import styles from "../styles/Sidebar.module.css";
@@ -78,13 +86,16 @@ export function Sidebar({ activeScreen, onNavigate, onNewProject }: SidebarProps
   return (
     <aside className={styles.root}>
       <div className={styles.header}>
-        <div className={styles.logoWrapper}>
-          <img src={logoImage} alt="VisuDEV Logo" className={styles.logoImage} />
+        <div className={styles.headerBrandRow}>
+          <div className={styles.logoWrapper}>
+            <img src={logoImage} alt="VisuDEV Logo" className={styles.logoImage} />
+          </div>
+          <div className={styles.brand}>
+            <span className={styles.brandTitle}>VisuDEV</span>
+            <span className={styles.brandSubtitle}>Visualize Code</span>
+          </div>
         </div>
-        <div className={styles.brand}>
-          <span className={styles.brandTitle}>VisuDEV</span>
-          <span className={styles.brandSubtitle}>Visualize Code</span>
-        </div>
+        <RunnerStatusControl />
       </div>
 
       <nav className={styles.nav}>
@@ -165,159 +176,5 @@ export function Sidebar({ activeScreen, onNavigate, onNewProject }: SidebarProps
 
       <AuthDialog open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
     </aside>
-  );
-}
-
-function AppFlowIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" {...props}>
-      <path
-        d={svgPaths.p1f5dba00}
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.66667"
-      />
-      <path
-        d={svgPaths.p17f7d000}
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.66667"
-      />
-      <path
-        d={svgPaths.p42d6b00}
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.66667"
-      />
-    </svg>
-  );
-}
-
-function BlueprintIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" {...props}>
-      <path
-        d="M5 2.5V12.5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.66667"
-      />
-      <path
-        d={svgPaths.p3a3cf580}
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.66667"
-      />
-      <path
-        d={svgPaths.p34c9bb80}
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.66667"
-      />
-      <path
-        d={svgPaths.p13cf9c00}
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.66667"
-      />
-    </svg>
-  );
-}
-
-function DataIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" {...props}>
-      <path
-        d={svgPaths.p2e7662c0}
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.66667"
-      />
-      <path
-        d={svgPaths.pbd81000}
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.66667"
-      />
-      <path
-        d={svgPaths.p2a44e700}
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.66667"
-      />
-    </svg>
-  );
-}
-
-function LogsIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" {...props}>
-      <g clipPath="url(#logsIconClip)">
-        <path
-          d={svgPaths.p363df2c0}
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="1.66667"
-        />
-      </g>
-      <defs>
-        <clipPath id="logsIconClip">
-          <rect width="20" height="20" fill="white" />
-        </clipPath>
-      </defs>
-    </svg>
-  );
-}
-
-function SettingsIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" {...props}>
-      <path
-        d={svgPaths.p2483b8c0}
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.66667"
-      />
-      <path
-        d={svgPaths.p3b27f100}
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.66667"
-      />
-    </svg>
-  );
-}
-
-function PlusIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" {...props}>
-      <path
-        d="M4.16667 10H15.8333"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.66667"
-      />
-      <path
-        d="M10 4.16667V15.8333"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.66667"
-      />
-    </svg>
   );
 }

@@ -9,7 +9,7 @@ import type {
   IntegrationsUpdateInput,
   GitHubRepo,
 } from "../lib/visudev/integrations";
-import type { PreviewMode, Project } from "../lib/visudev/types";
+import type { PreviewMode, PreviewRuntimeOptions, Project } from "../lib/visudev/types";
 import type {
   AppFlowCreateInput,
   AppFlowRecord,
@@ -365,22 +365,94 @@ const localRunnerUrl =
 /** Nach fehlgeschlagenem Request ggf. gefundene Runner-URL (z. B. wenn Runner auf 4100 läuft). */
 let discoveredRunnerUrl: string | null = null;
 
-const RUNNER_PORT_CANDIDATES = [4000, 4100, 4110, 4120, 4130];
+const RUNNER_PORT_CANDIDATES = [4000, 4100, 4110, 4120, 4130, 4140];
+const RUNNER_REQUEST_TIMEOUT_MS = 1500;
+
+interface RunnerHealthPayload {
+  ok?: boolean;
+  service?: string;
+  port?: number;
+  startedAt?: string;
+  uptimeSec?: number;
+  activeRuns?: number;
+}
+
+interface RunnerRunsPayload {
+  success?: boolean;
+  runner?: {
+    port?: number;
+    startedAt?: string;
+    uptimeSec?: number;
+  };
+  totals?: {
+    active?: number;
+  };
+  runs?: Array<{
+    runId?: string;
+    projectId?: string;
+    repo?: string;
+    branchOrCommit?: string;
+    status?: string;
+    previewUrl?: string | null;
+    startedAt?: string | null;
+    readyAt?: string | null;
+    stoppedAt?: string | null;
+  }>;
+}
+
+export interface PreviewRunnerRunInfo {
+  runId: string;
+  projectId: string;
+  repo: string;
+  branchOrCommit: string;
+  status: string;
+  previewUrl: string | null;
+  startedAt: string | null;
+  readyAt: string | null;
+  stoppedAt: string | null;
+}
+
+export interface PreviewRunnerRuntimeStatus {
+  state: "active" | "inactive";
+  baseUrl: string | null;
+  checkedAt: string;
+  startedAt: string | null;
+  uptimeSec: number | null;
+  activeRuns: number;
+  projects: string[];
+  runs: PreviewRunnerRunInfo[];
+}
+
+async function requestRunnerJson<T>(
+  baseUrl: string,
+  pathname: string,
+): Promise<{ ok: boolean; status: number; data?: T }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), RUNNER_REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${baseUrl.replace(/\/$/, "")}${pathname}`, {
+      method: "GET",
+      signal: controller.signal,
+    });
+    let data: T | undefined;
+    try {
+      data = (await response.json()) as T;
+    } catch {
+      data = undefined;
+    }
+    return { ok: response.ok, status: response.status, data };
+  } catch {
+    return { ok: false, status: 0 };
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /** Prüft, ob eine URL mit /health erreichbar ist (kurzer Timeout). */
-async function checkRunnerHealth(baseUrl: string): Promise<boolean> {
-  try {
-    const c = new AbortController();
-    const t = setTimeout(() => c.abort(), 1500);
-    const r = await fetch(`${baseUrl.replace(/\/$/, "")}/health`, {
-      method: "GET",
-      signal: c.signal,
-    });
-    clearTimeout(t);
-    return r.status === 200;
-  } catch {
-    return false;
-  }
+async function checkRunnerHealth(baseUrl: string): Promise<RunnerHealthPayload | null> {
+  const out = await requestRunnerJson<RunnerHealthPayload>(baseUrl, "/health");
+  if (!out.ok || !out.data || out.data.ok !== true) return null;
+  return out.data;
 }
 
 /** Sucht unter Kandidaten-Ports (4000, 4100, …) nach einem laufenden Runner; setzt discoveredRunnerUrl. */
@@ -396,6 +468,72 @@ async function discoverRunnerUrl(): Promise<string | null> {
     }
   }
   return null;
+}
+
+/** Runner runtime status for UI (sidebar badge / modal). */
+export async function getPreviewRunnerRuntimeStatus(): Promise<PreviewRunnerRuntimeStatus> {
+  const checkedAt = new Date().toISOString();
+  const primaryBase = getEffectiveRunnerUrl();
+  const healthPrimary = primaryBase ? await checkRunnerHealth(primaryBase) : null;
+  const discoveredBase = healthPrimary ? null : await discoverRunnerUrl();
+  const activeBase = healthPrimary ? primaryBase : discoveredBase;
+  const health = activeBase ? await checkRunnerHealth(activeBase) : null;
+
+  if (!activeBase || !health) {
+    return {
+      state: "inactive",
+      baseUrl: activeBase ?? null,
+      checkedAt,
+      startedAt: null,
+      uptimeSec: null,
+      activeRuns: 0,
+      projects: [],
+      runs: [],
+    };
+  }
+
+  const runsResp = await requestRunnerJson<RunnerRunsPayload>(activeBase, "/runs");
+  const runsRaw =
+    runsResp.ok && runsResp.data && Array.isArray(runsResp.data.runs) ? runsResp.data.runs : [];
+  const runs: PreviewRunnerRunInfo[] = runsRaw
+    .filter((entry): entry is NonNullable<typeof entry> => entry != null)
+    .map((entry) => ({
+      runId: String(entry.runId ?? ""),
+      projectId: String(entry.projectId ?? ""),
+      repo: String(entry.repo ?? ""),
+      branchOrCommit: String(entry.branchOrCommit ?? ""),
+      status: String(entry.status ?? "unknown"),
+      previewUrl: entry.previewUrl ?? null,
+      startedAt: entry.startedAt ?? null,
+      readyAt: entry.readyAt ?? null,
+      stoppedAt: entry.stoppedAt ?? null,
+    }))
+    .filter((entry) => entry.runId.length > 0);
+  const projects = Array.from(
+    new Set(runs.map((entry) => entry.projectId).filter((projectId) => projectId.length > 0)),
+  );
+  const activeRunsFromRuns = runsResp.data?.totals?.active;
+  const activeRuns =
+    typeof activeRunsFromRuns === "number" && Number.isFinite(activeRunsFromRuns)
+      ? activeRunsFromRuns
+      : typeof health.activeRuns === "number" && Number.isFinite(health.activeRuns)
+        ? health.activeRuns
+        : 0;
+
+  return {
+    state: "active",
+    baseUrl: activeBase,
+    checkedAt,
+    startedAt: runsResp.data?.runner?.startedAt ?? health.startedAt ?? null,
+    uptimeSec:
+      runsResp.data?.runner?.uptimeSec ??
+      (typeof health.uptimeSec === "number" && Number.isFinite(health.uptimeSec)
+        ? health.uptimeSec
+        : null),
+    activeRuns,
+    projects,
+    runs,
+  };
 }
 
 /** URL für den lokalen Runner (env oder zuvor per Discovery gefunden). */
@@ -451,7 +589,13 @@ function clearStoredRunId(projectId: string): void {
 
 async function localPreviewStart(
   projectId: string,
-  options?: { repo?: string; branchOrCommit?: string; commitSha?: string },
+  options?: {
+    repo?: string;
+    branchOrCommit?: string;
+    commitSha?: string;
+    bootMode?: PreviewRuntimeOptions["bootMode"];
+    injectSupabasePlaceholders?: PreviewRuntimeOptions["injectSupabasePlaceholders"];
+  },
 ): Promise<{ success: boolean; data?: { runId: string; status: string }; error?: string }> {
   let base = getEffectiveRunnerUrl().replace(/\/$/, "");
   const body = JSON.stringify({
@@ -459,6 +603,8 @@ async function localPreviewStart(
     repo: options?.repo,
     branchOrCommit: options?.branchOrCommit ?? "main",
     commitSha: options?.commitSha ?? undefined,
+    bootMode: options?.bootMode ?? undefined,
+    injectSupabasePlaceholders: options?.injectSupabasePlaceholders ?? undefined,
   });
 
   const doFetch = async (urlBase: string): Promise<{ res: Response; text: string }> => {
@@ -594,9 +740,46 @@ async function localPreviewStop(projectId: string): Promise<{ success: boolean; 
   return { success: true };
 }
 
+async function localPreviewStopProject(
+  projectId: string,
+): Promise<{ success: boolean; error?: string }> {
+  const runId = getStoredRunId(projectId);
+  const base = getEffectiveRunnerUrl().replace(/\/$/, "");
+  try {
+    const res = await fetch(`${base}/stop-project/${encodeURIComponent(projectId)}`, {
+      method: "POST",
+    });
+    const text = await res.text();
+    let data: { success?: boolean; error?: string };
+    try {
+      data = text ? (JSON.parse(text) as typeof data) : {};
+    } catch {
+      return { success: false, error: "Runner response not JSON" };
+    }
+    if (res.status === 404) {
+      if (runId) return localPreviewStop(projectId);
+      clearStoredRunId(projectId);
+      return { success: true };
+    }
+    clearStoredRunId(projectId);
+    if (!res.ok) {
+      return { success: false, error: (data.error as string) || String(res.status) };
+    }
+    return { success: true };
+  } catch (error) {
+    if (runId) return localPreviewStop(projectId);
+    clearStoredRunId(projectId);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Runner request failed",
+    };
+  }
+}
+
 /** Refresh preview: pull latest from repo, rebuild, restart (live update). Only with local runner. */
 async function localPreviewRefresh(
   projectId: string,
+  options?: PreviewRuntimeOptions,
 ): Promise<{ success: boolean; error?: string }> {
   const runId = getStoredRunId(projectId);
   if (!runId)
@@ -608,7 +791,11 @@ async function localPreviewRefresh(
   const res = await fetch(`${base}/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ runId }),
+    body: JSON.stringify({
+      runId,
+      bootMode: options?.bootMode ?? undefined,
+      injectSupabasePlaceholders: options?.injectSupabasePlaceholders ?? undefined,
+    }),
   });
   const text = await res.text();
   let data: { success?: boolean; error?: string };
@@ -656,6 +843,8 @@ export const previewAPI = {
       branchOrCommit?: string;
       commitSha?: string;
       accessToken?: string;
+      bootMode?: PreviewRuntimeOptions["bootMode"];
+      injectSupabasePlaceholders?: PreviewRuntimeOptions["injectSupabasePlaceholders"];
     },
     previewMode?: PreviewMode,
   ): Promise<{ success: boolean; data?: { runId: string; status: string }; error?: string }> => {
@@ -723,10 +912,33 @@ export const previewAPI = {
     });
   },
 
+  /** Stop all preview runs bound to one project. */
+  stopProject: async (
+    projectId: string,
+    previewMode?: PreviewMode,
+    accessToken?: string,
+  ): Promise<{ success: boolean; error?: string }> => {
+    const mode = resolvePreviewMode(previewMode);
+    if (mode === "deployed") {
+      return { success: true };
+    }
+    if (mode === "local") {
+      const guard = localRunnerGuard();
+      if (!guard.ok) return { success: false, error: guard.error };
+      return localPreviewStopProject(projectId);
+    }
+    return apiRequest<{ status: string }>("/visudev-preview/preview/stop", {
+      method: "POST",
+      body: JSON.stringify({ projectId }),
+      accessToken,
+    });
+  },
+
   /** Refresh preview: pull latest from repo, rebuild, restart (live). Only with local runner. */
   refresh: async (
     projectId: string,
     previewMode?: PreviewMode,
+    options?: PreviewRuntimeOptions,
   ): Promise<{ success: boolean; error?: string }> => {
     const mode = resolvePreviewMode(previewMode);
     if (mode === "deployed") {
@@ -735,7 +947,7 @@ export const previewAPI = {
     if (mode === "local") {
       const guard = localRunnerGuard();
       if (!guard.ok) return { success: false, error: guard.error };
-      return localPreviewRefresh(projectId);
+      return localPreviewRefresh(projectId, options);
     }
     return { success: false, error: "Refresh only with local runner (VITE_PREVIEW_RUNNER_URL)" };
   },

@@ -2,7 +2,7 @@
 /**
  * VisuDEV Preview Runner
  *
- * API: POST /start, GET /status/:runId, POST /stop/:runId, POST /refresh, POST /webhook/github
+ * API: POST /start, GET /status/:runId, POST /stop/:runId, POST /stop-project/:projectId, POST /refresh, POST /webhook/github
  * Real mode (USE_REAL_BUILD=1): clone repo, build, start app on assigned port.
  * Refresh: git pull + rebuild + restart so preview shows latest from repo (live).
  * GitHub Webhook: on push, auto-refresh matching preview (pull + rebuild + restart).
@@ -13,16 +13,25 @@ import http from "node:http";
 import net from "node:net";
 import {
   getWorkspaceDir,
+  listPreviewCandidates,
+  resolveAppWorkspaceDir,
   cloneOrPull,
   checkoutCommit,
   getConfig,
+  resolveBestEffortStartCommand,
   runBuild,
   runBuildNodeDirect,
   startApp,
   hasNewCommits,
   ensurePackageJsonScripts,
 } from "./build.js";
-import { runContainer, stopContainer, isDockerAvailable } from "./docker.js";
+import {
+  runContainer,
+  stopContainer,
+  isDockerAvailable,
+  getContainerLogs,
+  getContainerStatus,
+} from "./docker.js";
 
 const PORT = Number(process.env.PORT) || 4000;
 /** Actual port the runner binds to (set after finding a free one). */
@@ -46,6 +55,26 @@ const USE_DOCKER =
   process.env.USE_DOCKER === "1" ||
   process.env.USE_DOCKER === "true" ||
   process.env.USE_DOCKER === "yes";
+const PREVIEW_BOOT_MODE_DEFAULT = (process.env.PREVIEW_BOOT_MODE || "best_effort").toLowerCase();
+const PREVIEW_DOCKER_READY_TIMEOUT_MS = Math.max(
+  30_000,
+  Number(process.env.PREVIEW_DOCKER_READY_TIMEOUT_MS) || 300_000,
+);
+const PREVIEW_DOCKER_LOG_TAIL = Math.max(20, Number(process.env.PREVIEW_DOCKER_LOG_TAIL) || 120);
+const RUNNER_STARTED_AT = new Date().toISOString();
+
+function resolveBootMode(value) {
+  const raw = String(value || PREVIEW_BOOT_MODE_DEFAULT)
+    .trim()
+    .toLowerCase();
+  return raw === "strict" ? "strict" : "best_effort";
+}
+
+function resolveInjectSupabasePlaceholders(value) {
+  if (value === false || value === "false" || value === 0 || value === "0") return false;
+  if (value === true || value === "true" || value === 1 || value === "1") return true;
+  return null;
+}
 
 /** Returns the first port from candidates that is free to bind. */
 function findFreeRunnerPort() {
@@ -140,21 +169,92 @@ function buildProxyErrorPage(title, hint) {
   );
 }
 
-function proxyPreviewRequest(req, res, targetPort, targetPath) {
+const VISUDEV_BRIDGE_SCRIPT = String.raw`<script data-visudev-preview-bridge="1">(function(){try{if(window.__visudevPreviewBridgeInstalled)return;window.__visudevPreviewBridgeInstalled=true;var lastRoute=null;var reportTimer=null;function normalizePath(path){var raw=String(path||"/");raw=raw.split("?")[0].split("#")[0]||"/";if(!raw.startsWith("/"))raw="/"+raw;raw=raw.replace(/\/{2,}/g,"/");if(raw.length>1&&raw.endsWith("/"))raw=raw.slice(0,-1);return raw||"/";}function post(payload){try{if(window.parent&&window.parent!==window){window.parent.postMessage(payload,"*");}}catch(_e){}}function collectButtons(){var nodes=document.querySelectorAll('button,[role="button"],a[href]');var out=[];for(var i=0;i<nodes.length&&i<60;i++){var el=nodes[i];var label=((el.getAttribute("aria-label")||el.textContent||"").trim());out.push({tagName:String(el.tagName||"").toLowerCase(),role:el.getAttribute("role")||undefined,label:label?label.slice(0,80):undefined});}return out;}function collectLinks(){var links=document.querySelectorAll("a[href]");var out=[];for(var i=0;i<links.length&&i<60;i++){var el=links[i];var href=el.getAttribute("href")||"";if(!href)continue;var text=(el.textContent||"").trim();out.push({href:href,text:text?text.slice(0,80):undefined});}return out;}function emitReport(){var route=normalizePath(window.location.pathname||"/");post({type:"visudev-dom-report",route:route,buttons:collectButtons(),links:collectLinks()});if(lastRoute!==null&&lastRoute!==route){post({type:"visudev-navigate",path:route});}lastRoute=route;}function queueReport(){if(reportTimer)window.clearTimeout(reportTimer);reportTimer=window.setTimeout(function(){reportTimer=null;emitReport();},120);}function wrapHistory(method){var original=history[method];if(typeof original!=="function")return;history[method]=function(){var result=original.apply(this,arguments);queueReport();return result;};}wrapHistory("pushState");wrapHistory("replaceState");window.addEventListener("popstate",queueReport);window.addEventListener("hashchange",queueReport);window.addEventListener("load",function(){queueReport();window.setTimeout(queueReport,600);window.setTimeout(queueReport,1800);});document.addEventListener("click",function(event){var target=event.target;if(!target||!target.closest)return;var anchor=target.closest("a[href]");if(!anchor)return;var href=anchor.getAttribute("href")||"";if(!href||href[0]==="#"||/^mailto:|^tel:|^javascript:/i.test(href))return;try{var url=new URL(href,window.location.href);if(url.origin!==window.location.origin)return;post({type:"visudev-navigate",path:normalizePath(url.pathname||"/")});}catch(_e){}},true);if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",queueReport,{once:true});}else{queueReport();}}catch(_err){}})();</script>`;
+
+function injectVisudevBridge(html) {
+  if (!html || html.includes("data-visudev-preview-bridge")) return html;
+  if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, `${VISUDEV_BRIDGE_SCRIPT}</head>`);
+  if (/<body[^>]*>/i.test(html))
+    return html.replace(/<body([^>]*)>/i, `<body$1>${VISUDEV_BRIDGE_SCRIPT}`);
+  return `${VISUDEV_BRIDGE_SCRIPT}${html}`;
+}
+
+function buildProxyRequestHeaders(headers, targetPort) {
+  const next = {
+    ...headers,
+    host: `127.0.0.1:${targetPort}`,
+    "accept-encoding": "identity",
+  };
+  delete next["if-none-match"];
+  delete next["if-modified-since"];
+  return next;
+}
+
+function forwardProxyResponse(upstreamRes, downstreamRes, requestMethod) {
+  const headers = { ...upstreamRes.headers };
+  delete headers["x-frame-options"];
+  delete headers["content-security-policy"];
+  headers["content-security-policy"] = FRAME_ANCESTORS;
+  const statusCode = upstreamRes.statusCode || 502;
+  const contentType = String(headers["content-type"] || "");
+  const contentEncoding = String(headers["content-encoding"] || "").toLowerCase();
+  const canInjectHtml =
+    /\btext\/html\b/i.test(contentType) &&
+    (contentEncoding === "" || contentEncoding === "identity") &&
+    String(requestMethod || "").toUpperCase() !== "HEAD" &&
+    statusCode !== 204 &&
+    statusCode !== 304;
+
+  if (!canInjectHtml) {
+    downstreamRes.writeHead(statusCode, headers);
+    upstreamRes.pipe(downstreamRes, { end: true });
+    return;
+  }
+
+  let finished = false;
+  const chunks = [];
+  upstreamRes.on("data", (chunk) => {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  });
+  upstreamRes.on("error", (err) => {
+    if (finished) return;
+    finished = true;
+    if (!downstreamRes.headersSent) {
+      downstreamRes.writeHead(502, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Security-Policy": FRAME_ANCESTORS,
+      });
+    }
+    downstreamRes.end(
+      buildProxyErrorPage("Proxy-Fehler", `Upstream-Fehler beim Lesen der Antwort: ${err.message}`),
+    );
+  });
+  upstreamRes.on("end", () => {
+    if (finished) return;
+    finished = true;
+    const html = Buffer.concat(chunks).toString("utf8");
+    const injected = injectVisudevBridge(html);
+    delete headers["content-encoding"];
+    delete headers["transfer-encoding"];
+    delete headers.etag;
+    delete headers["last-modified"];
+    headers["content-length"] = Buffer.byteLength(injected, "utf8");
+    headers["cache-control"] = "no-store";
+    downstreamRes.writeHead(statusCode, headers);
+    downstreamRes.end(injected);
+  });
+}
+
+function proxyToApp(clientReq, clientRes, targetPort, targetPath) {
   const opts = {
     hostname: "127.0.0.1",
     port: targetPort,
-    path: targetPath,
-    method: req.method,
-    headers: { ...req.headers, host: `127.0.0.1:${targetPort}` },
+    path: targetPath || clientReq.url || "/",
+    method: clientReq.method,
+    headers: buildProxyRequestHeaders(clientReq.headers, targetPort),
   };
   const proxy = http.request(opts, (upstreamRes) => {
-    const headers = { ...upstreamRes.headers };
-    delete headers["x-frame-options"];
-    delete headers["content-security-policy"];
-    headers["content-security-policy"] = FRAME_ANCESTORS;
-    res.writeHead(upstreamRes.statusCode || 502, headers);
-    upstreamRes.pipe(res, { end: true });
+    forwardProxyResponse(upstreamRes, clientRes, clientReq.method);
   });
   proxy.on("error", (err) => {
     const isRefused = /ECONNREFUSED|connect/i.test(err.message);
@@ -162,20 +262,29 @@ function proxyPreviewRequest(req, res, targetPort, targetPath) {
     const hint = isRefused
       ? "Die gebaute App antwortet nicht auf dem erwarteten Port. Bitte „Preview neu starten“ in VisuDEV oder npm run dev + Docker prüfen."
       : err.message;
-    res.writeHead(502, {
+    clientRes.writeHead(502, {
       "Content-Type": "text/html; charset=utf-8",
       "Content-Security-Policy": FRAME_ANCESTORS,
     });
-    res.end(buildProxyErrorPage(title, hint));
+    clientRes.end(buildProxyErrorPage(title, hint));
   });
-  req.pipe(proxy, { end: true });
+  clientReq.pipe(proxy, { end: true });
 }
 
-/** Wait until app on port responds with 2xx. Rejects when maxMs elapsed without success (so we don't mark "ready" when app never started). */
+function proxyPreviewRequest(req, res, targetPort, targetPath) {
+  proxyToApp(req, res, targetPort, targetPath);
+}
+
+/** Wait until app on port responds. 2xx/3xx and client 4xx are considered "reachable".
+ * Some SPAs/APIs intentionally return 404/401 on "/" while still being fully up.
+ * Reject only when there is no reachable HTTP response within maxMs or only 5xx responses.
+ */
 function waitForAppReady(port, maxMs = 60_000) {
   const interval = 500;
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + maxMs;
+    let lastStatus = null;
+    let lastNetworkError = null;
     const tryOnce = () => {
       const req = http.request(
         {
@@ -187,14 +296,19 @@ function waitForAppReady(port, maxMs = 60_000) {
         },
         (res) => {
           res.resume();
-          if (res.statusCode >= 200 && res.statusCode < 400) {
+          const status = Number(res.statusCode || 0);
+          lastStatus = status;
+          if (status >= 200 && status < 500) {
             resolve();
             return;
           }
           if (Date.now() >= deadline) {
+            const statusHint = lastStatus != null ? ` Letzter HTTP-Status: ${lastStatus}.` : "";
+            const networkHint =
+              lastNetworkError != null ? ` Letzter Netzwerkfehler: ${lastNetworkError}.` : "";
             reject(
               new Error(
-                `Preview-App antwortet nicht auf Port ${port} innerhalb von ${maxMs / 1000}s (Status ${res.statusCode}).`,
+                `Preview-App antwortet nicht auf Port ${port} innerhalb von ${maxMs / 1000}s (Status ${status || "unknown"}).${statusHint}${networkHint}`,
               ),
             );
             return;
@@ -203,10 +317,16 @@ function waitForAppReady(port, maxMs = 60_000) {
         },
       );
       req.on("error", (err) => {
+        lastNetworkError = err?.code
+          ? `${String(err.code)}${err.message ? ` (${err.message})` : ""}`
+          : err?.message || "unbekannt";
         if (Date.now() >= deadline) {
+          const statusHint = lastStatus != null ? ` Letzter HTTP-Status: ${lastStatus}.` : "";
+          const networkHint =
+            lastNetworkError != null ? ` Letzter Netzwerkfehler: ${lastNetworkError}.` : "";
           reject(
             new Error(
-              `Preview-App nicht erreichbar (Port ${port}). ECONNREFUSED nach ${maxMs / 1000}s – Build/Container prüfen.`,
+              `Preview-App nicht erreichbar (Port ${port}) nach ${maxMs / 1000}s.${networkHint}${statusHint} Build/Container prüfen.`,
             ),
           );
           return;
@@ -231,38 +351,43 @@ function waitForAppReady(port, maxMs = 60_000) {
   });
 }
 
+function formatDockerStatusLine(statusInfo) {
+  if (!statusInfo) return null;
+  const parts = [];
+  if (statusInfo.state) parts.push(`state=${statusInfo.state}`);
+  if (statusInfo.exitCode != null) parts.push(`exitCode=${statusInfo.exitCode}`);
+  if (statusInfo.error) parts.push(`error=${statusInfo.error}`);
+  if (parts.length === 0) return null;
+  return parts.join(", ");
+}
+
+async function collectDockerDiagnostics(run, containerName) {
+  if (!containerName) return null;
+  const [statusInfo, logs] = await Promise.all([
+    getContainerStatus(containerName),
+    getContainerLogs(containerName, PREVIEW_DOCKER_LOG_TAIL),
+  ]);
+  const statusLine = formatDockerStatusLine(statusInfo);
+  if (statusLine) {
+    pushLog(run, `Docker-Status: ${statusLine}`);
+  }
+  if (logs) {
+    pushLog(run, `Docker-Logs (tail ${PREVIEW_DOCKER_LOG_TAIL}):\n${logs}`);
+  }
+  if (statusLine || logs) {
+    return {
+      statusLine,
+      logs,
+      summary: [statusLine ? `Docker-Status: ${statusLine}` : null].filter(Boolean).join(" | "),
+    };
+  }
+  return null;
+}
+
 /** Create HTTP proxy on proxyPort that forwards to appPort and adds frame-ancestors so iframes work. */
 function createFrameProxy(proxyPort, appPort) {
   const server = http.createServer((clientReq, clientRes) => {
-    const opts = {
-      hostname: "127.0.0.1",
-      port: appPort,
-      path: clientReq.url,
-      method: clientReq.method,
-      headers: { ...clientReq.headers, host: `127.0.0.1:${appPort}` },
-    };
-    const proxy = http.request(opts, (upstreamRes) => {
-      const headers = { ...upstreamRes.headers };
-      delete headers["x-frame-options"];
-      delete headers["content-security-policy"];
-      headers["content-security-policy"] = FRAME_ANCESTORS;
-      clientRes.writeHead(upstreamRes.statusCode, headers);
-      upstreamRes.pipe(clientRes, { end: true });
-    });
-    proxy.on("error", (err) => {
-      const isRefused = /ECONNREFUSED|connect/i.test(err.message);
-      const title = isRefused ? "Preview-App nicht erreichbar" : "Proxy-Fehler";
-      const hint = isRefused
-        ? "Die gebaute App antwortet nicht auf dem erwarteten Port. Bitte „Preview neu starten“ in VisuDEV oder npm run dev + Docker prüfen."
-        : escapeHtml(err.message);
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title></head><body style="font-family:sans-serif;padding:1.5rem;background:#1a1a2e;color:#e2e8f0;max-width:28rem;"><h2 style="color:#f87171;">${escapeHtml(title)}</h2><p style="color:#94a3b8;">${hint}</p><p style="font-size:0.875rem;">Port/App prüfen oder Preview in VisuDEV neu starten.</p><script>try{window.addEventListener("load",function(){window.parent.postMessage({type:"visudev-preview-error",reason:"Preview-App nicht erreichbar (502). Bitte Preview neu starten."},"*");});}catch(e){}</script></body></html>`;
-      clientRes.writeHead(502, {
-        "Content-Type": "text/html; charset=utf-8",
-        "Content-Security-Policy": FRAME_ANCESTORS,
-      });
-      clientRes.end(html);
-    });
-    clientReq.pipe(proxy, { end: true });
+    proxyToApp(clientReq, clientRes, appPort, clientReq.url || "/");
   });
   server.listen(proxyPort, PREVIEW_BIND_HOST, () => {
     console.log(
@@ -283,6 +408,11 @@ function startPlaceholderServer(port, errorMessage = null) {
       "Content-Security-Policy": FRAME_ANCESTORS,
     });
     res.end(html);
+  });
+  server.on("error", (err) => {
+    console.warn(
+      `  Placeholder konnte nicht auf http://${PREVIEW_BIND_HOST}:${port} starten: ${err.message}`,
+    );
   });
   server.listen(port, PREVIEW_BIND_HOST, () => {
     console.log(`  Placeholder listening on http://${PREVIEW_BIND_HOST}:${port}`);
@@ -342,10 +472,45 @@ function normalizeBuildError(msg) {
   return msg;
 }
 
+function getErrorMessage(err) {
+  return err instanceof Error ? err.message : String(err ?? "Unknown error");
+}
+
 /** Append a step message to run.logs (for UI). */
 function pushLog(run, message) {
   if (!run.logs) run.logs = [];
   run.logs.push({ time: new Date().toISOString(), message });
+}
+
+function bindChildExit(run, runId, child) {
+  child.on("exit", (code, signal) => {
+    if (run.childProcess === child) {
+      run.childProcess = null;
+      if (run.status === "ready") {
+        run.status = "failed";
+        run.error = `Preview-App beendet (exit ${code ?? "?"}${signal ? `, Signal ${signal}` : ""}). Bitte „Preview neu starten“.`;
+        console.log(`  Preview app exited [${runId}]: code=${code} signal=${signal}`);
+      }
+    }
+  });
+}
+
+function pushInjectedEnvHint(run, child) {
+  const injected = Array.isArray(child?.__visudevInjectedEnvKeys)
+    ? child.__visudevInjectedEnvKeys
+    : [];
+  const mode = String(child?.__visudevSupabasePlaceholderMode || "");
+  if (injected.length === 0) return;
+  let modeHint = "";
+  if (mode === "auto_detected") {
+    modeHint = " (Supabase automatisch erkannt)";
+  } else if (mode === "forced_on") {
+    modeHint = " (erzwungen)";
+  }
+  pushLog(
+    run,
+    `Hinweis: Fehlende Env-Variablen wurden als Preview-Platzhalter gesetzt${modeHint}: ${injected.join(", ")}`,
+  );
 }
 
 async function withWorkspaceLock(projectId, fn) {
@@ -368,19 +533,246 @@ async function withWorkspaceLock(projectId, fn) {
   }
 }
 
+function describeCandidate(candidate) {
+  const scripts = [];
+  if (candidate?.scripts?.build) scripts.push("build");
+  if (candidate?.scripts?.dev) scripts.push("dev");
+  if (candidate?.scripts?.start) scripts.push("start");
+  const scriptLabel = scripts.length > 0 ? scripts.join("/") : "keine scripts";
+  const score =
+    typeof candidate?.score === "number" && Number.isFinite(candidate.score)
+      ? candidate.score
+      : "?";
+  const source = candidate?.source || "scan";
+  const rel = candidate?.appDirRelative || ".";
+  return `${rel} (${source}, score ${score}, scripts: ${scriptLabel})`;
+}
+
+async function stopChildProcess(child) {
+  if (!child) return;
+  try {
+    if (!child.killed) child.kill("SIGTERM");
+  } catch {
+    return;
+  }
+  await new Promise((resolve) => {
+    let finished = false;
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      resolve();
+    };
+    child.once("exit", done);
+    setTimeout(() => {
+      try {
+        if (!child.killed) child.kill("SIGKILL");
+      } catch {}
+      done();
+    }, 1500);
+  });
+}
+
+async function startCandidateProcess(run, runId, candidate, appPort, config, timeoutMs) {
+  const child = startApp(candidate.appDir, appPort, config);
+  pushInjectedEnvHint(run, child);
+  try {
+    await waitForAppReady(appPort, timeoutMs);
+    run.childProcess = child;
+    bindChildExit(run, runId, child);
+    return { success: true, child };
+  } catch (err) {
+    await stopChildProcess(child);
+    return {
+      success: false,
+      error: getErrorMessage(err),
+    };
+  }
+}
+
+function buildCandidateFailureSummary(failures, totalCandidates) {
+  if (!Array.isArray(failures) || failures.length === 0) {
+    return "Kein startbarer Kandidat gefunden.";
+  }
+  const lines = failures.slice(0, 4).map((failure, idx) => {
+    const label = failure?.label || "unbekannt";
+    const reason = failure?.reason || "Unbekannter Fehler";
+    return `${idx + 1}. ${label}: ${reason}`;
+  });
+  if (failures.length > 4) {
+    lines.push(`… plus ${failures.length - 4} weitere fehlgeschlagene Kandidaten.`);
+  }
+  lines.push(`Geprüfte Kandidaten: ${totalCandidates}`);
+  return lines.join("\n");
+}
+
+async function bootPreviewByCandidates({
+  run,
+  runId,
+  workspaceDir,
+  appPort,
+  bestEffortEnabled,
+  candidates,
+}) {
+  const candidateList = Array.isArray(candidates) && candidates.length > 0 ? candidates : [];
+  const failures = [];
+  if (candidateList.length > 1) {
+    pushLog(run, `Scanner: ${candidateList.length} Kandidaten erkannt. Starte Probe-Reihenfolge.`);
+  }
+
+  for (let idx = 0; idx < candidateList.length; idx++) {
+    const candidate = candidateList[idx];
+    const label = describeCandidate(candidate);
+    const prefix = `[${candidate.appDirRelative || "."}]`;
+    pushLog(run, `Scanner: Kandidat ${idx + 1}/${candidateList.length}: ${label}`);
+    ensurePackageJsonScripts(candidate.appDir);
+    const config = {
+      ...getConfig(candidate.appDir, workspaceDir),
+      injectSupabasePlaceholders: run.injectSupabasePlaceholders,
+    };
+
+    let buildErr = null;
+    pushLog(run, `Build: npm install / build … ${prefix}`);
+    try {
+      await runBuildNodeDirect(candidate.appDir);
+      pushLog(run, `Build fertig ${prefix}`);
+    } catch (e) {
+      buildErr = e;
+      if (isNpmOrGitHelpError(e.message)) {
+        try {
+          await runBuild(candidate.appDir, config);
+          buildErr = null;
+          pushLog(run, `Build fertig ${prefix}`);
+        } catch (retryErr) {
+          buildErr = retryErr;
+        }
+      }
+    }
+
+    if (buildErr) {
+      const buildMsg = getErrorMessage(buildErr);
+      pushLog(run, `Build fehlgeschlagen ${prefix} (exakte Meldung):\n${buildMsg}`);
+      if (!bestEffortEnabled) {
+        failures.push({
+          label,
+          reason: normalizeBuildError(buildMsg),
+        });
+        continue;
+      }
+      const fallbackStartCommand = resolveBestEffortStartCommand(candidate.appDir, config);
+      if (!fallbackStartCommand) {
+        failures.push({
+          label,
+          reason:
+            "Best-Effort-Fallback nicht möglich: kein geeigneter Startbefehl gefunden (dev/start).",
+        });
+        continue;
+      }
+      pushLog(run, `Best-Effort: Starte Fallback mit "${fallbackStartCommand}" … ${prefix}`);
+      const fallbackConfig = { ...config, startCommand: fallbackStartCommand };
+      const fallbackResult = await startCandidateProcess(
+        run,
+        runId,
+        candidate,
+        appPort,
+        fallbackConfig,
+        90_000,
+      );
+      if (fallbackResult.success) {
+        run.degraded = true;
+        pushLog(run, `Best-Effort aktiv: App läuft trotz Build-Fehler. ${prefix}\n${buildMsg}`);
+        return {
+          success: true,
+          degraded: true,
+          candidate,
+          buildMessage: buildMsg,
+        };
+      }
+      failures.push({
+        label,
+        reason: `Fallback-Start fehlgeschlagen: ${fallbackResult.error}`,
+      });
+      continue;
+    }
+
+    pushLog(run, `Start: App wird gestartet … ${prefix}`);
+    const startResult = await startCandidateProcess(run, runId, candidate, appPort, config, 60_000);
+    if (startResult.success) {
+      run.degraded = false;
+      pushLog(run, `Bereit ${prefix}`);
+      return { success: true, degraded: false, candidate };
+    }
+    pushLog(run, `Start fehlgeschlagen ${prefix}: ${startResult.error}`);
+
+    if (!bestEffortEnabled) {
+      failures.push({
+        label,
+        reason: `Start fehlgeschlagen: ${startResult.error}`,
+      });
+      continue;
+    }
+
+    const fallbackStartCommand = resolveBestEffortStartCommand(candidate.appDir, config);
+    if (
+      !fallbackStartCommand ||
+      fallbackStartCommand.trim() === (config.startCommand || "").trim()
+    ) {
+      failures.push({
+        label,
+        reason: `Start fehlgeschlagen: ${startResult.error}`,
+      });
+      continue;
+    }
+
+    pushLog(
+      run,
+      `Best-Effort: Start-Fallback "${fallbackStartCommand}" nach Start-Fehler … ${prefix}`,
+    );
+    const fallbackConfig = { ...config, startCommand: fallbackStartCommand };
+    const fallbackResult = await startCandidateProcess(
+      run,
+      runId,
+      candidate,
+      appPort,
+      fallbackConfig,
+      90_000,
+    );
+    if (fallbackResult.success) {
+      run.degraded = true;
+      pushLog(run, `Best-Effort aktiv: App läuft mit Start-Fallback. ${prefix}`);
+      return {
+        success: true,
+        degraded: true,
+        candidate,
+      };
+    }
+    failures.push({
+      label,
+      reason: `Start + Fallback fehlgeschlagen: ${fallbackResult.error}`,
+    });
+  }
+
+  return {
+    success: false,
+    error: buildCandidateFailureSummary(failures, candidateList.length),
+  };
+}
+
 /** Background: clone, build, start app on appPort, then start frame proxy on proxyPort. On failure show error placeholder on proxyPort. */
 async function buildAndStartAsync(runId) {
   const run = runs.get(runId);
   if (!run || run.status !== "starting") return;
   run.logs = [];
   const { repo, branchOrCommit, projectId, proxyPort, appPort, previewUrl } = run;
+  const bootMode = resolveBootMode(run.bootMode);
+  const bestEffortEnabled = bootMode !== "strict";
   const workspaceDir = getWorkspaceDir(projectId);
 
-  const setFailed = (displayMsg, hint = "") => {
+  const setFailed = (displayMsg, hint = "", exactMsg = null) => {
     run.status = "failed";
-    run.error = displayMsg;
+    run.error = exactMsg ?? displayMsg;
     run.readyAt = null;
     run.containerId = null;
+    run.degraded = false;
     releasePort(appPort);
     startPlaceholderServer(proxyPort, `Build/Start fehlgeschlagen:\n${displayMsg}${hint}`);
   };
@@ -391,6 +783,15 @@ async function buildAndStartAsync(runId) {
       if (run.commitSha) {
         await checkoutCommit(workspaceDir, run.commitSha, branchOrCommit);
       }
+      const rootConfig = getConfig(workspaceDir, workspaceDir);
+      const appCandidates = listPreviewCandidates(workspaceDir, rootConfig, 8);
+      const appWorkspace = appCandidates[0] ?? resolveAppWorkspaceDir(workspaceDir, rootConfig);
+      if (appWorkspace.appDirRelative !== ".") {
+        pushLog(
+          run,
+          `Monorepo erkannt: nutze App-Verzeichnis "${appWorkspace.appDirRelative}" (${appWorkspace.source}).`,
+        );
+      }
 
       if (USE_DOCKER) {
         const dockerOk = await isDockerAvailable();
@@ -400,69 +801,76 @@ async function buildAndStartAsync(runId) {
           );
           return;
         }
-        ensurePackageJsonScripts(workspaceDir);
-        const containerName = await runContainer(workspaceDir, appPort, runId);
+        pushLog(run, "Docker: Starte Container …");
+        ensurePackageJsonScripts(appWorkspace.appDir);
+        const containerName = await runContainer(appWorkspace.appDir, appPort, runId);
         run.containerId = containerName;
         const proxyServer = createFrameProxy(proxyPort, appPort);
         run.proxyServer = proxyServer;
         portServers.set(proxyPort, proxyServer);
-        await waitForAppReady(appPort, 120_000);
+        pushLog(
+          run,
+          `Warte auf App (Timeout ${Math.floor(PREVIEW_DOCKER_READY_TIMEOUT_MS / 1000)}s) …`,
+        );
+        await waitForAppReady(appPort, PREVIEW_DOCKER_READY_TIMEOUT_MS);
         run.status = "ready";
         run.readyAt = new Date().toISOString();
         run.error = null;
+        run.degraded = false;
+        pushLog(run, "Bereit");
         console.log(`  Preview ready (Docker): ${previewUrl}`);
         return;
       }
 
-      ensurePackageJsonScripts(workspaceDir);
-      const config = getConfig(workspaceDir);
-      let buildErr = null;
-      try {
-        await runBuildNodeDirect(workspaceDir);
-      } catch (e) {
-        buildErr = e;
-        if (isNpmOrGitHelpError(e.message)) {
-          try {
-            await runBuild(workspaceDir, config);
-            buildErr = null;
-          } catch (retryErr) {
-            buildErr = retryErr;
-          }
-        }
+      const bootResult = await bootPreviewByCandidates({
+        run,
+        runId,
+        workspaceDir,
+        appPort,
+        bestEffortEnabled,
+        candidates: appCandidates,
+      });
+      if (!bootResult.success) {
+        throw new Error(bootResult.error);
       }
-      if (buildErr) throw buildErr;
-      const child = startApp(workspaceDir, appPort, config);
-      run.childProcess = child;
       const proxyServer = createFrameProxy(proxyPort, appPort);
       run.proxyServer = proxyServer;
       portServers.set(proxyPort, proxyServer);
-      await waitForAppReady(appPort, 60_000);
       run.status = "ready";
       run.readyAt = new Date().toISOString();
       run.error = null;
-      child.on("exit", (code, signal) => {
-        if (run.childProcess === child) {
-          run.childProcess = null;
-          if (run.status === "ready") {
-            run.status = "failed";
-            run.error = `Preview-App beendet (exit ${code ?? "?"}${signal ? `, Signal ${signal}` : ""}). Bitte „Preview neu starten“.`;
-            console.log(`  Preview app exited [${runId}]: code=${code} signal=${signal}`);
-          }
-        }
-      });
-      console.log(`  Preview ready: ${previewUrl}`);
+      run.degraded = bootResult.degraded === true;
+      if (bootResult.candidate) {
+        pushLog(run, `Aktiver Kandidat: ${describeCandidate(bootResult.candidate)}`);
+      }
+      if (!run.degraded) {
+        pushLog(run, "Bereit");
+      }
+      console.log(`  Preview ready${run.degraded ? " (best-effort)" : ""}: ${previewUrl}`);
     } catch (err) {
+      let dockerSummary = "";
+      if (USE_DOCKER && run.containerId) {
+        const diag = await collectDockerDiagnostics(run, run.containerId);
+        if (diag?.summary) dockerSummary = diag.summary;
+      }
       if (USE_DOCKER && run.containerId) {
         try {
           await stopContainer(runId);
         } catch (_e) {}
+        run.containerId = null;
       }
-      const msg = err.message || String(err);
-      const displayMsg = normalizeBuildError(msg);
-      pushLog(run, "Fehlgeschlagen: " + displayMsg.slice(0, 200));
+      const baseMsg = getErrorMessage(err);
+      const msg = dockerSummary ? `${baseMsg}\n${dockerSummary}` : baseMsg;
+      const displayMsg = normalizeBuildError(baseMsg);
+      const displayMsgWithDocker = dockerSummary ? `${displayMsg}\n${dockerSummary}` : displayMsg;
+      pushLog(run, `Fehlgeschlagen (exakte Meldung):\n${msg}`);
+      if (displayMsg !== msg) {
+        pushLog(run, `Hinweis:\n${displayMsgWithDocker}`);
+      }
       setFailed(
-        displayMsg,
+        displayMsgWithDocker,
         "\n\nWichtig: Dev-Server neu starten (npm run dev mit Ctrl+C beenden, dann erneut starten). Oder USE_DOCKER=1 versuchen (Docker muss laufen).",
+        msg,
       );
       console.error(`  Preview failed [${runId}]:`, msg);
     }
@@ -474,6 +882,8 @@ async function refreshAsync(runId) {
   const run = runs.get(runId);
   if (!run || !run.port) return;
   const { repo, branchOrCommit, projectId, proxyPort, appPort } = run;
+  const bootMode = resolveBootMode(run.bootMode);
+  const bestEffortEnabled = bootMode !== "strict";
   const workspaceDir = getWorkspaceDir(projectId);
 
   if (run.containerId) {
@@ -494,6 +904,15 @@ async function refreshAsync(runId) {
       pushLog(run, "Git: Pull …");
       await cloneOrPull(repo, branchOrCommit, workspaceDir);
       pushLog(run, "Git: Pull fertig");
+      const rootConfig = getConfig(workspaceDir, workspaceDir);
+      const appCandidates = listPreviewCandidates(workspaceDir, rootConfig, 8);
+      const appWorkspace = appCandidates[0] ?? resolveAppWorkspaceDir(workspaceDir, rootConfig);
+      if (appWorkspace.appDirRelative !== ".") {
+        pushLog(
+          run,
+          `Monorepo erkannt: nutze App-Verzeichnis "${appWorkspace.appDirRelative}" (${appWorkspace.source}).`,
+        );
+      }
 
       if (USE_DOCKER) {
         const dockerOk = await isDockerAvailable();
@@ -504,62 +923,65 @@ async function refreshAsync(runId) {
           return;
         }
         pushLog(run, "Docker: Starte Container …");
-        ensurePackageJsonScripts(workspaceDir);
-        const containerName = await runContainer(workspaceDir, appPort, runId);
+        ensurePackageJsonScripts(appWorkspace.appDir);
+        const containerName = await runContainer(appWorkspace.appDir, appPort, runId);
         run.containerId = containerName;
-        pushLog(run, "Warte auf App …");
-        await waitForAppReady(appPort, 120_000);
+        pushLog(
+          run,
+          `Warte auf App (Timeout ${Math.floor(PREVIEW_DOCKER_READY_TIMEOUT_MS / 1000)}s) …`,
+        );
+        await waitForAppReady(appPort, PREVIEW_DOCKER_READY_TIMEOUT_MS);
         pushLog(run, "Bereit");
         run.status = "ready";
         run.readyAt = new Date().toISOString();
         run.error = null;
+        run.degraded = false;
         console.log(`  Preview refreshed (Docker): http://localhost:${proxyPort}`);
         return;
       }
 
-      pushLog(run, "Build: npm install / build …");
-      ensurePackageJsonScripts(workspaceDir);
-      const config = getConfig(workspaceDir);
-      let buildErr = null;
-      try {
-        await runBuildNodeDirect(workspaceDir);
-      } catch (e) {
-        buildErr = e;
-        if (isNpmOrGitHelpError(e.message)) {
-          try {
-            await runBuild(workspaceDir, config);
-            buildErr = null;
-          } catch (retryErr) {
-            buildErr = retryErr;
-          }
-        }
+      const bootResult = await bootPreviewByCandidates({
+        run,
+        runId,
+        workspaceDir,
+        appPort,
+        bestEffortEnabled,
+        candidates: appCandidates,
+      });
+      if (!bootResult.success) {
+        throw new Error(bootResult.error);
       }
-      if (buildErr) throw buildErr;
-      pushLog(run, "Build fertig");
-      pushLog(run, "Start: App wird gestartet …");
-      const child = startApp(workspaceDir, appPort, config);
-      run.childProcess = child;
-      pushLog(run, "Warte auf App …");
-      await waitForAppReady(appPort, 60_000);
-      pushLog(run, "Bereit");
+      if (bootResult.candidate) {
+        pushLog(run, `Aktiver Kandidat: ${describeCandidate(bootResult.candidate)}`);
+      }
+      if (!bootResult.degraded) {
+        pushLog(run, "Bereit");
+      }
       run.status = "ready";
       run.readyAt = new Date().toISOString();
       run.error = null;
-      child.on("exit", (code, signal) => {
-        if (run.childProcess === child) {
-          run.childProcess = null;
-          if (run.status === "ready") {
-            run.status = "failed";
-            run.error = `Preview-App beendet (exit ${code ?? "?"}${signal ? `, Signal ${signal}` : ""}). Bitte „Preview neu starten“.`;
-            console.log(`  Preview app exited [${runId}]: code=${code} signal=${signal}`);
-          }
-        }
-      });
-      console.log(`  Preview refreshed: http://localhost:${proxyPort}`);
+      run.degraded = bootResult.degraded === true;
+      console.log(
+        `  Preview refreshed${run.degraded ? " (best-effort)" : ""}: http://localhost:${proxyPort}`,
+      );
     } catch (err) {
-      const msg = err.message || String(err);
+      let dockerSummary = "";
+      if (USE_DOCKER && run.containerId) {
+        const diag = await collectDockerDiagnostics(run, run.containerId);
+        if (diag?.summary) dockerSummary = diag.summary;
+      }
+      if (USE_DOCKER && run.containerId) {
+        try {
+          await stopContainer(runId);
+        } catch (_e) {}
+        run.containerId = null;
+      }
+      const baseMsg = getErrorMessage(err);
+      const msg = dockerSummary ? `${baseMsg}\n${dockerSummary}` : baseMsg;
       run.status = "failed";
-      run.error = normalizeBuildError(msg);
+      run.error = msg;
+      run.degraded = false;
+      pushLog(run, `Fehlgeschlagen (exakte Meldung):\n${msg}`);
       console.error(`  Refresh failed [${runId}]:`, msg);
     }
   });
@@ -624,7 +1046,14 @@ function corsPreflight(res) {
 
 async function handleStart(req, res, _url) {
   const body = await parseBody(req);
-  const { repo, branchOrCommit = "main", projectId, commitSha } = body;
+  const {
+    repo,
+    branchOrCommit = "main",
+    projectId,
+    commitSha,
+    bootMode: requestedBootMode,
+    injectSupabasePlaceholders: requestedInjectSupabasePlaceholders,
+  } = body;
   if (!repo || !projectId) {
     send(res, 400, {
       success: false,
@@ -677,6 +1106,11 @@ async function handleStart(req, res, _url) {
     childProcess: null,
     proxyServer: null,
     logs: [],
+    degraded: false,
+    bootMode: resolveBootMode(requestedBootMode),
+    injectSupabasePlaceholders: resolveInjectSupabasePlaceholders(
+      requestedInjectSupabasePlaceholders,
+    ),
   });
 
   if (USE_REAL_BUILD || USE_DOCKER) {
@@ -719,6 +1153,8 @@ function handleStatus(req, res, url) {
     status: run.status,
     previewUrl: run.previewUrl ?? undefined,
     error: run.error ?? undefined,
+    degraded: run.degraded === true,
+    bootMode: run.bootMode ?? PREVIEW_BOOT_MODE_DEFAULT,
     startedAt: run.startedAt,
     readyAt: run.readyAt,
     logs: run.logs || [],
@@ -739,6 +1175,15 @@ async function handleStop(req, res, url) {
     return;
   }
 
+  await stopRun(runId, run);
+  send(res, 200, {
+    success: true,
+    runId,
+    status: "stopped",
+  });
+}
+
+async function stopRun(runId, run) {
   if (run.containerId) {
     try {
       await stopContainer(runId);
@@ -757,20 +1202,99 @@ async function handleStop(req, res, url) {
   }
   run.status = "stopped";
   run.stoppedAt = new Date().toISOString();
+}
+
+async function handleStopProject(_req, res, url) {
+  const match = url.pathname.match(/^\/stop-project\/([^/]+)$/);
+  const projectId = match ? decodeURIComponent(match[1]) : null;
+  if (!projectId) {
+    send(res, 404, { success: false, error: "projectId required" });
+    return;
+  }
+
+  const stoppedRunIds = [];
+  for (const [runId, run] of runs) {
+    if (String(run.projectId) !== projectId) continue;
+    if (run.status === "stopped") continue;
+    await stopRun(runId, run);
+    stoppedRunIds.push(runId);
+  }
+
   send(res, 200, {
     success: true,
-    runId,
-    status: "stopped",
+    projectId,
+    stopped: stoppedRunIds.length,
+    runIds: stoppedRunIds,
   });
 }
 
 function handleHealth(_req, res) {
-  send(res, 200, { ok: true, service: "visudev" });
+  let activeRuns = 0;
+  for (const [, run] of runs) {
+    if (run.status !== "stopped") activeRuns += 1;
+  }
+  send(res, 200, {
+    ok: true,
+    service: "visudev",
+    port: runnerPort,
+    startedAt: RUNNER_STARTED_AT,
+    uptimeSec: Math.max(0, Math.floor((Date.now() - new Date(RUNNER_STARTED_AT).getTime()) / 1000)),
+    activeRuns,
+  });
+}
+
+function handleRuns(_req, res, url) {
+  const includeStopped =
+    url.searchParams.get("includeStopped") === "1" ||
+    url.searchParams.get("includeStopped") === "true";
+
+  const runEntries = [];
+  for (const [runId, run] of runs) {
+    if (!includeStopped && run.status === "stopped") continue;
+    runEntries.push({
+      runId,
+      projectId: run.projectId,
+      repo: run.repo,
+      branchOrCommit: run.branchOrCommit,
+      status: run.status,
+      bootMode: run.bootMode ?? PREVIEW_BOOT_MODE_DEFAULT,
+      degraded: run.degraded === true,
+      previewUrl: run.previewUrl ?? null,
+      startedAt: run.startedAt ?? null,
+      readyAt: run.readyAt ?? null,
+      stoppedAt: run.stoppedAt ?? null,
+    });
+  }
+
+  const totals = {
+    total: runEntries.length,
+    active: runEntries.filter((entry) => entry.status !== "stopped").length,
+    ready: runEntries.filter((entry) => entry.status === "ready").length,
+    starting: runEntries.filter((entry) => entry.status === "starting").length,
+    failed: runEntries.filter((entry) => entry.status === "failed").length,
+    stopped: runEntries.filter((entry) => entry.status === "stopped").length,
+  };
+
+  send(res, 200, {
+    success: true,
+    runner: {
+      port: runnerPort,
+      startedAt: RUNNER_STARTED_AT,
+      uptimeSec: Math.max(
+        0,
+        Math.floor((Date.now() - new Date(RUNNER_STARTED_AT).getTime()) / 1000),
+      ),
+    },
+    totals,
+    runs: runEntries,
+  });
 }
 
 async function handleRefresh(req, res) {
   const body = await parseBody(req);
   const runId = body.runId;
+  const requestedBootMode = body.bootMode;
+  const requestedInjectSupabasePlaceholders = body.injectSupabasePlaceholders;
   if (!runId) {
     send(res, 400, { success: false, error: "runId required" });
     return;
@@ -779,6 +1303,14 @@ async function handleRefresh(req, res) {
   if (!run) {
     send(res, 404, { success: false, error: "Run not found" });
     return;
+  }
+  if (requestedBootMode != null) {
+    run.bootMode = resolveBootMode(requestedBootMode);
+  }
+  if (requestedInjectSupabasePlaceholders != null) {
+    run.injectSupabasePlaceholders = resolveInjectSupabasePlaceholders(
+      requestedInjectSupabasePlaceholders,
+    );
   }
   refreshAsync(runId);
   send(res, 200, { success: true, status: "starting" });
@@ -897,6 +1429,10 @@ const server = http.createServer(async (req, res) => {
       handleHealth(req, res);
       return;
     }
+    if (req.method === "GET" && pathname === "/runs") {
+      handleRuns(req, res, url);
+      return;
+    }
     if (req.method === "POST" && pathname === "/start") {
       await handleStart(req, res, url);
       return;
@@ -907,6 +1443,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "POST" && pathname.startsWith("/stop/")) {
       await handleStop(req, res, url);
+      return;
+    }
+    if (req.method === "POST" && pathname.startsWith("/stop-project/")) {
+      await handleStopProject(req, res, url);
       return;
     }
     if (req.method === "POST" && pathname === "/refresh") {
@@ -942,6 +1482,12 @@ findFreeRunnerPort().then((actualPort) => {
     console.log(
       `  Mode: ${USE_DOCKER ? "DOCKER (clone, build, serve in container)" : USE_REAL_BUILD ? "REAL (clone, build, start)" : "STUB (placeholder)"}`,
     );
+    if (USE_REAL_BUILD && !USE_DOCKER) {
+      const defaultBestEffort = resolveBootMode(PREVIEW_BOOT_MODE_DEFAULT) !== "strict";
+      console.log(
+        `  Default boot mode: ${resolveBootMode(PREVIEW_BOOT_MODE_DEFAULT)} (${defaultBestEffort ? "fallback erlaubt" : "strict"})`,
+      );
+    }
     if (PREVIEW_BASE_URL) {
       console.log(`  PREVIEW_BASE_URL=${PREVIEW_BASE_URL}`);
     }
@@ -950,6 +1496,12 @@ findFreeRunnerPort().then((actualPort) => {
     }
     if (PREVIEW_BIND_HOST) {
       console.log(`  PREVIEW_BIND_HOST=${PREVIEW_BIND_HOST}`);
+    }
+    if (USE_DOCKER) {
+      console.log(
+        `  PREVIEW_DOCKER_READY_TIMEOUT_MS=${PREVIEW_DOCKER_READY_TIMEOUT_MS} (${Math.floor(PREVIEW_DOCKER_READY_TIMEOUT_MS / 1000)}s)`,
+      );
+      console.log(`  PREVIEW_DOCKER_LOG_TAIL=${PREVIEW_DOCKER_LOG_TAIL}`);
     }
     if (!USE_REAL_BUILD && !USE_DOCKER) {
       console.log(`  SIMULATE_DELAY_MS=${SIMULATE_DELAY_MS}`);

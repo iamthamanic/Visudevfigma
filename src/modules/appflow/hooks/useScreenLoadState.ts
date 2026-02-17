@@ -4,7 +4,7 @@
  * Location: src/modules/appflow/hooks/useScreenLoadState.ts
  */
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type { Screen } from "../../../lib/visudev/types";
 import { normalizePreviewUrl } from "../layout";
 
@@ -14,6 +14,9 @@ const EMBEDDING_HINT =
   "Tipp: Wenn alle Screens mit Timeout fehlschlagen, blockiert die Preview-App vermutlich Iframe-Einbetten. " +
   "In der Preview-App (z. B. Vite/Express) X-Frame-Options entfernen oder CSP setzen: frame-ancestors 'self' http://localhost:5173 http://localhost:3000; " +
   "oder in vite.config.ts: server: { headers: { 'Content-Security-Policy': \"frame-ancestors 'self' *\" } }.";
+const AUTH_HINT =
+  "Hinweis: Wenn viele Routen dieselbe Login-Seite zeigen, leitet die App ohne Session auf /login um. " +
+  "Einmal in der Preview-App anmelden (Basis-URL in neuem Tab), danach „Preview aktualisieren“.";
 
 /** Error -102 (Chromium) = ERR_CONNECTION_REFUSED – nichts hört auf die angegebene URL. */
 export const SCREEN_FAIL_REASONS = {
@@ -22,6 +25,7 @@ export const SCREEN_FAIL_REASONS = {
   LOAD_ERROR:
     "Ladefehler (z. B. -102 = Verbindung verweigert). Nichts läuft unter der Basis-URL. Lokal: „Preview starten“ (Runner + npx visudev-runner). Deployed-URL: App muss unter dieser URL laufen.",
   NO_URL: "Keine URL: Basis-URL oder Screen-Pfad fehlt.",
+  WILDCARD_ROUTE: "Catch-all Route (*) kann nicht direkt als einzelner Screen geladen werden.",
 } as const;
 
 export type LoadLogEntry = {
@@ -50,6 +54,15 @@ export function useScreenLoadState(
   const [loadLogs, setLoadLogs] = useState<LoadLogEntry[]>([]);
   const loadTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const embeddingHintLoggedRef = useRef(false);
+  const lastInitKeyRef = useRef<string>("");
+  const screenSignature = useMemo(
+    () =>
+      screens
+        .map((s) => `${s.id}|${s.name}|${s.path || ""}`)
+        .sort()
+        .join("||"),
+    [screens],
+  );
 
   const markScreenLoaded = useCallback((screenId: string, screenName?: string) => {
     const t = loadTimeoutsRef.current.get(screenId);
@@ -97,6 +110,9 @@ export function useScreenLoadState(
   );
 
   useEffect(() => {
+    const initKey = `${previewUrl}::${screenSignature}::${previewError || ""}`;
+    if (lastInitKeyRef.current === initKey) return;
+    lastInitKeyRef.current = initKey;
     loadTimeoutsRef.current.forEach((t) => clearTimeout(t));
     loadTimeoutsRef.current.clear();
     embeddingHintLoggedRef.current = false;
@@ -136,22 +152,40 @@ export function useScreenLoadState(
     }
 
     const screensWithUrl = screens.filter((s) => normalizePreviewUrl(previewUrl, s.path || "/"));
+    const hasLoginLikeScreen = screens.some((s) => {
+      const path = (s.path || "").toLowerCase();
+      const name = (s.name || "").toLowerCase();
+      return path === "/login" || path.endsWith("/login") || name.includes("login");
+    });
     logEntries.push({
       id: "step-start",
       time: now,
       message: `Schritt 1: Starte Ladevorgang für ${screensWithUrl.length} Screen(s). Basis-URL: ${previewUrl}. Timeout pro Screen: ${SCREEN_LOAD_TIMEOUT_MS / 1000} s.`,
       type: "info",
     });
+    if (hasLoginLikeScreen && screensWithUrl.length > 1) {
+      logEntries.push({
+        id: "auth-hint",
+        time: now,
+        message: AUTH_HINT,
+        type: "info",
+      });
+    }
 
     screens.forEach((s) => {
       const src = normalizePreviewUrl(previewUrl, s.path || "/");
       if (!src) {
+        const isWildcard =
+          (s.path || "").trim() === "*" ||
+          (s.path || "").trim() === "/*" ||
+          (s.path || "").trim().endsWith("/*");
+        const reason = isWildcard ? SCREEN_FAIL_REASONS.WILDCARD_ROUTE : SCREEN_FAIL_REASONS.NO_URL;
         initial[s.id] = "failed";
-        reasons[s.id] = SCREEN_FAIL_REASONS.NO_URL;
+        reasons[s.id] = reason;
         logEntries.push({
           id: `${s.id}-no-url`,
           time: new Date().toLocaleTimeString("de-DE"),
-          message: `✗ ${s.name} (${s.path || "/"}): Keine URL – Basis-URL oder Screen-Pfad fehlt. Basis-URL war: ${previewUrl || "(leer)"}`,
+          message: `✗ ${s.name} (${s.path || "/"}): ${reason} Basis-URL war: ${previewUrl || "(leer)"}`,
           type: "error",
         });
       } else {
@@ -199,7 +233,7 @@ export function useScreenLoadState(
       timeouts.forEach((t) => clearTimeout(t));
       timeouts.clear();
     };
-  }, [previewUrl, screens, previewError]);
+  }, [previewUrl, screens, screenSignature, previewError]);
 
   return {
     screenLoadState,

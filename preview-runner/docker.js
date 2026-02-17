@@ -85,6 +85,63 @@ export async function runContainer(workspaceDir, appPort, runId) {
 }
 
 /**
+ * Liefert kompakten Container-Status via docker inspect.
+ * @param {string | null} containerName - exakter Docker-Containername
+ * @returns {Promise<{state: string | null, exitCode: number | null, error: string | null} | null>}
+ */
+export async function getContainerStatus(containerName) {
+  if (!containerName) return null;
+  try {
+    const { stdout } = await exec("docker", [
+      "inspect",
+      "-f",
+      "{{.State.Status}}|{{.State.ExitCode}}|{{.State.Error}}",
+      containerName,
+    ]);
+    const raw = String(stdout || "").trim();
+    if (!raw) return null;
+    const [stateRaw = "", exitRaw = "", errorRaw = ""] = raw.split("|");
+    const parsedExit = Number.parseInt(exitRaw, 10);
+    return {
+      state: stateRaw.trim() || null,
+      exitCode: Number.isFinite(parsedExit) ? parsedExit : null,
+      error: errorRaw.trim() || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Liefert die letzten Container-Logs (stdout+stderr).
+ * @param {string | null} containerName - exakter Docker-Containername
+ * @param {number} tail - Anzahl Zeilen vom Ende
+ * @param {number} maxChars - maximale Zeichen (bei Überschreitung gekürzt)
+ * @returns {Promise<string | null>}
+ */
+export async function getContainerLogs(containerName, tail = 120, maxChars = 12_000) {
+  if (!containerName) return null;
+  const safeTail = Number.isFinite(tail) && tail > 0 ? Math.floor(tail) : 120;
+  const safeMaxChars = Number.isFinite(maxChars) && maxChars > 200 ? Math.floor(maxChars) : 12_000;
+  try {
+    const { stdout, stderr } = await exec("docker", [
+      "logs",
+      "--tail",
+      String(safeTail),
+      containerName,
+    ]);
+    const merged = [stdout, stderr].filter(Boolean).join("\n").trim();
+    if (!merged) return null;
+    if (merged.length <= safeMaxChars) return merged;
+    const half = Math.floor((safeMaxChars - 64) / 2);
+    return `${merged.slice(0, half)}\n...[gekürzt]...\n${merged.slice(-half)}`;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    return msg ? `[docker logs nicht verfügbar] ${msg}` : null;
+  }
+}
+
+/**
  * Stoppt und entfernt den Container (--rm entfernt automatisch, stop reicht).
  * @param {string} runId - derselbe runId wie bei runContainer
  */

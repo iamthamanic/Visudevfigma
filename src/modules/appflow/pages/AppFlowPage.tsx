@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, Download, Loader2, Map, Play, RefreshCw, Square, X } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
+import type { PreviewBootMode, PreviewRuntimeOptions } from "../../../lib/visudev/types";
 import { discoverPreviewRunner } from "../../../utils/api";
 import { LiveFlowCanvas } from "../components/LiveFlowCanvas";
 import styles from "../styles/AppFlowPage.module.css";
@@ -24,6 +25,29 @@ const PREVIEW_POLL_INTERVAL_MS = 2500;
 const AUTO_PREVIEW_DELAY_MS = 800;
 /** Nach dieser Zeit wird "starting" als fehlgeschlagen markiert (Runner/Build reagiert nicht). */
 const PREVIEW_START_TIMEOUT_MS = 3 * 60 * 1000; // 3 Minuten
+const DEFAULT_PREVIEW_BOOT_MODE: PreviewBootMode = "best_effort";
+const DEFAULT_FORCE_SUPABASE_PLACEHOLDERS = false;
+
+function readStoredBootMode(projectId: string): PreviewBootMode {
+  const key = `visudev_appflow_boot_mode_${projectId}`;
+  try {
+    const value = localStorage.getItem(key);
+    return value === "strict" ? "strict" : "best_effort";
+  } catch {
+    return DEFAULT_PREVIEW_BOOT_MODE;
+  }
+}
+
+function readStoredSupabasePlaceholderFlag(projectId: string): boolean {
+  const key = `visudev_appflow_supabase_placeholders_${projectId}`;
+  try {
+    const value = localStorage.getItem(key);
+    if (value == null) return DEFAULT_FORCE_SUPABASE_PLACEHOLDERS;
+    return value !== "0";
+  } catch {
+    return DEFAULT_FORCE_SUPABASE_PLACEHOLDERS;
+  }
+}
 
 export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPageProps) {
   const {
@@ -40,9 +64,45 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
   const [isRescan, setIsRescan] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [previewBootMode, setPreviewBootMode] = useState<PreviewBootMode>(() =>
+    readStoredBootMode(projectId),
+  );
+  const [forceSupabasePlaceholders, setForceSupabasePlaceholders] = useState<boolean>(() =>
+    readStoredSupabasePlaceholderFlag(projectId),
+  );
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoPreviewDoneRef = useRef(false);
   const autoPreviewRetryAtRef = useRef(0);
+  const previewRuntimeOptions = useMemo<PreviewRuntimeOptions>(
+    () => ({
+      bootMode: previewBootMode,
+      injectSupabasePlaceholders: forceSupabasePlaceholders ? true : undefined,
+    }),
+    [previewBootMode, forceSupabasePlaceholders],
+  );
+
+  useEffect(() => {
+    setPreviewBootMode(readStoredBootMode(projectId));
+    setForceSupabasePlaceholders(readStoredSupabasePlaceholderFlag(projectId));
+  }, [projectId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`visudev_appflow_boot_mode_${projectId}`, previewBootMode);
+      localStorage.setItem(
+        `visudev_appflow_supabase_placeholders_${projectId}`,
+        forceSupabasePlaceholders ? "1" : "0",
+      );
+    } catch {
+      // ignore localStorage errors (private mode/quota)
+    }
+  }, [projectId, previewBootMode, forceSupabasePlaceholders]);
+
+  const startProjectPreview = useCallback(
+    (repo?: string, branch?: string, commitSha?: string) =>
+      startPreview(projectId, repo, branch, commitSha, previewRuntimeOptions),
+    [projectId, previewRuntimeOptions, startPreview],
+  );
 
   const handleRescan = useCallback(async () => {
     setIsRescan(true);
@@ -114,8 +174,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     autoPreviewDoneRef.current = true;
     const t = setTimeout(() => {
       autoPreviewRetryAtRef.current = Date.now();
-      void startPreview(
-        projectId,
+      void startProjectPreview(
         activeProject.github_repo,
         activeProject.github_branch,
         activeProject.lastAnalyzedCommitSha,
@@ -134,7 +193,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     activeProject?.preview_mode,
     preview.projectId,
     preview.status,
-    startPreview,
+    startProjectPreview,
   ]);
 
   // Reset retry button state when preview is failed again (after start attempt)
@@ -173,8 +232,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     autoPreviewDoneRef.current = true;
     const t = setTimeout(() => {
       autoPreviewRetryAtRef.current = Date.now();
-      void startPreview(
-        projectId,
+      void startProjectPreview(
         activeProject.github_repo,
         activeProject.github_branch,
         activeProject.lastAnalyzedCommitSha,
@@ -195,7 +253,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     preview.projectId,
     preview.previewUrl,
     preview.status,
-    startPreview,
+    startProjectPreview,
   ]);
 
   // Poll preview status when starting
@@ -420,13 +478,50 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
               </span>
               <div className={styles.liveAppBarRight}>
                 {!liveFlowFromDeployed && (
+                  <div
+                    className={styles.previewRuntimeSettings}
+                    role="group"
+                    aria-label="Build-Modus"
+                  >
+                    <span className={styles.previewRuntimeLabel}>Build-Modus</span>
+                    <label className={styles.previewRuntimeOption}>
+                      <input
+                        type="radio"
+                        name={`preview-build-mode-${projectId}`}
+                        checked={previewBootMode === "best_effort"}
+                        onChange={() => setPreviewBootMode("best_effort")}
+                      />
+                      Best-Effort
+                    </label>
+                    <label className={styles.previewRuntimeOption}>
+                      <input
+                        type="radio"
+                        name={`preview-build-mode-${projectId}`}
+                        checked={previewBootMode === "strict"}
+                        onChange={() => setPreviewBootMode("strict")}
+                      />
+                      Strict
+                    </label>
+                    <label className={styles.previewRuntimeOption}>
+                      <input
+                        type="checkbox"
+                        checked={forceSupabasePlaceholders}
+                        onChange={(e) => setForceSupabasePlaceholders(e.currentTarget.checked)}
+                      />
+                      <span title="Aus = Auto (nur bei erkannter Supabase-Nutzung)">
+                        Supabase-Platzhalter erzwingen
+                      </span>
+                    </label>
+                  </div>
+                )}
+                {!liveFlowFromDeployed && (
                   <div className={styles.liveAppBarActions}>
                     {preview.projectId === projectId &&
                     (preview.status === "ready" || preview.status === "starting") ? (
                       <>
                         <button
                           type="button"
-                          onClick={() => refreshPreview(projectId)}
+                          onClick={() => refreshPreview(projectId, previewRuntimeOptions)}
                           disabled={preview.status === "starting"}
                           className={styles.secondaryButton}
                           aria-label="Preview aktualisieren (Pull, Rebuild, Restart)"
@@ -455,8 +550,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                         <button
                           type="button"
                           onClick={() =>
-                            startPreview(
-                              projectId,
+                            startProjectPreview(
                               activeProject?.github_repo,
                               activeProject?.github_branch,
                               activeProject?.lastAnalyzedCommitSha,
@@ -473,8 +567,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                       <button
                         type="button"
                         onClick={() =>
-                          startPreview(
-                            projectId,
+                          startProjectPreview(
                             activeProject?.github_repo,
                             activeProject?.github_branch,
                             activeProject?.lastAnalyzedCommitSha,
@@ -601,8 +694,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                     disabled={isRetrying}
                     onClick={() => {
                       setIsRetrying(true);
-                      void startPreview(
-                        projectId,
+                      void startProjectPreview(
                         activeProject?.github_repo,
                         activeProject?.github_branch,
                         activeProject?.lastAnalyzedCommitSha,
@@ -633,8 +725,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                     <button
                       type="button"
                       onClick={() =>
-                        startPreview(
-                          projectId,
+                        startProjectPreview(
                           activeProject?.github_repo,
                           activeProject?.github_branch,
                           activeProject?.lastAnalyzedCommitSha,

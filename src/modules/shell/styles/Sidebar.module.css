@@ -9,11 +9,18 @@
 }
 
 .header {
-  align-items: center;
+  align-items: stretch;
   border-bottom: 1px solid var(--color-sidebar-border);
   display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1.125rem;
+}
+
+.headerBrandRow {
+  align-items: center;
+  display: flex;
   gap: 0.75rem;
-  padding: 1.5rem;
 }
 
 .logoWrapper {

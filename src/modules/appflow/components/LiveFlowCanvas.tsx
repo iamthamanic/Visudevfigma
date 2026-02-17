@@ -8,11 +8,13 @@ import { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import clsx from "clsx";
 import type { Screen, Flow } from "../../../lib/visudev/types";
 import type { PreviewStepLog } from "../../../utils/api";
-import type { VisudevDomReport } from "../types";
+import type { NodeViewportMode, VisudevDomReport } from "../types";
 import {
   getScreenDepths,
   buildEdges,
   computePositions,
+  matchScreenPath,
+  normalizeRoutePath,
   normalizePreviewUrl,
   type GraphEdge,
 } from "../layout";
@@ -31,6 +33,32 @@ const NODE_HEIGHT = 240;
 const HORIZONTAL_SPACING = 60;
 const VERTICAL_SPACING = 40;
 const ANIMATION_DURATION_MS = 400;
+const INITIAL_ZOOM = 0.6;
+const INITIAL_PAN = { x: 40, y: 40 };
+const AUTH_ROUTE_PATTERN =
+  /^\/(?:login|signin|sign-in|auth|register|forgot-password|reset-password)(?:\/|$)/i;
+
+interface FocusedScreen {
+  id: string;
+  name: string;
+  iframeSrc: string;
+}
+
+function dedupeEdges(edges: GraphEdge[]): GraphEdge[] {
+  const byPair = new Map<string, GraphEdge>();
+  edges.forEach((edge) => {
+    const key = `${edge.fromId}->${edge.toId}`;
+    const existing = byPair.get(key);
+    if (!existing || (existing.type === "call" && edge.type === "navigate")) {
+      byPair.set(key, edge);
+    }
+  });
+  return Array.from(byPair.values());
+}
+
+function isAuthRoute(path: string): boolean {
+  return AUTH_ROUTE_PATTERN.test(normalizeRoutePath(path || "/"));
+}
 
 interface LiveFlowCanvasProps {
   screens: Screen[];
@@ -53,12 +81,15 @@ export function LiveFlowCanvas({
   refreshInProgress = false,
   refreshLogs = [],
 }: LiveFlowCanvasProps) {
-  const [zoom, setZoom] = useState(0.6);
-  const [pan, setPan] = useState({ x: 40, y: 40 });
+  const [zoom, setZoom] = useState(INITIAL_ZOOM);
+  const [pan, setPan] = useState(INITIAL_PAN);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [viewportMode, setViewportMode] = useState<NodeViewportMode>("fit-desktop");
   const [animatingEdge, setAnimatingEdge] = useState<GraphEdge | null>(null);
   const [dotPosition, setDotPosition] = useState<{ x: number; y: number } | null>(null);
+  const [runtimeEdges, setRuntimeEdges] = useState<GraphEdge[]>([]);
+  const [focusedScreen, setFocusedScreen] = useState<FocusedScreen | null>(null);
   /** Last visudev-dom-report per screen id (from iframe postMessage). */
   const [domReportsByScreenId, setDomReportsByScreenId] = useState<
     Record<string, VisudevDomReport>
@@ -77,6 +108,15 @@ export function LiveFlowCanvas({
   const animFrameRef = useRef<number | null>(null);
   const iframeToScreenRef = useRef<Map<Window, string>>(new Map());
 
+  const screenSignature = useMemo(
+    () =>
+      screens
+        .map((s) => `${s.id}|${s.path || "/"}|${s.name}`)
+        .sort()
+        .join("||"),
+    [screens],
+  );
+
   const depths = useMemo(() => getScreenDepths(screens), [screens]);
   const positions = useMemo(
     () =>
@@ -90,7 +130,21 @@ export function LiveFlowCanvas({
       ),
     [screens, depths],
   );
-  const edges = useMemo(() => buildEdges(screens, flows), [screens, flows]);
+  const staticEdges = useMemo(() => dedupeEdges(buildEdges(screens, flows)), [screens, flows]);
+  const edges = useMemo(
+    () => dedupeEdges([...staticEdges, ...runtimeEdges]),
+    [staticEdges, runtimeEdges],
+  );
+
+  useEffect(() => {
+    pathRefs.current.clear();
+  }, [edges]);
+
+  useEffect(() => {
+    setRuntimeEdges([]);
+    setDomReportsByScreenId({});
+    iframeToScreenRef.current.clear();
+  }, [screenSignature, previewUrl]);
 
   useEffect(() => {
     if (!graphRef.current) return;
@@ -127,6 +181,39 @@ export function LiveFlowCanvas({
     if (!progressTrackRef.current) return;
     progressTrackRef.current.style.setProperty("--progress-percent", `${progressPercent}%`);
   }, [progressPercent]);
+
+  useEffect(() => {
+    setRuntimeEdges((prev) => {
+      const existingKeys = new Set(prev.map((edge) => `${edge.fromId}->${edge.toId}`));
+      const additions: GraphEdge[] = [];
+      screens.forEach((screen) => {
+        const report = domReportsByScreenId[screen.id];
+        if (!report?.route) return;
+        const targetScreen = screens.find((s) => matchScreenPath(s.path || "/", report.route));
+        if (!targetScreen || targetScreen.id === screen.id) return;
+        const key = `${screen.id}->${targetScreen.id}`;
+        if (existingKeys.has(key)) return;
+        existingKeys.add(key);
+        additions.push({ fromId: screen.id, toId: targetScreen.id, type: "navigate" });
+      });
+      return additions.length > 0 ? [...prev, ...additions] : prev;
+    });
+  }, [domReportsByScreenId, screens]);
+
+  const authRouteByScreenId = useMemo(() => {
+    const map = new Map<string, string>();
+    screens.forEach((screen) => {
+      const report = domReportsByScreenId[screen.id];
+      if (!report?.route) return;
+      const actualRoute = normalizeRoutePath(report.route);
+      const expectedPath = normalizeRoutePath(screen.path || "/");
+      if (isAuthRoute(expectedPath)) return;
+      if (isAuthRoute(actualRoute) && !matchScreenPath(screen.path || "/", actualRoute)) {
+        map.set(screen.id, actualRoute);
+      }
+    });
+    return map;
+  }, [domReportsByScreenId, screens]);
 
   const runEdgeAnimation = useCallback((edge: GraphEdge) => {
     const key = `${edge.fromId}-${edge.toId}`;
@@ -171,8 +258,18 @@ export function LiveFlowCanvas({
     setDotPosition(null);
   }, []);
 
+  const isInteractiveTarget = (target: EventTarget | null): boolean => {
+    if (!(target instanceof HTMLElement)) return false;
+    return Boolean(
+      target.closest(
+        "[data-node-card='true'], iframe, button, a, input, select, textarea, label, [role='button']",
+      ),
+    );
+  };
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 0) {
+      if (isInteractiveTarget(e.target)) return;
       setIsDragging(true);
       setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
     }
@@ -185,8 +282,8 @@ export function LiveFlowCanvas({
   const handleZoomIn = () => setZoom((z) => Math.min(z + 0.1, 1.5));
   const handleZoomOut = () => setZoom((z) => Math.max(z - 0.1, 0.25));
   const handleZoomReset = () => {
-    setZoom(0.6);
-    setPan({ x: 40, y: 40 });
+    setZoom(INITIAL_ZOOM);
+    setPan(INITIAL_PAN);
   };
 
   /** Trackpad/Mausrad-Zoom: Pinch (ctrl+wheel) oder zwei Finger scrollen auf dem Canvas. */
@@ -200,6 +297,40 @@ export function LiveFlowCanvas({
     }
   }, []);
 
+  const handleRuntimeNavigate = useCallback(
+    (sourceScreenId: string, targetPath: string): GraphEdge | null => {
+      const targetScreen = screens.find((s) => matchScreenPath(s.path || "/", targetPath));
+      if (!targetScreen || targetScreen.id === sourceScreenId) return null;
+      const existing = edges.find(
+        (edge) => edge.fromId === sourceScreenId && edge.toId === targetScreen.id,
+      );
+      if (existing) return existing;
+      const runtimeEdge: GraphEdge = {
+        fromId: sourceScreenId,
+        toId: targetScreen.id,
+        type: "navigate",
+      };
+      setRuntimeEdges((prev) => {
+        const hasEdge = prev.some(
+          (edge) => edge.fromId === runtimeEdge.fromId && edge.toId === runtimeEdge.toId,
+        );
+        return hasEdge ? prev : [...prev, runtimeEdge];
+      });
+      requestAnimationFrame(() => setAnimatingEdge(runtimeEdge));
+      return null;
+    },
+    [edges, screens],
+  );
+
+  useEffect(() => {
+    if (!focusedScreen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFocusedScreen(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [focusedScreen]);
+
   usePreviewPostMessage(
     iframeToScreenRef,
     screens,
@@ -207,6 +338,7 @@ export function LiveFlowCanvas({
     markScreenFailed,
     setDomReportsByScreenId,
     setAnimatingEdge,
+    handleRuntimeNavigate,
   );
 
   if (screens.length === 0) {
@@ -232,6 +364,8 @@ export function LiveFlowCanvas({
         onZoomOut={handleZoomOut}
         onZoomIn={handleZoomIn}
         onZoomReset={handleZoomReset}
+        viewportMode={viewportMode}
+        onViewportModeChange={setViewportMode}
         showTerminal={showTerminal}
         onToggleTerminal={() => setShowTerminal((v) => !v)}
       />
@@ -270,6 +404,12 @@ export function LiveFlowCanvas({
                   loadState={screenLoadState[screen.id] ?? "loading"}
                   failReason={screenFailReason[screen.id]}
                   domReport={domReportsByScreenId[screen.id]}
+                  viewportMode={viewportMode}
+                  authRequired={authRouteByScreenId.has(screen.id)}
+                  authRoute={authRouteByScreenId.get(screen.id)}
+                  onFocus={(screenId, screenName, iframeSrc) =>
+                    setFocusedScreen({ id: screenId, name: screenName, iframeSrc })
+                  }
                   onLoad={() => markScreenLoaded(screen.id, screen.name)}
                   onError={(reason, name, url) => markScreenFailed(screen.id, reason, name, url)}
                   registerIframe={(win, screenId) => iframeToScreenRef.current.set(win, screenId)}
@@ -291,6 +431,55 @@ export function LiveFlowCanvas({
           />
         </div>
       </div>
+
+      {focusedScreen && (
+        <div
+          className={styles.focusBackdrop}
+          role="presentation"
+          onClick={() => setFocusedScreen(null)}
+        >
+          <div
+            className={styles.focusPanel}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Fokus: ${focusedScreen.name}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className={styles.focusHeader}>
+              <span className={styles.focusTitle}>{focusedScreen.name}</span>
+              <button
+                type="button"
+                className={styles.focusCloseBtn}
+                onClick={() => setFocusedScreen(null)}
+              >
+                Schließen
+              </button>
+            </div>
+            <div className={styles.focusBody}>
+              <iframe
+                src={focusedScreen.iframeSrc}
+                title={`Fokus: ${focusedScreen.name}`}
+                className={styles.focusIframe}
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                onLoad={() => markScreenLoaded(focusedScreen.id, focusedScreen.name)}
+                onError={() =>
+                  markScreenFailed(
+                    focusedScreen.id,
+                    SCREEN_FAIL_REASONS.LOAD_ERROR,
+                    focusedScreen.name,
+                    focusedScreen.iframeSrc,
+                  )
+                }
+                ref={(el) => {
+                  if (el?.contentWindow) {
+                    iframeToScreenRef.current.set(el.contentWindow, focusedScreen.id);
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

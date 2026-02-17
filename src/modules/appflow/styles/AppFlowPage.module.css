@@ -396,6 +396,31 @@
   gap: 0.75rem;
 }
 
+.previewRuntimeSettings {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+}
+
+.previewRuntimeLabel {
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.previewRuntimeOption {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--color-foreground);
+}
+
 .liveAppBarError {
   color: var(--color-danger);
   font-size: 0.75rem;

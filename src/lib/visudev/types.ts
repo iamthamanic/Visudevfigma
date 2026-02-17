@@ -33,6 +33,13 @@ export interface Flow {
 export type PreviewStatus = "idle" | "starting" | "ready" | "failed" | "stopped";
 /** Preview mode selection per project */
 export type PreviewMode = "auto" | "local" | "central" | "deployed";
+/** Runtime boot behavior for local preview runner (per start/refresh). */
+export type PreviewBootMode = "best_effort" | "strict";
+/** Optional per-run preview settings (not persisted to project config by default). */
+export interface PreviewRuntimeOptions {
+  bootMode?: PreviewBootMode;
+  injectSupabasePlaceholders?: boolean;
+}
 
 export interface Project {
   id: string;

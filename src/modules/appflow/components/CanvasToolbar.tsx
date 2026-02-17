@@ -4,7 +4,8 @@
  */
 
 import clsx from "clsx";
-import { ZoomIn, ZoomOut, Home, Terminal } from "lucide-react";
+import { ZoomIn, ZoomOut, Home, Terminal, Monitor, Smartphone } from "lucide-react";
+import type { NodeViewportMode } from "../types";
 import styles from "../styles/LiveFlowCanvas.module.css";
 
 interface CanvasToolbarProps {
@@ -17,6 +18,8 @@ interface CanvasToolbarProps {
   onZoomOut: () => void;
   onZoomIn: () => void;
   onZoomReset: () => void;
+  viewportMode: NodeViewportMode;
+  onViewportModeChange: (mode: NodeViewportMode) => void;
   showTerminal: boolean;
   onToggleTerminal: () => void;
 }
@@ -31,6 +34,8 @@ export function CanvasToolbar({
   onZoomOut,
   onZoomIn,
   onZoomReset,
+  viewportMode,
+  onViewportModeChange,
   showTerminal,
   onToggleTerminal,
 }: CanvasToolbarProps): React.ReactElement {
@@ -55,6 +60,22 @@ export function CanvasToolbar({
       </button>
       <button type="button" onClick={onZoomReset} className={styles.zoomBtn} title="Zurücksetzen">
         <Home className={styles.zoomIcon} aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onViewportModeChange("fit-desktop")}
+        className={clsx(styles.zoomBtn, viewportMode === "fit-desktop" && styles.terminalBtnActive)}
+        title="Desktop-Viewport (verhältnistreu skaliert)"
+      >
+        <Monitor className={styles.zoomIcon} aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onViewportModeChange("fit-mobile")}
+        className={clsx(styles.zoomBtn, viewportMode === "fit-mobile" && styles.terminalBtnActive)}
+        title="Mobile-Viewport (verhältnistreu skaliert)"
+      >
+        <Smartphone className={styles.zoomIcon} aria-hidden="true" />
       </button>
       <button
         type="button"

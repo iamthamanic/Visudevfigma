@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import type { Screen } from "../../../lib/visudev/types";
 import type { VisudevDomReport } from "../types";
 import type { GraphEdge } from "../layout";
+import { matchScreenPath, normalizeRoutePath } from "../layout";
 import { SCREEN_FAIL_REASONS } from "./useScreenLoadState";
 
 export function usePreviewPostMessage(
@@ -15,7 +16,8 @@ export function usePreviewPostMessage(
   edges: GraphEdge[],
   markScreenFailed: (screenId: string, reason: string, screenName?: string, url?: string) => void,
   setDomReportsByScreenId: React.Dispatch<React.SetStateAction<Record<string, VisudevDomReport>>>,
-  setAnimatingEdge: React.Dispatch<React.SetStateAction<GraphEdge | null>>,
+  setAnimatingEdge: (edge: GraphEdge | null) => void,
+  onRuntimeNavigate: (sourceScreenId: string, targetPath: string) => GraphEdge | null,
 ): void {
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -42,13 +44,16 @@ export function usePreviewPostMessage(
       }
 
       if (data.type !== "visudev-navigate" || typeof data.path !== "string") return;
-      const targetPath = data.path;
-      const targetScreen = screens.find(
-        (s) => s.path === targetPath || (targetPath && s.path.includes(targetPath)),
-      );
-      if (!targetScreen) return;
+      const targetPath = normalizeRoutePath(data.path);
       const sourceScreenId = iframeToScreenRef.current.get(event.source as Window);
       if (!sourceScreenId) return;
+      const runtimeEdge = onRuntimeNavigate(sourceScreenId, targetPath);
+      if (runtimeEdge) {
+        setAnimatingEdge(runtimeEdge);
+        return;
+      }
+      const targetScreen = screens.find((s) => matchScreenPath(s.path || "/", targetPath));
+      if (!targetScreen) return;
       const edge = edges.find((e) => e.fromId === sourceScreenId && e.toId === targetScreen.id);
       if (edge) setAnimatingEdge(edge);
     };
@@ -60,6 +65,7 @@ export function usePreviewPostMessage(
     markScreenFailed,
     setDomReportsByScreenId,
     setAnimatingEdge,
+    onRuntimeNavigate,
     iframeToScreenRef,
   ]);
 }

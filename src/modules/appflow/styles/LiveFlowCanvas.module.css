@@ -220,7 +220,7 @@
   position: absolute;
   left: 0;
   top: 0;
-  z-index: 1;
+  z-index: 0;
   pointer-events: none;
 }
 
@@ -255,7 +255,7 @@
   position: absolute;
   left: 0;
   top: 0;
-  z-index: 2;
+  z-index: 1;
 }
 
 .edgeHit {
@@ -274,10 +274,10 @@
   position: absolute;
   left: 0;
   top: 0;
-  z-index: 0;
+  z-index: 2;
   width: var(--nodes-layer-width, 100%);
   height: var(--nodes-layer-height, 100%);
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .nodeCard {
@@ -305,6 +305,42 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+.nodeActions {
+  align-items: center;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.2rem 0.35rem;
+}
+
+.nodeFocusBtn {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: 0.65rem;
+  padding: 0.12rem 0.35rem;
+}
+
+.nodeFocusBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary-hover);
+}
+
+.nodeAuthBadge {
+  background-color: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-danger) 35%, var(--color-border));
+  color: var(--color-danger);
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  padding: 0.2rem 0.5rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
 .nodeLiveReport {
   flex-shrink: 0;
   padding: 0.2rem 0.5rem;
@@ -318,23 +354,38 @@
 }
 
 .nodeIframeWrap {
+  --node-viewport-width: 1366px;
+  --node-viewport-height: 768px;
+  --node-viewport-scale: 1;
   flex: 1;
   min-height: 0;
   position: relative;
   width: 100%;
+  overflow: hidden;
+  background-color: var(--color-surface);
+}
+
+.nodeViewportStage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--node-viewport-width);
+  height: var(--node-viewport-height);
+  transform: translate(-50%, -50%) scale(var(--node-viewport-scale));
+  transform-origin: center center;
 }
 
 .nodeIframe {
   border: none;
   display: block;
-  height: 100%;
-  min-height: 0;
-  width: 100%;
+  height: var(--node-viewport-height);
+  min-height: var(--node-viewport-height);
+  width: var(--node-viewport-width);
 }
 
 .nodeLoadingOverlay {
   align-items: center;
-  background-color: var(--color-surface);
+  background-color: color-mix(in srgb, var(--color-card) 82%, transparent);
   bottom: 0;
   display: flex;
   flex-direction: column;
@@ -356,6 +407,25 @@
 .nodeLoadingText {
   color: var(--color-muted-foreground);
   font-size: 0.75rem;
+}
+
+.nodeOpenInTabFloating {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  z-index: 3;
+  font-size: 0.65rem;
+  line-height: 1;
+  color: var(--color-primary);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem 0.35rem;
+  text-decoration: none;
+}
+
+.nodeOpenInTabFloating:hover {
+  color: var(--color-primary-hover);
 }
 
 .nodeLoadedHint {
@@ -439,4 +509,77 @@
 .emptyText {
   color: var(--color-muted-foreground);
   font-size: 0.875rem;
+}
+
+.focusBackdrop {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--color-overlay-muted) 72%, transparent);
+  backdrop-filter: blur(2px);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.focusPanel {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 24px 80px color-mix(in srgb, black 55%, transparent);
+  display: flex;
+  flex-direction: column;
+  height: min(92vh, 980px);
+  width: min(96vw, 1600px);
+  overflow: hidden;
+}
+
+.focusHeader {
+  align-items: center;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-shrink: 0;
+  justify-content: space-between;
+  padding: 0.45rem 0.65rem;
+}
+
+.focusTitle {
+  color: var(--color-foreground);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.focusCloseBtn {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.72rem;
+  gap: 0.25rem;
+  padding: 0.2rem 0.45rem;
+}
+
+.focusCloseBtn:hover {
+  background-color: var(--color-hover);
+  border-color: var(--color-border-hover);
+  color: var(--color-foreground);
+}
+
+.focusBody {
+  background: var(--color-surface);
+  flex: 1;
+  min-height: 0;
+}
+
+.focusIframe {
+  border: none;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: white;
 }

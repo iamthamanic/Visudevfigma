@@ -71,6 +71,11 @@
   },
   "scripts": {
     "dev": "node scripts/dev-auto.js",
+    "visudev": "npm run dev",
+    "visudev:runner": "npm run dev:runner",
+    "visudev:runner:status": "node scripts/visudev-runner-status.js",
+    "visudev-runner": "npm run visudev:runner",
+    "visudev-runner-status": "npm run visudev:runner:status",
     "dev:kill-preview-port": "bash scripts/kill-preview-port.sh",
     "dev:runner": "node scripts/run-preview-runner.js",
     "dev:app": "vite",

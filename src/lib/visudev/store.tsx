@@ -12,6 +12,7 @@ import type { AnalyzerResponse, AnalyzerScreenshotsResponse } from "./analyzer";
 import {
   AnalysisResult,
   Project,
+  PreviewRuntimeOptions,
   ScanResult,
   ScanStatuses,
   Screen,
@@ -59,9 +60,10 @@ interface VisudevStore {
     repo?: string,
     branchOrCommit?: string,
     commitSha?: string,
+    options?: PreviewRuntimeOptions,
   ) => Promise<void>;
   refreshPreviewStatus: (projectId: string) => Promise<PreviewStatus | undefined>;
-  refreshPreview: (projectId: string) => Promise<void>;
+  refreshPreview: (projectId: string, options?: PreviewRuntimeOptions) => Promise<void>;
   stopPreview: (projectId: string) => Promise<void>;
   /** Set preview to failed when stuck in "starting" (e.g. timeout). */
   markPreviewStuck: (projectId: string, error: string) => void;
@@ -86,6 +88,60 @@ function apiErrorMsg(err: unknown): string {
   if (err && typeof err === "object" && "message" in err)
     return String((err as { message: unknown }).message);
   return "Request failed";
+}
+
+interface AnalyzerErrorObject {
+  code?: string;
+  message?: string;
+}
+
+interface AnalyzerErrorPayload {
+  success?: boolean;
+  error?: string | AnalyzerErrorObject;
+}
+
+function parseAnalyzerErrorText(errorText: string): string {
+  const raw = errorText.trim();
+  if (!raw) return "Unbekannter Analyzer-Fehler";
+  try {
+    const parsed = JSON.parse(raw) as AnalyzerErrorPayload;
+    if (typeof parsed?.error === "string" && parsed.error.trim()) return parsed.error.trim();
+    if (
+      parsed?.error &&
+      typeof parsed.error === "object" &&
+      typeof parsed.error.message === "string" &&
+      parsed.error.message.trim()
+    ) {
+      return parsed.error.message.trim();
+    }
+  } catch {
+    // ignore non-JSON payload
+  }
+  return raw;
+}
+
+function buildAnalyzerStatusHint(status: number, message: string, hasGitHubToken: boolean): string {
+  const msg = message.toLowerCase();
+  const isCommit404 = /failed to fetch commit sha: 404/i.test(message);
+  if (status === 404 && isCommit404) {
+    if (!hasGitHubToken) {
+      return (
+        "GitHub konnte den Branch/Commit nicht lesen (404). Bei privaten Repos bitte im Projekt " +
+        "einen GitHub Access Token hinterlegen (mindestens Repo-Leserechte)."
+      );
+    }
+    return (
+      "GitHub konnte den Branch/Commit nicht lesen (404). Bitte Repo-Name und Branch prüfen " +
+      "(z. B. main vs master) und sicherstellen, dass der Token Zugriff auf das Repo hat."
+    );
+  }
+  if (status === 401 || status === 403 || msg.includes("bad credentials")) {
+    return (
+      "GitHub Zugriff abgelehnt. Bitte GitHub Access Token im Projekt prüfen " +
+      "(gültig, nicht abgelaufen, mit Repo-Leserechten)."
+    );
+  }
+  return `Analyzer returned ${status}: ${message}`;
 }
 
 export function VisudevProvider({ children }: { children: ReactNode }) {
@@ -178,13 +234,32 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     setActiveProjectState((current) => (current?.id === updated.id ? updated : current));
   }, []);
 
-  const deleteProject = useCallback(async (id: string) => {
-    const res = await api.projects.delete(id);
-    if (!res.success) throw new Error(apiErrorMsg(res.error));
-    setProjects((prev) => prev.filter((p) => p.id !== id));
-    setActiveProjectState((current) => (current?.id === id ? null : current));
-    setScans((prev) => prev.filter((s) => s.projectId !== id));
-  }, []);
+  const deleteProject = useCallback(
+    async (id: string) => {
+      try {
+        await previewAPI.stopProject(
+          id,
+          getProjectPreviewMode(id),
+          previewAccessTokenRef.current ?? undefined,
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn("[VisuDEV] stopProject preview failed (delete continues):", msg);
+      }
+
+      const res = await api.projects.delete(id);
+      if (!res.success) throw new Error(apiErrorMsg(res.error));
+      setProjects((prev) => prev.filter((p) => p.id !== id));
+      setActiveProjectState((current) => (current?.id === id ? null : current));
+      setScans((prev) => prev.filter((s) => s.projectId !== id));
+      setPreview((prev) =>
+        prev.projectId === id
+          ? { projectId: null, status: "idle", previewUrl: null, error: null, refreshLogs: [] }
+          : prev,
+      );
+    },
+    [getProjectPreviewMode],
+  );
 
   const refreshScanStatus = useCallback(async () => {
     // In local-only mode, scan status is already in state
@@ -224,6 +299,10 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         setScans((prev) => [...prev, newScan]);
 
         try {
+          const repo = (activeProject.github_repo ?? "").trim();
+          const branch = (activeProject.github_branch ?? "main").trim() || "main";
+          const githubAccessToken = activeProject.github_access_token?.trim();
+
           // ONLY call visudev-analyzer Edge Function for code analysis
           const analyzeResponse = await fetch(
             `${supabaseUrl}/functions/v1/visudev-analyzer/analyze`,
@@ -234,8 +313,9 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                repo: activeProject.github_repo ?? "",
-                branch: activeProject.github_branch ?? "main",
+                repo,
+                branch,
+                access_token: githubAccessToken || undefined,
               }),
             },
           );
@@ -248,7 +328,14 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
           if (!analyzeResponse.ok) {
             const errorText = await analyzeResponse.text();
             console.error(`❌ [VisuDEV] Analyzer error response:`, errorText);
-            throw new Error(`Analyzer returned ${analyzeResponse.status}: ${errorText}`);
+            const analyzerMessage = parseAnalyzerErrorText(errorText);
+            throw new Error(
+              buildAnalyzerStatusHint(
+                analyzeResponse.status,
+                analyzerMessage,
+                Boolean(githubAccessToken),
+              ),
+            );
           }
 
           const analysisData = (await analyzeResponse.json()) as AnalyzerResponse;
@@ -404,7 +491,13 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
   );
 
   const startPreview = useCallback(
-    async (projectId: string, repo?: string, branchOrCommit?: string, commitSha?: string) => {
+    async (
+      projectId: string,
+      repo?: string,
+      branchOrCommit?: string,
+      commitSha?: string,
+      options?: PreviewRuntimeOptions,
+    ) => {
       const setPreviewError = (error: string) => {
         setPreview((prev) => ({
           ...prev,
@@ -451,6 +544,8 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
             branchOrCommit,
             commitSha,
             accessToken: previewAccessTokenRef.current ?? undefined,
+            bootMode: options?.bootMode,
+            injectSupabasePlaceholders: options?.injectSupabasePlaceholders,
           },
           getProjectPreviewMode(projectId),
         );
@@ -549,8 +644,8 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
   );
 
   const refreshPreview = useCallback(
-    async (projectId: string) => {
-      const res = await previewAPI.refresh(projectId, getProjectPreviewMode(projectId));
+    async (projectId: string, options?: PreviewRuntimeOptions) => {
+      const res = await previewAPI.refresh(projectId, getProjectPreviewMode(projectId), options);
       if (!res.success) {
         setPreview((prev) =>
           prev.projectId === projectId

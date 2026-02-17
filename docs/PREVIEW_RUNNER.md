@@ -53,6 +53,14 @@ Umgebungsvariablen:
 - `PORT` – Server-Port des Runners (Standard: 4000)
 - `USE_REAL_BUILD` – **optional**. Wenn `1` oder `true`: echter Clone/Build/Start (Repo klonen, bauen, App auf zugewiesenem Port starten). Ohne: Stub (Platzhalter-Seite).
 - `USE_DOCKER` – **optional**. Wenn `1` oder `true`: Build und Serve laufen **im Docker-Container** (fipso/runner-ähnlich). Ein Container pro Preview: `install → build → npx serve dist -s -l 3000` im Container; Host-Port wird auf Container:3000 gemappt. **Vorteil:** Kein „App ignoriert PORT“ (ECONNREFUSED); funktioniert auch bei Vite/React-Apps, die sonst auf 5173 laufen. **Voraussetzung:** Docker muss laufen (`docker info`). Image: `node:20-alpine` (über `VISUDEV_DOCKER_IMAGE` änderbar).
+- `PREVIEW_DOCKER_READY_TIMEOUT_MS` – **optional** (nur Docker-Modus). Timeout bis die App im Container auf dem gemappten Port antwortet (Standard: `300000` = 300s).
+- `PREVIEW_DOCKER_LOG_TAIL` – **optional** (nur Docker-Modus). Anzahl Log-Zeilen, die bei Docker-Boot-Fehlern ins Preview-Terminal geschrieben werden (Standard: `120`).
+- `PREVIEW_BOOT_MODE` – **optional** (nur `USE_REAL_BUILD` ohne Docker). Standard: `best_effort`.  
+  `best_effort`: Bei Build-Fehler wird automatisch ein Dev-Fallback (`dev/start`) versucht; nur wenn auch der Fallback nicht bootet, wird der Run als failed markiert.  
+  `strict`: Build muss erfolgreich sein, sonst failed.
+- `injectSupabasePlaceholders` (pro `/start` oder `/refresh`) – **optional**.  
+  Wenn nicht gesetzt: Auto-Modus. Platzhalter für `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` werden nur gesetzt, wenn Supabase im App-Code erkannt wird.  
+  Wenn `true`: Platzhalter werden erzwungen. Wenn `false`: Platzhalter werden nie gesetzt.
 - `GITHUB_TOKEN` – **optional**. Für private Repos: Token mit Lese-Recht, damit der Runner klonen kann.
 - `GITHUB_WEBHOOK_SECRET` – **optional**. Secret, das du in den GitHub-Webhook-Einstellungen einträgst; der Runner prüft damit die Signatur (X-Hub-Signature-256) und lehnt unbefugte Aufrufe ab.
 - `PREVIEW_PORT_MIN` / `PREVIEW_PORT_MAX` – Port-Pool für Preview-URLs (Standard: 4001–4099). Pro Lauf wird automatisch ein freier Port vergeben.
@@ -101,15 +109,29 @@ Im **Root des User-Repos** (z. B. Scriptony) kann optional eine Datei `visudev
 {
   "buildCommand": "npm ci && npm run build",
   "startCommand": "npx serve dist",
+  "appDirectory": "frontend",
+  "injectSupabasePlaceholders": false,
   "port": 3000
 }
 ```
 
 - **buildCommand** – Befehl zum Bauen (Standard z. B. `npm run build`)
 - **startCommand** – Befehl zum Starten der App (z. B. `npx serve dist` oder `npm run start`)
+- **appDirectory** – optionales Unterverzeichnis für Monorepos (z. B. `frontend`, `apps/web`).  
+  Ohne Angabe versucht der Runner das App-Verzeichnis automatisch zu erkennen.
+- **injectSupabasePlaceholders** – optionaler Override (`true`/`false`) für Supabase-Preview-Platzhalter.
 - **port** – Port, auf dem die App läuft
 
 Fehlt die Datei, verwendet der Runner sinnvolle Defaults (z. B. `npm run build` + `npx serve dist`, Port 3000).
+
+### Auto-Erkennung (ohne Config)
+
+Ohne `visudev.config.json` scannt der Runner das Repo nach mehreren App-Kandidaten (z. B. `frontend/`, `apps/web`, `packages/frontend`, Root), bewertet sie per Score und probiert sie in Reihenfolge.
+
+- Pro Kandidat: `install -> build -> start`
+- Bei `best_effort`: wenn Build/Start fehlschlägt, wird zusätzlich ein Fallback (`dev/start`) probiert
+- Wenn ein Kandidat nicht bootet, testet der Runner den nächsten Kandidaten automatisch
+- In den Preview-Logs siehst du die Reihenfolge als `Scanner: Kandidat X/Y: ...`
 
 ## Build-Test (Runner-Funktion prüfen)
 
