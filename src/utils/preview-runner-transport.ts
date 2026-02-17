@@ -1,5 +1,5 @@
 import { discoverRunnerUrl } from "./preview-runner-core";
-import { warnRunnerOnce } from "./preview-runner-parser";
+import { warnRunner } from "./preview-runner-parser";
 
 interface RunnerFetchResult {
   res: Response;
@@ -32,7 +32,7 @@ export async function requestRunnerWithDiscovery(
       return { ok: true, baseUrl: base, res: firstResult.res, text: firstResult.text };
     }
   } catch (error) {
-    warnRunnerOnce(`${context} request failed (${base})`, error);
+    warnRunner(`${context} request failed (${base})`, error);
   }
 
   const found = await discoverRunnerUrl();
@@ -42,7 +42,7 @@ export async function requestRunnerWithDiscovery(
       const retry = await doFetch(discoveredBase);
       return { ok: true, baseUrl: discoveredBase, res: retry.res, text: retry.text };
     } catch (retryError) {
-      warnRunnerOnce(`${context} retry failed (${discoveredBase})`, retryError);
+      warnRunner(`${context} retry failed (${discoveredBase})`, retryError);
     }
   }
 

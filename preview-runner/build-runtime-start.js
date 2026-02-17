@@ -1,4 +1,5 @@
 import { getBuildRuntimeDeps } from "./build-runtime-deps.js";
+import { redactRuntimeOutput } from "./build-runtime-redact.js";
 
 function effectiveStartCommand(startCommand, port) {
   const cmd = (startCommand || "").trim();
@@ -34,11 +35,17 @@ export function startApp(workspaceDir, port, config) {
   child.__visudevInjectedEnvKeys = injectedKeys;
   child.__visudevSupabasePlaceholderMode = placeholderMode;
   child.__visudevSupabaseDetected = supabaseDetected;
-  child.stdout?.on("data", (d) => runtimeDeps.stdoutWrite(`[preview ${port}] ${d}`));
-  child.stderr?.on("data", (d) => runtimeDeps.stderrWrite(`[preview ${port}] ${d}`));
+  child.stdout?.on("data", (d) => {
+    const redacted = redactRuntimeOutput(d.toString(), env);
+    runtimeDeps.stdoutWrite(`[preview ${port}] ${redacted}`);
+  });
+  child.stderr?.on("data", (d) => {
+    const redacted = redactRuntimeOutput(d.toString(), env);
+    runtimeDeps.stderrWrite(`[preview ${port}] ${redacted}`);
+  });
   child.on("error", (err) => {
     const message = err instanceof Error ? err.message : String(err);
-    runtimeDeps.error(`[preview ${port}] error: ${message}`);
+    runtimeDeps.error(`[preview ${port}] error: ${redactRuntimeOutput(message, env)}`);
   });
   return child;
 }

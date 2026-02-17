@@ -7,7 +7,7 @@ import {
   parseRunnerHealthPayload,
   parseRunnerJsonText,
   parseRunnerRuntimeSnapshot,
-  warnRunnerOnce,
+  warnRunner,
   type RunnerHealthPayload,
 } from "./preview-runner-parser";
 import type { PreviewRunnerRuntimeStatus } from "./preview-runner-types";
@@ -32,7 +32,7 @@ async function requestRunnerJson(
     const data = parseRunnerJsonText(text, `Runner ${pathname} response`);
     return { ok: response.ok, status: response.status, data };
   } catch (error) {
-    warnRunnerOnce(`Runner request failed (${pathname})`, error);
+    warnRunner(`Runner request failed (${pathname})`, error);
     return { ok: false, status: 0 };
   } finally {
     clearTimeout(timer);

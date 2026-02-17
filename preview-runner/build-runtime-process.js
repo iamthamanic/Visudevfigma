@@ -1,13 +1,15 @@
 import { warnNonFatal } from "./build-logging.js";
 import { getBuildRuntimeDeps } from "./build-runtime-deps.js";
+import { redactRuntimeOutput } from "./build-runtime-redact.js";
 
 export function runCommand(cwd, command, env = {}) {
   const runtimeDeps = getBuildRuntimeDeps();
+  const mergedEnv = { ...runtimeDeps.env(), ...env };
   return new Promise((resolve, reject) => {
     const isWin = runtimeDeps.platform() === "win32";
     const child = runtimeDeps.spawn(isWin ? "cmd" : "sh", [isWin ? "/c" : "-c", command], {
       cwd,
-      env: { ...runtimeDeps.env(), ...env },
+      env: mergedEnv,
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stderr = "";
@@ -19,8 +21,10 @@ export function runCommand(cwd, command, env = {}) {
       stderr += d.toString();
     });
     child.on("close", (code) => {
-      if (code === 0) resolve({ stdout, stderr });
-      else reject(new Error(stderr || stdout || `Exit ${code}`));
+      const stdoutSafe = redactRuntimeOutput(stdout, mergedEnv);
+      const stderrSafe = redactRuntimeOutput(stderr, mergedEnv);
+      if (code === 0) resolve({ stdout: stdoutSafe, stderr: stderrSafe });
+      else reject(new Error(stderrSafe || stdoutSafe || `Exit ${code}`));
     });
     child.on("error", reject);
   });
@@ -29,10 +33,11 @@ export function runCommand(cwd, command, env = {}) {
 export function runPackageManager(cwd, cmd, args, env = {}) {
   const runtimeDeps = getBuildRuntimeDeps();
   const list = Array.isArray(args) ? args.filter((a) => a != null && a !== "") : [];
+  const mergedEnv = { ...runtimeDeps.env(), ...env };
   return new Promise((resolve, reject) => {
     const child = runtimeDeps.spawn(cmd, list, {
       cwd,
-      env: { ...runtimeDeps.env(), ...env },
+      env: mergedEnv,
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stderr = "";
@@ -44,8 +49,10 @@ export function runPackageManager(cwd, cmd, args, env = {}) {
       stderr += d.toString();
     });
     child.on("close", (code) => {
-      if (code === 0) resolve({ stdout, stderr });
-      else reject(new Error(stderr || stdout || `${cmd} exit ${code}`));
+      const stdoutSafe = redactRuntimeOutput(stdout, mergedEnv);
+      const stderrSafe = redactRuntimeOutput(stderr, mergedEnv);
+      if (code === 0) resolve({ stdout: stdoutSafe, stderr: stderrSafe });
+      else reject(new Error(stderrSafe || stdoutSafe || `${cmd} exit ${code}`));
     });
     child.on("error", reject);
   });

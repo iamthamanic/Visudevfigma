@@ -7,7 +7,7 @@ import {
   parseRunnerJsonText,
   parseRunnerStartPayload,
   parseRunnerStatusPayload,
-  warnRunnerOnce,
+  warnRunner,
 } from "./preview-runner-parser";
 import {
   clearPreviewSession,
@@ -76,7 +76,7 @@ export async function localPreviewStart(
 
   const parsed = parseRunnerStartPayload(payload);
   if (!parsed) {
-    warnRunnerOnce("Runner /start response missing required fields");
+    warnRunner("Runner /start response missing required fields");
     return { success: false, error: "Runner response missing required start fields." };
   }
 
@@ -123,7 +123,7 @@ export async function localPreviewStatus(projectId: string): Promise<{
 
   const parsed = parseRunnerStatusPayload(payload);
   if (!parsed) {
-    warnRunnerOnce("Runner /status response missing required fields");
+    warnRunner("Runner /status response missing required fields");
     return { success: false, error: "Runner response missing required status fields." };
   }
   if (parsed.status === "idle") clearPreviewSession(validProjectId);

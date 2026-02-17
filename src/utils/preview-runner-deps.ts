@@ -28,12 +28,6 @@ const previewRunnerClientDeps: PreviewRunnerClientDeps = {
   },
 };
 
-export function configurePreviewRunnerClientDeps(
-  overrides: Partial<PreviewRunnerClientDeps>,
-): void {
-  Object.assign(previewRunnerClientDeps, overrides || {});
-}
-
 export function getPreviewRunnerClientDeps(): PreviewRunnerClientDeps {
   return previewRunnerClientDeps;
 }

@@ -23,4 +23,5 @@ export abstract class BaseService {
   protected readonly supabase = getModuleDeps().supabase;
   protected readonly logger: LoggerLike = getModuleDeps().logger;
   protected readonly config = getModuleDeps().config;
+  protected readonly fetchFn: typeof fetch = getModuleDeps().fetchFn ?? fetch;
 }

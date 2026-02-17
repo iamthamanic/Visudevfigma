@@ -116,4 +116,5 @@ export interface AnalyzerModuleConfig {
   supabase: SupabaseClientLike;
   logger: LoggerLike;
   config: AnalyzerModuleSettings;
+  fetchFn?: typeof fetch;
 }

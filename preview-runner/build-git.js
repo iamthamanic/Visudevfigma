@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, statSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { warnNonFatal } from "./build-logging.js";
 
-const gitDeps = {
+const gitDeps = Object.freeze({
   spawn,
   existsSync,
   mkdirSync,
@@ -12,11 +12,7 @@ const gitDeps = {
   now: () => Date.now(),
   env: () => process.env,
   warn: (...args) => console.warn(...args),
-};
-
-export function configureBuildGitDeps(overrides = {}) {
-  Object.assign(gitDeps, overrides || {});
-}
+});
 
 const GIT_LOCK_MAX_AGE_MS = 5 * 60 * 1000;
 const KNOWN_GIT_CANDIDATES = ["/usr/bin/git", "/opt/homebrew/bin/git", "/usr/local/bin/git"];

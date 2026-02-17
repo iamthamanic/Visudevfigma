@@ -57,6 +57,7 @@ const supabase = createClient(env.supabaseUrl, env.supabaseServiceRoleKey);
 const analyzerModule = createAnalyzerModule({
   supabase,
   logger,
+  fetchFn: fetch,
   config: {
     kvTableName: env.kvTableName,
     githubApiBaseUrl: env.githubApiBaseUrl,

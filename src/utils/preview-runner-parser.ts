@@ -26,7 +26,7 @@ export interface RunnerHealthPayload {
   activeRuns?: number;
 }
 
-export function warnRunnerOnce(context: string, error?: unknown): void {
+export function warnRunner(context: string, error?: unknown): void {
   const message =
     error instanceof Error ? error.message : error != null ? String(error) : "unknown error";
   console.warn(`[preview-runner-api] ${context}: ${message}`);
@@ -69,7 +69,7 @@ export function parseRunnerJsonText(text: string, context: string): unknown | nu
   try {
     return JSON.parse(text) as unknown;
   } catch (error) {
-    warnRunnerOnce(`${context}: invalid JSON`, error);
+    warnRunner(`${context}: invalid JSON`, error);
     return null;
   }
 }

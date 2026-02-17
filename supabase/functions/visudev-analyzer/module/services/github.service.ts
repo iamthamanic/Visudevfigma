@@ -22,7 +22,7 @@ export class GitHubService extends BaseService {
     this.logger.info("Fetching commit SHA", { repo, branch });
     const normalizedRepo = this.normalizeRepo(repo);
     const encodedRef = this.encodeRef(branch);
-    const response = await fetch(
+    const response = await this.fetchFn(
       `${this.config.githubApiBaseUrl}/repos/${normalizedRepo}/commits/${encodedRef}`,
       {
         headers: this.buildHeaders(
@@ -67,7 +67,7 @@ export class GitHubService extends BaseService {
     this.logger.info("Fetching repo tree", { repo, branch });
     const normalizedRepo = this.normalizeRepo(repo);
     const encodedRef = this.encodeRef(branch);
-    const response = await fetch(
+    const response = await this.fetchFn(
       `${this.config.githubApiBaseUrl}/repos/${normalizedRepo}/git/trees/${encodedRef}?recursive=1`,
       {
         headers: this.buildHeaders(
@@ -102,7 +102,7 @@ export class GitHubService extends BaseService {
   ): Promise<string> {
     const normalizedRepo = this.normalizeRepo(repo);
     const encodedPath = this.encodePath(path);
-    const response = await fetch(
+    const response = await this.fetchFn(
       `${this.config.githubApiBaseUrl}/repos/${normalizedRepo}/contents/${encodedPath}`,
       {
         headers: this.buildHeaders(
