@@ -61,6 +61,15 @@ const PREVIEW_DOCKER_READY_TIMEOUT_MS = Math.max(
   Number(process.env.PREVIEW_DOCKER_READY_TIMEOUT_MS) || 300_000,
 );
 const PREVIEW_DOCKER_LOG_TAIL = Math.max(20, Number(process.env.PREVIEW_DOCKER_LOG_TAIL) || 120);
+const PROJECT_TOKEN_HEADER = "x-visudev-project-token";
+const RUNNER_WRITE_RATE_LIMIT_WINDOW_MS = Math.max(
+  1_000,
+  Number(process.env.RUNNER_WRITE_RATE_LIMIT_WINDOW_MS) || 60_000,
+);
+const RUNNER_WRITE_RATE_LIMIT_MAX = Math.max(
+  1,
+  Number(process.env.RUNNER_WRITE_RATE_LIMIT_MAX) || 25,
+);
 const RUNNER_STARTED_AT = new Date().toISOString();
 
 function resolveBootMode(value) {
@@ -105,6 +114,8 @@ const usedPorts = new Set();
 const portServers = new Map();
 /** projectId -> promise chain to serialize git/build per repo */
 const workspaceLocks = new Map();
+/** client+route -> { count, resetAt } for write endpoints */
+const writeRateLimitBuckets = new Map();
 
 function getNextFreePort() {
   for (let p = PREVIEW_PORT_MIN; p <= PREVIEW_PORT_MAX; p++) {
@@ -476,10 +487,193 @@ function getErrorMessage(err) {
   return err instanceof Error ? err.message : String(err ?? "Unknown error");
 }
 
+function sanitizeDiagnosticText(input) {
+  const raw = String(input || "");
+  let sanitized = raw
+    .replace(/(authorization\s*:\s*bearer\s+)[a-z0-9._-]{12,}/gi, "$1[REDACTED]")
+    .replace(
+      /\b(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/g,
+      "[REDACTED_GITHUB_TOKEN]",
+    )
+    .replace(/\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, "[REDACTED_JWT]")
+    .replace(
+      /((?:password|secret|token|api[_-]?key|service[_-]?role[_-]?key)\s*[:=]\s*)(["']?)[^\s,"']+\2/gi,
+      "$1[REDACTED]",
+    );
+  if (sanitized.length > 12_000) {
+    sanitized = `${sanitized.slice(0, 5_800)}\n...[gekürzt]...\n${sanitized.slice(-5_800)}`;
+  }
+  return sanitized;
+}
+
+function normalizeProjectIdValue(value) {
+  const projectId = String(value || "").trim();
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(projectId)) return null;
+  return projectId;
+}
+
+function normalizeRunIdValue(value) {
+  const runId = String(value || "").trim();
+  if (!/^run_[0-9]{10,}_[a-z0-9]{4,20}$/i.test(runId)) return null;
+  return runId;
+}
+
+function normalizeRepoInput(repo) {
+  const trimmed = String(repo || "").trim();
+  const withoutProtocol = trimmed.replace(/^https?:\/\/github\.com\//i, "");
+  const withoutSuffix = withoutProtocol.replace(/\.git$/i, "");
+  const clean = withoutSuffix.replace(/^\/+|\/+$/g, "");
+  const parts = clean.split("/").filter(Boolean);
+  if (parts.length !== 2) return null;
+  const [owner, name] = parts;
+  if (!/^[A-Za-z0-9_.-]{1,100}$/.test(owner) || !/^[A-Za-z0-9_.-]{1,100}$/.test(name)) {
+    return null;
+  }
+  return `${owner}/${name}`;
+}
+
+function normalizeBranchOrCommitInput(branchOrCommit) {
+  const value = String(branchOrCommit || "").trim();
+  if (value.length === 0 || value.length > 128) return null;
+  if (
+    value.includes("..") ||
+    value.startsWith("/") ||
+    value.endsWith("/") ||
+    value.startsWith("-") ||
+    /[\s~^:?*[\]\\]/.test(value)
+  ) {
+    return null;
+  }
+  return value;
+}
+
+function normalizeProjectToken(tokenValue) {
+  const token = String(tokenValue || "").trim();
+  if (!/^[A-Za-z0-9_-]{16,128}$/.test(token)) return null;
+  return token;
+}
+
+function readProjectTokenFromRequest(req) {
+  const raw =
+    req.headers[PROJECT_TOKEN_HEADER] ?? req.headers[PROJECT_TOKEN_HEADER.toLowerCase()] ?? "";
+  if (Array.isArray(raw)) {
+    return normalizeProjectToken(raw[0]);
+  }
+  return normalizeProjectToken(raw);
+}
+
+function generateProjectToken() {
+  return crypto.randomBytes(24).toString("hex");
+}
+
+function collectActiveProjectTokens(projectId) {
+  const tokens = new Set();
+  for (const [, run] of runs) {
+    if (run.status === "stopped") continue;
+    if (String(run.projectId) !== String(projectId)) continue;
+    const token = normalizeProjectToken(run.projectToken);
+    if (token) tokens.add(token);
+  }
+  return Array.from(tokens);
+}
+
+function resolveProjectTokenForStart(projectId, requestToken) {
+  const activeTokens = collectActiveProjectTokens(projectId);
+  if (activeTokens.length === 0) {
+    return {
+      ok: true,
+      token: requestToken || generateProjectToken(),
+    };
+  }
+  const projectToken = activeTokens[0];
+  if (requestToken && requestToken === projectToken) {
+    return { ok: true, token: projectToken };
+  }
+  if (requestToken && requestToken !== projectToken) {
+    return {
+      ok: false,
+      statusCode: 403,
+      error: "Project token mismatch.",
+    };
+  }
+  return {
+    ok: false,
+    statusCode: 401,
+    error: "Missing project token for existing project preview.",
+  };
+}
+
+function ensureRunAccess(run, requestToken) {
+  const runToken = normalizeProjectToken(run?.projectToken);
+  if (!runToken) return { ok: true };
+  if (!requestToken) {
+    return { ok: false, statusCode: 401, error: "Missing project token." };
+  }
+  if (requestToken !== runToken) {
+    return { ok: false, statusCode: 403, error: "Forbidden for this project." };
+  }
+  return { ok: true };
+}
+
+function ensureProjectAccess(projectId, requestToken) {
+  const activeTokens = collectActiveProjectTokens(projectId);
+  if (activeTokens.length === 0) return { ok: true };
+  if (!requestToken) {
+    return { ok: false, statusCode: 401, error: "Missing project token." };
+  }
+  if (!activeTokens.includes(requestToken)) {
+    return { ok: false, statusCode: 403, error: "Forbidden for this project." };
+  }
+  return { ok: true };
+}
+
+function getClientAddress(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (Array.isArray(forwarded) && forwarded.length > 0) {
+    return String(forwarded[0]).split(",")[0].trim();
+  }
+  if (typeof forwarded === "string" && forwarded.trim() !== "") {
+    return forwarded.split(",")[0].trim();
+  }
+  return String(req.socket?.remoteAddress || "unknown").trim();
+}
+
+function enforceWriteRateLimit(req, routeKey) {
+  const now = Date.now();
+  const clientKey = getClientAddress(req);
+  const key = `${clientKey}:${routeKey}`;
+  let bucket = writeRateLimitBuckets.get(key);
+  if (!bucket || now >= bucket.resetAt) {
+    bucket = {
+      count: 0,
+      resetAt: now + RUNNER_WRITE_RATE_LIMIT_WINDOW_MS,
+    };
+  }
+  bucket.count += 1;
+  writeRateLimitBuckets.set(key, bucket);
+
+  // Opportunistic cleanup to keep memory bounded.
+  if (writeRateLimitBuckets.size > 2000) {
+    for (const [bucketKey, item] of writeRateLimitBuckets) {
+      if (now >= item.resetAt + RUNNER_WRITE_RATE_LIMIT_WINDOW_MS) {
+        writeRateLimitBuckets.delete(bucketKey);
+      }
+    }
+  }
+
+  if (bucket.count > RUNNER_WRITE_RATE_LIMIT_MAX) {
+    return {
+      ok: false,
+      retryAfterSec: Math.max(1, Math.ceil((bucket.resetAt - now) / 1000)),
+    };
+  }
+  return { ok: true };
+}
+
 /** Append a step message to run.logs (for UI). */
 function pushLog(run, message) {
   if (!run.logs) run.logs = [];
-  run.logs.push({ time: new Date().toISOString(), message });
+  run.logs.push({ time: new Date().toISOString(), message: sanitizeDiagnosticText(message) });
 }
 
 function bindChildExit(run, runId, child) {
@@ -552,7 +746,9 @@ async function stopChildProcess(child) {
   if (!child) return;
   try {
     if (!child.killed) child.kill("SIGTERM");
-  } catch {
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.warn(`  stopChildProcess SIGTERM fehlgeschlagen: ${msg}`);
     return;
   }
   await new Promise((resolve) => {
@@ -566,7 +762,10 @@ async function stopChildProcess(child) {
     setTimeout(() => {
       try {
         if (!child.killed) child.kill("SIGKILL");
-      } catch {}
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.warn(`  stopChildProcess SIGKILL fehlgeschlagen: ${msg}`);
+      }
       done();
     }, 1500);
   });
@@ -769,7 +968,7 @@ async function buildAndStartAsync(runId) {
 
   const setFailed = (displayMsg, hint = "", exactMsg = null) => {
     run.status = "failed";
-    run.error = exactMsg ?? displayMsg;
+    run.error = sanitizeDiagnosticText(exactMsg ?? displayMsg);
     run.readyAt = null;
     run.containerId = null;
     run.degraded = false;
@@ -856,7 +1055,10 @@ async function buildAndStartAsync(runId) {
       if (USE_DOCKER && run.containerId) {
         try {
           await stopContainer(runId);
-        } catch (_e) {}
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          console.warn(`  stopContainer fehlgeschlagen [${runId}]: ${msg}`);
+        }
         run.containerId = null;
       }
       const baseMsg = getErrorMessage(err);
@@ -889,7 +1091,10 @@ async function refreshAsync(runId) {
   if (run.containerId) {
     try {
       await stopContainer(runId);
-    } catch (_e) {}
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.warn(`  stopContainer fehlgeschlagen [${runId}]: ${msg}`);
+    }
     run.containerId = null;
   }
   if (run.childProcess) {
@@ -973,13 +1178,16 @@ async function refreshAsync(runId) {
       if (USE_DOCKER && run.containerId) {
         try {
           await stopContainer(runId);
-        } catch (_e) {}
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          console.warn(`  stopContainer fehlgeschlagen [${runId}]: ${msg}`);
+        }
         run.containerId = null;
       }
       const baseMsg = getErrorMessage(err);
       const msg = dockerSummary ? `${baseMsg}\n${dockerSummary}` : baseMsg;
       run.status = "failed";
-      run.error = msg;
+      run.error = sanitizeDiagnosticText(msg);
       run.degraded = false;
       pushLog(run, `Fehlgeschlagen (exakte Meldung):\n${msg}`);
       console.error(`  Refresh failed [${runId}]:`, msg);
@@ -1001,8 +1209,9 @@ function startAutoRefresh() {
           console.log(`  Auto-Refresh [${runId}]: neue Commits, starte Refresh …`);
           await refreshAsync(runId);
         }
-      } catch (_e) {
-        // Einzelner Lauf fehlgeschlagen, weiter mit nächstem
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.warn(`  Auto-Refresh [${runId}] fehlgeschlagen: ${msg}`);
       }
     }
   }, AUTO_REFRESH_INTERVAL_MS);
@@ -1012,24 +1221,34 @@ function startAutoRefresh() {
 function parseBody(req) {
   return new Promise((resolve, reject) => {
     let body = "";
+    const maxBytes = 1024 * 1024;
     req.on("data", (chunk) => {
       body += chunk;
+      if (body.length > maxBytes) {
+        const err = new Error("Request body too large");
+        err.statusCode = 413;
+        reject(err);
+        req.destroy();
+      }
     });
     req.on("end", () => {
       try {
         resolve(body ? JSON.parse(body) : {});
       } catch (e) {
-        reject(e);
+        const err = new Error("Invalid JSON body");
+        err.statusCode = 400;
+        reject(err);
       }
     });
     req.on("error", reject);
   });
 }
 
-function send(res, statusCode, data) {
+function send(res, statusCode, data, extraHeaders = {}) {
   res.writeHead(statusCode, {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
+    ...extraHeaders,
   });
   res.end(JSON.stringify(data));
 }
@@ -1038,7 +1257,7 @@ function corsPreflight(res) {
   res.writeHead(204, {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-VisuDev-Project-Token",
     "Access-Control-Max-Age": "600",
   });
   res.end();
@@ -1054,11 +1273,21 @@ async function handleStart(req, res, _url) {
     bootMode: requestedBootMode,
     injectSupabasePlaceholders: requestedInjectSupabasePlaceholders,
   } = body;
-  if (!repo || !projectId) {
+  const normalizedRepo = normalizeRepoInput(repo);
+  const normalizedProjectId = normalizeProjectIdValue(projectId);
+  const normalizedBranchOrCommit = normalizeBranchOrCommitInput(branchOrCommit);
+  const requestProjectToken = readProjectTokenFromRequest(req);
+  if (!normalizedRepo || !normalizedProjectId || !normalizedBranchOrCommit) {
     send(res, 400, {
       success: false,
-      error: "repo and projectId are required",
+      error:
+        "Invalid start request. Expected repo=owner/repo, projectId=[A-Za-z0-9_-]{1,64}, branchOrCommit with safe git ref chars.",
     });
+    return;
+  }
+  const tokenResult = resolveProjectTokenForStart(normalizedProjectId, requestProjectToken);
+  if (!tokenResult.ok) {
+    send(res, tokenResult.statusCode, { success: false, error: tokenResult.error });
     return;
   }
 
@@ -1100,9 +1329,10 @@ async function handleStart(req, res, _url) {
     error: null,
     startedAt: new Date().toISOString(),
     repo,
-    branchOrCommit,
-    projectId,
+    branchOrCommit: normalizedBranchOrCommit,
+    projectId: normalizedProjectId,
     commitSha: commitShaTrimmed,
+    projectToken: tokenResult.token,
     childProcess: null,
     proxyServer: null,
     logs: [],
@@ -1129,15 +1359,16 @@ async function handleStart(req, res, _url) {
   send(res, 200, {
     success: true,
     runId,
+    projectToken: tokenResult.token,
     status: "starting",
   });
 }
 
 function handleStatus(req, res, url) {
   const match = url.pathname.match(/^\/status\/([^/]+)$/);
-  const runId = match ? decodeURIComponent(match[1]) : null;
+  const runId = match ? normalizeRunIdValue(decodeURIComponent(match[1])) : null;
   if (!runId) {
-    send(res, 404, { success: false, error: "runId required" });
+    send(res, 400, { success: false, error: "Invalid runId" });
     return;
   }
 
@@ -1163,15 +1394,20 @@ function handleStatus(req, res, url) {
 
 async function handleStop(req, res, url) {
   const match = url.pathname.match(/^\/stop\/([^/]+)$/);
-  const runId = match ? decodeURIComponent(match[1]) : null;
+  const runId = match ? normalizeRunIdValue(decodeURIComponent(match[1])) : null;
   if (!runId) {
-    send(res, 404, { success: false, error: "runId required" });
+    send(res, 400, { success: false, error: "Invalid runId" });
     return;
   }
 
   const run = runs.get(runId);
   if (!run) {
     send(res, 404, { success: false, error: "Run not found" });
+    return;
+  }
+  const access = ensureRunAccess(run, readProjectTokenFromRequest(req));
+  if (!access.ok) {
+    send(res, access.statusCode, { success: false, error: access.error });
     return;
   }
 
@@ -1187,7 +1423,10 @@ async function stopRun(runId, run) {
   if (run.containerId) {
     try {
       await stopContainer(runId);
-    } catch (_e) {}
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.warn(`  stopContainer fehlgeschlagen [${runId}]: ${msg}`);
+    }
     run.containerId = null;
   }
   if (run.childProcess) {
@@ -1204,11 +1443,16 @@ async function stopRun(runId, run) {
   run.stoppedAt = new Date().toISOString();
 }
 
-async function handleStopProject(_req, res, url) {
+async function handleStopProject(req, res, url) {
   const match = url.pathname.match(/^\/stop-project\/([^/]+)$/);
-  const projectId = match ? decodeURIComponent(match[1]) : null;
+  const projectId = match ? normalizeProjectIdValue(decodeURIComponent(match[1])) : null;
   if (!projectId) {
-    send(res, 404, { success: false, error: "projectId required" });
+    send(res, 400, { success: false, error: "Invalid projectId" });
+    return;
+  }
+  const access = ensureProjectAccess(projectId, readProjectTokenFromRequest(req));
+  if (!access.ok) {
+    send(res, access.statusCode, { success: false, error: access.error });
     return;
   }
 
@@ -1292,16 +1536,21 @@ function handleRuns(_req, res, url) {
 
 async function handleRefresh(req, res) {
   const body = await parseBody(req);
-  const runId = body.runId;
+  const runId = normalizeRunIdValue(body.runId);
   const requestedBootMode = body.bootMode;
   const requestedInjectSupabasePlaceholders = body.injectSupabasePlaceholders;
   if (!runId) {
-    send(res, 400, { success: false, error: "runId required" });
+    send(res, 400, { success: false, error: "Invalid runId" });
     return;
   }
   const run = runs.get(runId);
   if (!run) {
     send(res, 404, { success: false, error: "Run not found" });
+    return;
+  }
+  const access = ensureRunAccess(run, readProjectTokenFromRequest(req));
+  if (!access.ok) {
+    send(res, access.statusCode, { success: false, error: access.error });
     return;
   }
   if (requestedBootMode != null) {
@@ -1424,6 +1673,32 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  const writeRouteKey =
+    req.method === "POST" && pathname === "/start"
+      ? "/start"
+      : req.method === "POST" && pathname === "/refresh"
+        ? "/refresh"
+        : req.method === "POST" && pathname.startsWith("/stop-project/")
+          ? "/stop-project"
+          : req.method === "POST" && pathname.startsWith("/stop/")
+            ? "/stop"
+            : null;
+  if (writeRouteKey) {
+    const rateLimit = enforceWriteRateLimit(req, writeRouteKey);
+    if (!rateLimit.ok) {
+      send(
+        res,
+        429,
+        {
+          success: false,
+          error: "Rate limit exceeded for write operations. Please retry shortly.",
+        },
+        { "Retry-After": String(rateLimit.retryAfterSec) },
+      );
+      return;
+    }
+  }
+
   try {
     if (req.method === "GET" && pathname === "/health") {
       handleHealth(req, res);
@@ -1456,7 +1731,8 @@ const server = http.createServer(async (req, res) => {
     send(res, 404, { error: "Not found" });
   } catch (e) {
     console.error(e);
-    send(res, 500, {
+    const statusCode = Number.isFinite(Number(e?.statusCode)) ? Number(e.statusCode) : 500;
+    send(res, statusCode, {
       success: false,
       error: e instanceof Error ? e.message : "Internal error",
     });

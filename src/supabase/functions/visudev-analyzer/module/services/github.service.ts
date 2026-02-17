@@ -10,6 +10,9 @@ interface GitHubTreeResponse {
   tree?: GitHubFileNode[];
 }
 
+const REPO_SEGMENT_PATTERN = /^[A-Za-z0-9_.-]{1,100}$/;
+const FORBIDDEN_GIT_REF_CHARS = /[\s~^:?*[\]\\]/;
+
 export class GitHubService extends BaseService {
   public async getCurrentCommitSha(
     accessToken: string | undefined,
@@ -143,19 +146,63 @@ export class GitHubService extends BaseService {
     const withoutProtocol = trimmed.replace(/^https?:\/\/github\.com\//i, "");
     const withoutSuffix = withoutProtocol.replace(/\.git$/i, "");
     const clean = withoutSuffix.replace(/^\/+|\/+$/g, "");
-    const [owner = "", name = ""] = clean.split("/");
+    const parts = clean.split("/").filter((part) => part.length > 0);
+    if (parts.length !== 2) {
+      throw new ExternalApiException(
+        "Invalid repository format. Expected owner/repo.",
+        400,
+      );
+    }
+    const [owner, name] = parts;
+    if (!REPO_SEGMENT_PATTERN.test(owner) || !REPO_SEGMENT_PATTERN.test(name)) {
+      throw new ExternalApiException(
+        "Invalid repository format. Allowed chars: letters, numbers, dot, underscore, hyphen.",
+        400,
+      );
+    }
     return `${encodeURIComponent(owner)}/${encodeURIComponent(name)}`;
   }
 
   private encodeRef(ref: string): string {
-    return encodeURIComponent(String(ref || "").trim());
+    const value = String(ref || "").trim();
+    if (value.length === 0 || value.length > 128) {
+      throw new ExternalApiException("Invalid ref value.", 400);
+    }
+    if (
+      value.includes("..") ||
+      value.startsWith("/") ||
+      value.endsWith("/") ||
+      value.startsWith("-") ||
+      FORBIDDEN_GIT_REF_CHARS.test(value)
+    ) {
+      throw new ExternalApiException("Invalid ref value.", 400);
+    }
+    return encodeURIComponent(value);
   }
 
   private encodePath(path: string): string {
-    return String(path || "")
+    const rawPath = String(path || "").trim();
+    if (rawPath.length === 0 || rawPath.length > 1024) {
+      throw new ExternalApiException("Invalid path value.", 400);
+    }
+    const segments = rawPath
       .split("/")
       .filter((segment) => segment.length > 0)
-      .map((segment) => encodeURIComponent(segment))
-      .join("/");
+      .map((segment) => segment.trim());
+    if (segments.length === 0) {
+      throw new ExternalApiException("Invalid path value.", 400);
+    }
+    for (const segment of segments) {
+      if (
+        segment === "." ||
+        segment === ".." ||
+        segment.length > 255 ||
+        segment.includes("\\") ||
+        segment.includes("\0")
+      ) {
+        throw new ExternalApiException("Invalid path value.", 400);
+      }
+    }
+    return segments.map((segment) => encodeURIComponent(segment)).join("/");
   }
 }

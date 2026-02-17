@@ -563,6 +563,7 @@ function localRunnerGuard(): { ok: boolean; error?: string } {
 const localRunIds = new Map<string, string>();
 
 const PREVIEW_RUNID_KEY = "visudev_preview_runId_";
+const PREVIEW_PROJECT_TOKEN_KEY = "visudev_preview_project_token_";
 
 function getStoredRunId(projectId: string): string | null {
   let runId = localRunIds.get(projectId) ?? null;
@@ -585,6 +586,30 @@ function clearStoredRunId(projectId: string): void {
   if (typeof localStorage !== "undefined") {
     localStorage.removeItem(PREVIEW_RUNID_KEY + projectId);
   }
+}
+
+function getStoredProjectToken(projectId: string): string | null {
+  if (typeof localStorage === "undefined") return null;
+  const token = localStorage.getItem(PREVIEW_PROJECT_TOKEN_KEY + projectId);
+  return token && token.trim() !== "" ? token : null;
+}
+
+function setStoredProjectToken(projectId: string, token: string): void {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(PREVIEW_PROJECT_TOKEN_KEY + projectId, token);
+}
+
+function clearStoredProjectToken(projectId: string): void {
+  if (typeof localStorage === "undefined") return;
+  localStorage.removeItem(PREVIEW_PROJECT_TOKEN_KEY + projectId);
+}
+
+function runnerHeaders(projectId: string, withJson = false): HeadersInit {
+  const headers: Record<string, string> = {};
+  if (withJson) headers["Content-Type"] = "application/json";
+  const token = getStoredProjectToken(projectId);
+  if (token) headers["X-VisuDev-Project-Token"] = token;
+  return headers;
 }
 
 async function localPreviewStart(
@@ -610,7 +635,7 @@ async function localPreviewStart(
   const doFetch = async (urlBase: string): Promise<{ res: Response; text: string }> => {
     const res = await fetch(`${urlBase}/start`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: runnerHeaders(projectId, true),
       body,
     });
     const text = await res.text();
@@ -644,7 +669,13 @@ async function localPreviewStart(
       };
     }
   }
-  let data: { success?: boolean; runId?: string; status?: string; error?: string };
+  let data: {
+    success?: boolean;
+    runId?: string;
+    status?: string;
+    projectToken?: string;
+    error?: string;
+  };
   try {
     data = text ? (JSON.parse(text) as typeof data) : {};
   } catch {
@@ -652,6 +683,9 @@ async function localPreviewStart(
   }
   if (!res.ok) return { success: false, error: (data.error as string) || String(res.status) };
   if (data.runId) setStoredRunId(projectId, data.runId);
+  if (typeof data.projectToken === "string" && data.projectToken.trim() !== "") {
+    setStoredProjectToken(projectId, data.projectToken);
+  }
   return { success: true, data: { runId: data.runId!, status: data.status ?? "starting" } };
 }
 
@@ -668,14 +702,18 @@ async function localPreviewStatus(projectId: string): Promise<{
   let res: Response;
   let text: string;
   try {
-    res = await fetch(`${base}/status/${encodeURIComponent(runId)}`);
+    res = await fetch(`${base}/status/${encodeURIComponent(runId)}`, {
+      headers: runnerHeaders(projectId),
+    });
     text = await res.text();
   } catch {
     const found = await discoverRunnerUrl();
     if (found) {
       base = found.replace(/\/$/, "");
       try {
-        res = await fetch(`${base}/status/${encodeURIComponent(runId)}`);
+        res = await fetch(`${base}/status/${encodeURIComponent(runId)}`, {
+          headers: runnerHeaders(projectId),
+        });
         text = await res.text();
       } catch {
         return {
@@ -724,8 +762,10 @@ async function localPreviewStop(projectId: string): Promise<{ success: boolean; 
   const runId = getStoredRunId(projectId);
   if (!runId) return { success: true };
   const base = getEffectiveRunnerUrl().replace(/\/$/, "");
-  const res = await fetch(`${base}/stop/${encodeURIComponent(runId)}`, { method: "POST" });
-  clearStoredRunId(projectId);
+  const res = await fetch(`${base}/stop/${encodeURIComponent(runId)}`, {
+    method: "POST",
+    headers: runnerHeaders(projectId),
+  });
   const text = await res.text();
   let data: { success?: boolean; error?: string };
   try {
@@ -734,9 +774,14 @@ async function localPreviewStop(projectId: string): Promise<{ success: boolean; 
     return { success: false, error: "Runner response not JSON" };
   }
   if (!res.ok) {
-    if (res.status === 404) clearStoredRunId(projectId);
+    if (res.status === 404) {
+      clearStoredRunId(projectId);
+      clearStoredProjectToken(projectId);
+    }
     return { success: false, error: (data.error as string) || String(res.status) };
   }
+  clearStoredRunId(projectId);
+  clearStoredProjectToken(projectId);
   return { success: true };
 }
 
@@ -748,6 +793,7 @@ async function localPreviewStopProject(
   try {
     const res = await fetch(`${base}/stop-project/${encodeURIComponent(projectId)}`, {
       method: "POST",
+      headers: runnerHeaders(projectId),
     });
     const text = await res.text();
     let data: { success?: boolean; error?: string };
@@ -759,16 +805,19 @@ async function localPreviewStopProject(
     if (res.status === 404) {
       if (runId) return localPreviewStop(projectId);
       clearStoredRunId(projectId);
+      clearStoredProjectToken(projectId);
       return { success: true };
     }
-    clearStoredRunId(projectId);
     if (!res.ok) {
       return { success: false, error: (data.error as string) || String(res.status) };
     }
+    clearStoredRunId(projectId);
+    clearStoredProjectToken(projectId);
     return { success: true };
   } catch (error) {
     if (runId) return localPreviewStop(projectId);
     clearStoredRunId(projectId);
+    clearStoredProjectToken(projectId);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Runner request failed",
@@ -790,7 +839,7 @@ async function localPreviewRefresh(
   const base = getEffectiveRunnerUrl().replace(/\/$/, "");
   const res = await fetch(`${base}/refresh`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: runnerHeaders(projectId, true),
     body: JSON.stringify({
       runId,
       bootMode: options?.bootMode ?? undefined,
