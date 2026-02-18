@@ -8,6 +8,7 @@
 const net = require("net");
 const http = require("http");
 const { spawn, spawnSync } = require("child_process");
+const path = require("path");
 
 const MIN_PORT = 1;
 const MAX_PORT = 65535;
@@ -40,6 +41,7 @@ const host = parseHost(process.env.VITE_HOST, "127.0.0.1");
 const hostForUrl = host.includes(":") ? `[${host}]` : host;
 const requestedVitePort = parsePort(process.env.VITE_PORT, 3005, "VITE_PORT");
 const requestedRunnerPort = parsePort(process.env.PREVIEW_RUNNER_PORT, 4000, "PREVIEW_RUNNER_PORT");
+const reuseExistingRunner = process.env.REUSE_PREVIEW_RUNNER === "1";
 
 function tryListen(port, hostToCheck) {
   return new Promise((resolve) => {
@@ -82,6 +84,14 @@ async function findFreePort(startPort) {
 const RUNNER_PORT_CANDIDATES = [requestedRunnerPort, 4100, 4110, 4120, 4130].filter(
   (p, i, a) => a.indexOf(p) === i,
 );
+
+async function findFreeRunnerPort() {
+  for (const candidate of RUNNER_PORT_CANDIDATES) {
+    // eslint-disable-next-line no-await-in-loop
+    if (await isPortFree(candidate)) return candidate;
+  }
+  return findFreePort(4100);
+}
 
 /** Prüft, ob auf einem der Kandidaten-Ports bereits ein Runner /health antwortet (z. B. npx visudev-runner). */
 function findExistingRunner() {
@@ -164,13 +174,18 @@ function waitForRunner(url, maxAttempts = 30, intervalMs = 500) {
 /** Resolve preview URL: use existing runner if one responds on /health, otherwise start one. Returns { previewUrl, runner } (runner null if existing). */
 async function getOrStartRunner() {
   const existing = await findExistingRunner();
-  if (existing) {
+  if (existing && reuseExistingRunner) {
     console.log(
       `[dev-auto] Vorhandenen Runner gefunden: ${existing} (kein zweiter wird gestartet)`,
     );
     return { previewUrl: existing, runner: null };
   }
-  const runnerPort = await findFreePort(requestedRunnerPort);
+  if (existing && !reuseExistingRunner) {
+    console.log(
+      `[dev-auto] Runner gefunden (${existing}), wird ignoriert. Starte lokalen Runner (setze REUSE_PREVIEW_RUNNER=1 zum Wiederverwenden).`,
+    );
+  }
+  const runnerPort = await findFreeRunnerPort();
   const previewUrl = `http://${hostForUrl}:${runnerPort}`;
   const envForRunner = {
     ...process.env,
@@ -178,16 +193,22 @@ async function getOrStartRunner() {
     PORT: String(runnerPort),
     USE_REAL_BUILD: "1",
   };
-  if (spawnSync("docker", ["info"], { stdio: "ignore", timeout: 5000 }).status === 0) {
+  const dockerOverrideRaw = process.env.USE_DOCKER;
+  const hasDockerOverride = typeof dockerOverrideRaw === "string";
+  const dockerOverride =
+    hasDockerOverride && ["1", "true", "yes"].includes(dockerOverrideRaw.trim().toLowerCase());
+  if (hasDockerOverride) {
+    envForRunner.USE_DOCKER = dockerOverride ? "1" : "0";
+  } else if (spawnSync("docker", ["info"], { stdio: "ignore", timeout: 5000 }).status === 0) {
     envForRunner.USE_DOCKER = "1";
   }
   console.log(
-    `[dev-auto] Runner: ${previewUrl} (npx visudev-runner)${runnerPort !== requestedRunnerPort ? ` — port ${requestedRunnerPort} war belegt` : ""}`,
+    `[dev-auto] Runner: ${previewUrl} (local preview-runner/index.js)${runnerPort !== requestedRunnerPort ? ` — port ${requestedRunnerPort} war belegt` : ""}`,
   );
-  const runner = spawn("npx", ["visudev-runner"], {
+  const runnerScript = path.join(__dirname, "run-preview-runner.js");
+  const runner = spawn(process.execPath, [runnerScript], {
     env: envForRunner,
     stdio: "inherit",
-    shell: true,
   });
   runner.on("error", (err) => {
     console.error("[dev-auto] Runner spawn failed:", err.message);
@@ -211,7 +232,7 @@ function runViteWithShutdown(previewUrl, runner, vitePort) {
   const vite = spawn(
     "npx",
     ["vite", "--host", host, "--port", String(vitePort), "--strictPort", "--open"],
-    { env: envForVite, stdio: "inherit", shell: true },
+    { env: envForVite, stdio: "inherit" },
   );
 
   let shuttingDown = false;

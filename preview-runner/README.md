@@ -20,6 +20,8 @@ Starts the runner on port 4000 (override with `PORT=4001 npx visudev-runner`).
 - `PORT` – API port (default 4000)
 - `USE_REAL_BUILD=1` – clone, build and run the app (default stub)
 - `USE_DOCKER=1` – run each preview in a container
+- `PREVIEW_DOCKER_READY_TIMEOUT_MS` – wait timeout for Docker app startup (default `300000`)
+- `PREVIEW_DOCKER_LOG_TAIL` – number of Docker log lines in diagnostics (default `120`)
 - `GITHUB_TOKEN` – for private repos
 - `GITHUB_WEBHOOK_SECRET` – for webhook signature verification
 
@@ -28,7 +30,9 @@ Starts the runner on port 4000 (override with `PORT=4001 npx visudev-runner`).
 - `POST /start` – start a preview (body: `repo`, `branchOrCommit`, `projectId`)
 - `GET /status/:runId` – status and `previewUrl`
 - `POST /stop/:runId` – stop and free port
+- `POST /stop-project/:projectId` – stop all runs for one project
 - `POST /refresh` – pull, rebuild, restart for a run
 - `GET /health` – health check
+- `GET /runs` – active runs, projects and runner uptime
 
 Later this package will grow into the full local VisuDEV stack (`npx visudev`).

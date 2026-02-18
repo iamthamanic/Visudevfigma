@@ -9,6 +9,28 @@ import { resolve } from "node:path";
 
 const DOCKER_IMAGE = process.env.VISUDEV_DOCKER_IMAGE || "node:20-alpine";
 const CONTAINER_PORT = 3000;
+const MAX_LOG_TOKEN_LENGTH = 10_000;
+
+function sanitizeContainerLogText(text) {
+  const raw = String(text || "");
+  let sanitized = raw
+    .replace(/(authorization\s*:\s*bearer\s+)[a-z0-9._-]{12,}/gi, "$1[REDACTED]")
+    .replace(/(x-access-token:)[^\s]+/gi, "$1[REDACTED]")
+    .replace(
+      /\b(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/g,
+      "[REDACTED_GITHUB_TOKEN]",
+    )
+    .replace(/\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, "[REDACTED_JWT]")
+    .replace(
+      /((?:password|secret|token|api[_-]?key|service[_-]?role[_-]?key)\s*[:=]\s*)(["']?)[^\s,"']+\2/gi,
+      "$1[REDACTED]",
+    );
+
+  if (sanitized.length > MAX_LOG_TOKEN_LENGTH) {
+    sanitized = `${sanitized.slice(0, 4_800)}\n...[gekürzt]...\n${sanitized.slice(-4_800)}`;
+  }
+  return sanitized;
+}
 
 /** Container-Name aus runId (Docker: nur [a-zA-Z0-9][a-zA-Z0-9_.-]). */
 function containerName(runId) {
@@ -85,6 +107,65 @@ export async function runContainer(workspaceDir, appPort, runId) {
 }
 
 /**
+ * Liefert kompakten Container-Status via docker inspect.
+ * @param {string | null} containerName - exakter Docker-Containername
+ * @returns {Promise<{state: string | null, exitCode: number | null, error: string | null} | null>}
+ */
+export async function getContainerStatus(containerName) {
+  if (!containerName) return null;
+  try {
+    const { stdout } = await exec("docker", [
+      "inspect",
+      "-f",
+      "{{.State.Status}}|{{.State.ExitCode}}|{{.State.Error}}",
+      containerName,
+    ]);
+    const raw = String(stdout || "").trim();
+    if (!raw) return null;
+    const [stateRaw = "", exitRaw = "", errorRaw = ""] = raw.split("|");
+    const parsedExit = Number.parseInt(exitRaw, 10);
+    return {
+      state: stateRaw.trim() || null,
+      exitCode: Number.isFinite(parsedExit) ? parsedExit : null,
+      error: sanitizeContainerLogText(errorRaw.trim() || ""),
+    };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.warn(`[docker] inspect failed (${containerName}): ${msg}`);
+    return null;
+  }
+}
+
+/**
+ * Liefert die letzten Container-Logs (stdout+stderr).
+ * @param {string | null} containerName - exakter Docker-Containername
+ * @param {number} tail - Anzahl Zeilen vom Ende
+ * @param {number} maxChars - maximale Zeichen (bei Überschreitung gekürzt)
+ * @returns {Promise<string | null>}
+ */
+export async function getContainerLogs(containerName, tail = 120, maxChars = 12_000) {
+  if (!containerName) return null;
+  const safeTail = Number.isFinite(tail) && tail > 0 ? Math.floor(tail) : 120;
+  const safeMaxChars = Number.isFinite(maxChars) && maxChars > 200 ? Math.floor(maxChars) : 12_000;
+  try {
+    const { stdout, stderr } = await exec("docker", [
+      "logs",
+      "--tail",
+      String(safeTail),
+      containerName,
+    ]);
+    const merged = sanitizeContainerLogText([stdout, stderr].filter(Boolean).join("\n").trim());
+    if (!merged) return null;
+    if (merged.length <= safeMaxChars) return merged;
+    const half = Math.floor((safeMaxChars - 64) / 2);
+    return `${merged.slice(0, half)}\n...[gekürzt]...\n${merged.slice(-half)}`;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    return msg ? `[docker logs nicht verfügbar] ${sanitizeContainerLogText(msg)}` : null;
+  }
+}
+
+/**
  * Stoppt und entfernt den Container (--rm entfernt automatisch, stop reicht).
  * @param {string} runId - derselbe runId wie bei runContainer
  */
@@ -92,8 +173,9 @@ export async function stopContainer(runId) {
   const name = containerName(runId);
   try {
     await exec("docker", ["stop", "-t", "3", name]);
-  } catch {
-    // Container existiert nicht oder schon gestoppt
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.warn(`[docker] stop skipped (${name}): ${msg}`);
   }
 }
 
@@ -105,7 +187,9 @@ export async function isDockerAvailable() {
   try {
     await exec("docker", ["info"]);
     return true;
-  } catch {
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.warn(`[docker] info failed: ${msg}`);
     return false;
   }
 }
