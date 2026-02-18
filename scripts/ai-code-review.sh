@@ -141,8 +141,24 @@ run_with_timeout() {
     timeout "$timeout_sec" "$@"
     return $?
   fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$timeout_sec" "$@" <<'PY'
+import subprocess
+import sys
+
+timeout = int(float(sys.argv[1]))
+cmd = sys.argv[2:]
+
+try:
+    result = subprocess.run(cmd, check=False, timeout=timeout)
+    sys.exit(result.returncode)
+except subprocess.TimeoutExpired:
+    sys.exit(124)
+PY
+    return $?
+  fi
   if command -v perl >/dev/null 2>&1; then
-    perl -e 'my $t=shift @ARGV; $SIG{ALRM}=sub{exit 124}; alarm $t; exec @ARGV;' "$timeout_sec" "$@"
+    perl -e 'my $t=shift @ARGV; $SIG{ALRM}=sub{exit 124}; alarm $t; system @ARGV; exit ($? >> 8);' "$timeout_sec" "$@"
     return $?
   fi
   "$@"
