@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, statSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { warnNonFatal } from "./build-logging.js";
 
-const gitDeps = Object.freeze({
+const defaultGitDeps = Object.freeze({
   spawn,
   existsSync,
   mkdirSync,
@@ -13,11 +13,27 @@ const gitDeps = Object.freeze({
   env: () => process.env,
   warn: (...args) => console.warn(...args),
 });
+let gitDeps = defaultGitDeps;
 
 const GIT_LOCK_MAX_AGE_MS = 5 * 60 * 1000;
 const KNOWN_GIT_CANDIDATES = ["/usr/bin/git", "/opt/homebrew/bin/git", "/usr/local/bin/git"];
 const GIT_SUBCOMMANDS = new Set(["clone", "fetch", "checkout", "pull", "rev-parse", "rev-list"]);
 const GITHUB_EXTRAHEADER_KEY = "http.https://github.com/.extraheader";
+
+export function configureBuildGitDeps(overrides = null) {
+  if (!overrides || typeof overrides !== "object") {
+    gitDeps = defaultGitDeps;
+    return;
+  }
+  gitDeps = Object.freeze({
+    ...defaultGitDeps,
+    ...overrides,
+  });
+}
+
+export function resetBuildGitDeps() {
+  gitDeps = defaultGitDeps;
+}
 
 function resolveGitBinary() {
   const env = gitDeps.env();

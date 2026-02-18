@@ -577,12 +577,28 @@ function collectActiveProjectTokens(projectId) {
   return Array.from(tokens);
 }
 
+function hasActiveProjectRuns(projectId) {
+  for (const [, run] of runs) {
+    if (run.status === "stopped") continue;
+    if (String(run.projectId) !== String(projectId)) continue;
+    return true;
+  }
+  return false;
+}
+
 function resolveProjectTokenForStart(projectId, requestToken) {
   const activeTokens = collectActiveProjectTokens(projectId);
   if (activeTokens.length === 0) {
     return {
       ok: true,
       token: requestToken || generateProjectToken(),
+    };
+  }
+  if (activeTokens.length > 1) {
+    return {
+      ok: false,
+      statusCode: 409,
+      error: "Multiple active project tokens detected. Stop all project runs and start again.",
     };
   }
   const projectToken = activeTokens[0];
@@ -605,7 +621,13 @@ function resolveProjectTokenForStart(projectId, requestToken) {
 
 function ensureRunAccess(run, requestToken) {
   const runToken = normalizeProjectToken(run?.projectToken);
-  if (!runToken) return { ok: true };
+  if (!runToken) {
+    return {
+      ok: false,
+      statusCode: 401,
+      error: "Missing project token for this run. Restart preview to regenerate access token.",
+    };
+  }
   if (!requestToken) {
     return { ok: false, statusCode: 401, error: "Missing project token." };
   }
@@ -617,7 +639,16 @@ function ensureRunAccess(run, requestToken) {
 
 function ensureProjectAccess(projectId, requestToken) {
   const activeTokens = collectActiveProjectTokens(projectId);
-  if (activeTokens.length === 0) return { ok: true };
+  if (activeTokens.length === 0) {
+    if (hasActiveProjectRuns(projectId)) {
+      return {
+        ok: false,
+        statusCode: 401,
+        error: "Missing project token for existing project preview.",
+      };
+    }
+    return { ok: true };
+  }
   if (!requestToken) {
     return { ok: false, statusCode: 401, error: "Missing project token." };
   }
