@@ -134,13 +134,27 @@ else
   fi
 fi
 
+run_with_timeout() {
+  local timeout_sec="$1"
+  shift
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$timeout_sec" "$@"
+    return $?
+  fi
+  if command -v perl >/dev/null 2>&1; then
+    perl -e 'my $t=shift @ARGV; $SIG{ALRM}=sub{exit 124}; alarm $t; exec @ARGV;' "$timeout_sec" "$@"
+    return $?
+  fi
+  "$@"
+}
+
 # ---------- Chunked Full-Review: pro Verzeichnis ein Durchlauf, AI sieht jedes Chunk vollständig ----------
 if [[ "$USE_CHUNKED" -eq 1 ]]; then
   if ! command -v codex >/dev/null 2>&1; then
     echo "Skipping AI review: Codex CLI not available." >&2
     exit 0
   fi
-  TIMEOUT_SEC=600
+  TIMEOUT_SEC="${TIMEOUT_SEC:-600}"
   # Larger chunks so IDOR/redaction/rate-limit fixes are visible (head+tail each; increase if chunks still truncated)
   CHUNK_LIMIT_BYTES=256000
   REVIEWS_DIR="$ROOT_DIR/.shimwrapper/reviews"
@@ -241,11 +255,7 @@ $(tail -c $CHUNK_LIMIT_BYTES "$CHUNK_DIFF_FILE")"
     fi
     PROMPT="${PROMPT_HEAD}${DIFF_LIMITED}"
     CODEX_RC=0
-    if command -v timeout >/dev/null 2>&1; then
-      timeout "$TIMEOUT_SEC" codex exec --json -o "$CODEX_LAST_MSG_FILE" "$PROMPT" 2>/dev/null > "$CODEX_JSON_FILE" || CODEX_RC=$?
-    else
-      codex exec --json -o "$CODEX_LAST_MSG_FILE" "$PROMPT" 2>/dev/null > "$CODEX_JSON_FILE" || CODEX_RC=$?
-    fi
+    run_with_timeout "$TIMEOUT_SEC" codex exec --json -o "$CODEX_LAST_MSG_FILE" "$PROMPT" 2>/dev/null > "$CODEX_JSON_FILE" || CODEX_RC=$?
     if [[ $CODEX_RC -eq 124 ]] || [[ $CODEX_RC -eq 142 ]]; then
       echo "Chunk $chunk: timed out." >&2
       REVIEW_SECTIONS="${REVIEW_SECTIONS}## Chunk: $chunk\n**Timeout.**\n\n"
@@ -417,19 +427,15 @@ fi
 
 # Full-Codebase-Diff ist größer → längerer Timeout, damit die Review nicht abbricht
 if [[ "$CHECK_MODE" == "full" ]]; then
-  TIMEOUT_SEC=600
+  TIMEOUT_SEC="${TIMEOUT_SEC:-600}"
 else
-  TIMEOUT_SEC=420
+  TIMEOUT_SEC="${TIMEOUT_SEC:-600}"
 fi
 echo "Running Codex AI review (timeout ${TIMEOUT_SEC}s)..." >&2
 
 # Run with --json to get turn.completed (token usage) and item.completed (assistant message). Use -o to get final message for PASS/FAIL.
 CODEX_RC=0
-if command -v timeout >/dev/null 2>&1; then
-  timeout "$TIMEOUT_SEC" codex exec --json -o "$CODEX_LAST_MSG_FILE" "$PROMPT" 2>/dev/null > "$CODEX_JSON_FILE" || CODEX_RC=$?
-else
-  codex exec --json -o "$CODEX_LAST_MSG_FILE" "$PROMPT" 2>/dev/null > "$CODEX_JSON_FILE" || CODEX_RC=$?
-fi
+run_with_timeout "$TIMEOUT_SEC" codex exec --json -o "$CODEX_LAST_MSG_FILE" "$PROMPT" 2>/dev/null > "$CODEX_JSON_FILE" || CODEX_RC=$?
 
 if [[ $CODEX_RC -eq 124 ]] || [[ $CODEX_RC -eq 142 ]]; then
   echo "Codex AI review timed out after ${TIMEOUT_SEC}s." >&2
