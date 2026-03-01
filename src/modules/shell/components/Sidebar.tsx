@@ -1,4 +1,11 @@
-import { Fragment, useCallback, useEffect, useState, type ComponentType, type SVGProps } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useState,
+  type ComponentType,
+  type SVGProps,
+} from "react";
 import clsx from "clsx";
 import { Check, ChevronDown, Copy, File, Loader2, RefreshCw } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
@@ -85,9 +92,8 @@ export function Sidebar({ activeScreen, onNavigate, onNewProject }: SidebarProps
   const [runnerStatusLoading, setRunnerStatusLoading] = useState(true);
   const [runnerDialogOpen, setRunnerDialogOpen] = useState(false);
   const [runnerRunsLoading, setRunnerRunsLoading] = useState(false);
-  const [runnerRunsSnapshot, setRunnerRunsSnapshot] = useState<LocalPreviewRunnerRunsSnapshot | null>(
-    null,
-  );
+  const [runnerRunsSnapshot, setRunnerRunsSnapshot] =
+    useState<LocalPreviewRunnerRunsSnapshot | null>(null);
   const [runsCopied, setRunsCopied] = useState(false);
 
   const previewMode = activeProject?.preview_mode ?? "auto";
@@ -147,7 +153,8 @@ export function Sidebar({ activeScreen, onNavigate, onNewProject }: SidebarProps
   }, [loadRunnerRuns, runnerDialogOpen]);
 
   const isRunnerOnline = runnerHealth?.reachable === true;
-  const isRunnerDegraded = isRunnerOnline && runnerHealth.useDocker && runnerHealth.dockerAvailable === false;
+  const isRunnerDegraded =
+    isRunnerOnline && runnerHealth.useDocker && runnerHealth.dockerAvailable === false;
   const runnerActiveRuns =
     typeof runnerHealth?.activeRuns === "number" && Number.isFinite(runnerHealth.activeRuns)
       ? Math.max(0, runnerHealth.activeRuns)
@@ -169,7 +176,9 @@ export function Sidebar({ activeScreen, onNavigate, onNewProject }: SidebarProps
   } else if (!runnerStatusLoading && runnerHealth) {
     if (isRunnerOnline) {
       const runsText = runnerActiveRuns == null ? "Runs: ?" : `Runs: ${runnerActiveRuns}`;
-      const modeText = runnerHealth.mode ? `Modus: ${runnerHealth.mode}` : "Health-Check erfolgreich";
+      const modeText = runnerHealth.mode
+        ? `Modus: ${runnerHealth.mode}`
+        : "Health-Check erfolgreich";
       const baseText = runnerHealth.baseUrl ?? "lokal";
       const hasActiveRun = (runnerActiveRuns ?? 0) > 0;
       runnerPrimaryText = hasActiveRun
@@ -185,9 +194,7 @@ export function Sidebar({ activeScreen, onNavigate, onNewProject }: SidebarProps
       }
     } else {
       runnerPrimaryText = "Runner off";
-      runnerSecondaryText =
-        runnerHealth.error ??
-        "Nicht erreichbar auf localhost:4000/4100";
+      runnerSecondaryText = runnerHealth.error ?? "Nicht erreichbar auf localhost:4000/4100";
       runnerStatusClass = styles.runnerStatusOffline;
     }
   }
@@ -244,7 +251,11 @@ export function Sidebar({ activeScreen, onNavigate, onNewProject }: SidebarProps
             <span className={styles.brandSubtitle}>Visualize Code</span>
           </div>
         </div>
-        <div className={clsx(styles.runnerStatus, runnerStatusClass)} role="status" aria-live="polite">
+        <div
+          className={clsx(styles.runnerStatus, runnerStatusClass)}
+          role="status"
+          aria-live="polite"
+        >
           <span className={styles.runnerStatusDot} aria-hidden="true" />
           <div className={styles.runnerStatusText}>
             <span className={styles.runnerStatusPrimary}>{runnerPrimaryText}</span>
@@ -344,9 +355,7 @@ export function Sidebar({ activeScreen, onNavigate, onNewProject }: SidebarProps
           <DialogHeader>
             <DialogTitle>Runner-Runs</DialogTitle>
             <DialogDescription>
-              {activeProjectId
-                ? `Projekt: ${activeProjectId}`
-                : "Kein aktives Projekt ausgewählt."}
+              {activeProjectId ? `Projekt: ${activeProjectId}` : "Kein aktives Projekt ausgewählt."}
               {runnerRunsSnapshot?.baseUrl ? ` · ${runnerRunsSnapshot.baseUrl}` : ""}
             </DialogDescription>
           </DialogHeader>
@@ -384,7 +393,10 @@ export function Sidebar({ activeScreen, onNavigate, onNewProject }: SidebarProps
             </div>
           ) : runnerRunsLoading && !runnerRunsSnapshot ? (
             <div className={styles.runnerDialogEmpty}>
-              <Loader2 className={clsx(styles.runnerDialogButtonIcon, styles.spin)} aria-hidden="true" />{" "}
+              <Loader2
+                className={clsx(styles.runnerDialogButtonIcon, styles.spin)}
+                aria-hidden="true"
+              />{" "}
               Lade Runner-Runs …
             </div>
           ) : !runnerRunsSnapshot?.reachable ? (

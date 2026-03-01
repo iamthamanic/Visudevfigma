@@ -27,7 +27,10 @@ export class ScreenExtractionService {
       const match = file.path.match(appPageRegex);
       if (match) {
         let segmentPath = match[1] ?? "";
-        segmentPath = segmentPath.replace(/\([^)]+\)\/?/g, "").replace(/\/$/, "");
+        segmentPath = segmentPath.replace(/\([^)]+\)\/?/g, "").replace(
+          /\/$/,
+          "",
+        );
         let routePath = segmentPath === "" ? "/" : `/${segmentPath}`;
         routePath = routePath.replace(/\[([^\]]+)\]/g, ":$1");
         const segment = routePath === "/"
@@ -219,7 +222,8 @@ export class ScreenExtractionService {
       if (routeFolderMatch) {
         const screenName = routeFolderMatch[1];
         const routePath = `/${
-          screenName.toLowerCase().replace(/screen|page|view$/i, "").trim() || screenName.toLowerCase()
+          screenName.toLowerCase().replace(/screen|page|view$/i, "").trim() ||
+          screenName.toLowerCase()
         }`;
 
         pushScreen({
@@ -241,8 +245,7 @@ export class ScreenExtractionService {
       );
       if (componentMatch) {
         const componentName = componentMatch[1];
-        const isPageLike =
-          pathLower.includes("/components/pages/") ||
+        const isPageLike = pathLower.includes("/components/pages/") ||
           pathLower.includes("/components/screens/") ||
           (!pathLower.includes("/components/pages/") &&
             (componentName.endsWith("Screen") ||
@@ -255,7 +258,8 @@ export class ScreenExtractionService {
             id: `screen:${file.path}`,
             name: componentName,
             path: `/${
-              componentName.toLowerCase().replace(/screen|page|view$/i, "") || componentName.toLowerCase()
+              componentName.toLowerCase().replace(/screen|page|view$/i, "") ||
+              componentName.toLowerCase()
             }`,
             filePath: file.path,
             type: "screen",

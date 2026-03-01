@@ -18,8 +18,7 @@ const EMBEDDING_HINT =
 
 /** Error -102 (Chromium) = ERR_CONNECTION_REFUSED – nichts hört auf die angegebene URL. */
 export const SCREEN_FAIL_REASONS = {
-  TIMEOUT:
-    "Timeout (60 s). onLoad wurde nicht ausgelöst. Mögliche Ursachen: Iframe-Einbetten blockiert (X-Frame-Options/CSP) oder externe Ressourcen/API-Requests hängen.",
+  TIMEOUT: `Timeout (60 s). onLoad wurde nicht ausgelöst. ${EMBEDDING_HINT}`,
   LOAD_ERROR:
     "Ladefehler (z. B. -102 = Verbindung verweigert). Nichts läuft unter der Basis-URL. Lokal: „Preview starten“ (Runner + npx visudev-runner). Deployed-URL: App muss unter dieser URL laufen.",
   NO_URL: "Keine URL: Basis-URL oder Screen-Pfad fehlt.",
@@ -309,7 +308,7 @@ export function useScreenLoadState(
       timeouts.forEach((t) => clearTimeout(t));
       timeouts.clear();
     };
-  }, [contextKey, bootstrap]);
+  }, [contextKey, bootstrap, markScreenLoaded]);
 
   return {
     screenLoadState,

@@ -1300,10 +1300,7 @@ async function buildAndStartAsync(runId) {
     if (appPort !== proxyPort) {
       releasePort(appPort);
     }
-    releasePortAndStartPlaceholder(
-      proxyPort,
-      `Build/Start fehlgeschlagen:\n${displayMsg}${hint}`,
-    );
+    releasePortAndStartPlaceholder(proxyPort, `Build/Start fehlgeschlagen:\n${displayMsg}${hint}`);
   };
 
   return withWorkspaceLock(projectId, async () => {
@@ -1357,7 +1354,10 @@ async function buildAndStartAsync(runId) {
               run.appPort = newAppPort;
               run.port = newProxyPort;
               run.previewUrl = resolvePreviewUrl(newProxyPort);
-              pushLog(run, `Port war belegt, neues Paar: Proxy ${newProxyPort}, App ${newAppPort}. Starte Container erneut …`);
+              pushLog(
+                run,
+                `Port war belegt, neues Paar: Proxy ${newProxyPort}, App ${newAppPort}. Starte Container erneut …`,
+              );
               containerName = await runContainer(appWorkspace.appDir, newAppPort, runId);
             } else {
               throw dockerErr;
@@ -1556,7 +1556,10 @@ async function refreshAsync(runId) {
               run.appPort = newAppPort;
               run.port = newProxyPort;
               run.previewUrl = resolvePreviewUrl(newProxyPort);
-              pushLog(run, `Port war belegt, neues Paar: Proxy ${newProxyPort}, App ${newAppPort}. Starte Container erneut …`);
+              pushLog(
+                run,
+                `Port war belegt, neues Paar: Proxy ${newProxyPort}, App ${newAppPort}. Starte Container erneut …`,
+              );
               containerName = await runContainer(appWorkspace.appDir, newAppPort, runId);
               const proxyServer = await createFrameProxy(run.proxyPort, run.appPort);
               run.proxyServer = proxyServer;

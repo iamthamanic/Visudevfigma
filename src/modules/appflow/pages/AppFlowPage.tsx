@@ -373,12 +373,11 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
         : previewMode === "deployed"
           ? "Preview-Modus: Deployed URL. Bitte im Projekt eine URL hinterlegen."
           : "Preview-Modus: Auto (lokal wenn verfügbar, sonst Server).";
-  const isPreviewStartingForProject = preview.projectId === projectId && preview.status === "starting";
+  const isPreviewStartingForProject =
+    preview.projectId === projectId && preview.status === "starting";
   const activeStartingAction = isPreviewStartingForProject ? startingActionRef.current : null;
-  const isRefreshLoading =
-    pendingPreviewAction === "refresh" || activeStartingAction === "refresh";
-  const isRestartLoading =
-    pendingPreviewAction === "restart" || activeStartingAction === "restart";
+  const isRefreshLoading = pendingPreviewAction === "refresh" || activeStartingAction === "refresh";
+  const isRestartLoading = pendingPreviewAction === "restart" || activeStartingAction === "restart";
   const isStartLoading = pendingPreviewAction === "start" || activeStartingAction === "start";
   const disablePreviewStartActions =
     pendingPreviewAction !== null || (isPreviewStartingForProject && activeStartingAction !== null);

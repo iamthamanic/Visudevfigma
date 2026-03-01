@@ -212,7 +212,10 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         const timestamp = new Date().toISOString();
         const repoLabel = activeProject.github_repo ?? "unknown";
         const branchLabel = activeProject.github_branch ?? "main";
-        const makeScanLog = (message: string, logType: StepLogEntry["type"] = "info"): StepLogEntry => ({
+        const makeScanLog = (
+          message: string,
+          logType: StepLogEntry["type"] = "info",
+        ): StepLogEntry => ({
           time: new Date().toISOString(),
           message,
           type: logType,
@@ -359,7 +362,9 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
                       screenshotStatus: status,
                     };
                   });
-                  const okCount = screensWithScreenshots.filter((screen) => screen.screenshotStatus === "ok").length;
+                  const okCount = screensWithScreenshots.filter(
+                    (screen) => screen.screenshotStatus === "ok",
+                  ).length;
                   const failedCount = screensWithScreenshots.length - okCount;
                   appendScanLog(
                     `Screenshots abgeschlossen: ${okCount} erfolgreich, ${failedCount} fehlgeschlagen.`,
@@ -525,7 +530,9 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         status: "starting",
         previewUrl: null,
         error: null,
-        refreshLogs: [makePreviewLog(`Start angefordert (${repo ?? "owner/repo"} @ ${branch || "main"})`)],
+        refreshLogs: [
+          makePreviewLog(`Start angefordert (${repo ?? "owner/repo"} @ ${branch || "main"})`),
+        ],
       }));
       await new Promise((r) => setTimeout(r, 0));
       try {
@@ -575,10 +582,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
                 ...prev,
                 runId: nextRunId ?? prev.runId,
                 status: nextStatus,
-                refreshLogs: [
-                  ...prev.refreshLogs,
-                  makePreviewLog(startMessage),
-                ],
+                refreshLogs: [...prev.refreshLogs, makePreviewLog(startMessage)],
               }
             : prev,
         );
@@ -639,7 +643,10 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
                 status: "failed" as const,
                 error,
                 previewUrl: null,
-                refreshLogs: [...prev.refreshLogs, makePreviewLog(`Fehlgeschlagen (Status): ${error}`)],
+                refreshLogs: [
+                  ...prev.refreshLogs,
+                  makePreviewLog(`Fehlgeschlagen (Status): ${error}`),
+                ],
               }
             : prev,
         );
@@ -653,7 +660,8 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         logs?: PreviewStepLog[];
       };
       const status = (payload.status as PreviewStatus) ?? "idle";
-      const payloadRunId = typeof payload.runId === "string" && payload.runId.trim() ? payload.runId : null;
+      const payloadRunId =
+        typeof payload.runId === "string" && payload.runId.trim() ? payload.runId : null;
       const logs = Array.isArray(payload.logs) ? payload.logs : [];
       setPreview((prev) =>
         prev.projectId !== projectId
@@ -745,7 +753,10 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
               ...prev,
               status: "starting",
               error: null,
-              refreshLogs: [...prev.refreshLogs, makePreviewLog("Refresh akzeptiert. Warte auf Status …")],
+              refreshLogs: [
+                ...prev.refreshLogs,
+                makePreviewLog("Refresh akzeptiert. Warte auf Status …"),
+              ],
             }
           : prev,
       );
@@ -753,39 +764,42 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     [getProjectPreviewMode, makePreviewLog],
   );
 
-  const markPreviewStuck = useCallback(async (projectId: string, error: string) => {
-    let stopSummary = "Timeout-Cleanup: aktive Projekt-Runs konnten nicht gestoppt werden.";
-    try {
-      const stopRes = await previewAPI.stopProject(
-        projectId,
-        getProjectPreviewMode(projectId),
-        previewAccessTokenRef.current ?? undefined,
-      );
-      stopSummary = stopRes.success
-        ? `Timeout-Cleanup: ${stopRes.stopped ?? 0} aktive Projekt-Run(s) gestoppt.`
-        : `Timeout-Cleanup fehlgeschlagen: ${stopRes.error ?? "Unbekannter Fehler"}`;
-    } catch (cleanupErr) {
-      const msg = cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr);
-      stopSummary = `Timeout-Cleanup fehlgeschlagen: ${msg}`;
-    }
+  const markPreviewStuck = useCallback(
+    async (projectId: string, error: string) => {
+      let stopSummary = "Timeout-Cleanup: aktive Projekt-Runs konnten nicht gestoppt werden.";
+      try {
+        const stopRes = await previewAPI.stopProject(
+          projectId,
+          getProjectPreviewMode(projectId),
+          previewAccessTokenRef.current ?? undefined,
+        );
+        stopSummary = stopRes.success
+          ? `Timeout-Cleanup: ${stopRes.stopped ?? 0} aktive Projekt-Run(s) gestoppt.`
+          : `Timeout-Cleanup fehlgeschlagen: ${stopRes.error ?? "Unbekannter Fehler"}`;
+      } catch (cleanupErr) {
+        const msg = cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr);
+        stopSummary = `Timeout-Cleanup fehlgeschlagen: ${msg}`;
+      }
 
-    setPreview((prev) =>
-      prev.projectId === projectId && prev.status === "starting"
-        ? {
-            ...prev,
-            runId: null,
-            status: "failed" as const,
-            error,
-            previewUrl: null,
-            refreshLogs: [
-              ...prev.refreshLogs,
-              makePreviewLog(`Fehlgeschlagen (Timeout): ${error}`),
-              makePreviewLog(stopSummary),
-            ],
-          }
-        : prev,
-    );
-  }, [getProjectPreviewMode, makePreviewLog]);
+      setPreview((prev) =>
+        prev.projectId === projectId && prev.status === "starting"
+          ? {
+              ...prev,
+              runId: null,
+              status: "failed" as const,
+              error,
+              previewUrl: null,
+              refreshLogs: [
+                ...prev.refreshLogs,
+                makePreviewLog(`Fehlgeschlagen (Timeout): ${error}`),
+                makePreviewLog(stopSummary),
+              ],
+            }
+          : prev,
+      );
+    },
+    [getProjectPreviewMode, makePreviewLog],
+  );
 
   const value: VisudevStore = {
     projects,

@@ -162,7 +162,10 @@ export class AnalysisService extends BaseService {
       if (/\/routes?\/[^/]+\.(tsx?|jsx?)$/.test(path)) return 80;
       if (/\/views?\/[^/]+\.(tsx?|jsx?|vue)$/.test(path)) return 70;
       if (/\/screens?\/[^/]+\.(tsx?|jsx?)$/.test(path)) return 60;
-      if (/\.(tsx?|jsx?)$/.test(path) && (path.includes("route") || path.includes("router"))) return 50;
+      if (
+        /\.(tsx?|jsx?)$/.test(path) &&
+        (path.includes("route") || path.includes("router"))
+      ) return 50;
       return 0;
     };
     return [...files].sort((a, b) => routeScore(b.path) - routeScore(a.path));

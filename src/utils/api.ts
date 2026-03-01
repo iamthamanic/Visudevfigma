@@ -578,13 +578,22 @@ function parseRunnerRunsPayload(payload?: Record<string, unknown>): {
   return {
     totals: {
       total: readRunNumber(totalsRecord.total, runs.length),
-      active: readRunNumber(totalsRecord.active, runs.filter((entry) => entry.status !== "stopped").length),
-      ready: readRunNumber(totalsRecord.ready, runs.filter((entry) => entry.status === "ready").length),
+      active: readRunNumber(
+        totalsRecord.active,
+        runs.filter((entry) => entry.status !== "stopped").length,
+      ),
+      ready: readRunNumber(
+        totalsRecord.ready,
+        runs.filter((entry) => entry.status === "ready").length,
+      ),
       starting: readRunNumber(
         totalsRecord.starting,
         runs.filter((entry) => entry.status === "starting").length,
       ),
-      failed: readRunNumber(totalsRecord.failed, runs.filter((entry) => entry.status === "failed").length),
+      failed: readRunNumber(
+        totalsRecord.failed,
+        runs.filter((entry) => entry.status === "failed").length,
+      ),
       stopped: readRunNumber(
         totalsRecord.stopped,
         runs.filter((entry) => entry.status === "stopped").length,
@@ -1026,7 +1035,8 @@ async function localPreviewStop(projectId: string): Promise<{ success: boolean; 
     return { success: false, error: "Runner response not JSON" };
   }
   if (!res.ok) {
-    if (res.status === 404 || res.status === 401 || res.status === 403) clearPreviewSession(projectId);
+    if (res.status === 404 || res.status === 401 || res.status === 403)
+      clearPreviewSession(projectId);
     return { success: false, error: (data.error as string) || String(res.status) };
   }
   clearPreviewSession(projectId);
@@ -1050,12 +1060,16 @@ async function localPreviewStopProject(
     return { success: false, error: "Runner response not JSON" };
   }
   if (!res.ok) {
-    if (res.status === 404 || res.status === 401 || res.status === 403) clearPreviewSession(projectId);
+    if (res.status === 404 || res.status === 401 || res.status === 403)
+      clearPreviewSession(projectId);
     return { success: false, error: (data.error as string) || String(res.status) };
   }
   // Local run metadata is project-scoped; clear after explicit project stop.
   clearPreviewSession(projectId);
-  return { success: true, stopped: typeof data.stopped === "number" ? data.stopped : runId ? 1 : 0 };
+  return {
+    success: true,
+    stopped: typeof data.stopped === "number" ? data.stopped : runId ? 1 : 0,
+  };
 }
 
 /** Refresh preview: pull latest from repo, rebuild, restart (live update). Only with local runner. */
@@ -1082,7 +1096,8 @@ async function localPreviewRefresh(
     return { success: false, error: "Runner response not JSON" };
   }
   if (!res.ok) {
-    if (res.status === 404 || res.status === 401 || res.status === 403) clearPreviewSession(projectId);
+    if (res.status === 404 || res.status === 401 || res.status === 403)
+      clearPreviewSession(projectId);
     return { success: false, error: (data.error as string) || String(res.status) };
   }
   return { success: true };

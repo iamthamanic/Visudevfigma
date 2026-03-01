@@ -93,7 +93,9 @@ export class ScreenService extends BaseService {
     }
 
     if (
-      files.some((file) => /(?:^|\/)(?:src\/)?app\/.*\/page\.(tsx?|jsx?)$/.test(file.path))
+      files.some((file) =>
+        /(?:^|\/)(?:src\/)?app\/.*\/page\.(tsx?|jsx?)$/.test(file.path)
+      )
     ) {
       if (!detected.includes("next.js")) detected.push("next.js");
       detected.push("nextjs-app-router");
@@ -101,7 +103,9 @@ export class ScreenService extends BaseService {
     }
 
     if (
-      files.some((file) => /(?:^|\/)(?:src\/)?pages\/.*\.(tsx?|jsx?)$/.test(file.path))
+      files.some((file) =>
+        /(?:^|\/)(?:src\/)?pages\/.*\.(tsx?|jsx?)$/.test(file.path)
+      )
     ) {
       if (!detected.includes("next.js")) detected.push("next.js");
       detected.push("nextjs-pages-router");
