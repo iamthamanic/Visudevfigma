@@ -732,6 +732,7 @@ function sanitizeProjectToken(token: unknown): string | null {
   return trimmed;
 }
 
+/** Side effect: reads from in-memory cache and optionally localStorage. Persisted per projectId across reloads. */
 function getStoredRunId(projectId: string): string | null {
   let runId = localRunIds.get(projectId) ?? null;
   if (!runId && typeof localStorage !== "undefined") {
@@ -741,6 +742,7 @@ function getStoredRunId(projectId: string): string | null {
   return runId;
 }
 
+/** Side effect: writes to in-memory cache and localStorage. Callers must be aware of persistence. */
 function setStoredRunId(projectId: string, runId: string): void {
   localRunIds.set(projectId, runId);
   if (typeof localStorage !== "undefined") {
@@ -755,6 +757,7 @@ function clearStoredRunId(projectId: string): void {
   }
 }
 
+/** Side effect: reads from in-memory cache, then sessionStorage/localStorage. Persisted per projectId. */
 function getStoredProjectToken(projectId: string): string | null {
   let token = localProjectTokens.get(projectId) ?? null;
   if (!token && typeof sessionStorage !== "undefined") {
@@ -767,6 +770,7 @@ function getStoredProjectToken(projectId: string): string | null {
   return token;
 }
 
+/** Side effect: writes token to in-memory cache, sessionStorage and localStorage. Behavior is history-dependent. */
 function setStoredProjectToken(projectId: string, token: string): void {
   const validToken = sanitizeProjectToken(token);
   if (!validToken) return;

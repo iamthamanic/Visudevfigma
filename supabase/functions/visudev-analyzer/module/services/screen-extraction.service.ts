@@ -18,9 +18,10 @@ export class ScreenExtractionService {
     return this.extractNavigationLinks(content);
   }
 
-  /** Next.js App Router: app/.../page or src/app/.../page; strip route groups (parentheses). */
+  /** Next.js App Router: app/.../page or src/app/.../page; strip route groups (parentheses). Dedup by path so route aliases / multiple files mapping to same route yield one screen. */
   public extractNextJsAppRouterScreens(files: FileContent[]): Screen[] {
     const screens: Screen[] = [];
+    const seenPaths = new Set<string>();
     const appPageRegex = /(?:^|\/)(?:src\/)?app\/(.*?)\/page\.(tsx?|jsx?)$/;
 
     files.forEach((file) => {
@@ -33,6 +34,8 @@ export class ScreenExtractionService {
         );
         let routePath = segmentPath === "" ? "/" : `/${segmentPath}`;
         routePath = routePath.replace(/\[([^\]]+)\]/g, ":$1");
+        if (seenPaths.has(routePath)) return;
+        seenPaths.add(routePath);
         const segment = routePath === "/"
           ? "Home"
           : (routePath.split("/").filter(Boolean).pop() ?? "Unknown");
@@ -54,9 +57,10 @@ export class ScreenExtractionService {
     return screens;
   }
 
-  /** Next.js Pages: pages/... or src/pages/... (any prefix e.g. frontend/pages/). */
+  /** Next.js Pages: pages/... or src/pages/... (any prefix). Dedup by path to avoid duplicate routes. */
   public extractNextJsPagesRouterScreens(files: FileContent[]): Screen[] {
     const screens: Screen[] = [];
+    const seenPaths = new Set<string>();
     const pagesRegex = /(?:^|\/)(?:src\/)?pages\/(.*?)\.(tsx?|jsx?)$/;
 
     files.forEach((file) => {
@@ -72,6 +76,8 @@ export class ScreenExtractionService {
         }
 
         routePath = routePath.replace(/\[([^\]]+)\]/g, ":$1");
+        if (seenPaths.has(routePath)) return;
+        seenPaths.add(routePath);
 
         const segment = routePath === "/"
           ? "Home"
@@ -202,14 +208,18 @@ export class ScreenExtractionService {
     return screens;
   }
 
-  /** Heuristic: screens?, pages?, views?, routes? anywhere; components/pages, components/screens. */
+  /** Heuristic: screens?, pages?, views?, routes? anywhere; components/pages, components/screens. Dedup by id and by path to avoid duplicate routes (e.g. route aliases, multiple files → same path). */
   public extractScreensHeuristic(files: FileContent[]): Screen[] {
     const screens: Screen[] = [];
     const seenIds = new Set<string>();
+    const seenPaths = new Set<string>();
 
     const pushScreen = (screen: Screen) => {
       if (seenIds.has(screen.id)) return;
+      const normPath = (screen.path ?? "").replace(/\/$/, "") || "/";
+      if (seenPaths.has(normPath)) return;
       seenIds.add(screen.id);
+      seenPaths.add(normPath);
       screens.push(screen);
     };
 

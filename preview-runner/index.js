@@ -2286,6 +2286,10 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Access control: GET /status/:runId, POST /stop/:runId, POST /stop-project/:projectId require
+  // header x-visudev-project-token and are validated server-side (ensureRunAccess/ensureProjectAccess).
+  // Unauthorized requests receive 401/403. Rate limiting: write endpoints below are rate-limited
+  // server-side per client IP (enforceWriteRateLimit); client-side cooldown is UX-only.
   const writeRouteKey =
     req.method === "POST" && pathname === "/start"
       ? "/start"
