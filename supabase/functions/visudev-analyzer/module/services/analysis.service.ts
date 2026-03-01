@@ -153,12 +153,14 @@ export class AnalysisService extends BaseService {
     return Boolean(ext && ["ts", "tsx", "js", "jsx", "vue"].includes(ext));
   }
 
-  /** Put route/page-like files first so they are within analysisFileLimit. */
+  /** Put route/page-like files first so they are within analysisFileLimit. Supports app in subdirs (e.g. apps/web/app, frontend/app) and nested routes. */
   private prioritizeRouteFiles<T extends { path: string }>(files: T[]): T[] {
     const routeScore = (p: string): number => {
       const path = p.toLowerCase();
-      if (/app\/[^/]*\/page\.(tsx?|jsx?)$/.test(path)) return 100;
-      if (/\/pages\/[^/]+\.(tsx?|jsx?|vue)$/.test(path)) return 90;
+      // Next.js App Router: app/.../page or */app/.../page (any nesting, incl. root app/page)
+      if (/(?:^|\/)app\/(?:.*\/)?page\.(tsx?|jsx?)$/.test(path)) return 100;
+      // Next.js Pages: pages/*.tsx
+      if (/(?:^|\/)pages\/.+\.(tsx?|jsx?|vue)$/.test(path)) return 90;
       if (/\/routes?\/[^/]+\.(tsx?|jsx?)$/.test(path)) return 80;
       if (/\/views?\/[^/]+\.(tsx?|jsx?|vue)$/.test(path)) return 70;
       if (/\/screens?\/[^/]+\.(tsx?|jsx?)$/.test(path)) return 60;

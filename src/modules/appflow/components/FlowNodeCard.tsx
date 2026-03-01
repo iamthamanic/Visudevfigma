@@ -4,9 +4,13 @@
  */
 
 import { Loader2 } from "lucide-react";
+import type { CSSProperties } from "react";
 import type { Screen } from "../../../lib/visudev/types";
 import type { VisudevDomReport } from "../types";
 import styles from "../styles/LiveFlowCanvas.module.css";
+
+/** Virtual viewport scale: iframe content is rendered at (width/scale x height/scale) then scaled down so it fits the card and keeps proportion. */
+const NODE_IFRAME_SCALE = 0.45;
 
 export const NODE_FAIL_REASONS = {
   LOAD_ERROR:
@@ -95,19 +99,30 @@ export function FlowNodeCard({
         </div>
       ) : iframeSrc ? (
         <div className={styles.nodeIframeWrap}>
-          <iframe
-            src={iframeSrc}
-            title={`Live: ${screen.name}`}
-            className={styles.nodeIframe}
-            data-testid="screen-card-iframe"
-            data-screen-id={screen.id}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-            onLoad={onLoad}
-            onError={() => onError(NODE_FAIL_REASONS.LOAD_ERROR, screen.name, iframeSrc)}
-            ref={(el) => {
-              if (el?.contentWindow) registerIframe(el.contentWindow, screen.id);
-            }}
-          />
+          <div
+            className={styles.nodeIframeScaled}
+            style={
+              {
+                "--iframe-scale": NODE_IFRAME_SCALE,
+                "--iframe-inner-width": `${Math.round(nodeWidth / NODE_IFRAME_SCALE)}px`,
+                "--iframe-inner-height": `${Math.round(nodeHeight / NODE_IFRAME_SCALE)}px`,
+              } as CSSProperties
+            }
+          >
+            <iframe
+              src={iframeSrc}
+              title={`Live: ${screen.name}`}
+              className={styles.nodeIframe}
+              data-testid="screen-card-iframe"
+              data-screen-id={screen.id}
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              onLoad={onLoad}
+              onError={() => onError(NODE_FAIL_REASONS.LOAD_ERROR, screen.name, iframeSrc)}
+              ref={(el) => {
+                if (el?.contentWindow) registerIframe(el.contentWindow, screen.id);
+              }}
+            />
+          </div>
           {loadState === "loading" && (
             <div className={styles.nodeLoadingOverlay} data-testid="screen-card-loading">
               <Loader2 className={styles.nodeLoadingSpinner} aria-hidden="true" />

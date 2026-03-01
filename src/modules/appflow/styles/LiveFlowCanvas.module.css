@@ -322,6 +322,25 @@
   min-height: 0;
   position: relative;
   width: 100%;
+  overflow: hidden;
+}
+
+/* Scale iframe so preview app sees a larger viewport and we fit it into the card (correct proportion). */
+.nodeIframeScaled {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  --iframe-scale: 0.45;
+  --iframe-inner-width: 711px;
+  --iframe-inner-height: 533px;
+}
+
+.nodeIframeScaled .nodeIframe {
+  width: var(--iframe-inner-width);
+  height: var(--iframe-inner-height);
+  min-height: 0;
+  transform: scale(var(--iframe-scale));
+  transform-origin: 0 0;
 }
 
 .nodeIframe {

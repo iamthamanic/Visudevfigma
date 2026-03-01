@@ -94,7 +94,7 @@ export class ScreenService extends BaseService {
 
     if (
       files.some((file) =>
-        /(?:^|\/)(?:src\/)?app\/.*\/page\.(tsx?|jsx?)$/.test(file.path)
+        /(?:^|\/)(?:src\/)?app\/(?:.*\/)?page\.(tsx?|jsx?)$/.test(file.path)
       )
     ) {
       if (!detected.includes("next.js")) detected.push("next.js");
@@ -104,7 +104,7 @@ export class ScreenService extends BaseService {
 
     if (
       files.some((file) =>
-        /(?:^|\/)(?:src\/)?pages\/.*\.(tsx?|jsx?)$/.test(file.path)
+        /(?:^|\/)(?:src\/)?pages\/.+\.(tsx?|jsx?)$/.test(file.path)
       )
     ) {
       if (!detected.includes("next.js")) detected.push("next.js");
