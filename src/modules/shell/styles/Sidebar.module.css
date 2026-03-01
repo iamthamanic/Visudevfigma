@@ -162,12 +162,12 @@
 }
 
 .runnerStatusWarning {
-  background-color: color-mix(in srgb, #f59e0b 12%, transparent);
-  border-color: color-mix(in srgb, #f59e0b 35%, transparent);
+  background-color: color-mix(in srgb, var(--color-warning) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-warning) 35%, transparent);
 }
 
 .runnerStatusWarning .runnerStatusDot {
-  background-color: #f59e0b;
+  background-color: var(--color-warning);
 }
 
 .runnerStatusChecking,
@@ -300,9 +300,9 @@
 }
 
 .runnerRunStatusStarting {
-  background-color: color-mix(in srgb, #f59e0b 14%, transparent);
-  border-color: color-mix(in srgb, #f59e0b 45%, transparent);
-  color: #d97706;
+  background-color: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-warning) 45%, transparent);
+  color: var(--color-warning);
 }
 
 .runnerRunStatusFailed {
