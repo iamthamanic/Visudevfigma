@@ -5,7 +5,10 @@
 # Codex: codex in PATH; use session after codex login (ChatGPT account, no API key in terminal).
 #
 # CHECK_MODE steuert, welches Diff die AI bekommt:
-#   CHECK_MODE=diff: Nur Änderungen (staged + unstaged, oder zu pushende Commits).
+#   CHECK_MODE=commit (Default bei Checks): Nur der letzte Commit (HEAD~1..HEAD). Stabil, kein
+#                    Verschieben des Diffs; gleicher Commit = gleiche Bewertung.
+#   CHECK_MODE=diff: Nur wenn AI_REVIEW_DIFF_FILE oder AI_REVIEW_DIFF_RANGE gesetzt (feste Eingabe).
+#                    Staged/unstaged ist abgeschaltet, da der Diff sich zwischen Läufen verschiebt.
 #   CHECK_MODE=full: Gesamte Codebase — pro Verzeichnis (src, supabase, scripts) ein eigener
 #                    Review; die AI sieht jedes Chunk vollständig (bis CHUNK_LIMIT_BYTES), kein
 #                    willkürliches Kopf/Schwanz-Kürzen. Ehrliches Feedback pro Bereich.
@@ -29,7 +32,7 @@ else
   GIT_CMD="/usr/bin/git"
 fi
 
-# CHECK_MODE: "full" = AI prüft ganze Codebase; "diff" oder unset = AI prüft nur Änderungen
+# CHECK_MODE: "commit" = nur letzter Commit (Default bei run-checks); "full" = ganze Codebase; "diff" = Änderungen (staged/unstaged/range)
 CHECK_MODE="${CHECK_MODE:-full}"
 # AI_REVIEW_CHUNK: bei CHECK_MODE=full nur diesen Chunk prüfen (src | supabase | scripts). Schnellere Iteration auf 95%.
 AI_REVIEW_CHUNK="${AI_REVIEW_CHUNK:-}"
@@ -89,44 +92,41 @@ if [[ "$CHECK_MODE" == "full" ]]; then
     echo "AI review: CHECK_MODE=full (single diff, no chunk dirs)." >&2
   fi
 else
-  # --- Diff-Modus: nur geänderte/zu pushende Inhalte ---
+  # --- Diff-/Commit-Modus: nur geänderte/zu pushende Inhalte oder genau ein Commit ---
+  # CHECK_MODE=commit: immer nur letzter Commit (HEAD~1..HEAD), stabil, kein Verschieben des Diffs.
+  # Einschränkung: Bei mehreren lokalen Commits wird nur der neueste geprüft; vor Push/Deploy ggf. squashen oder einzeln pushen.
+  if [[ "$CHECK_MODE" == "commit" ]]; then
+    COMMIT_RANGE="HEAD~1..HEAD"
+    if ! "$GIT_CMD" rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+      COMMIT_RANGE="$EMPTY_TREE..HEAD"
+    fi
+    if ! "$GIT_CMD" diff --no-color "$COMMIT_RANGE" >> "$DIFF_FILE" 2>/dev/null; then
+      echo "AI review: git diff $COMMIT_RANGE failed. Abort to avoid review with empty/incomplete diff." >&2
+      exit 1
+    fi
+    if [[ ! -s "$DIFF_FILE" ]]; then
+      echo "Skipping AI review (CHECK_MODE=commit): no changes in last commit." >&2
+      exit 0
+    fi
+    echo "AI review: CHECK_MODE=commit (range: $COMMIT_RANGE — nur letzter Commit)." >&2
   # AI_REVIEW_DIFF_FILE: wenn gesetzt und lesbar, diesen Diff verwenden (z.B. git diff > .review-diff-snapshot; AI_REVIEW_DIFF_FILE=.review-diff-snapshot)
-  if [[ -n "${AI_REVIEW_DIFF_FILE:-}" ]] && [[ -r "${AI_REVIEW_DIFF_FILE}" ]]; then
+  elif [[ -n "${AI_REVIEW_DIFF_FILE:-}" ]] && [[ -r "${AI_REVIEW_DIFF_FILE}" ]]; then
     if ! cp "$AI_REVIEW_DIFF_FILE" "$DIFF_FILE"; then
       echo "AI review: AI_REVIEW_DIFF_FILE not readable or copy failed." >&2
       exit 1
     fi
     echo "AI review: CHECK_MODE=diff (from file: $AI_REVIEW_DIFF_FILE)." >&2
   elif [[ -n "${AI_REVIEW_DIFF_RANGE:-}" ]]; then
-  # AI_REVIEW_DIFF_RANGE: wenn gesetzt, nur diese Range (z.B. HEAD~1..HEAD für Refactor-Item-Check)
+  # AI_REVIEW_DIFF_RANGE: wenn gesetzt, nur diese Range (feste Eingabe, kein Verschieben)
     if ! "$GIT_CMD" diff --no-color "$AI_REVIEW_DIFF_RANGE" >> "$DIFF_FILE" 2>/dev/null; then
       echo "AI review: git diff $AI_REVIEW_DIFF_RANGE failed. Abort to avoid review with empty/incomplete diff." >&2
       exit 1
     fi
     echo "AI review: CHECK_MODE=diff (range: $AI_REVIEW_DIFF_RANGE)." >&2
   else
-    # git diff exit: 0=has diff, 1=no diff; any other (2, 128, …) → abort to avoid empty/incomplete diff
-    "$GIT_CMD" diff --no-color >> "$DIFF_FILE" 2>/dev/null; r=$?; [[ $r -ne 0 && $r -ne 1 ]] && { echo "AI review: git diff (unstaged) failed (exit $r)." >&2; exit 1; }
-    "$GIT_CMD" diff --cached --no-color >> "$DIFF_FILE" 2>/dev/null; r=$?; [[ $r -ne 0 && $r -ne 1 ]] && { echo "AI review: git diff (cached) failed (exit $r)." >&2; exit 1; }
-    if [[ ! -s "$DIFF_FILE" ]]; then
-      RANGE=""
-      if "$GIT_CMD" rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
-        RANGE="@{u}...HEAD"
-      elif "$GIT_CMD" rev-parse --verify HEAD~1 >/dev/null 2>&1; then
-        RANGE="HEAD~1...HEAD"
-      fi
-      if [[ -n "$RANGE" ]]; then
-        if ! "$GIT_CMD" diff --no-color "$RANGE" >> "$DIFF_FILE" 2>/dev/null; then
-          echo "AI review: git diff $RANGE failed. Abort to avoid review with empty/incomplete diff." >&2
-          exit 1
-        fi
-      fi
-    fi
-    if [[ ! -s "$DIFF_FILE" ]]; then
-      echo "Skipping AI review: no staged, unstaged, or pushed changes (CHECK_MODE=diff)." >&2
-      exit 0
-    fi
-    echo "AI review: CHECK_MODE=diff (changes only)." >&2
+    # Kein stabiles Diff-Input: commit ist Default; staged/unstaged absichtlich nicht mehr (verschiebt sich).
+    echo "AI review: Kein stabiles Diff-Input. Nutze CHECK_MODE=commit (Default) oder setze AI_REVIEW_DIFF_FILE / AI_REVIEW_DIFF_RANGE. Staged/unstaged ist deaktiviert (Diff verschiebt sich zwischen Läufen)." >&2
+    exit 1
   fi
   if [[ ! -s "$DIFF_FILE" ]]; then
     echo "Skipping AI review: no diff for range (CHECK_MODE=diff)." >&2
@@ -343,8 +343,15 @@ $(tail -c $CHUNK_LIMIT_BYTES "$CHUNK_DIFF_FILE")"
   echo "Review saved: $REVIEW_FILE" >&2
   if [[ $OVERALL_PASS -eq 1 ]]; then
     echo "Codex AI review: PASS (all chunks)" >&2
+    rm -f "$ROOT_DIR/.shimwrapper/review-failed.json" 2>/dev/null || true
   else
     echo "Codex AI review: FAIL (see deductions per chunk in $REVIEW_FILE)" >&2
+    REVIEW_FAILED_JSON="$ROOT_DIR/.shimwrapper/review-failed.json"
+    mkdir -p "$(dirname "$REVIEW_FAILED_JSON")"
+    CHUNK_SCORE=$(grep -oE 'Score: [0-9]+' "$REVIEW_FILE" 2>/dev/null | grep -oE '[0-9]+' | sort -n | head -1)
+    [[ -z "$CHUNK_SCORE" ]] && CHUNK_SCORE=0
+    echo "{\"verdict\":\"REJECT\",\"score\":${CHUNK_SCORE},\"review_file\":\"$(basename "$REVIEW_FILE")\",\"timestamp\":\"$(date -Iseconds 2>/dev/null || date '+%Y-%m-%dT%H:%M:%S%z')\"}" > "$REVIEW_FAILED_JSON"
+    echo "REVIEW_FAILED_AGENT_ACTION: Read .shimwrapper/review-failed.json and AGENTS.md § \"Agent after failed AI review\"; fix all deductions (broad pass per file), commit, then re-run pipeline (e.g. supabase --workdir src functions deploy <name> or npm run push)." >&2
   fi
   if [[ -n "${REFACTOR_REPORT_FILE:-}" ]] && [[ -f "${REFACTOR_REPORT_FILE:-}" ]]; then
     REVIEW_SCORE_CHUNKED="$(echo "$REVIEW_SECTIONS" | grep -oE 'Score: [0-9]+' | grep -oE '[0-9]+' | sort -n | head -1)"
@@ -561,9 +568,14 @@ echo "Review saved: $REVIEW_FILE" >&2
 # Always print review result
 if [[ $PASS -eq 1 ]]; then
   echo "Codex AI review: PASS" >&2
+  rm -f "$ROOT_DIR/.shimwrapper/review-failed.json" 2>/dev/null || true
 else
   echo "Codex AI review: FAIL" >&2
   echo "→ Address deductions above (or in $REVIEW_FILE). Do a broad pass per affected file (IDOR, rate limiting, input validation, error handling, edge cases) before re-running — see AGENTS.md and docs/AI_REVIEW_WHY_NEW_ERRORS_AFTER_FIXES.md." >&2
+  REVIEW_FAILED_JSON="$ROOT_DIR/.shimwrapper/review-failed.json"
+  mkdir -p "$(dirname "$REVIEW_FAILED_JSON")"
+  echo "{\"verdict\":\"REJECT\",\"score\":${REVIEW_RATING:-0},\"review_file\":\"$(basename "$REVIEW_FILE")\",\"timestamp\":\"$(date -Iseconds 2>/dev/null || date '+%Y-%m-%dT%H:%M:%S%z')\"}" > "$REVIEW_FAILED_JSON"
+  echo "REVIEW_FAILED_AGENT_ACTION: Read .shimwrapper/review-failed.json and AGENTS.md § \"Agent after failed AI review\"; fix all deductions (broad pass per file), commit, then re-run pipeline (e.g. supabase --workdir src functions deploy <name> or npm run push)." >&2
 fi
 echo "Score: ${REVIEW_RATING}%" >&2
 echo "Verdict: ${REVIEW_VERDICT}" >&2

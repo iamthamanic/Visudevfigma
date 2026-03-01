@@ -237,7 +237,7 @@ echo "deno 1.46.0" >> .tool-versions
 deno cache index.tsx
 ```
 
-Im Verzeichnis `src/supabase/functions/visudev-analyzer` liegt optional eine `.mise.toml` bzw. `.tool-versions` mit `deno 1.46.0` – dann nutzt jeder, der dort arbeitet, automatisch die richtige Version. Danach: `head -2 deno.lock` → `"version": "4"`, dann `supabase functions deploy visudev-analyzer` aus dem Repo-Root.
+Im Verzeichnis `src/supabase/functions/visudev-analyzer` liegt optional eine `.mise.toml` bzw. `.tool-versions` mit `deno 1.46.0` – dann nutzt jeder, der dort arbeitet, automatisch die richtige Version. Danach: `head -2 deno.lock` → `"version": "3"` oder `"4"` (je nach Deno-Version; der Supabase-Container akzeptiert beides), dann `supabase functions deploy visudev-analyzer` aus dem Repo-Root.
 
 #### Option A (Fallback): Einmalig Deno 1.46-Binary
 
