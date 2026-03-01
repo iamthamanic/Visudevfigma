@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, statSync, unlinkSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, statSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { warnNonFatal } from "./build-logging.js";
 
@@ -7,6 +7,7 @@ const defaultGitDeps = Object.freeze({
   spawn,
   existsSync,
   mkdirSync,
+  rmSync,
   statSync,
   unlinkSync,
   now: () => Date.now(),
@@ -174,6 +175,15 @@ function isGitLockError(err) {
   return msg.includes("index.lock");
 }
 
+function isGitDirtyWorkspaceError(err) {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes("cannot pull with rebase: You have unstaged changes") ||
+    msg.includes("Please commit or stash") ||
+    msg.includes("would be overwritten by merge")
+  );
+}
+
 export async function cloneOrPull(repo, branch, workspaceDir) {
   const normalizedRepo = normalizeRepoSlug(repo);
   if (!normalizedRepo) {
@@ -215,6 +225,20 @@ export async function cloneOrPull(repo, branch, workspaceDir) {
   } catch (err) {
     if (isGitLockError(err) && removeStaleGitLock(workspaceDir)) {
       return await attempt();
+    }
+    if (isGitDirtyWorkspaceError(err) && gitDeps.existsSync(workspaceDir)) {
+      const parent = join(workspaceDir, "..");
+      gitDeps.warn(
+        `  [git] Workspace dirty (${workspaceDir}), entferne lokalen Clone und klone neu.`,
+      );
+      gitDeps.rmSync(workspaceDir, { recursive: true, force: true });
+      gitDeps.mkdirSync(parent, { recursive: true });
+      await runGit(
+        parent,
+        ["clone", "--depth", "1", "-b", branchSafe, url, workspaceDir],
+        gitAuthEnv,
+      );
+      return "recloned";
     }
     throw err;
   }

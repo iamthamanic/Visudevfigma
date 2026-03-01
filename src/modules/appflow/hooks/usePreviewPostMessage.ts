@@ -13,6 +13,11 @@ export function usePreviewPostMessage(
   iframeToScreenRef: React.MutableRefObject<Map<Window, string>>,
   screens: Screen[],
   edges: GraphEdge[],
+  markScreenLoaded: (
+    screenId: string,
+    screenName?: string,
+    source?: "onLoad" | "dom-report" | "timeout-fallback",
+  ) => void,
   markScreenFailed: (screenId: string, reason: string, screenName?: string, url?: string) => void,
   setDomReportsByScreenId: React.Dispatch<React.SetStateAction<Record<string, VisudevDomReport>>>,
   setAnimatingEdge: React.Dispatch<React.SetStateAction<GraphEdge | null>>,
@@ -37,6 +42,8 @@ export function usePreviewPostMessage(
         if (typeof report.route !== "string") return;
         const sourceScreenId = iframeToScreenRef.current.get(event.source as Window);
         if (!sourceScreenId) return;
+        const sourceScreen = screens.find((screen) => screen.id === sourceScreenId);
+        markScreenLoaded(sourceScreenId, sourceScreen?.name, "dom-report");
         setDomReportsByScreenId((prev) => ({ ...prev, [sourceScreenId]: report }));
         return;
       }
@@ -57,6 +64,7 @@ export function usePreviewPostMessage(
   }, [
     screens,
     edges,
+    markScreenLoaded,
     markScreenFailed,
     setDomReportsByScreenId,
     setAnimatingEdge,

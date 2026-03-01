@@ -61,6 +61,11 @@ const PREVIEW_DOCKER_READY_TIMEOUT_MS = Math.max(
   Number(process.env.PREVIEW_DOCKER_READY_TIMEOUT_MS) || 300_000,
 );
 const PREVIEW_DOCKER_LOG_TAIL = Math.max(20, Number(process.env.PREVIEW_DOCKER_LOG_TAIL) || 120);
+/** Upstream timeout for frame proxy: if app does not respond within this time, return 504 so iframe gets onLoad. */
+const PROXY_UPSTREAM_TIMEOUT_MS = Math.max(
+  5_000,
+  Number(process.env.PROXY_UPSTREAM_TIMEOUT_MS) || 15_000,
+);
 const PROJECT_TOKEN_HEADER = "x-visudev-project-token";
 const RUNNER_WRITE_RATE_LIMIT_WINDOW_MS = Math.max(
   1_000,
@@ -71,6 +76,11 @@ const RUNNER_WRITE_RATE_LIMIT_MAX = Math.max(
   Number(process.env.RUNNER_WRITE_RATE_LIMIT_MAX) || 25,
 );
 const RUNNER_STARTED_AT = new Date().toISOString();
+const STOPPED_RUN_MAX_AGE_MS = Math.max(
+  60_000,
+  Number(process.env.STOPPED_RUN_MAX_AGE_MS) || 12 * 60 * 60 * 1000,
+);
+const STOPPED_RUN_MAX_COUNT = Math.max(20, Number(process.env.STOPPED_RUN_MAX_COUNT) || 300);
 
 function resolveBootMode(value) {
   const raw = String(value || PREVIEW_BOOT_MODE_DEFAULT)
@@ -117,9 +127,54 @@ const workspaceLocks = new Map();
 /** client+route -> { count, resetAt } for write endpoints */
 const writeRateLimitBuckets = new Map();
 
-function getNextFreePort() {
+function pruneStoppedRuns() {
+  const now = Date.now();
+  const stopped = [];
+  for (const [runId, run] of runs) {
+    if (run.status !== "stopped") continue;
+    const stoppedAtMs = parseIsoMs(run.stoppedAt);
+    if (stoppedAtMs > 0 && now - stoppedAtMs > STOPPED_RUN_MAX_AGE_MS) {
+      runs.delete(runId);
+      continue;
+    }
+    stopped.push({ runId, stoppedAtMs });
+  }
+  if (stopped.length <= STOPPED_RUN_MAX_COUNT) return;
+  stopped.sort((a, b) => a.stoppedAtMs - b.stoppedAtMs);
+  const removeCount = stopped.length - STOPPED_RUN_MAX_COUNT;
+  for (let i = 0; i < removeCount; i++) {
+    runs.delete(stopped[i].runId);
+  }
+}
+
+/**
+ * @param {number} port
+ * @param {string} [host] - default PREVIEW_BIND_HOST. Use "0.0.0.0" to match Docker's bind (avoids "port already allocated" when an old container holds the port).
+ */
+function canBindPort(port, host = PREVIEW_BIND_HOST) {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    let settled = false;
+    const finish = (ok) => {
+      if (settled) return;
+      settled = true;
+      try {
+        server.close(() => resolve(ok));
+      } catch {
+        resolve(ok);
+      }
+    };
+    server.once("error", () => finish(false));
+    server.listen(port, host, () => finish(true));
+  });
+}
+
+async function getNextFreePort() {
   for (let p = PREVIEW_PORT_MIN; p <= PREVIEW_PORT_MAX; p++) {
     if (!usedPorts.has(p)) {
+      // eslint-disable-next-line no-await-in-loop
+      const isFree = await canBindPort(p);
+      if (!isFree) continue;
       usedPorts.add(p);
       return p;
     }
@@ -128,9 +183,17 @@ function getNextFreePort() {
 }
 
 /** Reserve two consecutive ports: [proxyPort, appPort]. Proxy is the one returned as previewUrl; app runs on appPort. */
-function getTwoFreePorts() {
+async function getTwoFreePorts() {
+  const appHost = USE_DOCKER ? "0.0.0.0" : PREVIEW_BIND_HOST;
   for (let p = PREVIEW_PORT_MIN; p <= PREVIEW_PORT_MAX - 1; p++) {
     if (!usedPorts.has(p) && !usedPorts.has(p + 1)) {
+      // eslint-disable-next-line no-await-in-loop
+      const proxyFree = await canBindPort(p);
+      if (!proxyFree) continue;
+      // In Docker mode check app port on 0.0.0.0 so we don't pick a port an old container still holds.
+      // eslint-disable-next-line no-await-in-loop
+      const appFree = await canBindPort(p + 1, appHost);
+      if (!appFree) continue;
       usedPorts.add(p);
       usedPorts.add(p + 1);
       return [p, p + 1];
@@ -146,6 +209,24 @@ function releasePort(port) {
     portServers.delete(port);
   }
   usedPorts.delete(port);
+}
+
+/**
+ * Release proxy port and start placeholder only after the server has closed (avoids EADDRINUSE).
+ * Use this in setFailed so the placeholder binds after the port is actually free.
+ */
+function releasePortAndStartPlaceholder(proxyPort, errorMessage) {
+  const server = portServers.get(proxyPort);
+  portServers.delete(proxyPort);
+  usedPorts.delete(proxyPort);
+  if (server) {
+    server.once("close", () => {
+      startPlaceholderServer(proxyPort, errorMessage);
+    });
+    server.close();
+  } else {
+    startPlaceholderServer(proxyPort, errorMessage);
+  }
 }
 
 /** CSP value so VisuDEV can embed the preview in iframes (any origin; restrict in production if needed). */
@@ -184,6 +265,9 @@ const VISUDEV_BRIDGE_SCRIPT = String.raw`<script data-visudev-preview-bridge="1"
 
 function injectVisudevBridge(html) {
   if (!html || html.includes("data-visudev-preview-bridge")) return html;
+  // Inject as early as possible so bridge runs before other scripts (works with every repo)
+  if (/<head(\s[^>]*)?>/i.test(html))
+    return html.replace(/(<head(\s[^>]*)?>)/i, `$1${VISUDEV_BRIDGE_SCRIPT}`);
   if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, `${VISUDEV_BRIDGE_SCRIPT}</head>`);
   if (/<body[^>]*>/i.test(html))
     return html.replace(/<body([^>]*)>/i, `<body$1>${VISUDEV_BRIDGE_SCRIPT}`);
@@ -216,13 +300,36 @@ function forwardProxyResponse(upstreamRes, downstreamRes, requestMethod) {
     statusCode !== 204 &&
     statusCode !== 304;
 
+  let finished = false;
+  /** When HTML: if upstream never sends "end" within timeout, send 504 so iframe gets onLoad. */
+  let bodyTimeoutId = null;
+  if (canInjectHtml) {
+    bodyTimeoutId = setTimeout(() => {
+      if (finished || downstreamRes.headersSent) return;
+      finished = true;
+      console.warn(
+        `  [proxy] Response-Body-Timeout (${PROXY_UPSTREAM_TIMEOUT_MS / 1000}s): Upstream hat nicht abgeschlossen → sende 504 an Client.`,
+      );
+      upstreamRes.destroy();
+      downstreamRes.writeHead(504, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Security-Policy": FRAME_ANCESTORS,
+      });
+      downstreamRes.end(
+        buildProxyErrorPage(
+          "Preview-App antwortet zu langsam",
+          `Response-Body wurde nicht innerhalb von ${PROXY_UPSTREAM_TIMEOUT_MS / 1000} s geliefert. Preview neu starten oder Build prüfen.`,
+        ),
+      );
+    }, PROXY_UPSTREAM_TIMEOUT_MS);
+  }
+
   if (!canInjectHtml) {
     downstreamRes.writeHead(statusCode, headers);
     upstreamRes.pipe(downstreamRes, { end: true });
     return;
   }
 
-  let finished = false;
   const chunks = [];
   upstreamRes.on("data", (chunk) => {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
@@ -230,6 +337,7 @@ function forwardProxyResponse(upstreamRes, downstreamRes, requestMethod) {
   upstreamRes.on("error", (err) => {
     if (finished) return;
     finished = true;
+    if (bodyTimeoutId) clearTimeout(bodyTimeoutId);
     if (!downstreamRes.headersSent) {
       downstreamRes.writeHead(502, {
         "Content-Type": "text/html; charset=utf-8",
@@ -243,6 +351,7 @@ function forwardProxyResponse(upstreamRes, downstreamRes, requestMethod) {
   upstreamRes.on("end", () => {
     if (finished) return;
     finished = true;
+    if (bodyTimeoutId) clearTimeout(bodyTimeoutId);
     const html = Buffer.concat(chunks).toString("utf8");
     const injected = injectVisudevBridge(html);
     delete headers["content-encoding"];
@@ -264,20 +373,48 @@ function proxyToApp(clientReq, clientRes, targetPort, targetPath) {
     method: clientReq.method,
     headers: buildProxyRequestHeaders(clientReq.headers, targetPort),
   };
-  const proxy = http.request(opts, (upstreamRes) => {
-    forwardProxyResponse(upstreamRes, clientRes, clientReq.method);
-  });
-  proxy.on("error", (err) => {
-    const isRefused = /ECONNREFUSED|connect/i.test(err.message);
-    const title = isRefused ? "Preview-App nicht erreichbar" : "Proxy-Fehler";
-    const hint = isRefused
-      ? "Die gebaute App antwortet nicht auf dem erwarteten Port. Bitte „Preview neu starten“ in VisuDEV oder npm run dev + Docker prüfen."
-      : err.message;
-    clientRes.writeHead(502, {
+  let responded = false;
+  const sendError = (statusCode, title, hint) => {
+    if (responded || clientRes.headersSent) return;
+    responded = true;
+    clientRes.writeHead(statusCode, {
       "Content-Type": "text/html; charset=utf-8",
       "Content-Security-Policy": FRAME_ANCESTORS,
     });
     clientRes.end(buildProxyErrorPage(title, hint));
+  };
+
+  const proxy = http.request(opts, (upstreamRes) => {
+    if (responded) return;
+    forwardProxyResponse(upstreamRes, clientRes, clientReq.method);
+  });
+  proxy.setTimeout(PROXY_UPSTREAM_TIMEOUT_MS, () => {
+    if (responded) return;
+    console.warn(
+      `  [proxy] Request-Timeout (${PROXY_UPSTREAM_TIMEOUT_MS / 1000}s): Keine Antwort vom Upstream → sende 504 an Client.`,
+    );
+    proxy.destroy();
+    sendError(
+      504,
+      "Preview-App antwortet zu langsam",
+      `Die gebaute App hat innerhalb von ${PROXY_UPSTREAM_TIMEOUT_MS / 1000} s nicht geantwortet. Bitte „Preview neu starten“ oder Build/Container prüfen.`,
+    );
+  });
+  proxy.on("error", (err) => {
+    if (responded) return;
+    const isRefused = /ECONNREFUSED|connect/i.test(err.message);
+    const isTimeout = /timeout|ETIMEDOUT/i.test(err.message);
+    const title = isTimeout
+      ? "Preview-App antwortet zu langsam"
+      : isRefused
+        ? "Preview-App nicht erreichbar"
+        : "Proxy-Fehler";
+    const hint = isTimeout
+      ? `Keine Antwort innerhalb von ${PROXY_UPSTREAM_TIMEOUT_MS / 1000} s. Preview neu starten oder Build/Container prüfen.`
+      : isRefused
+        ? "Die gebaute App antwortet nicht auf dem erwarteten Port. Bitte „Preview neu starten“ in VisuDEV oder npm run dev + Docker prüfen."
+        : err.message;
+    sendError(502, title, hint);
   });
   clientReq.pipe(proxy, { end: true });
 }
@@ -290,76 +427,81 @@ function proxyPreviewRequest(req, res, targetPort, targetPath) {
  * Some SPAs/APIs intentionally return 404/401 on "/" while still being fully up.
  * Reject only when there is no reachable HTTP response within maxMs or only 5xx responses.
  */
-function waitForAppReady(port, maxMs = 60_000) {
-  const interval = 500;
+function sleepMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function requestAppStatusOnce(port) {
   return new Promise((resolve, reject) => {
-    const deadline = Date.now() + maxMs;
-    let lastStatus = null;
-    let lastNetworkError = null;
-    const tryOnce = () => {
-      const req = http.request(
-        {
-          hostname: "127.0.0.1",
-          port,
-          path: "/",
-          method: "GET",
-          timeout: 5000,
-        },
-        (res) => {
-          res.resume();
-          const status = Number(res.statusCode || 0);
-          lastStatus = status;
-          if (status >= 200 && status < 500) {
-            resolve();
-            return;
-          }
-          if (Date.now() >= deadline) {
-            const statusHint = lastStatus != null ? ` Letzter HTTP-Status: ${lastStatus}.` : "";
-            const networkHint =
-              lastNetworkError != null ? ` Letzter Netzwerkfehler: ${lastNetworkError}.` : "";
-            reject(
-              new Error(
-                `Preview-App antwortet nicht auf Port ${port} innerhalb von ${maxMs / 1000}s (Status ${status || "unknown"}).${statusHint}${networkHint}`,
-              ),
-            );
-            return;
-          }
-          setTimeout(tryOnce, interval);
-        },
-      );
-      req.on("error", (err) => {
-        lastNetworkError = err?.code
-          ? `${String(err.code)}${err.message ? ` (${err.message})` : ""}`
-          : err?.message || "unbekannt";
-        if (Date.now() >= deadline) {
-          const statusHint = lastStatus != null ? ` Letzter HTTP-Status: ${lastStatus}.` : "";
-          const networkHint =
-            lastNetworkError != null ? ` Letzter Netzwerkfehler: ${lastNetworkError}.` : "";
-          reject(
-            new Error(
-              `Preview-App nicht erreichbar (Port ${port}) nach ${maxMs / 1000}s.${networkHint}${statusHint} Build/Container prüfen.`,
-            ),
-          );
-          return;
-        }
-        setTimeout(tryOnce, interval);
-      });
-      req.on("timeout", () => {
-        req.destroy();
-        if (Date.now() >= deadline) {
-          reject(
-            new Error(
-              `Preview-App antwortet nicht auf Port ${port} innerhalb von ${maxMs / 1000}s (Timeout).`,
-            ),
-          );
-          return;
-        }
-        setTimeout(tryOnce, interval);
-      });
-      req.end();
-    };
-    tryOnce();
+    const req = http.request(
+      {
+        hostname: "127.0.0.1",
+        port,
+        path: "/",
+        method: "GET",
+        timeout: 5000,
+      },
+      (res) => {
+        const status = Number(res.statusCode || 0);
+        res.resume();
+        resolve(status);
+      },
+    );
+    req.on("error", reject);
+    req.on("timeout", () => {
+      const timeoutError = new Error("HTTP request timeout");
+      timeoutError.code = "REQUEST_TIMEOUT";
+      req.destroy(timeoutError);
+    });
+    req.end();
   });
+}
+
+async function waitForAppReady(port, maxMs = 60_000, shouldAbort = null, onPendingCheck = null) {
+  const interval = 500;
+  const deadline = Date.now() + maxMs;
+  let lastStatus = null;
+  let lastNetworkError = null;
+
+  while (true) {
+    if (typeof shouldAbort === "function" && shouldAbort()) {
+      throw createRunAbortError();
+    }
+    if (typeof onPendingCheck === "function") {
+      const pendingResult = await onPendingCheck();
+      if (pendingResult instanceof Error) throw pendingResult;
+      if (typeof pendingResult === "string" && pendingResult.trim() !== "") {
+        throw new Error(pendingResult);
+      }
+    }
+
+    try {
+      const status = await requestAppStatusOnce(port);
+      lastStatus = status;
+      if (status >= 200 && status < 500) return;
+    } catch (err) {
+      if (isRunAbortError(err)) throw err;
+      lastNetworkError = err?.code
+        ? `${String(err.code)}${err.message ? ` (${err.message})` : ""}`
+        : err?.message || "unbekannt";
+    }
+
+    if (Date.now() >= deadline) {
+      const statusHint = lastStatus != null ? ` Letzter HTTP-Status: ${lastStatus}.` : "";
+      const networkHint =
+        lastNetworkError != null ? ` Letzter Netzwerkfehler: ${lastNetworkError}.` : "";
+      if (lastStatus != null) {
+        throw new Error(
+          `Preview-App antwortet nicht auf Port ${port} innerhalb von ${maxMs / 1000}s (Status ${lastStatus || "unknown"}).${statusHint}${networkHint}`,
+        );
+      }
+      throw new Error(
+        `Preview-App nicht erreichbar (Port ${port}) nach ${maxMs / 1000}s.${networkHint}${statusHint} Build/Container prüfen.`,
+      );
+    }
+
+    await sleepMs(interval);
+  }
 }
 
 function formatDockerStatusLine(statusInfo) {
@@ -395,17 +537,59 @@ async function collectDockerDiagnostics(run, containerName) {
   return null;
 }
 
+function createDockerStartupMonitor(run, containerName) {
+  let lastCheckAt = 0;
+  let alreadyFailed = false;
+  return async () => {
+    if (alreadyFailed || !containerName) return null;
+    const now = Date.now();
+    if (now - lastCheckAt < 1200) return null;
+    lastCheckAt = now;
+
+    const statusInfo = await getContainerStatus(containerName);
+    const state = String(statusInfo?.state || "").toLowerCase();
+    const isRunningState = state === "running" || state === "created" || state === "restarting";
+    const missingContainer =
+      !state &&
+      typeof statusInfo?.error === "string" &&
+      /no such object|not found|cannot find/i.test(statusInfo.error);
+
+    if (isRunningState || (!missingContainer && !state)) {
+      return null;
+    }
+
+    const statusLine = formatDockerStatusLine(statusInfo);
+    if (statusLine) {
+      pushLog(run, `Docker-Status: ${statusLine}`);
+    }
+    const logs = await getContainerLogs(containerName, PREVIEW_DOCKER_LOG_TAIL);
+    if (logs) {
+      pushLog(run, `Docker-Logs (tail ${PREVIEW_DOCKER_LOG_TAIL}):\n${logs}`);
+    }
+    alreadyFailed = true;
+    if (statusLine) {
+      return `Docker-Container wurde vorzeitig beendet (${statusLine}).`;
+    }
+    return "Docker-Container wurde vorzeitig beendet.";
+  };
+}
+
 /** Create HTTP proxy on proxyPort that forwards to appPort and adds frame-ancestors so iframes work. */
 function createFrameProxy(proxyPort, appPort) {
-  const server = http.createServer((clientReq, clientRes) => {
-    proxyToApp(clientReq, clientRes, appPort, clientReq.url || "/");
+  return new Promise((resolve, reject) => {
+    const server = http.createServer((clientReq, clientRes) => {
+      proxyToApp(clientReq, clientRes, appPort, clientReq.url || "/");
+    });
+    server.once("error", (err) => {
+      reject(err);
+    });
+    server.listen(proxyPort, PREVIEW_BIND_HOST, () => {
+      console.log(
+        `  Frame proxy http://${PREVIEW_BIND_HOST}:${proxyPort} -> http://127.0.0.1:${appPort}`,
+      );
+      resolve(server);
+    });
   });
-  server.listen(proxyPort, PREVIEW_BIND_HOST, () => {
-    console.log(
-      `  Frame proxy http://${PREVIEW_BIND_HOST}:${proxyPort} -> http://127.0.0.1:${appPort}`,
-    );
-  });
-  return server;
 }
 
 /** Start a minimal HTTP server on the given port (stub or error page). Sends CSP so iframe embedding works. */
@@ -421,14 +605,17 @@ function startPlaceholderServer(port, errorMessage = null) {
     res.end(html);
   });
   server.on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+      usedPorts.delete(port);
+    }
     console.warn(
       `  Placeholder konnte nicht auf http://${PREVIEW_BIND_HOST}:${port} starten: ${err.message}`,
     );
   });
   server.listen(port, PREVIEW_BIND_HOST, () => {
     console.log(`  Placeholder listening on http://${PREVIEW_BIND_HOST}:${port}`);
+    portServers.set(port, server);
   });
-  portServers.set(port, server);
 }
 
 function escapeHtml(s) {
@@ -612,11 +799,9 @@ function resolveProjectTokenForStart(projectId, requestToken) {
       error: "Project token mismatch.",
     };
   }
-  return {
-    ok: false,
-    statusCode: 401,
-    error: "Missing project token for existing project preview.",
-  };
+  // UX recovery: if browser storage lost the token (e.g. origin switch localhost<->127.0.0.1),
+  // allow start to re-attach to the single active project token.
+  return { ok: true, token: projectToken };
 }
 
 function ensureRunAccess(run, requestToken) {
@@ -656,6 +841,44 @@ function ensureProjectAccess(projectId, requestToken) {
     return { ok: false, statusCode: 403, error: "Forbidden for this project." };
   }
   return { ok: true };
+}
+
+function parseIsoMs(value) {
+  const ts = Date.parse(String(value || ""));
+  return Number.isFinite(ts) ? ts : 0;
+}
+
+function listActiveProjectRuns(projectId, projectToken = null) {
+  const out = [];
+  for (const [runId, run] of runs) {
+    if (run.status === "stopped") continue;
+    if (String(run.projectId) !== String(projectId)) continue;
+    if (projectToken) {
+      const token = normalizeProjectToken(run.projectToken);
+      if (token !== projectToken) continue;
+    }
+    out.push({ runId, run });
+  }
+  out.sort((a, b) => parseIsoMs(b.run.startedAt) - parseIsoMs(a.run.startedAt));
+  return out;
+}
+
+function selectReusableProjectRun(projectId, projectToken) {
+  const entries = listActiveProjectRuns(projectId, projectToken);
+  const active = entries.filter(
+    (entry) => entry.run.status === "starting" || entry.run.status === "ready",
+  );
+  if (active.length === 0) return null;
+  active.sort((a, b) => {
+    const aReady = a.run.status === "ready" ? 1 : 0;
+    const bReady = b.run.status === "ready" ? 1 : 0;
+    if (aReady !== bReady) return bReady - aReady;
+    return parseIsoMs(b.run.startedAt) - parseIsoMs(a.run.startedAt);
+  });
+  return {
+    selected: active[0],
+    duplicates: active.slice(1),
+  };
 }
 
 function getClientAddress(req) {
@@ -699,6 +922,31 @@ function enforceWriteRateLimit(req, routeKey) {
     };
   }
   return { ok: true };
+}
+
+function createRunAbortError() {
+  const error = new Error("Run wurde gestoppt.");
+  error.code = "RUN_ABORTED";
+  return error;
+}
+
+function isRunAbortError(error) {
+  return error != null && typeof error === "object" && error.code === "RUN_ABORTED";
+}
+
+function isRunOperationActive(runId, run, operationId) {
+  const current = runs.get(runId);
+  if (!current || current !== run) return false;
+  if (current.status === "stopped") return false;
+  if (current.cancelRequested === true) return false;
+  if (operationId && current.activeOperationId !== operationId) return false;
+  return true;
+}
+
+function assertRunOperationActive(runId, run, operationId) {
+  if (!isRunOperationActive(runId, run, operationId)) {
+    throw createRunAbortError();
+  }
 }
 
 /** Append a step message to run.logs (for UI). */
@@ -802,16 +1050,31 @@ async function stopChildProcess(child) {
   });
 }
 
-async function startCandidateProcess(run, runId, candidate, appPort, config, timeoutMs) {
+async function startCandidateProcess(
+  run,
+  runId,
+  candidate,
+  appPort,
+  config,
+  timeoutMs,
+  shouldAbort = null,
+) {
   const child = startApp(candidate.appDir, appPort, config);
   pushInjectedEnvHint(run, child);
   try {
-    await waitForAppReady(appPort, timeoutMs);
+    await waitForAppReady(appPort, timeoutMs, shouldAbort);
+    if (typeof shouldAbort === "function" && shouldAbort()) {
+      await stopChildProcess(child);
+      return { success: false, aborted: true, error: "Run wurde gestoppt." };
+    }
     run.childProcess = child;
     bindChildExit(run, runId, child);
     return { success: true, child };
   } catch (err) {
     await stopChildProcess(child);
+    if (isRunAbortError(err)) {
+      return { success: false, aborted: true, error: "Run wurde gestoppt." };
+    }
     return {
       success: false,
       error: getErrorMessage(err),
@@ -842,6 +1105,7 @@ async function bootPreviewByCandidates({
   appPort,
   bestEffortEnabled,
   candidates,
+  shouldAbort = null,
 }) {
   const candidateList = Array.isArray(candidates) && candidates.length > 0 ? candidates : [];
   const failures = [];
@@ -850,6 +1114,9 @@ async function bootPreviewByCandidates({
   }
 
   for (let idx = 0; idx < candidateList.length; idx++) {
+    if (typeof shouldAbort === "function" && shouldAbort()) {
+      return { success: false, aborted: true, error: "Run wurde gestoppt." };
+    }
     const candidate = candidateList[idx];
     const label = describeCandidate(candidate);
     const prefix = `[${candidate.appDirRelative || "."}]`;
@@ -906,7 +1173,11 @@ async function bootPreviewByCandidates({
         appPort,
         fallbackConfig,
         90_000,
+        shouldAbort,
       );
+      if (fallbackResult.aborted) {
+        return { success: false, aborted: true, error: "Run wurde gestoppt." };
+      }
       if (fallbackResult.success) {
         run.degraded = true;
         pushLog(run, `Best-Effort aktiv: App läuft trotz Build-Fehler. ${prefix}\n${buildMsg}`);
@@ -925,7 +1196,18 @@ async function bootPreviewByCandidates({
     }
 
     pushLog(run, `Start: App wird gestartet … ${prefix}`);
-    const startResult = await startCandidateProcess(run, runId, candidate, appPort, config, 60_000);
+    const startResult = await startCandidateProcess(
+      run,
+      runId,
+      candidate,
+      appPort,
+      config,
+      60_000,
+      shouldAbort,
+    );
+    if (startResult.aborted) {
+      return { success: false, aborted: true, error: "Run wurde gestoppt." };
+    }
     if (startResult.success) {
       run.degraded = false;
       pushLog(run, `Bereit ${prefix}`);
@@ -965,7 +1247,11 @@ async function bootPreviewByCandidates({
       appPort,
       fallbackConfig,
       90_000,
+      shouldAbort,
     );
+    if (fallbackResult.aborted) {
+      return { success: false, aborted: true, error: "Run wurde gestoppt." };
+    }
     if (fallbackResult.success) {
       run.degraded = true;
       pushLog(run, `Best-Effort aktiv: App läuft mit Start-Fallback. ${prefix}`);
@@ -991,27 +1277,47 @@ async function bootPreviewByCandidates({
 async function buildAndStartAsync(runId) {
   const run = runs.get(runId);
   if (!run || run.status !== "starting") return;
-  run.logs = [];
+  if (!Array.isArray(run.logs)) run.logs = [];
+  const operationId = `build_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  run.activeOperationId = operationId;
+  run.cancelRequested = false;
+  pushLog(run, "Build-Workflow gestartet.");
   const { repo, branchOrCommit, projectId, proxyPort, appPort, previewUrl } = run;
   const bootMode = resolveBootMode(run.bootMode);
   const bestEffortEnabled = bootMode !== "strict";
   const workspaceDir = getWorkspaceDir(projectId);
+  const isActive = () => isRunOperationActive(runId, run, operationId);
+  const assertActive = () => assertRunOperationActive(runId, run, operationId);
 
   const setFailed = (displayMsg, hint = "", exactMsg = null) => {
+    if (!isActive()) return;
     run.status = "failed";
     run.error = sanitizeDiagnosticText(exactMsg ?? displayMsg);
     run.readyAt = null;
     run.containerId = null;
     run.degraded = false;
-    releasePort(appPort);
-    startPlaceholderServer(proxyPort, `Build/Start fehlgeschlagen:\n${displayMsg}${hint}`);
+    run.proxyServer = null;
+    if (appPort !== proxyPort) {
+      releasePort(appPort);
+    }
+    releasePortAndStartPlaceholder(
+      proxyPort,
+      `Build/Start fehlgeschlagen:\n${displayMsg}${hint}`,
+    );
   };
 
   return withWorkspaceLock(projectId, async () => {
     try {
+      assertActive();
+      pushLog(run, "Git: Clone/Pull …");
       await cloneOrPull(repo, branchOrCommit, workspaceDir);
+      assertActive();
+      pushLog(run, "Git: Clone/Pull fertig");
       if (run.commitSha) {
+        pushLog(run, `Git: Checkout Commit ${run.commitSha.slice(0, 8)} …`);
         await checkoutCommit(workspaceDir, run.commitSha, branchOrCommit);
+        assertActive();
+        pushLog(run, `Git: Checkout Commit ${run.commitSha.slice(0, 8)} fertig`);
       }
       const rootConfig = getConfig(workspaceDir, workspaceDir);
       const appCandidates = listPreviewCandidates(workspaceDir, rootConfig, 8);
@@ -1024,7 +1330,9 @@ async function buildAndStartAsync(runId) {
       }
 
       if (USE_DOCKER) {
+        assertActive();
         const dockerOk = await isDockerAvailable();
+        assertActive();
         if (!dockerOk) {
           setFailed(
             "Docker ist nicht verfügbar. USE_DOCKER=1 erfordert laufenden Docker (docker info).",
@@ -1033,22 +1341,55 @@ async function buildAndStartAsync(runId) {
         }
         pushLog(run, "Docker: Starte Container …");
         ensurePackageJsonScripts(appWorkspace.appDir);
-        const containerName = await runContainer(appWorkspace.appDir, appPort, runId);
+        let containerName;
+        try {
+          containerName = await runContainer(appWorkspace.appDir, appPort, runId);
+        } catch (dockerErr) {
+          const errMsg = dockerErr instanceof Error ? dockerErr.message : String(dockerErr);
+          const isPortAllocated = /port is already allocated|Bind for .* failed/i.test(errMsg);
+          if (isPortAllocated) {
+            releasePort(proxyPort);
+            if (appPort !== proxyPort) releasePort(appPort);
+            const retryPorts = await getTwoFreePorts();
+            if (retryPorts) {
+              const [newProxyPort, newAppPort] = retryPorts;
+              run.proxyPort = newProxyPort;
+              run.appPort = newAppPort;
+              run.port = newProxyPort;
+              run.previewUrl = resolvePreviewUrl(newProxyPort);
+              pushLog(run, `Port war belegt, neues Paar: Proxy ${newProxyPort}, App ${newAppPort}. Starte Container erneut …`);
+              containerName = await runContainer(appWorkspace.appDir, newAppPort, runId);
+            } else {
+              throw dockerErr;
+            }
+          } else {
+            throw dockerErr;
+          }
+        }
         run.containerId = containerName;
-        const proxyServer = createFrameProxy(proxyPort, appPort);
+        const startupMonitor = createDockerStartupMonitor(run, containerName);
+        assertActive();
+        const proxyServer = await createFrameProxy(run.proxyPort, run.appPort);
         run.proxyServer = proxyServer;
-        portServers.set(proxyPort, proxyServer);
+        portServers.set(run.proxyPort, proxyServer);
+        assertActive();
         pushLog(
           run,
           `Warte auf App (Timeout ${Math.floor(PREVIEW_DOCKER_READY_TIMEOUT_MS / 1000)}s) …`,
         );
-        await waitForAppReady(appPort, PREVIEW_DOCKER_READY_TIMEOUT_MS);
+        await waitForAppReady(
+          run.appPort,
+          PREVIEW_DOCKER_READY_TIMEOUT_MS,
+          () => !isActive(),
+          startupMonitor,
+        );
+        assertActive();
         run.status = "ready";
         run.readyAt = new Date().toISOString();
         run.error = null;
         run.degraded = false;
         pushLog(run, "Bereit");
-        console.log(`  Preview ready (Docker): ${previewUrl}`);
+        console.log(`  Preview ready (Docker): ${run.previewUrl}`);
         return;
       }
 
@@ -1059,13 +1400,17 @@ async function buildAndStartAsync(runId) {
         appPort,
         bestEffortEnabled,
         candidates: appCandidates,
+        shouldAbort: () => !isActive(),
       });
       if (!bootResult.success) {
+        if (bootResult.aborted) return;
         throw new Error(bootResult.error);
       }
-      const proxyServer = createFrameProxy(proxyPort, appPort);
+      assertActive();
+      const proxyServer = await createFrameProxy(proxyPort, appPort);
       run.proxyServer = proxyServer;
       portServers.set(proxyPort, proxyServer);
+      assertActive();
       run.status = "ready";
       run.readyAt = new Date().toISOString();
       run.error = null;
@@ -1078,6 +1423,19 @@ async function buildAndStartAsync(runId) {
       }
       console.log(`  Preview ready${run.degraded ? " (best-effort)" : ""}: ${previewUrl}`);
     } catch (err) {
+      if (isRunAbortError(err) || !isActive()) {
+        if (USE_DOCKER && run.containerId) {
+          try {
+            await stopContainer(runId);
+          } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            pushLog(run, `Docker-Stop fehlgeschlagen: ${msg}`);
+            console.warn(`  stopContainer fehlgeschlagen [${runId}]: ${msg}`);
+          }
+          run.containerId = null;
+        }
+        return;
+      }
       let dockerSummary = "";
       if (USE_DOCKER && run.containerId) {
         const diag = await collectDockerDiagnostics(run, run.containerId);
@@ -1088,6 +1446,7 @@ async function buildAndStartAsync(runId) {
           await stopContainer(runId);
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
+          pushLog(run, `Docker-Stop fehlgeschlagen: ${msg}`);
           console.warn(`  stopContainer fehlgeschlagen [${runId}]: ${msg}`);
         }
         run.containerId = null;
@@ -1106,6 +1465,10 @@ async function buildAndStartAsync(runId) {
         msg,
       );
       console.error(`  Preview failed [${runId}]:`, msg);
+    } finally {
+      if (run.activeOperationId === operationId) {
+        run.activeOperationId = null;
+      }
     }
   });
 }
@@ -1118,27 +1481,37 @@ async function refreshAsync(runId) {
   const bootMode = resolveBootMode(run.bootMode);
   const bestEffortEnabled = bootMode !== "strict";
   const workspaceDir = getWorkspaceDir(projectId);
+  const operationId = `refresh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  run.cancelRequested = false;
+  run.activeOperationId = operationId;
+  const isActive = () => isRunOperationActive(runId, run, operationId);
+  const assertActive = () => assertRunOperationActive(runId, run, operationId);
+  run.status = "starting";
+  run.logs = [];
+  run.readyAt = null;
+  pushLog(run, "Refresh gestartet.");
 
   if (run.containerId) {
     try {
       await stopContainer(runId);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
+      pushLog(run, `Docker-Stop fehlgeschlagen: ${msg}`);
       console.warn(`  stopContainer fehlgeschlagen [${runId}]: ${msg}`);
     }
     run.containerId = null;
   }
   if (run.childProcess) {
-    run.childProcess.kill("SIGTERM");
+    await stopChildProcess(run.childProcess);
     run.childProcess = null;
   }
-  run.status = "starting";
-  run.logs = [];
 
   return withWorkspaceLock(projectId, async () => {
     try {
+      assertActive();
       pushLog(run, "Git: Pull …");
       await cloneOrPull(repo, branchOrCommit, workspaceDir);
+      assertActive();
       pushLog(run, "Git: Pull fertig");
       const rootConfig = getConfig(workspaceDir, workspaceDir);
       const appCandidates = listPreviewCandidates(workspaceDir, rootConfig, 8);
@@ -1151,7 +1524,9 @@ async function refreshAsync(runId) {
       }
 
       if (USE_DOCKER) {
+        assertActive();
         const dockerOk = await isDockerAvailable();
+        assertActive();
         if (!dockerOk) {
           run.status = "failed";
           run.error = "Docker nicht verfügbar (Refresh).";
@@ -1160,13 +1535,53 @@ async function refreshAsync(runId) {
         }
         pushLog(run, "Docker: Starte Container …");
         ensurePackageJsonScripts(appWorkspace.appDir);
-        const containerName = await runContainer(appWorkspace.appDir, appPort, runId);
+        let containerName;
+        try {
+          containerName = await runContainer(appWorkspace.appDir, appPort, runId);
+        } catch (dockerErr) {
+          const errMsg = dockerErr instanceof Error ? dockerErr.message : String(dockerErr);
+          const isPortAllocated = /port is already allocated|Bind for .* failed/i.test(errMsg);
+          if (isPortAllocated) {
+            releasePort(proxyPort);
+            if (appPort !== proxyPort) releasePort(appPort);
+            const retryPorts = await getTwoFreePorts();
+            if (retryPorts) {
+              const [newProxyPort, newAppPort] = retryPorts;
+              if (run.proxyServer) {
+                run.proxyServer.close();
+                portServers.delete(run.proxyPort);
+                run.proxyServer = null;
+              }
+              run.proxyPort = newProxyPort;
+              run.appPort = newAppPort;
+              run.port = newProxyPort;
+              run.previewUrl = resolvePreviewUrl(newProxyPort);
+              pushLog(run, `Port war belegt, neues Paar: Proxy ${newProxyPort}, App ${newAppPort}. Starte Container erneut …`);
+              containerName = await runContainer(appWorkspace.appDir, newAppPort, runId);
+              const proxyServer = await createFrameProxy(run.proxyPort, run.appPort);
+              run.proxyServer = proxyServer;
+              portServers.set(run.proxyPort, proxyServer);
+            } else {
+              throw dockerErr;
+            }
+          } else {
+            throw dockerErr;
+          }
+        }
         run.containerId = containerName;
+        const startupMonitor = createDockerStartupMonitor(run, containerName);
+        assertActive();
         pushLog(
           run,
           `Warte auf App (Timeout ${Math.floor(PREVIEW_DOCKER_READY_TIMEOUT_MS / 1000)}s) …`,
         );
-        await waitForAppReady(appPort, PREVIEW_DOCKER_READY_TIMEOUT_MS);
+        await waitForAppReady(
+          run.appPort,
+          PREVIEW_DOCKER_READY_TIMEOUT_MS,
+          () => !isActive(),
+          startupMonitor,
+        );
+        assertActive();
         pushLog(run, "Bereit");
         run.status = "ready";
         run.readyAt = new Date().toISOString();
@@ -1183,10 +1598,13 @@ async function refreshAsync(runId) {
         appPort,
         bestEffortEnabled,
         candidates: appCandidates,
+        shouldAbort: () => !isActive(),
       });
       if (!bootResult.success) {
+        if (bootResult.aborted) return;
         throw new Error(bootResult.error);
       }
+      assertActive();
       if (bootResult.candidate) {
         pushLog(run, `Aktiver Kandidat: ${describeCandidate(bootResult.candidate)}`);
       }
@@ -1201,6 +1619,19 @@ async function refreshAsync(runId) {
         `  Preview refreshed${run.degraded ? " (best-effort)" : ""}: http://localhost:${proxyPort}`,
       );
     } catch (err) {
+      if (isRunAbortError(err) || !isActive()) {
+        if (USE_DOCKER && run.containerId) {
+          try {
+            await stopContainer(runId);
+          } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            pushLog(run, `Docker-Stop fehlgeschlagen: ${msg}`);
+            console.warn(`  stopContainer fehlgeschlagen [${runId}]: ${msg}`);
+          }
+          run.containerId = null;
+        }
+        return;
+      }
       let dockerSummary = "";
       if (USE_DOCKER && run.containerId) {
         const diag = await collectDockerDiagnostics(run, run.containerId);
@@ -1211,6 +1642,7 @@ async function refreshAsync(runId) {
           await stopContainer(runId);
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
+          pushLog(run, `Docker-Stop fehlgeschlagen: ${msg}`);
           console.warn(`  stopContainer fehlgeschlagen [${runId}]: ${msg}`);
         }
         run.containerId = null;
@@ -1222,6 +1654,10 @@ async function refreshAsync(runId) {
       run.degraded = false;
       pushLog(run, `Fehlgeschlagen (exakte Meldung):\n${msg}`);
       console.error(`  Refresh failed [${runId}]:`, msg);
+    } finally {
+      if (run.activeOperationId === operationId) {
+        run.activeOperationId = null;
+      }
     }
   });
 }
@@ -1295,6 +1731,7 @@ function corsPreflight(res) {
 }
 
 async function handleStart(req, res, _url) {
+  pruneStoppedRuns();
   const body = await parseBody(req);
   const {
     repo,
@@ -1322,9 +1759,48 @@ async function handleStart(req, res, _url) {
     return;
   }
 
+  const reusable = selectReusableProjectRun(normalizedProjectId, tokenResult.token);
+  if (reusable) {
+    const selectedRun = reusable.selected.run;
+    const selectedRunId = reusable.selected.runId;
+    if (reusable.duplicates.length > 0) {
+      for (const duplicate of reusable.duplicates) {
+        // Keep exactly one active run per project to avoid indefinite "starting" queues.
+        // eslint-disable-next-line no-await-in-loop
+        await stopRun(duplicate.runId, duplicate.run);
+      }
+      pushLog(
+        selectedRun,
+        `Hinweis: ${reusable.duplicates.length} duplizierte Preview-Run(s) wurden automatisch gestoppt.`,
+      );
+    }
+    pushLog(
+      selectedRun,
+      `Start erneut angefordert – aktiven Run wiederverwendet (${selectedRunId}, Status: ${selectedRun.status}).`,
+    );
+    send(res, 200, {
+      success: true,
+      runId: selectedRunId,
+      projectToken: tokenResult.token,
+      status: selectedRun.status,
+      reusedExistingRun: true,
+      previewUrl: selectedRun.previewUrl ?? undefined,
+    });
+    return;
+  }
+
+  const staleFailed = listActiveProjectRuns(normalizedProjectId, tokenResult.token).filter(
+    (entry) => entry.run.status === "failed",
+  );
+  for (const entry of staleFailed) {
+    // Remove failed leftovers so a fresh start gets clean ports/workspace context.
+    // eslint-disable-next-line no-await-in-loop
+    await stopRun(entry.runId, entry.run);
+  }
+
   let proxyPort, appPort;
   if (USE_REAL_BUILD || USE_DOCKER) {
-    const ports = getTwoFreePorts();
+    const ports = await getTwoFreePorts();
     if (ports === null) {
       send(res, 503, {
         success: false,
@@ -1334,7 +1810,7 @@ async function handleStart(req, res, _url) {
     }
     [proxyPort, appPort] = ports;
   } else {
-    const single = getNextFreePort();
+    const single = await getNextFreePort();
     if (single === null) {
       send(res, 503, {
         success: false,
@@ -1367,12 +1843,24 @@ async function handleStart(req, res, _url) {
     childProcess: null,
     proxyServer: null,
     logs: [],
+    activeOperationId: null,
+    cancelRequested: false,
     degraded: false,
     bootMode: resolveBootMode(requestedBootMode),
     injectSupabasePlaceholders: resolveInjectSupabasePlaceholders(
       requestedInjectSupabasePlaceholders,
     ),
   });
+  const newRun = runs.get(runId);
+  if (newRun) {
+    pushLog(
+      newRun,
+      `Start angefordert (${normalizedRepo} @ ${normalizedBranchOrCommit}). Run: ${runId}`,
+    );
+    if (USE_REAL_BUILD || USE_DOCKER) {
+      pushLog(newRun, "Run ist in der Build/Start-Warteschlange …");
+    }
+  }
 
   if (USE_REAL_BUILD || USE_DOCKER) {
     buildAndStartAsync(runId);
@@ -1392,6 +1880,7 @@ async function handleStart(req, res, _url) {
     runId,
     projectToken: tokenResult.token,
     status: "starting",
+    reusedExistingRun: false,
   });
 }
 
@@ -1417,6 +1906,7 @@ function handleStatus(req, res, url) {
 
   send(res, 200, {
     success: true,
+    runId,
     status: run.status,
     previewUrl: run.previewUrl ?? undefined,
     error: run.error ?? undefined,
@@ -1456,29 +1946,43 @@ async function handleStop(req, res, url) {
 }
 
 async function stopRun(runId, run) {
+  if (!run || run.status === "stopped") {
+    pruneStoppedRuns();
+    return;
+  }
+  run.cancelRequested = true;
+  run.activeOperationId = null;
+  pushLog(run, "Run wurde gestoppt.");
+
   if (run.containerId) {
     try {
       await stopContainer(runId);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
+      pushLog(run, `Docker-Stop fehlgeschlagen: ${msg}`);
       console.warn(`  stopContainer fehlgeschlagen [${runId}]: ${msg}`);
     }
     run.containerId = null;
   }
   if (run.childProcess) {
-    run.childProcess.kill("SIGTERM");
+    await stopChildProcess(run.childProcess);
     run.childProcess = null;
   }
-  if (run.port != null) {
+  if (run.proxyPort != null) {
+    releasePort(run.proxyPort);
+    run.proxyServer = null;
+  } else if (run.port != null) {
     releasePort(run.port);
   }
-  if (run.appPort != null && run.appPort !== run.port) {
+  if (run.appPort != null && run.appPort !== run.proxyPort) {
     releasePort(run.appPort);
+  }
+  if (run.port != null && run.port !== run.proxyPort && run.port !== run.appPort) {
+    releasePort(run.port);
   }
   run.status = "stopped";
   run.stoppedAt = new Date().toISOString();
-  run.logs = [];
-  runs.delete(runId);
+  pruneStoppedRuns();
 }
 
 async function handleStopProject(req, res, url) {
@@ -1510,22 +2014,58 @@ async function handleStopProject(req, res, url) {
   });
 }
 
-function handleHealth(_req, res) {
+async function handleHealth(_req, res) {
+  pruneStoppedRuns();
   let activeRuns = 0;
+  let readyRuns = 0;
+  let startingRuns = 0;
+  let failedRuns = 0;
+  let stoppedRuns = 0;
+  let totalRuns = 0;
   for (const [, run] of runs) {
-    if (run.status !== "stopped") activeRuns += 1;
+    totalRuns += 1;
+    if (run.status === "ready") {
+      readyRuns += 1;
+      activeRuns += 1;
+    } else if (run.status === "starting") {
+      startingRuns += 1;
+      activeRuns += 1;
+    } else if (run.status === "failed") {
+      failedRuns += 1;
+    } else if (run.status === "stopped") {
+      stoppedRuns += 1;
+    }
   }
+  let dockerAvailable = null;
+  if (USE_DOCKER) {
+    try {
+      dockerAvailable = await isDockerAvailable();
+    } catch {
+      dockerAvailable = false;
+    }
+  }
+  const mode = USE_DOCKER ? "docker" : USE_REAL_BUILD ? "real" : "stub";
   send(res, 200, {
     ok: true,
     service: "visudev",
     port: runnerPort,
+    mode,
+    useDocker: USE_DOCKER,
+    useRealBuild: USE_REAL_BUILD,
+    dockerAvailable,
     startedAt: RUNNER_STARTED_AT,
     uptimeSec: Math.max(0, Math.floor((Date.now() - new Date(RUNNER_STARTED_AT).getTime()) / 1000)),
     activeRuns,
+    totalRuns,
+    readyRuns,
+    startingRuns,
+    failedRuns,
+    stoppedRuns,
   });
 }
 
 function handleRuns(req, res, url) {
+  pruneStoppedRuns();
   const includeStopped =
     url.searchParams.get("includeStopped") === "1" ||
     url.searchParams.get("includeStopped") === "true";
@@ -1568,7 +2108,8 @@ function handleRuns(req, res, url) {
 
   const totals = {
     total: runEntries.length,
-    active: runEntries.filter((entry) => entry.status !== "stopped").length,
+    active: runEntries.filter((entry) => entry.status === "starting" || entry.status === "ready")
+      .length,
     ready: runEntries.filter((entry) => entry.status === "ready").length,
     starting: runEntries.filter((entry) => entry.status === "starting").length,
     failed: runEntries.filter((entry) => entry.status === "failed").length,
@@ -1770,7 +2311,7 @@ const server = http.createServer(async (req, res) => {
 
   try {
     if (req.method === "GET" && pathname === "/health") {
-      handleHealth(req, res);
+      await handleHealth(req, res);
       return;
     }
     if (req.method === "GET" && pathname === "/runs") {

@@ -16,6 +16,7 @@ import {
   ScanStatuses,
   Screen,
   ScreenshotStatus,
+  StepLogEntry,
 } from "./types";
 import type { PreviewMode, PreviewStatus } from "./types";
 import { publicAnonKey, supabaseUrl } from "../../utils/supabase/info";
@@ -25,6 +26,7 @@ export type { PreviewStepLog };
 
 export interface PreviewState {
   projectId: string | null;
+  runId: string | null;
   status: PreviewStatus;
   previewUrl: string | null;
   error: string | null;
@@ -64,7 +66,7 @@ interface VisudevStore {
   refreshPreview: (projectId: string) => Promise<void>;
   stopPreview: (projectId: string) => Promise<void>;
   /** Set preview to failed when stuck in "starting" (e.g. timeout). */
-  markPreviewStuck: (projectId: string, error: string) => void;
+  markPreviewStuck: (projectId: string, error: string) => Promise<void>;
   /** Set access token for preview Edge API (central mode). Call with session?.access_token when user logs in. */
   setPreviewAccessToken: (token: string | null) => void;
 }
@@ -89,6 +91,9 @@ function apiErrorMsg(err: unknown): string {
 }
 
 export function VisudevProvider({ children }: { children: ReactNode }) {
+  const makePreviewLog = useCallback((message: string): PreviewStepLog => {
+    return { time: new Date().toISOString(), message };
+  }, []);
   const previewAccessTokenRef = useRef<string | null>(null);
   const setPreviewAccessToken = useCallback((token: string | null) => {
     previewAccessTokenRef.current = token;
@@ -105,6 +110,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
   });
   const [preview, setPreview] = useState<PreviewState>({
     projectId: null,
+    runId: null,
     status: "idle",
     previewUrl: null,
     error: null,
@@ -204,11 +210,30 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
       for (const type of scanTypes) {
         const scanId = crypto.randomUUID();
         const timestamp = new Date().toISOString();
+        const repoLabel = activeProject.github_repo ?? "unknown";
+        const branchLabel = activeProject.github_branch ?? "main";
+        const makeScanLog = (message: string, logType: StepLogEntry["type"] = "info"): StepLogEntry => ({
+          time: new Date().toISOString(),
+          message,
+          type: logType,
+        });
+        const appendScanLog = (message: string, logType: StepLogEntry["type"] = "info") => {
+          setScans((prev) =>
+            prev.map((scan) =>
+              scan.id === scanId
+                ? {
+                    ...scan,
+                    logs: [...(scan.logs ?? []), makeScanLog(message, logType)],
+                  }
+                : scan,
+            ),
+          );
+        };
 
         // Set status to running
         setScanStatuses((prev) => ({
           ...prev,
-          [type]: { status: "running", progress: 10 },
+          [type]: { status: "running", progress: 10, message: "Analyse gestartet" },
         }));
 
         // Create scan record
@@ -219,9 +244,16 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
           status: "running",
           progress: 10,
           startedAt: timestamp,
+          logs: [
+            makeScanLog(
+              `Analyse gestartet (${type}) – Repo: ${repoLabel} @ ${branchLabel}`,
+              "info",
+            ),
+          ],
         };
 
         setScans((prev) => [...prev, newScan]);
+        appendScanLog("Analyzer-Request wird gesendet …", "info");
 
         try {
           // ONLY call visudev-analyzer Edge Function for code analysis
@@ -242,18 +274,33 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
 
           setScanStatuses((prev) => ({
             ...prev,
-            [type]: { status: "running", progress: 50 },
+            [type]: { status: "running", progress: 50, message: "Analyzer-Antwort empfangen" },
           }));
 
           if (!analyzeResponse.ok) {
             const errorText = await analyzeResponse.text();
             console.error(`❌ [VisuDEV] Analyzer error response:`, errorText);
+            appendScanLog(
+              `Analyzer fehlgeschlagen (${analyzeResponse.status}): ${errorText || "keine Details"}`,
+              "error",
+            );
             throw new Error(`Analyzer returned ${analyzeResponse.status}: ${errorText}`);
           }
 
           const analysisData = (await analyzeResponse.json()) as AnalyzerResponse;
           if (!analysisData.success || !analysisData.data) {
+            appendScanLog(
+              `Analyzer lieferte keine Daten: ${analysisData.error || "unbekannter Fehler"}`,
+              "error",
+            );
             throw new Error(analysisData.error || "Analyzer returned no data");
+          }
+          appendScanLog(
+            `Analyzer erfolgreich: ${analysisData.data.screens?.length ?? 0} Screens, ${analysisData.data.flows?.length ?? 0} Flows.`,
+            "success",
+          );
+          if (analysisData.data.commitSha) {
+            appendScanLog(`Analyzed commit: ${analysisData.data.commitSha}`, "info");
           }
 
           // Step: Capture screenshots for all detected screens
@@ -270,6 +317,10 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
 
           // ✅ TRY to capture screenshots, but fallback to placeholders on error
           if (activeProject.deployed_url && screensWithScreenshots.length > 0) {
+            appendScanLog(
+              `Screenshot-Phase gestartet (${screensWithScreenshots.length} Screen(s)) über ${activeProject.deployed_url}.`,
+              "info",
+            );
             try {
               const screenshotResponse = await fetch(
                 `${supabaseUrl}/functions/v1/visudev-analyzer/screenshots`,
@@ -292,6 +343,10 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
                   (await screenshotResponse.json()) as AnalyzerScreenshotsResponse;
                 const results = screenshotData.data?.results ?? [];
                 if (!screenshotData.success || !screenshotData.data) {
+                  appendScanLog(
+                    "Screenshot-Service gab kein valides Ergebnis zurück – nutze Platzhalterbilder.",
+                    "error",
+                  );
                   screensWithScreenshots = applyPlaceholderScreens(screensWithScreenshots);
                 } else {
                   // Map screenshot URLs to screens
@@ -304,11 +359,21 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
                       screenshotStatus: status,
                     };
                   });
+                  const okCount = screensWithScreenshots.filter((screen) => screen.screenshotStatus === "ok").length;
+                  const failedCount = screensWithScreenshots.length - okCount;
+                  appendScanLog(
+                    `Screenshots abgeschlossen: ${okCount} erfolgreich, ${failedCount} fehlgeschlagen.`,
+                    failedCount > 0 ? "info" : "success",
+                  );
                 }
               } else {
                 const errorText = await screenshotResponse.text();
                 console.warn(
                   `⚠️ [VisuDEV] Screenshot API failed (${screenshotResponse.status}): ${errorText}`,
+                );
+                appendScanLog(
+                  `Screenshot-API fehlgeschlagen (${screenshotResponse.status}) – nutze Platzhalterbilder.`,
+                  "error",
                 );
                 // Fallback to placeholders
                 screensWithScreenshots = applyPlaceholderScreens(screensWithScreenshots);
@@ -319,12 +384,24 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
                   ? screenshotError.message
                   : String(screenshotError);
               console.error(`❌ [VisuDEV] Screenshot capture failed:`, message);
+              appendScanLog(
+                `Screenshot-Erfassung fehlgeschlagen (${message}) – nutze Platzhalterbilder.`,
+                "error",
+              );
               // Fallback to placeholders
               screensWithScreenshots = applyPlaceholderScreens(screensWithScreenshots);
             }
           } else {
             // No deployed URL - use placeholders
             screensWithScreenshots = applyPlaceholderScreens(screensWithScreenshots);
+            if (!activeProject.deployed_url) {
+              appendScanLog(
+                "Keine Deployed-URL gesetzt – Screenshots werden als Platzhalter erzeugt.",
+                "info",
+              );
+            } else {
+              appendScanLog("Keine Screens erkannt – Screenshot-Phase übersprungen.", "info");
+            }
           }
 
           // Transform analyzer result into AnalysisResult
@@ -348,6 +425,10 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
           };
 
           updateProject(updatedProject);
+          appendScanLog(
+            `Analyse abgeschlossen: ${result.stats.totalScreens} Screens, ${result.stats.totalFlows} Flows, maxDepth ${result.stats.maxDepth}.`,
+            "success",
+          );
 
           // Update scan record
           setScans((prev) =>
@@ -366,11 +447,12 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
 
           setScanStatuses((prev) => ({
             ...prev,
-            [type]: { status: "completed", progress: 100 },
+            [type]: { status: "completed", progress: 100, message: "Analyse abgeschlossen" },
           }));
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           console.error(`❌ [VisuDEV] ${type} scan failed:`, message);
+          appendScanLog(`Analyse fehlgeschlagen: ${message || "Unknown error"}`, "error");
 
           // Update scan record with error
           setScans((prev) =>
@@ -392,6 +474,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
             [type]: {
               status: "failed",
               progress: 0,
+              message: "Analyse fehlgeschlagen",
               error: message || "Analysis failed",
             },
           }));
@@ -409,6 +492,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         setPreview((prev) => ({
           ...prev,
           projectId,
+          runId: null,
           status: "failed" as const,
           error,
           previewUrl: null,
@@ -437,10 +521,11 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
       setPreview((prev) => ({
         ...prev,
         projectId,
+        runId: null,
         status: "starting",
         previewUrl: null,
         error: null,
-        refreshLogs: [],
+        refreshLogs: [makePreviewLog(`Start angefordert (${repo ?? "owner/repo"} @ ${branch || "main"})`)],
       }));
       await new Promise((r) => setTimeout(r, 0));
       try {
@@ -457,22 +542,65 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         if (!res.success) {
           setPreview((prev) =>
             prev.projectId === projectId
-              ? { ...prev, status: "failed", error: res.error ?? "Start failed" }
+              ? {
+                  ...prev,
+                  status: "failed",
+                  error: res.error ?? "Start failed",
+                  refreshLogs: [
+                    ...prev.refreshLogs,
+                    makePreviewLog(`Fehlgeschlagen (Start): ${res.error ?? "Start failed"}`),
+                  ],
+                }
               : prev,
           );
           return;
         }
+        const nextRunId = res.data?.runId ?? null;
+        const nextStatusRaw = res.data?.status;
+        const nextStatus: PreviewStatus =
+          nextStatusRaw === "idle" ||
+          nextStatusRaw === "starting" ||
+          nextStatusRaw === "ready" ||
+          nextStatusRaw === "failed" ||
+          nextStatusRaw === "stopped"
+            ? nextStatusRaw
+            : "starting";
+        const startMessage =
+          res.data?.reusedExistingRun === true
+            ? `Start wiederverwendet. Aktiver Run: ${nextRunId ?? "unbekannt"} (${nextStatus}).`
+            : `Start akzeptiert. Run: ${nextRunId ?? "unbekannt"}. Warte auf Build/Runner-Status …`;
+        setPreview((prev) =>
+          prev.projectId === projectId
+            ? {
+                ...prev,
+                runId: nextRunId ?? prev.runId,
+                status: nextStatus,
+                refreshLogs: [
+                  ...prev.refreshLogs,
+                  makePreviewLog(startMessage),
+                ],
+              }
+            : prev,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         setPreview((prev) =>
           prev.projectId === projectId
-            ? { ...prev, status: "failed", error: message || "Start failed" }
+            ? {
+                ...prev,
+                status: "failed",
+                error: message || "Start failed",
+                refreshLogs: [
+                  ...prev.refreshLogs,
+                  makePreviewLog(`Fehlgeschlagen (Start): ${message || "Start failed"}`),
+                ],
+              }
             : prev,
         );
       }
       // Keep status "starting"; UI will poll refreshPreviewStatus
     },
-    [getProjectPreviewMode],
+    [getProjectPreviewMode, makePreviewLog],
   );
 
   const refreshPreviewStatus = useCallback(
@@ -488,7 +616,16 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         const message = err instanceof Error ? err.message : String(err);
         setPreview((prev) =>
           prev.projectId === projectId && prev.status === "starting"
-            ? { ...prev, status: "failed" as const, error: message, previewUrl: null }
+            ? {
+                ...prev,
+                status: "failed" as const,
+                error: message,
+                previewUrl: null,
+                refreshLogs: [
+                  ...prev.refreshLogs,
+                  makePreviewLog(`Fehlgeschlagen (Status): ${message}`),
+                ],
+              }
             : prev,
         );
         return undefined;
@@ -497,33 +634,51 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         const error = (res as { error?: string }).error ?? "Status-Abfrage fehlgeschlagen";
         setPreview((prev) =>
           prev.projectId === projectId && prev.status === "starting"
-            ? { ...prev, status: "failed" as const, error, previewUrl: null }
+            ? {
+                ...prev,
+                status: "failed" as const,
+                error,
+                previewUrl: null,
+                refreshLogs: [...prev.refreshLogs, makePreviewLog(`Fehlgeschlagen (Status): ${error}`)],
+              }
             : prev,
         );
         return undefined;
       }
       const payload = res as {
+        runId?: string | null;
         status?: PreviewStatus;
         previewUrl?: string | null;
         error?: string | null;
         logs?: PreviewStepLog[];
       };
       const status = (payload.status as PreviewStatus) ?? "idle";
+      const payloadRunId = typeof payload.runId === "string" && payload.runId.trim() ? payload.runId : null;
       const logs = Array.isArray(payload.logs) ? payload.logs : [];
       setPreview((prev) =>
-        prev.projectId === projectId
-          ? {
-              ...prev,
-              status,
-              previewUrl: status === "failed" ? null : (payload.previewUrl ?? prev.previewUrl),
-              error: payload.error ?? prev.error,
-              refreshLogs: logs,
-            }
-          : prev,
+        prev.projectId !== projectId
+          ? prev
+          : prev.status === "failed" && status === "starting"
+            ? {
+                ...prev,
+                // Do not override a local timeout/failure with stale "starting" responses.
+                runId: payloadRunId ?? prev.runId,
+                error: payload.error ?? prev.error,
+                refreshLogs: logs.length > 0 ? logs : prev.refreshLogs,
+              }
+            : {
+                ...prev,
+                runId:
+                  status === "idle" || status === "stopped" ? null : (payloadRunId ?? prev.runId),
+                status,
+                previewUrl: status === "failed" ? null : (payload.previewUrl ?? prev.previewUrl),
+                error: payload.error ?? prev.error,
+                refreshLogs: logs.length > 0 ? logs : prev.refreshLogs,
+              },
       );
       return status;
     },
-    [getProjectPreviewMode],
+    [getProjectPreviewMode, makePreviewLog],
   );
 
   const stopPreview = useCallback(
@@ -540,7 +695,14 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
       } finally {
         setPreview((prev) =>
           prev.projectId === projectId
-            ? { ...prev, status: "stopped", previewUrl: null, error: null, refreshLogs: [] }
+            ? {
+                ...prev,
+                runId: null,
+                status: "stopped",
+                previewUrl: null,
+                error: null,
+                refreshLogs: [],
+              }
             : prev,
         );
       }
@@ -550,31 +712,80 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
 
   const refreshPreview = useCallback(
     async (projectId: string) => {
+      setPreview((prev) =>
+        prev.projectId === projectId
+          ? {
+              ...prev,
+              status: "starting",
+              error: null,
+              refreshLogs: [...prev.refreshLogs, makePreviewLog("Refresh angefordert …")],
+            }
+          : prev,
+      );
       const res = await previewAPI.refresh(projectId, getProjectPreviewMode(projectId));
       if (!res.success) {
         setPreview((prev) =>
           prev.projectId === projectId
-            ? { ...prev, status: "failed", error: res.error ?? "Refresh failed" }
+            ? {
+                ...prev,
+                status: "failed",
+                error: res.error ?? "Refresh failed",
+                refreshLogs: [
+                  ...prev.refreshLogs,
+                  makePreviewLog(`Fehlgeschlagen (Refresh): ${res.error ?? "Refresh failed"}`),
+                ],
+              }
             : prev,
         );
         return;
       }
       setPreview((prev) =>
         prev.projectId === projectId
-          ? { ...prev, status: "starting", error: null, refreshLogs: [] }
+          ? {
+              ...prev,
+              status: "starting",
+              error: null,
+              refreshLogs: [...prev.refreshLogs, makePreviewLog("Refresh akzeptiert. Warte auf Status …")],
+            }
           : prev,
       );
     },
-    [getProjectPreviewMode],
+    [getProjectPreviewMode, makePreviewLog],
   );
 
-  const markPreviewStuck = useCallback((projectId: string, error: string) => {
+  const markPreviewStuck = useCallback(async (projectId: string, error: string) => {
+    let stopSummary = "Timeout-Cleanup: aktive Projekt-Runs konnten nicht gestoppt werden.";
+    try {
+      const stopRes = await previewAPI.stopProject(
+        projectId,
+        getProjectPreviewMode(projectId),
+        previewAccessTokenRef.current ?? undefined,
+      );
+      stopSummary = stopRes.success
+        ? `Timeout-Cleanup: ${stopRes.stopped ?? 0} aktive Projekt-Run(s) gestoppt.`
+        : `Timeout-Cleanup fehlgeschlagen: ${stopRes.error ?? "Unbekannter Fehler"}`;
+    } catch (cleanupErr) {
+      const msg = cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr);
+      stopSummary = `Timeout-Cleanup fehlgeschlagen: ${msg}`;
+    }
+
     setPreview((prev) =>
       prev.projectId === projectId && prev.status === "starting"
-        ? { ...prev, status: "failed" as const, error, previewUrl: null }
+        ? {
+            ...prev,
+            runId: null,
+            status: "failed" as const,
+            error,
+            previewUrl: null,
+            refreshLogs: [
+              ...prev.refreshLogs,
+              makePreviewLog(`Fehlgeschlagen (Timeout): ${error}`),
+              makePreviewLog(stopSummary),
+            ],
+          }
         : prev,
     );
-  }, []);
+  }, [getProjectPreviewMode, makePreviewLog]);
 
   const value: VisudevStore = {
     projects,

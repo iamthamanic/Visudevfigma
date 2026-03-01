@@ -20,6 +20,7 @@ Starts the runner on port 4000 (override with `PORT=4001 npx visudev-runner`).
 - `PORT` – API port (default 4000)
 - `USE_REAL_BUILD=1` – clone, build and run the app (default stub)
 - `USE_DOCKER=1` – run each preview in a container
+- `PREVIEW_CLEAN_BEFORE_BUILD=0` – disable cleaning of `dist`, `.next`, `out`, `.vite`, `node_modules/.cache` before each Docker build (default: clean enabled to avoid stale artifacts)
 - `PREVIEW_DOCKER_READY_TIMEOUT_MS` – wait timeout for Docker app startup (default `300000`)
 - `PREVIEW_DOCKER_LOG_TAIL` – number of Docker log lines in diagnostics (default `120`)
 - `GITHUB_TOKEN` – for private repos

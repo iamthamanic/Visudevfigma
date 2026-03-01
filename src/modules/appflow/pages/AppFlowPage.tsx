@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, Download, Loader2, Map, Play, RefreshCw, Square, X } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
-import { discoverPreviewRunner } from "../../../utils/api";
+import {
+  discoverPreviewRunner,
+  getLocalPreviewRunnerHealth,
+  type LocalPreviewRunnerHealth,
+} from "../../../utils/api";
 import { LiveFlowCanvas } from "../components/LiveFlowCanvas";
 import styles from "../styles/AppFlowPage.module.css";
 
@@ -20,14 +24,17 @@ interface AppFlowPageProps {
   githubBranch?: string;
 }
 
+type PendingPreviewAction = "start" | "restart" | "refresh" | null;
+
 const PREVIEW_POLL_INTERVAL_MS = 2500;
 const AUTO_PREVIEW_DELAY_MS = 800;
 /** Nach dieser Zeit wird "starting" als fehlgeschlagen markiert (Runner/Build reagiert nicht). */
-const PREVIEW_START_TIMEOUT_MS = 3 * 60 * 1000; // 3 Minuten
+const PREVIEW_START_TIMEOUT_MS = 5 * 60 * 1000 + 15_000; // Runner-Default (300s) + kurzer Puffer
 
 export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPageProps) {
   const {
     activeProject,
+    scans,
     scanStatuses,
     startScan,
     preview,
@@ -40,9 +47,12 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
   const [isRescan, setIsRescan] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [runnerHealth, setRunnerHealth] = useState<LocalPreviewRunnerHealth | null>(null);
+  const [pendingPreviewAction, setPendingPreviewAction] = useState<PendingPreviewAction>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoPreviewDoneRef = useRef(false);
   const autoPreviewRetryAtRef = useRef(0);
+  const startingActionRef = useRef<PendingPreviewAction>(null);
 
   const handleRescan = useCallback(async () => {
     setIsRescan(true);
@@ -52,6 +62,44 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
       setIsRescan(false);
     }
   }, [startScan]);
+
+  const triggerPreviewAction = useCallback(
+    (action: Exclude<PendingPreviewAction, null>, run: () => Promise<void>) => {
+      setPendingPreviewAction(action);
+      startingActionRef.current = action;
+      void run().finally(() => {
+        setPendingPreviewAction((current) => (current === action ? null : current));
+      });
+    },
+    [],
+  );
+
+  const handlePreviewStart = useCallback(
+    (action: "start" | "restart") => {
+      triggerPreviewAction(action, async () => {
+        await startPreview(
+          projectId,
+          activeProject?.github_repo,
+          activeProject?.github_branch,
+          activeProject?.lastAnalyzedCommitSha,
+        );
+      });
+    },
+    [
+      activeProject?.github_branch,
+      activeProject?.github_repo,
+      activeProject?.lastAnalyzedCommitSha,
+      projectId,
+      startPreview,
+      triggerPreviewAction,
+    ],
+  );
+
+  const handlePreviewRefresh = useCallback(() => {
+    triggerPreviewAction("refresh", async () => {
+      await refreshPreview(projectId);
+    });
+  }, [projectId, refreshPreview, triggerPreviewAction]);
 
   // Auto-scan, sobald ein Projekt mit verbundenem Repo geladen ist und noch keine Screens (einmal pro Projekt)
   useEffect(() => {
@@ -99,6 +147,27 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     return () => clearInterval(interval);
   }, [isRunnerUnreachable, projectId, refreshPreviewStatus]);
 
+  // Runner-/Docker-Runtime-Status für UI-Hinweise (z. B. Docker fehlt im Docker-Modus).
+  useEffect(() => {
+    if (activeProject?.preview_mode === "deployed") {
+      setRunnerHealth(null);
+      return;
+    }
+    let cancelled = false;
+    const tick = async () => {
+      const health = await getLocalPreviewRunnerHealth();
+      if (!cancelled) setRunnerHealth(health);
+    };
+    void tick();
+    const interval = setInterval(() => {
+      void tick();
+    }, 10_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [activeProject?.preview_mode, projectId]);
+
   // Auto-start preview when repo is connected (once per project; also when status not yet loaded)
   useEffect(() => {
     if (!activeProject?.github_repo || activeProject.id !== projectId) return;
@@ -141,6 +210,12 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
   useEffect(() => {
     if (preview.projectId === projectId && preview.status === "failed") {
       setIsRetrying(false);
+    }
+  }, [projectId, preview.projectId, preview.status]);
+
+  useEffect(() => {
+    if (preview.projectId !== projectId || preview.status !== "starting") {
+      startingActionRef.current = null;
     }
   }, [projectId, preview.projectId, preview.status]);
 
@@ -220,7 +295,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
   useEffect(() => {
     if (preview.projectId !== projectId || preview.status !== "starting") return;
     const t = setTimeout(() => {
-      markPreviewStuck(
+      void markPreviewStuck(
         projectId,
         "Timeout – Preview startet nicht. Bitte Runner (npm run dev) und ggf. Docker prüfen.",
       );
@@ -260,6 +335,17 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     downloadFile(lines.join("\n"), `appflow-${projectId}.md`, "text/markdown");
   }, [activeProject, projectId]);
 
+  const analysisLogs = useMemo(() => {
+    const appflowScans = scans
+      .filter((scan) => scan.projectId === projectId && scan.scanType === "appflow")
+      .sort((a, b) => {
+        const bTs = Date.parse(b.startedAt);
+        const aTs = Date.parse(a.startedAt);
+        return (Number.isFinite(bTs) ? bTs : 0) - (Number.isFinite(aTs) ? aTs : 0);
+      });
+    return appflowScans[0]?.logs ?? [];
+  }, [projectId, scans]);
+
   if (!activeProject) {
     return (
       <div className={styles.centerState}>
@@ -287,6 +373,19 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
         : previewMode === "deployed"
           ? "Preview-Modus: Deployed URL. Bitte im Projekt eine URL hinterlegen."
           : "Preview-Modus: Auto (lokal wenn verfügbar, sonst Server).";
+  const isPreviewStartingForProject = preview.projectId === projectId && preview.status === "starting";
+  const activeStartingAction = isPreviewStartingForProject ? startingActionRef.current : null;
+  const isRefreshLoading =
+    pendingPreviewAction === "refresh" || activeStartingAction === "refresh";
+  const isRestartLoading =
+    pendingPreviewAction === "restart" || activeStartingAction === "restart";
+  const isStartLoading = pendingPreviewAction === "start" || activeStartingAction === "start";
+  const disablePreviewStartActions =
+    pendingPreviewAction !== null || (isPreviewStartingForProject && activeStartingAction !== null);
+  const showDockerMissingWarning =
+    (previewMode === "local" || previewMode === "auto") &&
+    runnerHealth?.useDocker === true &&
+    runnerHealth.dockerAvailable === false;
 
   return (
     <div className={styles.root}>
@@ -366,6 +465,22 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
           </div>
         )}
 
+        {showDockerMissingWarning && (
+          <div className={`${styles.statusBar} ${styles.statusError}`} role="status">
+            <AlertCircle className={styles.inlineIcon} aria-hidden="true" />
+            <div>
+              <p className={styles.statusTitle}>Docker nicht erreichbar</p>
+              <p className={styles.statusMeta}>
+                Der Preview-Runner läuft im Docker-Modus, aber Docker antwortet nicht. Bitte Docker
+                Desktop starten und danach <strong>Preview neu starten</strong>.
+              </p>
+              <p className={styles.statusMetaSecondary}>
+                Runner: {runnerHealth?.baseUrl ?? "http://127.0.0.1:4000"}
+              </p>
+            </div>
+          </div>
+        )}
+
         {hasData && !liveFlowBaseUrl && (
           <div className={`${styles.statusBar} ${styles.statusInfo}`} role="status">
             <p className={styles.statusMeta}>
@@ -426,12 +541,12 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                       <>
                         <button
                           type="button"
-                          onClick={() => refreshPreview(projectId)}
-                          disabled={preview.status === "starting"}
+                          onClick={handlePreviewRefresh}
+                          disabled={disablePreviewStartActions}
                           className={styles.secondaryButton}
                           aria-label="Preview aktualisieren (Pull, Rebuild, Restart)"
                         >
-                          {preview.status === "starting" ? (
+                          {isRefreshLoading ? (
                             <Loader2
                               className={`${styles.inlineIcon} ${styles.spinner}`}
                               aria-hidden="true"
@@ -439,9 +554,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                           ) : (
                             <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
                           )}
-                          {preview.status === "starting"
-                            ? "Aktualisiere…"
-                            : "Preview aktualisieren"}
+                          {isRefreshLoading ? "Aktualisiere…" : "Preview aktualisieren"}
                         </button>
                         <button
                           type="button"
@@ -454,37 +567,39 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                         </button>
                         <button
                           type="button"
-                          onClick={() =>
-                            startPreview(
-                              projectId,
-                              activeProject?.github_repo,
-                              activeProject?.github_branch,
-                              activeProject?.lastAnalyzedCommitSha,
-                            )
-                          }
+                          onClick={() => handlePreviewStart("restart")}
+                          disabled={disablePreviewStartActions}
                           className={styles.secondaryButton}
                           aria-label="Preview neu starten (frischer Start)"
                         >
-                          <Play className={styles.inlineIcon} aria-hidden="true" />
-                          Preview neu starten
+                          {isRestartLoading ? (
+                            <Loader2
+                              className={`${styles.inlineIcon} ${styles.spinner}`}
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Play className={styles.inlineIcon} aria-hidden="true" />
+                          )}
+                          {isRestartLoading ? "Starte neu…" : "Preview neu starten"}
                         </button>
                       </>
                     ) : (
                       <button
                         type="button"
-                        onClick={() =>
-                          startPreview(
-                            projectId,
-                            activeProject?.github_repo,
-                            activeProject?.github_branch,
-                            activeProject?.lastAnalyzedCommitSha,
-                          )
-                        }
+                        onClick={() => handlePreviewStart("start")}
+                        disabled={disablePreviewStartActions}
                         className={styles.secondaryButton}
                         aria-label="Preview starten"
                       >
-                        <Play className={styles.inlineIcon} aria-hidden="true" />
-                        Preview starten
+                        {isStartLoading ? (
+                          <Loader2
+                            className={`${styles.inlineIcon} ${styles.spinner}`}
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <Play className={styles.inlineIcon} aria-hidden="true" />
+                        )}
+                        {isStartLoading ? "Starte…" : "Preview starten"}
                       </button>
                     )}
                   </div>
@@ -501,6 +616,8 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
               screens={activeProject.screens}
               flows={activeProject.flows}
               previewUrl={liveFlowBaseUrl ?? ""}
+              previewRunId={preview.projectId === projectId ? preview.runId : null}
+              analysisLogs={analysisLogs}
               projectId={projectId}
               previewError={
                 preview.projectId === projectId && preview.status === "failed"
@@ -632,19 +749,20 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                   {activeProject?.github_repo ? (
                     <button
                       type="button"
-                      onClick={() =>
-                        startPreview(
-                          projectId,
-                          activeProject?.github_repo,
-                          activeProject?.github_branch,
-                          activeProject?.lastAnalyzedCommitSha,
-                        )
-                      }
+                      onClick={() => handlePreviewStart("start")}
+                      disabled={disablePreviewStartActions}
                       className={styles.primaryButton}
                       aria-label="Preview starten"
                     >
-                      <Play className={styles.inlineIcon} aria-hidden="true" />
-                      Preview starten
+                      {isStartLoading ? (
+                        <Loader2
+                          className={`${styles.inlineIcon} ${styles.spinner}`}
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <Play className={styles.inlineIcon} aria-hidden="true" />
+                      )}
+                      {isStartLoading ? "Starte…" : "Preview starten"}
                     </button>
                   ) : (
                     <p className={styles.emptyHint}>

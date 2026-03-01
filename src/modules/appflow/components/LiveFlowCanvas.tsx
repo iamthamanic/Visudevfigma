@@ -6,7 +6,7 @@
 
 import { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import clsx from "clsx";
-import type { Screen, Flow } from "../../../lib/visudev/types";
+import type { Screen, Flow, StepLogEntry } from "../../../lib/visudev/types";
 import type { PreviewStepLog } from "../../../utils/api";
 import type { VisudevDomReport } from "../types";
 import {
@@ -37,6 +37,10 @@ interface LiveFlowCanvasProps {
   flows: Flow[];
   previewUrl: string;
   projectId?: string;
+  /** Aktive Runner-Run-ID für klare Zuordnung der Logs. */
+  previewRunId?: string | null;
+  /** Schritte der Code-Analyse (Analyzer + Screenshots). */
+  analysisLogs?: StepLogEntry[];
   /** Exakte Fehlermeldung vom Preview/Build (Runner); wird als erste Zeile im Terminal angezeigt. */
   previewError?: string | null;
   /** „Preview aktualisieren“ läuft – im Terminal einen Eintrag mit Spinner anzeigen. */
@@ -49,6 +53,8 @@ export function LiveFlowCanvas({
   screens,
   flows,
   previewUrl,
+  previewRunId = null,
+  analysisLogs = [],
   previewError,
   refreshInProgress = false,
   refreshLogs = [],
@@ -103,7 +109,7 @@ export function LiveFlowCanvas({
     if (showTerminal && terminalScrollRef.current) {
       terminalScrollRef.current.scrollTop = terminalScrollRef.current.scrollHeight;
     }
-  }, [showTerminal, loadLogs, refreshLogs, refreshInProgress]);
+  }, [showTerminal, analysisLogs, loadLogs, refreshLogs, refreshInProgress]);
 
   const maxX = screens.length
     ? Math.max(...Array.from(positions.values()).map((p) => p.x), 0) + NODE_WIDTH + 80
@@ -204,6 +210,7 @@ export function LiveFlowCanvas({
     iframeToScreenRef,
     screens,
     edges,
+    markScreenLoaded,
     markScreenFailed,
     setDomReportsByScreenId,
     setAnimatingEdge,
@@ -239,6 +246,8 @@ export function LiveFlowCanvas({
       {showTerminal && (
         <PreviewTerminal
           ref={terminalScrollRef}
+          runId={previewRunId}
+          analysisLogs={analysisLogs}
           refreshLogs={refreshLogs}
           loadLogs={loadLogs}
           refreshInProgress={refreshInProgress}
@@ -270,7 +279,7 @@ export function LiveFlowCanvas({
                   loadState={screenLoadState[screen.id] ?? "loading"}
                   failReason={screenFailReason[screen.id]}
                   domReport={domReportsByScreenId[screen.id]}
-                  onLoad={() => markScreenLoaded(screen.id, screen.name)}
+                  onLoad={() => markScreenLoaded(screen.id, screen.name, "onLoad")}
                   onError={(reason, name, url) => markScreenFailed(screen.id, reason, name, url)}
                   registerIframe={(win, screenId) => iframeToScreenRef.current.set(win, screenId)}
                   nodeWidth={NODE_WIDTH}
