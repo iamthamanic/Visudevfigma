@@ -358,18 +358,14 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
   /** Last completed appflow analysis timestamp (for "Letzte Code-Analyse" in live app bar). */
   const lastAnalysisAt = useMemo(() => {
     const completed = scans
-      .filter(
-        (s) => s.projectId === projectId && s.scanType === "appflow" && s.completedAt != null,
-      )
-      .sort((a, b) =>
-        (Date.parse(b.completedAt!) || 0) - (Date.parse(a.completedAt!) || 0),
-      );
+      .filter((s) => s.projectId === projectId && s.scanType === "appflow" && s.completedAt != null)
+      .sort((a, b) => (Date.parse(b.completedAt!) || 0) - (Date.parse(a.completedAt!) || 0));
     return completed[0]?.completedAt ?? null;
   }, [projectId, scans]);
 
   /** Last time preview became ready (for "Letzter Preview-Start" in live app bar). */
   const lastPreviewReadyAt =
-    preview.projectId === projectId ? preview.previewReadyAt ?? null : null;
+    preview.projectId === projectId ? (preview.previewReadyAt ?? null) : null;
 
   if (!activeProject) {
     return (

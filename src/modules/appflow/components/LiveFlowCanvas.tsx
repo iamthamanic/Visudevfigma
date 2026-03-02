@@ -17,6 +17,7 @@ import {
   normalizePreviewUrl,
   previewPathToSegment,
   type GraphEdge,
+  type NodePosition,
 } from "../layout";
 import { useScreenLoadState, SCREEN_FAIL_REASONS } from "../hooks/useScreenLoadState";
 import { usePreviewPostMessage } from "../hooks/usePreviewPostMessage";
@@ -71,7 +72,9 @@ export function LiveFlowCanvas({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   /** User-dragged position overrides (graph space). Persisted to localStorage by projectId. */
-  const [positionOverrides, setPositionOverrides] = useState<Record<string, { x: number; y: number }>>({});
+  const [positionOverrides, setPositionOverrides] = useState<
+    Record<string, { x: number; y: number }>
+  >({});
   /** Node drag: which screen is being dragged and start coords for delta. */
   const [nodeDrag, setNodeDrag] = useState<{
     screenId: string;
@@ -116,12 +119,12 @@ export function LiveFlowCanvas({
   );
   /** Final positions: overrides (from drag) or computed. Used for layout and edges. */
   const positions = useMemo(() => {
-    const map = new Map<string, { x: number; y: number; depth?: number }>();
+    const map = new Map<string, NodePosition>();
     screens.forEach((s) => {
       const base = computedPositions.get(s.id);
       const override = positionOverrides[s.id];
       if (override != null) {
-        map.set(s.id, { ...override, depth: base?.depth ?? 0 });
+        map.set(s.id, { x: override.x, y: override.y, depth: base?.depth ?? 0 });
       } else if (base) {
         map.set(s.id, base);
       }

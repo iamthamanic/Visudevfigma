@@ -7,7 +7,10 @@ const PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
 /** When set to an absolute path, the runner uses this dir instead of cloning (for local dev: same code as your editor). */
 export function getLocalWorkspaceOverride() {
-  const raw = typeof process.env.USE_LOCAL_WORKSPACE === "string" ? process.env.USE_LOCAL_WORKSPACE.trim() : "";
+  const raw =
+    typeof process.env.USE_LOCAL_WORKSPACE === "string"
+      ? process.env.USE_LOCAL_WORKSPACE.trim()
+      : "";
   if (!raw) return null;
   return isAbsolute(raw) ? raw : join(process.cwd(), raw);
 }

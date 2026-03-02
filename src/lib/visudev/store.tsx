@@ -32,6 +32,8 @@ export interface PreviewState {
   error: string | null;
   /** Schritte vom Preview-Runner (Start/Refresh): Git, Build, Start, Bereit. */
   refreshLogs: PreviewStepLog[];
+  /** Zeitpunkt (ISO), zu dem die Preview zuletzt „ready“ wurde (für Anzeige „Letzter Preview-Start“). */
+  previewReadyAt: string | null;
 }
 
 interface VisudevStore {
@@ -115,6 +117,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     previewUrl: null,
     error: null,
     refreshLogs: [],
+    previewReadyAt: null,
   });
 
   const getProjectPreviewMode = useCallback(
@@ -533,6 +536,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         refreshLogs: [
           makePreviewLog(`Start angefordert (${repo ?? "owner/repo"} @ ${branch || "main"})`),
         ],
+        previewReadyAt: prev.projectId === projectId ? prev.previewReadyAt : null,
       }));
       await new Promise((r) => setTimeout(r, 0));
       try {
@@ -682,6 +686,10 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
                 previewUrl: status === "failed" ? null : (payload.previewUrl ?? prev.previewUrl),
                 error: payload.error ?? prev.error,
                 refreshLogs: logs.length > 0 ? logs : prev.refreshLogs,
+                previewReadyAt:
+                  status === "ready" && prev.status !== "ready"
+                    ? new Date().toISOString()
+                    : prev.previewReadyAt,
               },
       );
       return status;

@@ -44,7 +44,9 @@ function getScreenFromUrl(): ShellScreen {
   if (typeof window === "undefined") return "projects";
   const inIframe = window !== window.top;
   if (inIframe) {
-    const fromHash = window.location.hash ? new URLSearchParams(window.location.hash.slice(1)).get("visudev-screen") : null;
+    const fromHash = window.location.hash
+      ? new URLSearchParams(window.location.hash.slice(1)).get("visudev-screen")
+      : null;
     const fromQuery = new URLSearchParams(window.location.search).get("visudev-screen");
     const param = fromHash ?? fromQuery;
     if (param) {

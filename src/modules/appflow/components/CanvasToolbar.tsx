@@ -58,7 +58,12 @@ export function CanvasToolbar({
       <button type="button" onClick={onZoomIn} className={styles.zoomBtn} title="Vergrößern">
         <ZoomIn className={styles.zoomIcon} aria-hidden="true" />
       </button>
-      <button type="button" onClick={onZoomReset} className={styles.zoomBtn} title="Zoom & Pan zurücksetzen">
+      <button
+        type="button"
+        onClick={onZoomReset}
+        className={styles.zoomBtn}
+        title="Zoom & Pan zurücksetzen"
+      >
         <Home className={styles.zoomIcon} aria-hidden="true" />
       </button>
       {hasPositionOverrides && onResetPositions && (

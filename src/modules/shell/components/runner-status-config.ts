@@ -1,4 +1,4 @@
-import type { PreviewRunnerRuntimeStatus } from "../../../utils/api";
+import type { PreviewRunnerRuntimeStatus } from "../../../utils/preview-runner-local";
 
 export const RUNNER_POLL_MS = 15_000;
 

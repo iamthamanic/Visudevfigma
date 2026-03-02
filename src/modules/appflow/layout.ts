@@ -26,7 +26,10 @@ export function getScreenPreviewPath(screen: Screen): string {
   if (p && p !== "/") return p;
   const name = (screen.name || "").trim();
   if (!name) return "/";
-  const lower = name.toLowerCase().replace(/page|screen|view$/i, "").trim();
+  const lower = name
+    .toLowerCase()
+    .replace(/page|screen|view$/i, "")
+    .trim();
   if (lower === "projects" || lower === "shell" || name === "ProjectsPage") return "/projects";
   if (lower === "appflow" || name === "AppFlowPage") return "/appflow";
   if (lower === "blueprint" || name === "BlueprintPage") return "/blueprint";

@@ -1,6 +1,6 @@
 import { Copy } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
-import type { PreviewRunnerRuntimeStatus } from "../../../utils/api";
+import type { PreviewRunnerRuntimeStatus } from "../../../utils/preview-runner-local";
 import { formatUptime, RUNNER_COMMANDS } from "./runner-status-config";
 import styles from "../styles/RunnerStatusControl.module.css";
 

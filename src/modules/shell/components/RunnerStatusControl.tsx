@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, ChevronDown, Loader2 } from "lucide-react";
-import { getPreviewRunnerRuntimeStatus, type PreviewRunnerRuntimeStatus } from "../../../utils/api";
+import {
+  getPreviewRunnerRuntimeStatus,
+  type PreviewRunnerRuntimeStatus,
+} from "../../../utils/preview-runner-local";
 import { INITIAL_RUNNER_STATUS, RUNNER_POLL_MS } from "./runner-status-config";
 import { RunnerStatusDialog } from "./RunnerStatusDialog";
 import styles from "../styles/RunnerStatusControl.module.css";
