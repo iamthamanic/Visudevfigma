@@ -17,6 +17,25 @@ export interface GraphEdge {
   type: "navigate" | "call";
 }
 
+/**
+ * Derives a preview path for a screen when path is missing or generic.
+ * Matches Shell routes: projects -> / or /projects, AppFlowPage -> /appflow, etc.
+ */
+export function getScreenPreviewPath(screen: Screen): string {
+  const p = (screen.path || "").trim();
+  if (p && p !== "/") return p;
+  const name = (screen.name || "").trim();
+  if (!name) return "/";
+  const lower = name.toLowerCase().replace(/page|screen|view$/i, "").trim();
+  if (lower === "projects" || lower === "shell" || name === "ProjectsPage") return "/projects";
+  if (lower === "appflow" || name === "AppFlowPage") return "/appflow";
+  if (lower === "blueprint" || name === "BlueprintPage") return "/blueprint";
+  if (lower === "data" || name === "DataPage") return "/data";
+  if (lower === "logs" || name === "LogsPage") return "/logs";
+  if (lower === "settings" || name === "SettingsPage") return "/settings";
+  return `/${lower || name.toLowerCase()}`;
+}
+
 export function normalizePreviewUrl(base: string, screenPath: string): string {
   const trimmed = (base || "").trim();
   if (!trimmed || (!trimmed.startsWith("http://") && !trimmed.startsWith("https://"))) return "";
@@ -29,6 +48,12 @@ export function normalizePreviewUrl(base: string, screenPath: string): string {
         : `/${path}`;
   const baseClean = trimmed.replace(/\/$/, "");
   return `${baseClean}${safePath}`;
+}
+
+/** Segment for visudev-screen query param (so Shell can show correct tab even if server rewrites path). */
+export function previewPathToSegment(previewPath: string): string {
+  const p = (previewPath || "/").replace(/\/$/, "").slice(1).trim();
+  return p === "" || p === "projects" ? "projects" : p;
 }
 
 export function getScreenDepths(screens: Screen[]): Map<string, number> {
@@ -101,6 +126,15 @@ export function buildEdges(screens: Screen[], flows: Flow[]): GraphEdge[] {
         edges.push({ fromId: fromScreenId, toId: toScreenId, type: "call" });
     });
   });
+
+  if (edges.length === 0 && screens.length >= 2) {
+    const root =
+      screens.find((s) => s.path === "/" || s.path === "/projects" || s.path === "/ProjectsPage") ??
+      screens[0];
+    screens.forEach((target) => {
+      if (target.id !== root.id) edges.push({ fromId: root.id, toId: target.id, type: "navigate" });
+    });
+  }
 
   return edges;
 }

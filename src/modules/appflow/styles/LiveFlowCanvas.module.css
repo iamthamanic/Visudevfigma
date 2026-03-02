@@ -250,12 +250,14 @@
   pointer-events: none;
 }
 
+/* SVG selbst fängt keine Klicks – nur die Kanten-Pfade (edgeHit), damit Iframes in den Nodes klickbar bleiben */
 .svgHit {
   display: block;
   position: absolute;
   left: 0;
   top: 0;
   z-index: 2;
+  pointer-events: none;
 }
 
 .edgeHit {
@@ -263,6 +265,7 @@
   stroke: transparent;
   stroke-width: 20;
   cursor: pointer;
+  pointer-events: stroke;
 }
 
 .edgeHit:hover {
@@ -293,6 +296,17 @@
   pointer-events: auto;
   display: flex;
   flex-direction: column;
+  transition:
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.nodeCardFocused {
+  box-shadow: 0 0 0 3px var(--color-primary);
+}
+
+.nodeCardDimmed {
+  opacity: 0.65;
 }
 
 .nodeLabel {
@@ -303,6 +317,34 @@
   color: var(--color-muted-foreground);
   background-color: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.nodeDragHandle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem;
+  margin: -0.2rem 0 -0.2rem -0.2rem;
+  border: none;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  cursor: grab;
+  border-radius: var(--radius-sm);
+}
+.nodeDragHandle:hover {
+  color: var(--color-foreground);
+  background: var(--color-muted);
+}
+.nodeDragHandle:active {
+  cursor: grabbing;
+}
+.nodeDragHandle svg {
+  width: 14px;
+  height: 14px;
 }
 
 .nodeLiveReport {

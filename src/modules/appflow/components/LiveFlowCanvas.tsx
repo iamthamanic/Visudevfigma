@@ -11,9 +11,11 @@ import type { PreviewStepLog } from "../../../utils/api";
 import type { VisudevDomReport } from "../types";
 import {
   getScreenDepths,
+  getScreenPreviewPath,
   buildEdges,
   computePositions,
   normalizePreviewUrl,
+  previewPathToSegment,
   type GraphEdge,
 } from "../layout";
 import { useScreenLoadState, SCREEN_FAIL_REASONS } from "../hooks/useScreenLoadState";
@@ -27,10 +29,12 @@ import styles from "../styles/LiveFlowCanvas.module.css";
 export { SCREEN_FAIL_REASONS };
 
 const NODE_WIDTH = 320;
-const NODE_HEIGHT = 240;
+/** Card height so iframe area is 320×240: 240 + label + report (~56px) */
+const NODE_HEIGHT = 296;
 const HORIZONTAL_SPACING = 60;
 const VERTICAL_SPACING = 40;
 const ANIMATION_DURATION_MS = 400;
+const FOCUS_HIGHLIGHT_MS = 3000;
 
 interface LiveFlowCanvasProps {
   screens: Screen[];
@@ -49,10 +53,13 @@ interface LiveFlowCanvasProps {
   refreshLogs?: PreviewStepLog[];
 }
 
+const POSITIONS_STORAGE_PREFIX = "visudev-flow-positions-";
+
 export function LiveFlowCanvas({
   screens,
   flows,
   previewUrl,
+  projectId,
   previewRunId = null,
   analysisLogs = [],
   previewError,
@@ -63,13 +70,24 @@ export function LiveFlowCanvas({
   const [pan, setPan] = useState({ x: 40, y: 40 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  /** User-dragged position overrides (graph space). Persisted to localStorage by projectId. */
+  const [positionOverrides, setPositionOverrides] = useState<Record<string, { x: number; y: number }>>({});
+  /** Node drag: which screen is being dragged and start coords for delta. */
+  const [nodeDrag, setNodeDrag] = useState<{
+    screenId: string;
+    startClient: { x: number; y: number };
+    startPos: { x: number; y: number };
+  } | null>(null);
   const [animatingEdge, setAnimatingEdge] = useState<GraphEdge | null>(null);
   const [dotPosition, setDotPosition] = useState<{ x: number; y: number } | null>(null);
+  /** When set, this screen card is focused (highlight) and others dimmed; cleared after FOCUS_HIGHLIGHT_MS. */
+  const [focusedScreenId, setFocusedScreenId] = useState<string | null>(null);
   /** Last visudev-dom-report per screen id (from iframe postMessage). */
   const [domReportsByScreenId, setDomReportsByScreenId] = useState<
     Record<string, VisudevDomReport>
   >({});
   const [showTerminal, setShowTerminal] = useState(false);
+  const focusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { screenLoadState, screenFailReason, loadLogs, markScreenLoaded, markScreenFailed } =
     useScreenLoadState(screens, previewUrl, previewError);
@@ -84,7 +102,7 @@ export function LiveFlowCanvas({
   const iframeToScreenRef = useRef<Map<Window, string>>(new Map());
 
   const depths = useMemo(() => getScreenDepths(screens), [screens]);
-  const positions = useMemo(
+  const computedPositions = useMemo(
     () =>
       computePositions(
         screens,
@@ -96,7 +114,49 @@ export function LiveFlowCanvas({
       ),
     [screens, depths],
   );
+  /** Final positions: overrides (from drag) or computed. Used for layout and edges. */
+  const positions = useMemo(() => {
+    const map = new Map<string, { x: number; y: number; depth?: number }>();
+    screens.forEach((s) => {
+      const base = computedPositions.get(s.id);
+      const override = positionOverrides[s.id];
+      if (override != null) {
+        map.set(s.id, { ...override, depth: base?.depth ?? 0 });
+      } else if (base) {
+        map.set(s.id, base);
+      }
+    });
+    return map;
+  }, [screens, computedPositions, positionOverrides]);
   const edges = useMemo(() => buildEdges(screens, flows), [screens, flows]);
+  /** Only navigation edges on canvas to avoid clutter from flow-call edges (141 → ~42 for 7 screens). */
+  const navigateEdges = useMemo(() => edges.filter((e) => e.type === "navigate"), [edges]);
+
+  useEffect(() => {
+    if (!projectId || typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(`${POSITIONS_STORAGE_PREFIX}${projectId}`);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Record<string, { x: number; y: number }>;
+      if (typeof parsed === "object" && parsed !== null) {
+        setPositionOverrides(parsed);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!projectId || typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(
+        `${POSITIONS_STORAGE_PREFIX}${projectId}`,
+        JSON.stringify(positionOverrides),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [projectId, positionOverrides]);
 
   useEffect(() => {
     if (!graphRef.current) return;
@@ -118,7 +178,9 @@ export function LiveFlowCanvas({
     ? Math.max(...Array.from(positions.values()).map((p) => p.y), 0) + NODE_HEIGHT + 80
     : 0;
 
-  const screensWithUrl = screens.filter((s) => normalizePreviewUrl(previewUrl, s.path || "/"));
+  const screensWithUrl = screens.filter((s) =>
+    normalizePreviewUrl(previewUrl, getScreenPreviewPath(s)),
+  );
   const totalWithUrl = screensWithUrl.length;
   const loadedCount = screensWithUrl.filter((s) => screenLoadState[s.id] === "loaded").length;
   const progressPercent = totalWithUrl > 0 ? Math.round((loadedCount / totalWithUrl) * 100) : 100;
@@ -172,21 +234,81 @@ export function LiveFlowCanvas({
     };
   }, [animatingEdge, runEdgeAnimation]);
 
+  useEffect(() => {
+    return () => {
+      if (focusTimeoutRef.current) {
+        clearTimeout(focusTimeoutRef.current);
+        focusTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
   const handleEdgeClick = useCallback((edge: GraphEdge) => {
     setAnimatingEdge(edge);
     setDotPosition(null);
   }, []);
 
+  const handleNodeDragStart = useCallback(
+    (screenId: string, clientX: number, clientY: number) => {
+      const pos = positions.get(screenId);
+      if (!pos) return;
+      setNodeDrag({
+        screenId,
+        startClient: { x: clientX, y: clientY },
+        startPos: { x: pos.x, y: pos.y },
+      });
+    },
+    [positions],
+  );
+
+  const applyNodeDragMove = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!nodeDrag) return;
+      const dx = (clientX - nodeDrag.startClient.x) / zoom;
+      const dy = (clientY - nodeDrag.startClient.y) / zoom;
+      setPositionOverrides((prev) => ({
+        ...prev,
+        [nodeDrag.screenId]: {
+          x: nodeDrag.startPos.x + dx,
+          y: nodeDrag.startPos.y + dy,
+        },
+      }));
+    },
+    [nodeDrag, zoom],
+  );
+
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0) {
+    if (e.button === 0 && !nodeDrag) {
       setIsDragging(true);
       setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
     }
   };
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging) setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+    if (nodeDrag) {
+      applyNodeDragMove(e.clientX, e.clientY);
+    } else if (isDragging) {
+      setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+    }
   };
-  const handleMouseUp = () => setIsDragging(false);
+  const handleMouseUp = useCallback(() => {
+    if (nodeDrag) setNodeDrag(null);
+    setIsDragging(false);
+  }, [nodeDrag]);
+
+  useEffect(() => {
+    if (!nodeDrag) return;
+    const onMove = (e: MouseEvent) => applyNodeDragMove(e.clientX, e.clientY);
+    const onUp = () => {
+      setNodeDrag(null);
+      setIsDragging(false);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [nodeDrag, applyNodeDragMove]);
 
   const handleZoomIn = () => setZoom((z) => Math.min(z + 0.1, 1.5));
   const handleZoomOut = () => setZoom((z) => Math.max(z - 0.1, 0.25));
@@ -206,6 +328,33 @@ export function LiveFlowCanvas({
     }
   }, []);
 
+  const onNavigateToScreen = useCallback(
+    (targetScreenId: string) => {
+      if (focusTimeoutRef.current) {
+        clearTimeout(focusTimeoutRef.current);
+        focusTimeoutRef.current = null;
+      }
+      const pos = positions.get(targetScreenId);
+      const canvas = canvasRef.current;
+      if (pos && canvas) {
+        const cx = canvas.clientWidth / 2;
+        const cy = canvas.clientHeight / 2;
+        const nodeCenterX = pos.x + NODE_WIDTH / 2;
+        const nodeCenterY = pos.y + NODE_HEIGHT / 2;
+        setPan({
+          x: cx - nodeCenterX * zoom,
+          y: cy - nodeCenterY * zoom,
+        });
+      }
+      setFocusedScreenId(targetScreenId);
+      focusTimeoutRef.current = setTimeout(() => {
+        setFocusedScreenId(null);
+        focusTimeoutRef.current = null;
+      }, FOCUS_HIGHLIGHT_MS);
+    },
+    [positions, zoom],
+  );
+
   usePreviewPostMessage(
     iframeToScreenRef,
     screens,
@@ -214,6 +363,7 @@ export function LiveFlowCanvas({
     markScreenFailed,
     setDomReportsByScreenId,
     setAnimatingEdge,
+    onNavigateToScreen,
   );
 
   if (screens.length === 0) {
@@ -241,6 +391,8 @@ export function LiveFlowCanvas({
         onZoomReset={handleZoomReset}
         showTerminal={showTerminal}
         onToggleTerminal={() => setShowTerminal((v) => !v)}
+        hasPositionOverrides={Object.keys(positionOverrides).length > 0}
+        onResetPositions={() => setPositionOverrides({})}
       />
 
       {showTerminal && (
@@ -269,7 +421,15 @@ export function LiveFlowCanvas({
             {screens.map((screen) => {
               const pos = positions.get(screen.id);
               if (!pos) return null;
-              const iframeSrc = normalizePreviewUrl(previewUrl, screen.path || "/");
+              const previewPath = getScreenPreviewPath(screen);
+              const baseUrl = normalizePreviewUrl(previewUrl, previewPath);
+              const segment = previewPathToSegment(previewPath);
+              const baseNoHash = baseUrl ? baseUrl.replace(/#.*$/, "") : "";
+              const iframeSrc = baseNoHash
+                ? `${baseNoHash}#visudev-screen=${encodeURIComponent(segment)}`
+                : "";
+              const isFocused = focusedScreenId === screen.id;
+              const isDimmed = focusedScreenId != null && focusedScreenId !== screen.id;
               return (
                 <FlowNodeCard
                   key={screen.id}
@@ -284,13 +444,16 @@ export function LiveFlowCanvas({
                   registerIframe={(win, screenId) => iframeToScreenRef.current.set(win, screenId)}
                   nodeWidth={NODE_WIDTH}
                   nodeHeight={NODE_HEIGHT}
+                  isFocused={isFocused}
+                  isDimmed={isDimmed}
+                  onDragHandleMouseDown={handleNodeDragStart}
                 />
               );
             })}
           </div>
 
           <FlowEdgesLayer
-            edges={edges}
+            edges={navigateEdges}
             positions={positions}
             maxX={maxX}
             maxY={maxY}

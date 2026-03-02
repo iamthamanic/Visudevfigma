@@ -1,10 +1,12 @@
 /**
  * FlowNodeCard – Einzelne Screen-Karte im Live Flow (Label, Iframe, Fehler oder Platzhalter).
+ * Optional: Drag-Handle zum Verschieben der Karte auf dem Canvas.
  * Location: src/modules/appflow/components/FlowNodeCard.tsx
  */
 
-import { Loader2 } from "lucide-react";
+import { GripVertical, Loader2 } from "lucide-react";
 import type { CSSProperties } from "react";
+import clsx from "clsx";
 import type { Screen } from "../../../lib/visudev/types";
 import type { VisudevDomReport } from "../types";
 import styles from "../styles/LiveFlowCanvas.module.css";
@@ -30,6 +32,10 @@ interface FlowNodeCardProps {
   registerIframe: (win: Window, screenId: string) => void;
   nodeWidth: number;
   nodeHeight: number;
+  isFocused?: boolean;
+  isDimmed?: boolean;
+  /** Called when user starts dragging this card (mousedown on handle). Pass clientX, clientY for delta calculation. */
+  onDragHandleMouseDown?: (screenId: string, clientX: number, clientY: number) => void;
 }
 
 export function FlowNodeCard({
@@ -44,6 +50,9 @@ export function FlowNodeCard({
   registerIframe,
   nodeWidth,
   nodeHeight,
+  isFocused = false,
+  isDimmed = false,
+  onDragHandleMouseDown,
 }: FlowNodeCardProps) {
   const reason = failReason ?? NODE_FAIL_REASONS.LOAD_ERROR;
   const isConnectionError =
@@ -51,7 +60,11 @@ export function FlowNodeCard({
 
   return (
     <div
-      className={styles.nodeCard}
+      className={clsx(
+        styles.nodeCard,
+        isFocused && styles.nodeCardFocused,
+        isDimmed && styles.nodeCardDimmed,
+      )}
       ref={(el) => {
         if (el) {
           el.style.setProperty("--node-left", `${pos.x}px`);
@@ -62,6 +75,20 @@ export function FlowNodeCard({
       }}
     >
       <div className={styles.nodeLabel}>
+        {onDragHandleMouseDown && (
+          <button
+            type="button"
+            className={styles.nodeDragHandle}
+            aria-label="Karte verschieben"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onDragHandleMouseDown(screen.id, e.clientX, e.clientY);
+            }}
+          >
+            <GripVertical aria-hidden="true" />
+          </button>
+        )}
         {screen.name}
         {screen.path ? ` · ${screen.path}` : ""}
       </div>
@@ -127,13 +154,6 @@ export function FlowNodeCard({
             <div className={styles.nodeLoadingOverlay} data-testid="screen-card-loading">
               <Loader2 className={styles.nodeLoadingSpinner} aria-hidden="true" />
               <span className={styles.nodeLoadingText}>Laden…</span>
-            </div>
-          )}
-          {loadState === "loaded" && (
-            <div className={styles.nodeLoadedHint} role="status">
-              Fehlermeldung (Bad Gateway/ECONNREFUSED)? → Preview-App läuft nicht, „Preview neu
-              starten“. Karte ganz leer? → Einbetten (X-Frame-Options/CSP) in der Preview-App
-              erlauben.
             </div>
           )}
         </div>

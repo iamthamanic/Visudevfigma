@@ -4,7 +4,7 @@
  */
 
 import clsx from "clsx";
-import { ZoomIn, ZoomOut, Home, Terminal } from "lucide-react";
+import { ZoomIn, ZoomOut, Home, Terminal, LayoutGrid } from "lucide-react";
 import styles from "../styles/LiveFlowCanvas.module.css";
 
 interface CanvasToolbarProps {
@@ -19,6 +19,9 @@ interface CanvasToolbarProps {
   onZoomReset: () => void;
   showTerminal: boolean;
   onToggleTerminal: () => void;
+  /** When true, show "Positionen zurücksetzen" (clear drag overrides). */
+  hasPositionOverrides?: boolean;
+  onResetPositions?: () => void;
 }
 
 export function CanvasToolbar({
@@ -33,6 +36,8 @@ export function CanvasToolbar({
   onZoomReset,
   showTerminal,
   onToggleTerminal,
+  hasPositionOverrides = false,
+  onResetPositions,
 }: CanvasToolbarProps): React.ReactElement {
   return (
     <div className={styles.controls}>
@@ -53,9 +58,20 @@ export function CanvasToolbar({
       <button type="button" onClick={onZoomIn} className={styles.zoomBtn} title="Vergrößern">
         <ZoomIn className={styles.zoomIcon} aria-hidden="true" />
       </button>
-      <button type="button" onClick={onZoomReset} className={styles.zoomBtn} title="Zurücksetzen">
+      <button type="button" onClick={onZoomReset} className={styles.zoomBtn} title="Zoom & Pan zurücksetzen">
         <Home className={styles.zoomIcon} aria-hidden="true" />
       </button>
+      {hasPositionOverrides && onResetPositions && (
+        <button
+          type="button"
+          onClick={onResetPositions}
+          className={styles.zoomBtn}
+          title="Kartenpositionen auf automatisches Layout zurücksetzen"
+        >
+          <LayoutGrid className={styles.zoomIcon} aria-hidden="true" />
+          <span className={styles.terminalBtnLabel}>Layout</span>
+        </button>
+      )}
       <button
         type="button"
         onClick={onToggleTerminal}
@@ -70,10 +86,7 @@ export function CanvasToolbar({
         <Terminal className={styles.zoomIcon} aria-hidden="true" />
         <span className={styles.terminalBtnLabel}>Logs</span>
       </button>
-      <span className={styles.hint}>
-        Klick auf Kante: Punkt animiert. Bad Gateway/ECONNREFUSED? → Preview-App läuft nicht,
-        „Preview neu starten“. Leere Karten? → X-Frame-Options/CSP in der Preview-App erlauben.
-      </span>
+      <span className={styles.hint}>Klick auf Kante: Punkt animiert.</span>
     </div>
   );
 }

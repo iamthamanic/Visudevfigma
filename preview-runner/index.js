@@ -9,10 +9,13 @@
  */
 
 import crypto from "node:crypto";
+import fs from "node:fs";
 import http from "node:http";
 import net from "node:net";
+import path from "node:path";
 import {
   getWorkspaceDir,
+  getLocalWorkspaceOverride,
   listPreviewCandidates,
   resolveAppWorkspaceDir,
   cloneOrPull,
@@ -31,6 +34,7 @@ import {
   isDockerAvailable,
   getContainerLogs,
   getContainerStatus,
+  streamContainerLogs,
 } from "./docker.js";
 
 const PORT = Number(process.env.PORT) || 4000;
@@ -81,6 +85,8 @@ const STOPPED_RUN_MAX_AGE_MS = Math.max(
   Number(process.env.STOPPED_RUN_MAX_AGE_MS) || 12 * 60 * 60 * 1000,
 );
 const STOPPED_RUN_MAX_COUNT = Math.max(20, Number(process.env.STOPPED_RUN_MAX_COUNT) || 300);
+/** Max time for npm install + build per candidate. After this the run fails with a clear message. */
+const BUILD_TIMEOUT_MS = Math.max(60_000, Number(process.env.BUILD_TIMEOUT_MS) || 6 * 60 * 1000);
 
 function resolveBootMode(value) {
   const raw = String(value || PREVIEW_BOOT_MODE_DEFAULT)
@@ -282,6 +288,8 @@ function buildProxyRequestHeaders(headers, targetPort) {
   };
   delete next["if-none-match"];
   delete next["if-modified-since"];
+  delete next["referer"];
+  delete next["referrer"];
   return next;
 }
 
@@ -289,6 +297,9 @@ function forwardProxyResponse(upstreamRes, downstreamRes, requestMethod) {
   const headers = { ...upstreamRes.headers };
   delete headers["x-frame-options"];
   delete headers["content-security-policy"];
+  delete headers["content-security-policy-report-only"];
+  delete headers["cross-origin-embedder-policy"];
+  delete headers["cross-origin-opener-policy"];
   headers["content-security-policy"] = FRAME_ANCESTORS;
   const statusCode = upstreamRes.statusCode || 502;
   const contentType = String(headers["content-type"] || "");
@@ -955,6 +966,18 @@ function pushLog(run, message) {
   run.logs.push({ time: new Date().toISOString(), message: sanitizeDiagnosticText(message) });
 }
 
+/** Beendet den Docker-Log-Stream für diesen Run, falls aktiv. */
+function stopDockerLogStream(run) {
+  if (run.dockerLogStreamProcess) {
+    try {
+      run.dockerLogStreamProcess.kill();
+    } catch (_) {
+      /* ignore */
+    }
+    run.dockerLogStreamProcess = undefined;
+  }
+}
+
 function bindChildExit(run, runId, child) {
   child.on("exit", (code, signal) => {
     if (run.childProcess === child) {
@@ -1050,6 +1073,20 @@ async function stopChildProcess(child) {
   });
 }
 
+function forceServeSpaConfig(appDir, config) {
+  if (!config || typeof config !== "object") return config;
+  if (fs.existsSync(path.join(appDir, "dist"))) {
+    return { ...config, startCommand: "npx serve dist -s" };
+  }
+  if (fs.existsSync(path.join(appDir, "build"))) {
+    return { ...config, startCommand: "npx serve build -s" };
+  }
+  if (fs.existsSync(path.join(appDir, "out"))) {
+    return { ...config, startCommand: "npx serve out -s" };
+  }
+  return config;
+}
+
 async function startCandidateProcess(
   run,
   runId,
@@ -1059,7 +1096,8 @@ async function startCandidateProcess(
   timeoutMs,
   shouldAbort = null,
 ) {
-  const child = startApp(candidate.appDir, appPort, config);
+  const effectiveConfig = forceServeSpaConfig(candidate.appDir, config);
+  const child = startApp(candidate.appDir, appPort, effectiveConfig);
   pushInjectedEnvHint(run, child);
   try {
     await waitForAppReady(appPort, timeoutMs, shouldAbort);
@@ -1128,18 +1166,48 @@ async function bootPreviewByCandidates({
     };
 
     let buildErr = null;
-    pushLog(run, `Build: npm install / build … ${prefix}`);
+    pushLog(
+      run,
+      `Build: npm install / build … ${prefix} (Timeout: ${Math.floor(BUILD_TIMEOUT_MS / 1000)}s)`,
+    );
+    const buildPromise = runBuildNodeDirect(candidate.appDir);
+    const buildTimeoutPromise = new Promise((_, reject) => {
+      setTimeout(
+        () =>
+          reject(
+            new Error(
+              `Build hat zu lange gedauert (Timeout ${Math.floor(BUILD_TIMEOUT_MS / 1000)}s). Bitte lokal prüfen: npm install && npm run build im App-Verzeichnis.`,
+            ),
+          ),
+        BUILD_TIMEOUT_MS,
+      );
+    });
     try {
-      await runBuildNodeDirect(candidate.appDir);
+      await Promise.race([buildPromise, buildTimeoutPromise]);
       pushLog(run, `Build fertig ${prefix}`);
     } catch (e) {
+      buildPromise.catch(() => {}); // avoid unhandled rejection when build finishes later
       buildErr = e;
       if (isNpmOrGitHelpError(e.message)) {
+        const retryPromise = runBuild(candidate.appDir, config);
+        const retryTimeoutPromise = new Promise((_, reject) => {
+          setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `Build (Retry) hat zu lange gedauert (Timeout ${Math.floor(BUILD_TIMEOUT_MS / 1000)}s).`,
+                ),
+              ),
+            BUILD_TIMEOUT_MS,
+          );
+        });
         try {
-          await runBuild(candidate.appDir, config);
+          await Promise.race([retryPromise, retryTimeoutPromise]);
+          retryPromise.catch(() => {});
           buildErr = null;
           pushLog(run, `Build fertig ${prefix}`);
         } catch (retryErr) {
+          retryPromise.catch(() => {});
           buildErr = retryErr;
         }
       }
@@ -1303,18 +1371,24 @@ async function buildAndStartAsync(runId) {
     releasePortAndStartPlaceholder(proxyPort, `Build/Start fehlgeschlagen:\n${displayMsg}${hint}`);
   };
 
+  const useLocalWorkspace = !!getLocalWorkspaceOverride();
+
   return withWorkspaceLock(projectId, async () => {
     try {
       assertActive();
-      pushLog(run, "Git: Clone/Pull …");
-      await cloneOrPull(repo, branchOrCommit, workspaceDir);
-      assertActive();
-      pushLog(run, "Git: Clone/Pull fertig");
-      if (run.commitSha) {
-        pushLog(run, `Git: Checkout Commit ${run.commitSha.slice(0, 8)} …`);
-        await checkoutCommit(workspaceDir, run.commitSha, branchOrCommit);
+      if (useLocalWorkspace) {
+        pushLog(run, "Lokales Workspace (USE_LOCAL_WORKSPACE): Git-Schritt übersprungen.");
+      } else {
+        pushLog(run, "Git: Clone/Pull …");
+        await cloneOrPull(repo, branchOrCommit, workspaceDir);
         assertActive();
-        pushLog(run, `Git: Checkout Commit ${run.commitSha.slice(0, 8)} fertig`);
+        pushLog(run, "Git: Clone/Pull fertig");
+        if (run.commitSha) {
+          pushLog(run, `Git: Checkout Commit ${run.commitSha.slice(0, 8)} …`);
+          await checkoutCommit(workspaceDir, run.commitSha, branchOrCommit);
+          assertActive();
+          pushLog(run, `Git: Checkout Commit ${run.commitSha.slice(0, 8)} fertig`);
+        }
       }
       const rootConfig = getConfig(workspaceDir, workspaceDir);
       const appCandidates = listPreviewCandidates(workspaceDir, rootConfig, 8);
@@ -1367,6 +1441,8 @@ async function buildAndStartAsync(runId) {
           }
         }
         run.containerId = containerName;
+        run.dockerLogStreamProcess =
+          streamContainerLogs(containerName, (msg) => pushLog(run, msg)) ?? undefined;
         const startupMonitor = createDockerStartupMonitor(run, containerName);
         assertActive();
         const proxyServer = await createFrameProxy(run.proxyPort, run.appPort);
@@ -1425,6 +1501,7 @@ async function buildAndStartAsync(runId) {
     } catch (err) {
       if (isRunAbortError(err) || !isActive()) {
         if (USE_DOCKER && run.containerId) {
+          stopDockerLogStream(run);
           try {
             await stopContainer(runId);
           } catch (error) {
@@ -1442,6 +1519,7 @@ async function buildAndStartAsync(runId) {
         if (diag?.summary) dockerSummary = diag.summary;
       }
       if (USE_DOCKER && run.containerId) {
+        stopDockerLogStream(run);
         try {
           await stopContainer(runId);
         } catch (error) {
@@ -1492,6 +1570,7 @@ async function refreshAsync(runId) {
   pushLog(run, "Refresh gestartet.");
 
   if (run.containerId) {
+    stopDockerLogStream(run);
     try {
       await stopContainer(runId);
     } catch (error) {
@@ -1506,13 +1585,19 @@ async function refreshAsync(runId) {
     run.childProcess = null;
   }
 
+  const useLocalWorkspace = !!getLocalWorkspaceOverride();
+
   return withWorkspaceLock(projectId, async () => {
     try {
       assertActive();
-      pushLog(run, "Git: Pull …");
-      await cloneOrPull(repo, branchOrCommit, workspaceDir);
-      assertActive();
-      pushLog(run, "Git: Pull fertig");
+      if (useLocalWorkspace) {
+        pushLog(run, "Lokales Workspace (USE_LOCAL_WORKSPACE): Git-Pull übersprungen.");
+      } else {
+        pushLog(run, "Git: Pull …");
+        await cloneOrPull(repo, branchOrCommit, workspaceDir);
+        assertActive();
+        pushLog(run, "Git: Pull fertig");
+      }
       const rootConfig = getConfig(workspaceDir, workspaceDir);
       const appCandidates = listPreviewCandidates(workspaceDir, rootConfig, 8);
       const appWorkspace = appCandidates[0] ?? resolveAppWorkspaceDir(workspaceDir, rootConfig);
@@ -1572,6 +1657,8 @@ async function refreshAsync(runId) {
           }
         }
         run.containerId = containerName;
+        run.dockerLogStreamProcess =
+          streamContainerLogs(containerName, (msg) => pushLog(run, msg)) ?? undefined;
         const startupMonitor = createDockerStartupMonitor(run, containerName);
         assertActive();
         pushLog(
@@ -1624,6 +1711,7 @@ async function refreshAsync(runId) {
     } catch (err) {
       if (isRunAbortError(err) || !isActive()) {
         if (USE_DOCKER && run.containerId) {
+          stopDockerLogStream(run);
           try {
             await stopContainer(runId);
           } catch (error) {
@@ -1641,6 +1729,7 @@ async function refreshAsync(runId) {
         if (diag?.summary) dockerSummary = diag.summary;
       }
       if (USE_DOCKER && run.containerId) {
+        stopDockerLogStream(run);
         try {
           await stopContainer(runId);
         } catch (error) {
@@ -1958,6 +2047,7 @@ async function stopRun(runId, run) {
   pushLog(run, "Run wurde gestoppt.");
 
   if (run.containerId) {
+    stopDockerLogStream(run);
     try {
       await stopContainer(runId);
     } catch (error) {
@@ -2379,6 +2469,9 @@ findFreeRunnerPort().then((actualPort) => {
       const defaultBestEffort = resolveBootMode(PREVIEW_BOOT_MODE_DEFAULT) !== "strict";
       console.log(
         `  Default boot mode: ${resolveBootMode(PREVIEW_BOOT_MODE_DEFAULT)} (${defaultBestEffort ? "fallback erlaubt" : "strict"})`,
+      );
+      console.log(
+        `  BUILD_TIMEOUT_MS=${BUILD_TIMEOUT_MS} (${Math.floor(BUILD_TIMEOUT_MS / 1000)}s pro Kandidat)`,
       );
     }
     if (PREVIEW_BASE_URL) {

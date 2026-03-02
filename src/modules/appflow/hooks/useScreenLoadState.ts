@@ -6,7 +6,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type { Screen } from "../../../lib/visudev/types";
-import { normalizePreviewUrl } from "../layout";
+import { getScreenPreviewPath, normalizePreviewUrl } from "../layout";
 
 const SCREEN_LOAD_TIMEOUT_MS = 60_000;
 
@@ -81,7 +81,7 @@ function buildLoadBootstrap(
   }
 
   screens.forEach((s) => {
-    const src = normalizePreviewUrl(previewUrl, s.path || "/");
+    const src = normalizePreviewUrl(previewUrl, getScreenPreviewPath(s));
     if (src) {
       screensWithUrl.push({ screen: s, src });
       initialState[s.id] = "loading";
@@ -99,12 +99,13 @@ function buildLoadBootstrap(
   });
 
   screens.forEach((s) => {
-    const src = normalizePreviewUrl(previewUrl, s.path || "/");
+    const path = getScreenPreviewPath(s);
+    const src = normalizePreviewUrl(previewUrl, path);
     if (!src) {
       logEntries.push({
         id: `${s.id}-no-url`,
         time: new Date().toLocaleTimeString("de-DE"),
-        message: `✗ ${s.name} (${s.path || "/"}): Keine URL – Basis-URL oder Screen-Pfad fehlt. Basis-URL war: ${previewUrl || "(leer)"}`,
+        message: `✗ ${s.name} (${path}): Keine URL – Basis-URL oder Screen-Pfad fehlt. Basis-URL war: ${previewUrl || "(leer)"}`,
         type: "error",
       });
       return;
@@ -113,7 +114,7 @@ function buildLoadBootstrap(
     logEntries.push({
       id: `${s.id}-start`,
       time: new Date().toLocaleTimeString("de-DE"),
-      message: `Schritt 2: Iframe für "${s.name}" (Pfad: ${s.path || "/"}) eingebunden. URL: ${src}. Warte auf onLoad oder Timeout.`,
+      message: `Schritt 2: Iframe für "${s.name}" (Pfad: ${path}) eingebunden. URL: ${src}. Warte auf onLoad oder Timeout.`,
       type: "info",
     });
   });
@@ -195,7 +196,7 @@ export function useScreenLoadState(
               ? `✓ ${name}: DOM-Report aus dem Iframe empfangen (Dokument aktiv).`
               : source === "timeout-fallback"
                 ? `✓ ${name}: Nach Timeout als geladen markiert (Seite könnte noch Ressourcen laden).`
-                : `✓ ${name}: onLoad ausgelöst (Dokument geladen). Leere Karte? Dann blockiert die App Einbetten (X-Frame-Options/CSP) oder liefert leere Seite.`,
+                : `✓ ${name}: onLoad ausgelöst (Dokument geladen). Leere Karte? „In neuem Tab öffnen“ auf der Karte testen – wenn dort Inhalt sichtbar ist, blockiert die App die Einbettung (CSP/X-Frame-Options). Sonst: App liefert leere Seite (z. B. Auth, fehlende Env).`,
           type: "success" as const,
         },
       ]);

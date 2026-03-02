@@ -1,4 +1,4 @@
-export { getWorkspaceDir } from "./build-workspace.js";
+export { getWorkspaceDir, getLocalWorkspaceOverride } from "./build-workspace.js";
 export { listPreviewCandidates, resolveAppWorkspaceDir } from "./build-candidates.js";
 export {
   cloneOrPull,

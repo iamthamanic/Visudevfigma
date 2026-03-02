@@ -28,8 +28,17 @@ type PendingPreviewAction = "start" | "restart" | "refresh" | null;
 
 const PREVIEW_POLL_INTERVAL_MS = 2500;
 const AUTO_PREVIEW_DELAY_MS = 800;
-/** Nach dieser Zeit wird "starting" als fehlgeschlagen markiert (Runner/Build reagiert nicht). */
-const PREVIEW_START_TIMEOUT_MS = 5 * 60 * 1000 + 15_000; // Runner-Default (300s) + kurzer Puffer
+/** Nach dieser Zeit wird "starting" als fehlgeschlagen markiert. Sollte > Runner BUILD_TIMEOUT_MS (6 Min) sein, damit der Runner zuerst mit klarer Build-Timeout-Meldung antwortet. */
+const PREVIEW_START_TIMEOUT_MS = 7 * 60 * 1000; // 7 Min
+
+/** Format ISO timestamp as DD.MM.YYYY - HH:MM:SS for display in live app bar. */
+function formatDateTime(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} - ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
 
 export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPageProps) {
   const {
@@ -346,6 +355,22 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     return appflowScans[0]?.logs ?? [];
   }, [projectId, scans]);
 
+  /** Last completed appflow analysis timestamp (for "Letzte Code-Analyse" in live app bar). */
+  const lastAnalysisAt = useMemo(() => {
+    const completed = scans
+      .filter(
+        (s) => s.projectId === projectId && s.scanType === "appflow" && s.completedAt != null,
+      )
+      .sort((a, b) =>
+        (Date.parse(b.completedAt!) || 0) - (Date.parse(a.completedAt!) || 0),
+      );
+    return completed[0]?.completedAt ?? null;
+  }, [projectId, scans]);
+
+  /** Last time preview became ready (for "Letzter Preview-Start" in live app bar). */
+  const lastPreviewReadyAt =
+    preview.projectId === projectId ? preview.previewReadyAt ?? null : null;
+
   if (!activeProject) {
     return (
       <div className={styles.centerState}>
@@ -377,8 +402,14 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     preview.projectId === projectId && preview.status === "starting";
   const activeStartingAction = isPreviewStartingForProject ? startingActionRef.current : null;
   const isRefreshLoading = pendingPreviewAction === "refresh" || activeStartingAction === "refresh";
-  const isRestartLoading = pendingPreviewAction === "restart" || activeStartingAction === "restart";
-  const isStartLoading = pendingPreviewAction === "start" || activeStartingAction === "start";
+  const isRestartLoading =
+    pendingPreviewAction === "restart" ||
+    activeStartingAction === "restart" ||
+    isPreviewStartingForProject;
+  const isStartLoading =
+    pendingPreviewAction === "start" ||
+    activeStartingAction === "start" ||
+    (isPreviewStartingForProject && !preview.previewUrl);
   const disablePreviewStartActions =
     pendingPreviewAction !== null || (isPreviewStartingForProject && activeStartingAction !== null);
   const showDockerMissingWarning =
@@ -521,17 +552,27 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
         {hasData ? (
           <div className={styles.liveAppWrap}>
             <div className={styles.liveAppBar}>
-              <span className={styles.liveAppLabel}>
-                Sitemap · {activeProject.screens.length} Screens · {activeProject.flows.length}{" "}
-                Flows
-                {liveFlowFromDeployed ? " (Deployed URL)" : " (Preview)"}
-                {liveFlowBaseUrl && (
-                  <span className={styles.liveAppBarUrl} title="Basis-URL für die Karten">
-                    {" "}
-                    · {liveFlowBaseUrl}
-                  </span>
-                )}
-              </span>
+              <div className={styles.liveAppLabelBlock}>
+                <span className={styles.liveAppLabel}>
+                  Sitemap · {activeProject.screens.length} Screens · {activeProject.flows.length}{" "}
+                  Flows
+                  {liveFlowFromDeployed ? " (Deployed URL)" : " (Preview)"}
+                  {liveFlowBaseUrl && (
+                    <span className={styles.liveAppBarUrl} title="Basis-URL für die Karten">
+                      {" "}
+                      · {liveFlowBaseUrl}
+                    </span>
+                  )}
+                </span>
+                <span className={styles.liveAppLabelMeta}>
+                  Letzte Code-Analyse: {formatDateTime(lastAnalysisAt) ?? "–"}
+                  {" · "}
+                  Letzter Preview-Start: {formatDateTime(lastPreviewReadyAt) ?? "–"}
+                  {!liveFlowFromDeployed &&
+                    activeProject.screens.length > 0 &&
+                    ' · Unterschiedliche Inhalte pro Karte: Preview mit aktuellem Code (USE_LOCAL_WORKSPACE oder Push + "Preview aktualisieren").'}
+                </span>
+              </div>
               <div className={styles.liveAppBarRight}>
                 {!liveFlowFromDeployed && (
                   <div className={styles.liveAppBarActions}>
