@@ -171,6 +171,15 @@ export const blueprintAPI = {
   // Get blueprint for project
   get: (projectId: string) => apiRequest<BlueprintData>(`/visudev-blueprint/${projectId}`),
 
+  analyze: (payload: { repo: string; branch: string; projectId: string }) =>
+    apiRequest<{ blueprint: BlueprintData; analysisId: string }>(
+      "/visudev-analyzer/blueprint/analyze",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    ),
+
   // Update blueprint
   update: (projectId: string, data: BlueprintUpdateInput) =>
     apiRequest(`/visudev-blueprint/${projectId}`, {

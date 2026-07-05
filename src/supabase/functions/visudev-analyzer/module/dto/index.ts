@@ -10,3 +10,4 @@ export * from "./screenshots/screenshot-request.dto.ts";
 export * from "./screenshots/screenshot-result.dto.ts";
 export * from "./screenshots/screenshot-response.dto.ts";
 export * from "./db/db-schema.dto.ts";
+export * from "./blueprint/blueprint-document.dto.ts";

@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "repo": "iamthamanic/Visudevfigma",
+  "activeIssue": 1,
+  "featureSlug": "blueprint-engine-core",
+  "phase": "commit",
+  "branch": "issue/1-blueprint-engine-core",
+  "prUrl": null,
+  "milestoneFilter": null,
+  "paused": true,
+  "runMode": "batch",
+  "queue": [1, 7],
+  "completedIssues": [],
+  "retries": {
+    "implement": 0,
+    "verifyTicket": 0,
+    "verifyUi": 1,
+    "review": 1
+  },
+  "maxRetries": {
+    "implement": 3,
+    "verifyTicket": 2,
+    "verifyUi": 2,
+    "review": 2,
+    "sameRootCause": 2
+  },
+  "lastError": "Pre-push blocked: AI review 50% (need 95%), npm audit high",
+  "lastErrorCount": 1,
+  "issuesProcessedInSession": 0,
+  "updatedAt": "2026-07-05T16:36:00.000Z"
+}

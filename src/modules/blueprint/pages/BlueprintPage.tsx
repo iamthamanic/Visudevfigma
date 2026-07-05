@@ -2,7 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, Download, Loader2, RefreshCw } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
 import { blueprintAPI } from "../../../utils/api";
-import type { BlueprintData, BlueprintCycle, RuleViolation } from "../types";
+import { FindingInspector } from "../components/FindingInspector";
+import { RouteBlueprintCanvas } from "../components/RouteBlueprintCanvas";
+import { SecurityMatrix } from "../components/SecurityMatrix";
+import { findingsForRoute } from "../services/blueprint-helpers";
+import { normalizeBlueprintData } from "../services/normalize-blueprint";
+import type { BlueprintData, BlueprintFinding, RouteBlueprint } from "../types";
 import styles from "../styles/BlueprintPage.module.css";
 
 function downloadFile(content: string, filename: string, mimeType: string) {
@@ -23,13 +28,15 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
   const [isRescan, setIsRescan] = useState(false);
   const [blueprint, setBlueprint] = useState<BlueprintData | null>(null);
   const [blueprintLoadError, setBlueprintLoadError] = useState<string | null>(null);
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  const [selectedFindingId, setSelectedFindingId] = useState<string | null>(null);
 
   const loadBlueprint = useCallback(async () => {
     if (!projectId) return;
     setBlueprintLoadError(null);
     const res = await blueprintAPI.get(projectId);
     if (res.success && res.data) {
-      setBlueprint(res.data as BlueprintData);
+      setBlueprint(normalizeBlueprintData(res.data as Record<string, unknown>));
     } else {
       setBlueprint(null);
       if (!res.success)
@@ -58,40 +65,48 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
     }
   }, [projectId, scanStatuses.blueprint.status, isRescan, loadBlueprint]);
 
-  const isScanning = scanStatuses.blueprint.status === "running" || isRescan;
-  const hasError = scanStatuses.blueprint.status === "failed";
-  const violations: RuleViolation[] = Array.isArray(blueprint?.violations)
-    ? blueprint.violations
-    : [];
-  const cycles = useMemo<BlueprintCycle[]>(
-    () => (Array.isArray(blueprint?.cycles) ? blueprint.cycles : []),
-    [blueprint?.cycles],
+  const routes = useMemo(
+    () => (Array.isArray(blueprint?.routes) ? blueprint.routes : []),
+    [blueprint?.routes],
+  );
+  const matrix = useMemo(
+    () => (Array.isArray(blueprint?.securityMatrix) ? blueprint.securityMatrix : []),
+    [blueprint?.securityMatrix],
+  );
+  const allFindings = useMemo(
+    () => (Array.isArray(blueprint?.findings) ? blueprint.findings : []),
+    [blueprint?.findings],
+  );
+  const facts = useMemo(
+    () => (Array.isArray(blueprint?.facts) ? blueprint.facts : []),
+    [blueprint?.facts],
   );
 
-  function severityClass(severity: RuleViolation["severity"]) {
-    if (severity === "error") return styles.severityError;
-    if (severity === "warn") return styles.severityWarn;
-    return styles.severityInfo;
-  }
+  useEffect(() => {
+    if (routes.length > 0 && !selectedRouteId) {
+      setSelectedRouteId(routes[0].id);
+    }
+  }, [routes, selectedRouteId]);
+
+  const selectedRoute: RouteBlueprint | null = useMemo(
+    () => routes.find((r) => r.id === selectedRouteId) ?? null,
+    [routes, selectedRouteId],
+  );
+
+  const routeFindings: BlueprintFinding[] = useMemo(
+    () => (selectedRouteId ? findingsForRoute(allFindings, selectedRouteId) : allFindings),
+    [allFindings, selectedRouteId],
+  );
+
+  const isScanning = scanStatuses.blueprint.status === "running" || isRescan;
+  const hasError = scanStatuses.blueprint.status === "failed";
+  const scanCompleted = scanStatuses.blueprint.status === "completed";
+  const hasData = scanCompleted || routes.length > 0 || allFindings.length > 0;
 
   const handleExportJson = useCallback(() => {
     const data = blueprint ?? {};
     downloadFile(JSON.stringify(data, null, 2), `blueprint-${projectId}.json`, "application/json");
   }, [blueprint, projectId]);
-
-  const handleExportMermaid = useCallback(() => {
-    const lines: string[] = ["flowchart LR"];
-    const id = (s: string) => s.replace(/\s+/g, "_").replace(/-/g, "_") || "node";
-    cycles.forEach((c) => {
-      if (c.nodes.length < 2) return;
-      c.nodes.forEach((node, i) => {
-        const next = c.nodes[(i + 1) % c.nodes.length];
-        lines.push(`  ${id(node)} --> ${id(next)}`);
-      });
-    });
-    if (lines.length === 1) lines.push("  empty[Keine Zyklen]");
-    downloadFile(lines.join("\n"), `blueprint-${projectId}.md`, "text/markdown");
-  }, [cycles, projectId]);
 
   return (
     <div className={styles.root}>
@@ -99,7 +114,10 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
         <div className={styles.headerRow}>
           <div>
             <h1 className={styles.title}>Blueprint</h1>
-            <p className={styles.subtitle}>Architektur-Übersicht • {activeProject?.name}</p>
+            <p className={styles.subtitle}>
+              Technische Diagnose · {activeProject?.name}
+              {blueprint?.commitSha && <> · {String(blueprint.commitSha).slice(0, 8)}</>}
+            </p>
           </div>
           <div className={styles.headerActions}>
             <button
@@ -110,15 +128,6 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
             >
               <Download className={styles.inlineIcon} aria-hidden="true" />
               Export JSON
-            </button>
-            <button
-              type="button"
-              onClick={handleExportMermaid}
-              className={styles.secondaryButton}
-              aria-label="Blueprint als Mermaid exportieren"
-            >
-              <Download className={styles.inlineIcon} aria-hidden="true" />
-              Export Mermaid
             </button>
             <button
               type="button"
@@ -175,79 +184,38 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
               <p className={styles.emptyTitle}>Fehler bei der Blueprint-Generierung</p>
             </div>
           </div>
-        ) : (
+        ) : !hasData ? (
           <div className={styles.centerState}>
             <div className={styles.emptyCard}>
               <p className={styles.emptyHint}>
-                Blueprint Feature wird in einer späteren Version verfügbar sein
+                {blueprintLoadError ??
+                  "Keine Blueprint-Daten. Starte „Neu analysieren“ oder verbinde ein GitHub-Repo."}
               </p>
             </div>
           </div>
-        )}
-
-        {!isScanning && (
-          <section className={styles.rulesPanel} aria-labelledby="rules-title">
-            <h2 id="rules-title" className={styles.rulesPanelTitle}>
-              Rules
-            </h2>
-            {blueprintLoadError ? (
-              <p className={styles.rulesEmpty} role="alert">
-                {blueprintLoadError}
-              </p>
-            ) : violations.length === 0 ? (
-              <p className={styles.rulesEmpty}>Keine Violations</p>
-            ) : (
-              <table className={styles.rulesTable}>
-                <thead>
-                  <tr>
-                    <th>Rule</th>
-                    <th>Severity</th>
-                    <th>Source</th>
-                    <th>Target</th>
-                    <th>Message</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {violations.map((v, i) => (
-                    <tr key={`${v.ruleId}-${v.source}-${i}`}>
-                      <td>
-                        <code>{v.ruleId}</code>
-                      </td>
-                      <td className={severityClass(v.severity)}>{v.severity}</td>
-                      <td>
-                        <code>{v.source}</code>
-                      </td>
-                      <td>
-                        <code>{v.target ?? "—"}</code>
-                      </td>
-                      <td>{v.message}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </section>
-        )}
-
-        {!isScanning && (
-          <section className={styles.cyclesPanel} aria-labelledby="cycles-title">
-            <h2 id="cycles-title" className={styles.cyclesPanelTitle}>
-              <span className={styles.cycleBadge}>Zyklus</span>
-              Zyklen
-            </h2>
-            {cycles.length === 0 ? (
-              <p className={styles.cyclesEmpty}>Keine zyklischen Abhängigkeiten erkannt.</p>
-            ) : (
-              <ul className={styles.cycleList}>
-                {cycles.map((c, i) => (
-                  <li key={i} className={styles.cycleItem}>
-                    {c.message && <div>{c.message}</div>}
-                    <div className={styles.cycleNodes}>{c.nodes.join(" → ")}</div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+        ) : (
+          <div className={styles.workspace}>
+            <section className={styles.mainPanel} aria-labelledby="matrix-title">
+              <h2 id="matrix-title" className={styles.panelTitle}>
+                Security Matrix
+              </h2>
+              <SecurityMatrix
+                rows={matrix}
+                selectedRouteId={selectedRouteId}
+                onSelectRoute={(id) => {
+                  setSelectedRouteId(id);
+                  setSelectedFindingId(null);
+                }}
+              />
+              <RouteBlueprintCanvas route={selectedRoute} />
+            </section>
+            <FindingInspector
+              findings={routeFindings}
+              facts={facts}
+              selectedFindingId={selectedFindingId}
+              onSelectFinding={setSelectedFindingId}
+            />
+          </div>
         )}
       </div>
     </div>

@@ -23,6 +23,7 @@ import {
 import type { PreviewMode, PreviewStatus } from "./types";
 import { publicAnonKey, supabaseUrl } from "../../utils/supabase/info";
 import { api, previewAPI, type PreviewStepLog } from "../../utils/api";
+import { BlueprintScanError, runBlueprintScan } from "./blueprint-scan";
 
 export type { PreviewStepLog };
 
@@ -289,6 +290,50 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         appendScanLog("Analyzer-Request wird gesendet …", "info");
 
         try {
+          if (type === "blueprint") {
+            appendScanLog("Blueprint-Analyzer wird aufgerufen …", "info");
+            setScanStatuses((prev) => ({
+              ...prev,
+              [type]: { status: "running", progress: 60, message: "Blueprint wird ausgewertet" },
+            }));
+
+            try {
+              const scanResult = await runBlueprintScan(activeProject);
+              appendScanLog(
+                `Blueprint: ${scanResult.routeCount} Routes, ${scanResult.findingCount} Findings.`,
+                "success",
+              );
+              appendScanLog("Blueprint in KV gespeichert.", "success");
+            } catch (scanError) {
+              const message =
+                scanError instanceof BlueprintScanError
+                  ? scanError.message
+                  : scanError instanceof Error
+                    ? scanError.message
+                    : "Blueprint-Scan fehlgeschlagen";
+              appendScanLog(message, "error");
+              throw scanError;
+            }
+
+            setScans((prev) =>
+              prev.map((scan) =>
+                scan.id === scanId
+                  ? {
+                      ...scan,
+                      status: "completed",
+                      progress: 100,
+                      completedAt: new Date().toISOString(),
+                    }
+                  : scan,
+              ),
+            );
+            setScanStatuses((prev) => ({
+              ...prev,
+              [type]: { status: "completed", progress: 100, message: "Blueprint abgeschlossen" },
+            }));
+            continue;
+          }
+
           // ONLY call visudev-analyzer Edge Function for code analysis
           const analyzeResponse = await fetch(
             `${supabaseUrl}/functions/v1/visudev-analyzer/analyze`,

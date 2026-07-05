@@ -14,11 +14,17 @@ import { AnalysisService } from "./services/analysis.service.ts";
 import { ScreenshotService } from "./services/screenshot.service.ts";
 import { AnalyzerController } from "./controllers/analyzer.controller.ts";
 import { registerAnalyzerRoutes } from "./routes/analyzer.routes.ts";
+import { BlueprintAnalysisService } from "./blueprint/services/blueprint-analysis.service.ts";
+import { BlueprintRateLimitService } from "./blueprint/services/blueprint-rate-limit.service.ts";
+import { BlueprintController } from "./blueprint/controllers/blueprint.controller.ts";
+import { registerBlueprintRoutes } from "./routes/blueprint.routes.ts";
 
 export function createAnalyzerModule(config: AnalyzerModuleConfig): {
   registerRoutes: (app: Hono) => void;
   controller: AnalyzerController;
+  blueprintController: BlueprintController;
   analysisService: AnalysisService;
+  blueprintAnalysisService: BlueprintAnalysisService;
   screenshotService: ScreenshotService;
   repository: AnalysisRepository;
 } {
@@ -42,14 +48,32 @@ export function createAnalyzerModule(config: AnalyzerModuleConfig): {
     screenService,
     graphService,
   );
+  const blueprintAnalysisService = new BlueprintAnalysisService(
+    gitHubService,
+    config.logger,
+    config.config,
+  );
+  const blueprintRateLimitService = new BlueprintRateLimitService(
+    config.supabase,
+    config.config.kvTableName,
+    config.logger,
+  );
   const screenshotService = new ScreenshotService();
   const controller = new AnalyzerController(analysisService, screenshotService);
+  const blueprintController = new BlueprintController(
+    blueprintAnalysisService,
+    blueprintRateLimitService,
+  );
 
   return {
-    registerRoutes: (app: Hono): void =>
-      registerAnalyzerRoutes(app, controller),
+    registerRoutes: (app: Hono): void => {
+      registerAnalyzerRoutes(app, controller);
+      registerBlueprintRoutes(app, blueprintController);
+    },
     controller,
+    blueprintController,
     analysisService,
+    blueprintAnalysisService,
     screenshotService,
     repository,
   };

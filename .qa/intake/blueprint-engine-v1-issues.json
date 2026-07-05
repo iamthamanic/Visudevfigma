@@ -1,0 +1,63 @@
+{
+  "epicSlug": "blueprint-engine-v1",
+  "designPath": ".qa/design/blueprint-engine-v1.md",
+  "defaultLabels": ["P1"],
+  "issues": [
+    {
+      "title": "Blueprint IR types + fact extractors (Hono/Supabase/Zod)",
+      "featureSlug": "blueprint-engine-core",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": [],
+      "body": "## Intent\nNeutrale Blueprint-IR (Facts, Concepts, Findings) und regex/line-basierte Fact-Extractors für Hono-Routes, Supabase DB-Zugriffe, Zod-Validation und Auth-Muster.\n\n## User Journey\n1. Entwickler startet Blueprint-Scan\n2. Engine extrahiert harte Facts aus TS/JS-Dateien\n3. Facts landen in BlueprintDocument\n\n## Problem\nKeine Fact Engine; FlowService mischt UI-Flows mit technischen Signalen.\n\n## Solution\n`module/blueprint/dto`, `facts/fact-extractors.ts`, `graph/import-resolver.ts`\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| GitHub Edge | yes |\n| Local Runner | partial (types shared later) |\n\n## Edge Cases\n- Datei parse error → skip file, log warn\n- Keine Routes → leeres routes[]\n\n## Acceptance\n- [ ] CodeFact mit filePath, line, snippet, kind\n- [ ] Hono app.get/post erkannt\n- [ ] supabase.from().insert erkannt\n- [ ] safeParse erkannt\n\n## Design\nEpic: `.qa/design/blueprint-engine-v1.md`\n\n## Runner\nFeature slug: `blueprint-engine-core`"
+    },
+    {
+      "title": "POST /blueprint/analyze endpoint + BlueprintAnalysisService",
+      "featureSlug": "blueprint-analyze-endpoint",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": ["Blueprint IR types + fact extractors (Hono/Supabase/Zod)"],
+      "body": "## Intent\nSeparater Blueprint-Scan-Endpoint; GitHub tree + priorisierte Dateien → BlueprintDocument.\n\n## Acceptance\n- [ ] POST /visudev-analyzer/blueprint/analyze\n- [ ] Response { success, data: BlueprintDocument }\n- [ ] Route-first file prioritization\n\n## Design\nEpic: `.qa/design/blueprint-engine-v1.md`"
+    },
+    {
+      "title": "Concept + Policy engine (core security rules)",
+      "featureSlug": "blueprint-policy-engine",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": ["POST /blueprint/analyze endpoint + BlueprintAnalysisService"],
+      "body": "## Intent\nFacts → Concepts (Validation confirmed/missing) → Findings via Policy-Regeln.\n\n## Acceptance\n- [ ] validation-before-db-write Rule\n- [ ] Finding mit evidenceFactIds + confidence\n- [ ] SecurityMatrix rows generiert\n\n## Design\nEpic: `.qa/design/blueprint-engine-v1.md`"
+    },
+    {
+      "title": "Blueprint scan wiring in store + KV persist",
+      "featureSlug": "blueprint-scan-wiring",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": ["POST /blueprint/analyze endpoint + BlueprintAnalysisService"],
+      "body": "## Intent\nstartScan('blueprint') ruft /blueprint/analyze; Ergebnis via blueprintAPI.update.\n\n## Acceptance\n- [ ] Blueprint-Scan ≠ App-Flow-Scan\n- [ ] blueprint:{projectId} in KV nach Scan\n\n## Design\nEpic: `.qa/design/blueprint-engine-v1.md`"
+    },
+    {
+      "title": "Security Matrix + Finding Inspector UI",
+      "featureSlug": "blueprint-security-matrix",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": ["Blueprint scan wiring in store + KV persist"],
+      "body": "## Intent\nTabellarische Route × Controls Übersicht; Inspector mit Evidence.\n\n## Acceptance\n- [ ] Matrix zeigt Routes aus BlueprintDocument\n- [ ] Klick öffnet Inspector mit Rule ID + Snippet\n\n## Design\nEpic: `.qa/design/blueprint-engine-v1.md`"
+    },
+    {
+      "title": "Route Blueprint Canvas (linear pipeline per route)",
+      "featureSlug": "blueprint-route-canvas",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": ["Security Matrix + Finding Inspector UI"],
+      "body": "## Intent\nVisuelle Pipeline: Request → Auth → Validation → Handler → DB pro selektierter Route.\n\n## Acceptance\n- [ ] Canvas aktualisiert bei Matrix-Zeilenwahl\n- [ ] Node-Farben nach ConceptState\n\n## Design\nEpic: `.qa/design/blueprint-engine-v1.md`"
+    },
+    {
+      "title": "Local Blueprint Runner + project local_path",
+      "featureSlug": "blueprint-local-runner",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": ["POST /blueprint/analyze endpoint + BlueprintAnalysisService"],
+      "body": "## Intent\nLokale Projekte aus 2-DEV-PROJEKTE scannen ohne GitHub.\n\n## Acceptance\n- [ ] source_mode github|local auf Project\n- [ ] Runner liest local_path, PUT blueprint KV\n\n## Design\nEpic: `.qa/design/blueprint-engine-v1.md`"
+    }
+  ]
+}
