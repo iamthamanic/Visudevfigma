@@ -63,6 +63,7 @@ export function createAnalyzerModule(config: AnalyzerModuleConfig): {
     config.supabase,
     config.config.kvTableName,
     config.logger,
+    config.resolveUserIdFromJwt,
   );
   const screenshotService = new ScreenshotService();
   const controller = new AnalyzerController(analysisService, screenshotService);

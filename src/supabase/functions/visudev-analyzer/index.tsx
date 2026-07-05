@@ -57,6 +57,10 @@ const supabase = createClient(env.supabaseUrl, env.supabaseServiceRoleKey);
 const analyzerModule = createAnalyzerModule({
   supabase,
   logger,
+  resolveUserIdFromJwt: async (jwt) => {
+    const { data } = await supabase.auth.getUser(jwt);
+    return data?.user?.id ?? null;
+  },
   config: {
     kvTableName: env.kvTableName,
     githubApiBaseUrl: env.githubApiBaseUrl,

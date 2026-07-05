@@ -3,7 +3,7 @@
  * Location: src/lib/visudev/normalize-blueprint.ts
  */
 
-import type { BlueprintData } from "../../modules/blueprint/types";
+import type { BlueprintData } from "./blueprint-types";
 
 const EMPTY: BlueprintData = {
   version: 1,

@@ -13,7 +13,6 @@ import {
   NotFoundException,
   ValidationException,
 } from "../../internal/exceptions/index.ts";
-import { getUserIdOptional } from "../../internal/helpers/auth-helper.ts";
 
 interface StoredProject {
   id: string;
@@ -27,6 +26,9 @@ export class BlueprintProjectAccessService {
     private readonly supabase: SupabaseClientLike,
     private readonly kvTableName: string,
     private readonly logger: LoggerLike,
+    private readonly resolveUserIdFromJwt: (
+      jwt: string,
+    ) => Promise<string | null>,
   ) {}
 
   public async assertCanAnalyze(
@@ -34,7 +36,7 @@ export class BlueprintProjectAccessService {
     body: BlueprintAnalysisRequestDto,
   ): Promise<void> {
     const projectId = body.projectId.trim();
-    const userId = await getUserIdOptional(c);
+    const userId = await this.resolveUserId(c);
     if (userId === null) {
       throw new ForbiddenException("Not authorized to analyze this project");
     }
@@ -44,7 +46,11 @@ export class BlueprintProjectAccessService {
       throw new NotFoundException("Project");
     }
 
-    if (project.ownerId != null && project.ownerId !== userId) {
+    const ownerId = project.ownerId?.trim();
+    if (!ownerId) {
+      throw new ForbiddenException("Project ownership not configured");
+    }
+    if (ownerId !== userId) {
       throw new ForbiddenException("Not authorized to analyze this project");
     }
 
@@ -55,6 +61,19 @@ export class BlueprintProjectAccessService {
         "repo does not match the configured project repository",
         [{ field: "repo", message: "Must match project.github_repo" }],
       );
+    }
+  }
+
+  private async resolveUserId(c: Context): Promise<string | null> {
+    const token = extractBearerToken(c);
+    if (!token) return null;
+    try {
+      return await this.resolveUserIdFromJwt(token);
+    } catch (error) {
+      this.logger.warn("Blueprint auth lookup failed", {
+        errorKind: error instanceof Error ? error.name : "unknown",
+      });
+      return null;
     }
   }
 
@@ -76,4 +95,11 @@ export class BlueprintProjectAccessService {
 
     return (data?.value as StoredProject | null) ?? null;
   }
+}
+
+function extractBearerToken(c: Context): string | null {
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = authHeader.slice(7).trim();
+  return token || null;
 }
