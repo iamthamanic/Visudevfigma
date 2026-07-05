@@ -4,7 +4,7 @@
  */
 
 import { blueprintAPI } from "../../utils/api";
-import { normalizeBlueprintData } from "../../modules/blueprint/services/normalize-blueprint";
+import { normalizeBlueprintData } from "./normalize-blueprint";
 import type { Project } from "./types";
 
 export class BlueprintScanError extends Error {
@@ -24,7 +24,10 @@ export interface BlueprintScanResult {
   findingCount: number;
 }
 
-export async function runBlueprintScan(project: Project): Promise<BlueprintScanResult> {
+export async function runBlueprintScan(
+  project: Project,
+  accessToken?: string | null,
+): Promise<BlueprintScanResult> {
   const githubRepo = project.github_repo?.trim();
   if (!githubRepo) {
     throw new BlueprintScanError(
@@ -33,11 +36,14 @@ export async function runBlueprintScan(project: Project): Promise<BlueprintScanR
     );
   }
 
-  const analyzeResponse = await blueprintAPI.analyze({
-    repo: githubRepo,
-    branch: project.github_branch?.trim() || "main",
-    projectId: project.id,
-  });
+  const analyzeResponse = await blueprintAPI.analyze(
+    {
+      repo: githubRepo,
+      branch: project.github_branch?.trim() || "main",
+      projectId: project.id,
+    },
+    accessToken,
+  );
 
   if (!analyzeResponse.success || !analyzeResponse.data?.blueprint) {
     throw new BlueprintScanError(

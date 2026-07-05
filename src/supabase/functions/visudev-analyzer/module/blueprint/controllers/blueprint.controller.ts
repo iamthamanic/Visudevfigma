@@ -5,9 +5,9 @@ import type {
   BlueprintAnalysisResultDto,
 } from "../../dto/blueprint/blueprint-document.dto.ts";
 import { ValidationException } from "../../internal/exceptions/index.ts";
-import { redactRepoRef } from "../internal/log-redaction.ts";
 import type { SuccessResponse } from "../../types/index.ts";
 import { BlueprintAnalysisService } from "../services/blueprint-analysis.service.ts";
+import { BlueprintProjectAccessService } from "../services/blueprint-project-access.service.ts";
 import { BlueprintRateLimitService } from "../services/blueprint-rate-limit.service.ts";
 import { blueprintRequestSchema } from "../../validators/blueprint.validator.ts";
 
@@ -15,6 +15,8 @@ export class BlueprintController {
   constructor(
     private readonly blueprintAnalysisService: BlueprintAnalysisService,
     private readonly blueprintRateLimitService: BlueprintRateLimitService,
+    private readonly blueprintProjectAccessService:
+      BlueprintProjectAccessService,
   ) {}
 
   public async analyze(c: Context): Promise<Response> {
@@ -23,7 +25,9 @@ export class BlueprintController {
       blueprintRequestSchema,
     );
 
-    const rateScope = body.projectId?.trim() || redactRepoRef(body.repo);
+    await this.blueprintProjectAccessService.assertCanAnalyze(c, body);
+
+    const rateScope = body.projectId.trim();
     const allowed = await this.blueprintRateLimitService.allow(rateScope);
     if (!allowed) {
       return c.json({ success: false, error: "Rate limit exceeded" }, 429);

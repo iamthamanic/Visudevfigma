@@ -171,12 +171,16 @@ export const blueprintAPI = {
   // Get blueprint for project
   get: (projectId: string) => apiRequest<BlueprintData>(`/visudev-blueprint/${projectId}`),
 
-  analyze: (payload: { repo: string; branch: string; projectId: string }) =>
+  analyze: (
+    payload: { repo: string; branch: string; projectId: string },
+    accessToken?: string | null,
+  ) =>
     apiRequest<{ blueprint: BlueprintData; analysisId: string }>(
       "/visudev-analyzer/blueprint/analyze",
       {
         method: "POST",
         body: JSON.stringify(payload),
+        accessToken,
       },
     ),
 

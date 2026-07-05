@@ -6,7 +6,7 @@ import { FindingInspector } from "../components/FindingInspector";
 import { RouteBlueprintCanvas } from "../components/RouteBlueprintCanvas";
 import { SecurityMatrix } from "../components/SecurityMatrix";
 import { findingsForRoute } from "../services/blueprint-helpers";
-import { normalizeBlueprintData } from "../services/normalize-blueprint";
+import { normalizeBlueprintData } from "../../../lib/visudev/normalize-blueprint";
 import type { BlueprintData, BlueprintFinding, RouteBlueprint } from "../types";
 import styles from "../styles/BlueprintPage.module.css";
 

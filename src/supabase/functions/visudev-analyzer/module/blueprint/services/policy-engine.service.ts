@@ -6,6 +6,11 @@ import type {
   RouteBlueprint,
   TechnicalConcept,
 } from "../../dto/blueprint/blueprint-document.dto.ts";
+import {
+  indexConceptsByScope,
+  indexFactsByFilePath,
+  scopeFactsForRoute,
+} from "../internal/fact-scope-index.ts";
 import type { RouteScope } from "./concept-engine.service.ts";
 
 interface PolicyRule {
@@ -16,8 +21,8 @@ interface PolicyRule {
   remediation: string;
   evaluate: (
     route: RouteScope,
-    concepts: TechnicalConcept[],
-    facts: CodeFact[],
+    routeConcepts: Map<string, TechnicalConcept>,
+    scopeFacts: CodeFact[],
   ) => BlueprintFinding | null;
 }
 
@@ -30,10 +35,15 @@ export function evaluatePolicies(
 ): BlueprintFinding[] {
   const findings: BlueprintFinding[] = [];
   let findingIdx = 0;
+  const factsByFile = indexFactsByFilePath(facts);
+  const conceptsByScope = indexConceptsByScope(concepts);
 
   for (const route of routes) {
+    const scopeFacts = scopeFactsForRoute(route, factsByFile);
+    const routeConcepts = conceptsByScope.get(route.id) ?? new Map();
+
     for (const rule of CORE_POLICIES) {
-      const result = rule.evaluate(route, concepts, facts);
+      const result = rule.evaluate(route, routeConcepts, scopeFacts);
       if (result) {
         findingIdx += 1;
         findings.push({ ...result, id: `finding-${findingIdx}` });
@@ -52,18 +62,15 @@ const CORE_POLICIES: PolicyRule[] = [
     message: "Runtime Validation fehlt vor DB Write.",
     remediation:
       "Schema (z. B. Zod) auf Request anwenden und validiertes Ergebnis für DB Write nutzen.",
-    evaluate: (route, concepts, facts) => {
+    evaluate: (route, routeConcepts, scopeFacts) => {
       if (!WRITE_METHODS.has(route.method.toUpperCase())) return null;
-      const scopeFacts = facts.filter((f) =>
-        route.relatedFiles.includes(f.filePath)
+      const hasBody = scopeFacts.some((fact) =>
+        fact.kind === "request-body-read"
       );
-      const hasBody = scopeFacts.some((f) => f.kind === "request-body-read");
-      const hasDbWrite = scopeFacts.some((f) => f.kind === "db-write");
+      const hasDbWrite = scopeFacts.some((fact) => fact.kind === "db-write");
       if (!hasBody || !hasDbWrite) return null;
 
-      const validation = concepts.find(
-        (c) => c.scopeId === route.id && c.type === "validation-gate",
-      );
+      const validation = routeConcepts.get("validation-gate");
       if (!validation || validation.state === "confirmed") return null;
 
       return buildFinding(
@@ -86,17 +93,12 @@ const CORE_POLICIES: PolicyRule[] = [
     baseSeverity: "medium",
     message: "Auth Gate fehlt oder unvollständig vor schreibendem Endpoint.",
     remediation: "Session/JWT prüfen und bei Fehler 401 zurückgeben.",
-    evaluate: (route, concepts, facts) => {
+    evaluate: (route, routeConcepts, scopeFacts) => {
       if (!WRITE_METHODS.has(route.method.toUpperCase())) return null;
-      const scopeFacts = facts.filter((f) =>
-        route.relatedFiles.includes(f.filePath)
-      );
-      const hasDbWrite = scopeFacts.some((f) => f.kind === "db-write");
+      const hasDbWrite = scopeFacts.some((fact) => fact.kind === "db-write");
       if (!hasDbWrite) return null;
 
-      const auth = concepts.find(
-        (c) => c.scopeId === route.id && c.type === "auth-gate",
-      );
+      const auth = routeConcepts.get("auth-gate");
       if (!auth || auth.state === "confirmed") return null;
 
       return buildFinding(
@@ -120,19 +122,17 @@ const CORE_POLICIES: PolicyRule[] = [
     message: "Rate Limit nicht erkannt auf potenziell öffentlicher Route.",
     remediation:
       "Rate Limiting für Login/Reset/Contact/Upload Endpoints hinzufügen.",
-    evaluate: (route, concepts, _facts) => {
+    evaluate: (route, routeConcepts, _scopeFacts) => {
       const pathLower = route.path.toLowerCase();
       const isPublicSensitive =
         /login|reset|contact|upload|sign-up|signup|register/
           .test(pathLower);
       if (!isPublicSensitive) return null;
 
-      const rate = concepts.find(
-        (c) => c.scopeId === route.id && c.type === "rate-limit",
-      );
-      if (rate?.state === "confirmed") return null;
+      const rateLimit = routeConcepts.get("rate-limit");
+      if (rateLimit?.state === "confirmed") return null;
 
-      const evidenceIds = rate?.evidenceFactIds ?? [];
+      const evidenceIds = rateLimit?.evidenceFactIds ?? [];
       return {
         id: "",
         ruleId: "web-api.rate-limit-public",
@@ -141,9 +141,9 @@ const CORE_POLICIES: PolicyRule[] = [
         scopeId: route.id,
         message: "Rate Limit nicht erkannt auf potenziell öffentlicher Route.",
         expectedState: "Rate Limit confirmed",
-        actualState: rate?.state ?? "missing",
+        actualState: rateLimit?.state ?? "missing",
         evidenceFactIds: evidenceIds,
-        confidence: rate ? 65 : 72,
+        confidence: rateLimit ? 65 : 72,
         remediation:
           "Rate Limiting für Login/Reset/Contact/Upload Endpoints hinzufügen.",
       };
@@ -163,12 +163,14 @@ function buildFinding(
   message: string,
   remediation: string,
 ): BlueprintFinding {
-  const dbFacts = scopeFacts.filter((f) => f.kind === "db-write");
-  const bodyFacts = scopeFacts.filter((f) => f.kind === "request-body-read");
+  const dbFacts = scopeFacts.filter((fact) => fact.kind === "db-write");
+  const bodyFacts = scopeFacts.filter((fact) =>
+    fact.kind === "request-body-read"
+  );
   const evidenceFactIds = [
     ...concept.evidenceFactIds,
-    ...dbFacts.map((f) => f.id),
-    ...bodyFacts.map((f) => f.id),
+    ...dbFacts.map((fact) => fact.id),
+    ...bodyFacts.map((fact) => fact.id),
   ];
   return {
     id: "",
@@ -189,11 +191,13 @@ export function buildRouteBlueprints(
   routes: RouteScope[],
   concepts: TechnicalConcept[],
 ): RouteBlueprint[] {
+  const conceptsByScope = indexConceptsByScope(concepts);
+
   return routes.map((route) => {
-    const routeConcepts = concepts.filter((c) => c.scopeId === route.id);
+    const routeConcepts = conceptsByScope.get(route.id) ?? new Map();
     const conceptMap: RouteBlueprint["concepts"] = {};
-    for (const c of routeConcepts) {
-      conceptMap[c.type] = c.state;
+    for (const concept of routeConcepts.values()) {
+      conceptMap[concept.type] = concept.state;
     }
 
     const pipeline = buildPipeline(route, routeConcepts);
@@ -212,11 +216,11 @@ export function buildRouteBlueprints(
 
 function buildPipeline(
   route: RouteScope,
-  concepts: TechnicalConcept[],
+  routeConcepts: Map<string, TechnicalConcept>,
 ): RouteBlueprint["pipeline"] {
-  const getState = (
+  const getConcept = (
     type: TechnicalConcept["type"],
-  ): TechnicalConcept | undefined => concepts.find((c) => c.type === type);
+  ): TechnicalConcept | undefined => routeConcepts.get(type);
 
   const nodes: RouteBlueprint["pipeline"] = [
     {
@@ -229,19 +233,19 @@ function buildPipeline(
       `${route.id}:auth`,
       "auth-gate",
       "Auth",
-      getState("auth-gate"),
+      getConcept("auth-gate"),
     ),
     nodeFromConcept(
       `${route.id}:role`,
       "role-gate",
       "Role",
-      getState("role-gate"),
+      getConcept("role-gate"),
     ),
     nodeFromConcept(
       `${route.id}:validation`,
       "validation-gate",
       "Validation",
-      getState("validation-gate"),
+      getConcept("validation-gate"),
     ),
     {
       id: `${route.id}:handler`,
@@ -251,16 +255,18 @@ function buildPipeline(
       filePath: route.filePath,
       line: route.line,
     },
-    nodeFromConcept(`${route.id}:db`, "db-write", "DB", getState("db-write")),
+    nodeFromConcept(`${route.id}:db`, "db-write", "DB", getConcept("db-write")),
     nodeFromConcept(
       `${route.id}:external`,
       "external-api",
       "External",
-      getState("external-api"),
+      getConcept("external-api"),
     ),
   ];
 
-  return nodes.filter((n) => n.state !== "missing" || n.type !== "role-gate");
+  return nodes.filter((node) =>
+    node.state !== "missing" || node.type !== "role-gate"
+  );
 }
 
 function nodeFromConcept(
@@ -282,8 +288,18 @@ export function buildSecurityMatrix(
   routes: RouteBlueprint[],
   findings: BlueprintFinding[],
 ): import("../../dto/blueprint/blueprint-document.dto.ts").SecurityMatrixRow[] {
+  const findingsByRoute = new Map<string, BlueprintFinding[]>();
+  for (const finding of findings) {
+    const routeFindings = findingsByRoute.get(finding.scopeId);
+    if (routeFindings) {
+      routeFindings.push(finding);
+    } else {
+      findingsByRoute.set(finding.scopeId, [finding]);
+    }
+  }
+
   return routes.map((route) => {
-    const routeFindings = findings.filter((f) => f.scopeId === route.id);
+    const routeFindings = findingsByRoute.get(route.id) ?? [];
     return {
       routeId: route.id,
       method: route.method,

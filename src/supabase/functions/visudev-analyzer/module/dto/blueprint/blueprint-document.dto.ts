@@ -128,7 +128,7 @@ export interface BlueprintAnalysisRequestDto {
   access_token?: string;
   repo: string;
   branch: string;
-  projectId?: string;
+  projectId: string;
 }
 
 export interface BlueprintAnalysisResultDto {

@@ -141,7 +141,7 @@ function buildRouteScopes(
   facts: CodeFact[],
   fileIndex: Map<string, FileIndexEntry>,
 ): RouteScope[] {
-  const routeFacts = facts.filter((f) => f.kind === "api-route");
+  const routeFacts = facts.filter((fact) => fact.kind === "api-route");
   const scopes: RouteScope[] = [];
   const seen = new Set<string>();
 

@@ -298,7 +298,10 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
             }));
 
             try {
-              const scanResult = await runBlueprintScan(activeProject);
+              const scanResult = await runBlueprintScan(
+                activeProject,
+                previewAccessTokenRef.current,
+              );
               appendScanLog(
                 `Blueprint: ${scanResult.routeCount} Routes, ${scanResult.findingCount} Findings.`,
                 "success",

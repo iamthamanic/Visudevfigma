@@ -6,6 +6,10 @@ import type {
   ConceptType,
   TechnicalConcept,
 } from "../../dto/blueprint/blueprint-document.dto.ts";
+import {
+  indexFactsByFilePath,
+  scopeFactsForRoute,
+} from "../internal/fact-scope-index.ts";
 
 export interface RouteScope {
   id: string;
@@ -21,11 +25,10 @@ export function buildConceptsForRoutes(
   facts: CodeFact[],
 ): TechnicalConcept[] {
   const concepts: TechnicalConcept[] = [];
+  const factsByFile = indexFactsByFilePath(facts);
 
   for (const route of routes) {
-    const scopeFacts = facts.filter((f) =>
-      route.relatedFiles.includes(f.filePath)
-    );
+    const scopeFacts = scopeFactsForRoute(route, factsByFile);
     const scopeId = route.id;
 
     concepts.push(
@@ -94,20 +97,20 @@ function makeConcept(
   scopeFacts: CodeFact[],
   kinds: string[],
 ): TechnicalConcept {
-  const evidence = scopeFacts.filter((f) => kinds.includes(f.kind));
+  const evidence = scopeFacts.filter((fact) => kinds.includes(fact.kind));
   return {
     id: `${scopeId}:${type}`,
     type,
     state,
     confidence,
     scopeId,
-    evidenceFactIds: evidence.map((f) => f.id),
-    callPath: [...new Set(evidence.map((f) => f.filePath))],
+    evidenceFactIds: evidence.map((fact) => fact.id),
+    callPath: [...new Set(evidence.map((fact) => fact.filePath))],
   };
 }
 
 function hasKind(facts: CodeFact[], kind: string): boolean {
-  return facts.some((f) => f.kind === kind);
+  return facts.some((fact) => fact.kind === kind);
 }
 
 function inferAuthState(facts: CodeFact[]): ConceptState {
@@ -120,10 +123,10 @@ function inferAuthState(facts: CodeFact[]): ConceptState {
 }
 
 function inferAuthConfidence(facts: CodeFact[]): number {
-  const s = inferAuthState(facts);
-  if (s === "confirmed") return 85;
-  if (s === "partial") return 65;
-  if (s === "weak") return 50;
+  const state = inferAuthState(facts);
+  if (state === "confirmed") return 85;
+  if (state === "partial") return 65;
+  if (state === "weak") return 50;
   return 55;
 }
 
@@ -140,10 +143,10 @@ function inferValidationState(facts: CodeFact[]): ConceptState {
 }
 
 function inferValidationConfidence(facts: CodeFact[]): number {
-  const s = inferValidationState(facts);
-  if (s === "confirmed") return 87;
-  if (s === "partial") return 70;
-  if (s === "missing") return 75;
-  if (s === "weak") return 55;
+  const state = inferValidationState(facts);
+  if (state === "confirmed") return 87;
+  if (state === "partial") return 70;
+  if (state === "missing") return 75;
+  if (state === "weak") return 55;
   return 40;
 }
