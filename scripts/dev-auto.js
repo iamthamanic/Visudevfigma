@@ -9,6 +9,12 @@ const net = require("net");
 const http = require("http");
 const { spawn, spawnSync } = require("child_process");
 const path = require("path");
+const { applyEnvFile } = require("./lib/load-env-file");
+const {
+  isLocalSupabaseUrl,
+  healthUrlForSupabase,
+  waitForSupabaseHealth,
+} = require("./lib/supabase-local");
 
 const MIN_PORT = 1;
 const MAX_PORT = 65535;
@@ -395,7 +401,29 @@ function runViteWithShutdown(previewUrl, runner, logsRunnerUrl, logsRunner, vite
   });
 }
 
+async function assertLocalSupabaseIfConfigured() {
+  applyEnvFile(path.join(__dirname, "..", ".env.local"));
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
+  if (!isLocalSupabaseUrl(supabaseUrl)) return;
+
+  console.log(`[dev-auto] Lokales Supabase erkannt (${supabaseUrl}) — prüfe Health …`);
+  const ok = await waitForSupabaseHealth(supabaseUrl, { maxAttempts: 8 });
+  if (ok) {
+    console.log("[dev-auto] Lokales Supabase erreichbar.");
+    return;
+  }
+
+  console.error(
+    `[dev-auto] Lokales Supabase nicht erreichbar (${healthUrlForSupabase(supabaseUrl)}).\n` +
+      "  → npm run dev:hybrid (startet Supabase + functions serve)\n" +
+      "  → oder: supabase start && supabase functions serve --workdir src\n" +
+      "  → siehe docs/HYBRID_DEV.md",
+  );
+  process.exit(1);
+}
+
 async function main() {
+  await assertLocalSupabaseIfConfigured();
   const vitePort = await findFreePort(requestedVitePort);
   const { previewUrl, runner } = await getOrStartRunner();
   const { logsRunnerUrl, logsRunner } = await getOrStartLogsRunner();

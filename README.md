@@ -15,22 +15,23 @@ Open: **http://localhost:3005** (fester Port, siehe unten). Runner: http://local
 
 ## Scripts
 
-| Command              | Description                                      |
-| -------------------- | ------------------------------------------------ |
-| `npm run dev`        | Startet App (Vite, 3005) + Preview-Runner (4000) |
-| `npm run dev:app`    | Nur Vite-Dev-Server (3005)                       |
-| `npm run dev:runner` | Nur Preview-Runner (4000)                        |
-| `npm run build`      | Production build                                 |
-| `npm run preview`    | Preview production build                         |
-| `npm run checks`     | Format, lint, typecheck, tests                   |
-| `npm run format`     | Prettier + Deno fmt                              |
+| Command              | Description                                                                  |
+| -------------------- | ---------------------------------------------------------------------------- |
+| `npm run dev`        | Startet App (Vite, 3005) + Preview-Runner (4000) — Cloud Supabase (Default)  |
+| `npm run dev:hybrid` | Lokal: Supabase + Edge Functions + App + Runner — siehe `docs/HYBRID_DEV.md` |
+| `npm run dev:app`    | Nur Vite-Dev-Server (3005)                                                   |
+| `npm run dev:runner` | Nur Preview-Runner (4000)                                                    |
+| `npm run build`      | Production build                                                             |
+| `npm run preview`    | Preview production build                                                     |
+| `npm run checks`     | Format, lint, typecheck, tests                                               |
+| `npm run format`     | Prettier + Deno fmt                                                          |
 
 ## Project layout
 
 - `src/` – Frontend (React, TypeScript, CSS Modules). Modules under `src/modules/` (projects, appflow, blueprint, data, logs, settings, shell).
 - `src/supabase/functions/` – Edge Functions source (visudev-auth, visudev-analyzer, visudev-projects, etc.). Deploy with `supabase functions deploy <name>`.
 - `supabase/` – Config, migrations, and deployed function copies. See `docs/SUPABASE_SETUP.md`.
-- `docs/` – Setup and runbooks (`SUPABASE_SETUP.md`, `GITHUB_SECRETS.md`, `PREVIEW_RUNNER.md`).
+- `docs/` – Setup and runbooks (`HYBRID_DEV.md`, `SUPABASE_SETUP.md`, `GITHUB_SECRETS.md`, `PREVIEW_RUNNER.md`).
 
 ## Dev-Server-Port (3005)
 
@@ -38,7 +39,7 @@ Der Vite-Dev-Server und `npm run preview` laufen fest auf **Port 3005** (`vite.c
 
 ## Configuration
 
-- **Supabase:** The app uses **Supabase Cloud** by default (project ref in code). No `.env` required. For local Supabase, see `docs/SUPABASE_SETUP.md` and `.env.example`.
+- **Supabase:** Default is **Cloud**. For daily dev in Cursor without cloud pause: **`npm run dev:hybrid`** — see `docs/HYBRID_DEV.md`. Manual local setup: `docs/SUPABASE_SETUP.md`, `.env.example`.
 - **GitHub OAuth:** Configure `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` in Supabase Dashboard → Edge Functions → Secrets for the auth function.
 - **Live App (Preview):** VisuDEV can build and run the linked app from the repo. See `docs/PREVIEW_RUNNER.md`. Optional: add `visudev.config.json` in your app repo root (`buildCommand`, `startCommand`, `port`) so the Preview Runner builds and serves it correctly.
 

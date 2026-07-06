@@ -75,6 +75,8 @@
   },
   "scripts": {
     "dev": "node scripts/dev-auto.js",
+    "dev:hybrid": "node scripts/dev-hybrid.js",
+    "ping:cloud": "node scripts/ping-cloud-supabase.js",
     "visudev-runner": "npm run dev:runner",
     "visudev-runner-status": "node scripts/visudev-runner-status.js",
     "visudev-logs-runner": "node scripts/run-logs-runner.js",
