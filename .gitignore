@@ -34,4 +34,10 @@ test-results/
 # IDE / OS
 .DS_Store
 *.log
-.cursor/
+
+# Cursor — version project rules; ignore local IDE noise
+.cursor/*
+!.cursor/README.md
+!.cursor/readme-contract.md
+!.cursor/rules/
+!.cursor/rules/**

@@ -1,0 +1,20 @@
+---
+description: When deploy/push or "fix review" is requested, check for failed AI review and run the fix loop first.
+globs: 
+alwaysApply: false
+---
+
+# AI Review Failed – Agent Fix Loop
+
+When the user asks to **deploy**, **push**, or **fix the (AI) review**:
+
+1. **Check for `.shimwrapper/review-failed.json`.** If it exists, a previous pipeline run ended with AI review REJECT.
+2. **Follow AGENTS.md § "Agent after failed AI review" and § "Review-failed artifact":**
+   - Read `review-failed.json` (fields: `verdict`, `score`, `review_file`, `timestamp`).
+   - Read the referenced review in `.shimwrapper/reviews/<review_file>`.
+   - Address **all deductions** with a **broad pass per affected file** (IDOR, rate limiting, input validation, error handling, edge cases) — see `docs/AI_REVIEW_WHY_NEW_ERRORS_AFTER_FIXES.md`.
+   - Commit the fixes, then **re-run the full check pipeline** (e.g. `supabase --workdir src functions deploy <name>` or `npm run push`).
+   - **Repeat** until the AI review passes (ACCEPT, score ≥ 95%). Only then proceed with the user’s original deploy/push if it was deferred.
+3. If `review-failed.json` does not exist, proceed with the requested deploy or push as usual (checks will run in the pipeline).
+
+Do not skip the fix loop when the artifact is present; the pipeline is designed to deploy only with passing checks.

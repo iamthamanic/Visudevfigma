@@ -32,6 +32,7 @@ Open: **http://localhost:3005** (fester Port, siehe unten). Runner: http://local
 - `src/supabase/functions/` – Edge Functions source (visudev-auth, visudev-analyzer, visudev-projects, etc.). Deploy with `supabase functions deploy <name>`.
 - `supabase/` – Config, migrations, and deployed function copies. See `docs/SUPABASE_SETUP.md`.
 - `docs/` – Setup and runbooks (`HYBRID_DEV.md`, `SUPABASE_SETUP.md`, `GITHUB_SECRETS.md`, `PREVIEW_RUNNER.md`).
+- `.cursor/rules/` – Versionierte Cursor-Agent-Regeln (Workflow, Frontend, Supabase). Siehe `.cursor/README.md` und `AGENTS.md`.
 
 ## Dev-Server-Port (3005)
 
