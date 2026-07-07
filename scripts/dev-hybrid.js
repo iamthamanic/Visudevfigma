@@ -58,8 +58,10 @@ async function main() {
     }
   }
 
-  console.log("[dev-hybrid] Starte supabase functions serve …");
-  console.log(`[dev-hybrid] Warte auf ${healthUrlForSupabase(prep.env.VITE_SUPABASE_URL)} …`);
+  console.log("[dev-hybrid] Starte functions serve + App parallel …");
+  console.log(
+    `[dev-hybrid] Edge Functions werden im Hintergrund bereit (${healthUrlForSupabase(prep.env.VITE_SUPABASE_URL)}) …`,
+  );
 
   const result = await startHybridDevServers({
     env: process.env,
