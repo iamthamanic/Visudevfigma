@@ -69,7 +69,11 @@ if [[ "$run_frontend" = true ]] || [[ "$run_backend" = true ]]; then
   CHECK_ARGS=()
   [[ "$run_frontend" = true ]] && CHECK_ARGS+=(--frontend)
   [[ "$run_backend" = true ]] && CHECK_ARGS+=(--backend)
-  [[ "$run_ai_review" = true ]] && CHECK_ARGS+=(--ai-review)
+  if [[ "$run_ai_review" = true ]]; then
+    CHECK_ARGS+=(--ai-review)
+  else
+    CHECK_ARGS+=(--no-ai-review)
+  fi
   bash "$ROOT_DIR/scripts/run-checks.sh" "${CHECK_ARGS[@]}"
 fi
 

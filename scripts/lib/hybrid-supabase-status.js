@@ -2,11 +2,10 @@
  * Local Supabase status/start helpers (no process exit, no env mutation).
  * Location: scripts/lib/hybrid-supabase-status.js
  */
-const { spawnSync } = require("child_process");
 const path = require("path");
+const { runSupabaseSync } = require("./supabase-cli-direct");
 
 const ROOT = path.join(__dirname, "../..");
-const SUPABASE_SHIM = path.join(__dirname, "../supabase-checked.sh");
 
 function redactSecrets(text) {
   return text.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "[REDACTED]");
@@ -54,12 +53,11 @@ function parseSupabaseStatusStdout(stdout) {
  * @param {{ spawnSync?: typeof spawnSync }} [deps]
  */
 function createSupabaseStatusClient(deps = {}) {
-  const spawnSyncFn = deps.spawnSync ?? spawnSync;
+  const runSync = deps.runSupabaseSync ?? runSupabaseSync;
 
   function runSupabase(args, inherit = false) {
-    return spawnSyncFn("bash", [SUPABASE_SHIM, "--no-ai-review", "--workdir", "src", ...args], {
+    return runSync(args, {
       cwd: ROOT,
-      encoding: "utf8",
       stdio: inherit ? "inherit" : "pipe",
     });
   }
