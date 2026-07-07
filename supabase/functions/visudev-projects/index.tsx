@@ -9,6 +9,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createClient } from "@jsr/supabase__supabase-js";
 import { createProjectsModule } from "./module/index.ts";
+import { resolveSupabaseUrlForRuntime } from "./module/internal/helpers/auth-helper.ts";
 import type { LoggerLike } from "./module/interfaces/module.interface.ts";
 import { ModuleException } from "./module/internal/exceptions/index.ts";
 import type { ErrorResponse } from "./module/types/index.ts";
@@ -25,7 +26,12 @@ app.use(
   "/*",
   cors({
     origin: "*",
-    allowHeaders: ["Content-Type", "Authorization"],
+    allowHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-VisuDev-Guest",
+      "X-VisuDev-Guest-Token",
+    ],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
@@ -125,7 +131,10 @@ function createLogger(): LoggerLike {
 }
 
 function loadEnvConfig(loggerInstance: LoggerLike): EnvConfig {
-  const supabaseUrl = getRequiredEnv("SUPABASE_URL");
+  const supabaseUrl = resolveSupabaseUrlForRuntime();
+  if (!supabaseUrl) {
+    throw new Error("SUPABASE_URL environment variable is required");
+  }
   const supabaseServiceRoleKey = getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY");
 
   const kvTableName = Deno.env.get("VISUDEV_KV_TABLE") ??

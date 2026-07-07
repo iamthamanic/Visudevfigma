@@ -12,6 +12,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import net from "node:net";
+import { homedir } from "node:os";
 import path from "node:path";
 import {
   getWorkspaceDir,
@@ -37,6 +38,9 @@ import {
   streamContainerLogs,
 } from "./docker.js";
 import { runRuntimeCrawl } from "./runtime-crawl.js";
+import { resolveValidatedLocalPath } from "./lib/local-path-security.js";
+import { analyzeLocalBlueprint, validateBlueprintAnalyzeInput } from "./lib/blueprint-local.js";
+import { pickNativeFolder } from "./lib/native-folder-picker.js";
 
 const PORT = Number(process.env.PORT) || 4000;
 /** Actual port the runner binds to (set after finding a free one). */
@@ -1360,7 +1364,9 @@ async function buildAndStartAsync(runId) {
   const { repo, branchOrCommit, projectId, proxyPort, appPort, previewUrl } = run;
   const bootMode = resolveBootMode(run.bootMode);
   const bestEffortEnabled = bootMode !== "strict";
-  const workspaceDir = getWorkspaceDir(projectId);
+  const useLocalPath = typeof run.localPath === "string" && run.localPath.length > 0;
+  const useLocalWorkspace = useLocalPath || !!getLocalWorkspaceOverride();
+  const workspaceDir = useLocalPath ? run.localPath : getWorkspaceDir(projectId);
   const isActive = () => isRunOperationActive(runId, run, operationId);
   const assertActive = () => assertRunOperationActive(runId, run, operationId);
 
@@ -1378,13 +1384,16 @@ async function buildAndStartAsync(runId) {
     releasePortAndStartPlaceholder(proxyPort, `Build/Start fehlgeschlagen:\n${displayMsg}${hint}`);
   };
 
-  const useLocalWorkspace = !!getLocalWorkspaceOverride();
-
   return withWorkspaceLock(projectId, async () => {
     try {
       assertActive();
       if (useLocalWorkspace) {
-        pushLog(run, "Lokales Workspace (USE_LOCAL_WORKSPACE): Git-Schritt übersprungen.");
+        pushLog(
+          run,
+          useLocalPath
+            ? `Lokaler Projektpfad: ${run.localPath}`
+            : "Lokales Workspace (USE_LOCAL_WORKSPACE): Git-Schritt übersprungen.",
+        );
       } else {
         pushLog(run, "Git: Clone/Pull …");
         await cloneOrPull(repo, branchOrCommit, workspaceDir);
@@ -1823,10 +1832,33 @@ function corsPreflight(res) {
   res.writeHead(204, {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-VisuDev-Project-Token",
+    "Access-Control-Allow-Headers":
+      "Content-Type, Authorization, X-VisuDev-Project-Token, X-VisuDev-Guest",
     "Access-Control-Max-Age": "600",
   });
   res.end();
+}
+
+async function handleBrowseLocalPath(req, res, url) {
+  const startDir = url.searchParams.get("startDir")?.trim() || homedir();
+  const picked = await pickNativeFolder({ defaultPath: startDir });
+  if (picked.cancelled) {
+    send(res, 200, { success: true, cancelled: true });
+    return;
+  }
+  if (!picked.path) {
+    send(res, 200, {
+      success: false,
+      error: picked.error ?? "Kein Ordner gewählt",
+    });
+    return;
+  }
+  const validated = resolveValidatedLocalPath(picked.path);
+  if (!validated.ok) {
+    send(res, 400, { success: false, error: validated.error });
+    return;
+  }
+  send(res, 200, { success: true, path: validated.path });
 }
 
 async function handleStart(req, res, _url) {
@@ -1834,21 +1866,41 @@ async function handleStart(req, res, _url) {
   const body = await parseBody(req);
   const {
     repo,
+    localPath,
     branchOrCommit = "main",
     projectId,
     commitSha,
     bootMode: requestedBootMode,
     injectSupabasePlaceholders: requestedInjectSupabasePlaceholders,
   } = body;
-  const normalizedRepo = normalizeRepoInput(repo);
+  const localPathResult = localPath ? resolveValidatedLocalPath(localPath) : null;
+  const isLocalStart = localPathResult?.ok === true;
+  const normalizedRepo = isLocalStart ? null : normalizeRepoInput(repo);
   const normalizedProjectId = normalizeProjectIdValue(projectId);
-  const normalizedBranchOrCommit = normalizeBranchOrCommitInput(branchOrCommit);
+  const normalizedBranchOrCommit = isLocalStart
+    ? "main"
+    : normalizeBranchOrCommitInput(branchOrCommit);
   const requestProjectToken = readProjectTokenFromRequest(req);
-  if (!normalizedRepo || !normalizedProjectId || !normalizedBranchOrCommit) {
+  if (!normalizedProjectId) {
+    send(res, 400, {
+      success: false,
+      error: "Invalid start request. projectId must match [A-Za-z0-9_-]{1,64}.",
+    });
+    return;
+  }
+  if (isLocalStart) {
+    // localPath validated above
+  } else if (localPath) {
+    send(res, 400, {
+      success: false,
+      error: localPathResult?.error ?? "Invalid localPath",
+    });
+    return;
+  } else if (!normalizedRepo || !normalizedBranchOrCommit) {
     send(res, 400, {
       success: false,
       error:
-        "Invalid start request. Expected repo=owner/repo, projectId=[A-Za-z0-9_-]{1,64}, branchOrCommit with safe git ref chars.",
+        "Invalid start request. Expected repo=owner/repo or localPath (absolute directory), projectId=[A-Za-z0-9_-]{1,64}, branchOrCommit with safe git ref chars.",
     });
     return;
   }
@@ -1934,7 +1986,8 @@ async function handleStart(req, res, _url) {
     previewUrl,
     error: null,
     startedAt: new Date().toISOString(),
-    repo: normalizedRepo,
+    repo: isLocalStart ? `local:${localPathResult.path}` : normalizedRepo,
+    localPath: isLocalStart ? localPathResult.path : null,
     branchOrCommit: normalizedBranchOrCommit,
     projectId: normalizedProjectId,
     commitSha: commitShaTrimmed,
@@ -1959,7 +2012,7 @@ async function handleStart(req, res, _url) {
   if (newRun) {
     pushLog(
       newRun,
-      `Start angefordert (${normalizedRepo} @ ${normalizedBranchOrCommit}). Run: ${runId}`,
+      `Start angefordert (${isLocalStart ? localPathResult.path : `${normalizedRepo} @ ${normalizedBranchOrCommit}`}). Run: ${runId}`,
     );
     if (USE_REAL_BUILD || USE_DOCKER) {
       pushLog(newRun, "Run ist in der Build/Start-Warteschlange …");
@@ -2393,6 +2446,51 @@ function readRawBody(req) {
   });
 }
 
+async function handleBlueprintAnalyze(req, res) {
+  let body;
+  try {
+    body = await parseBody(req);
+  } catch (error) {
+    const statusCode = Number.isFinite(Number(error?.statusCode)) ? Number(error.statusCode) : 400;
+    send(res, statusCode, {
+      success: false,
+      error: error instanceof Error ? error.message : "Invalid JSON body",
+    });
+    return;
+  }
+
+  const validation = validateBlueprintAnalyzeInput(body);
+  if (!validation.ok) {
+    send(res, validation.statusCode ?? 400, {
+      success: false,
+      error: validation.error,
+    });
+    return;
+  }
+
+  try {
+    const result = await analyzeLocalBlueprint({
+      localPath: validation.localPath,
+      projectId: validation.projectId,
+    });
+    send(res, 200, {
+      success: true,
+      data: {
+        blueprint: result.blueprint,
+        analysisId: result.analysisId,
+        filesAnalyzed: result.filesAnalyzed,
+        workspaceRoot: result.workspaceRoot,
+      },
+    });
+  } catch (error) {
+    const statusCode = Number.isFinite(Number(error?.statusCode)) ? Number(error.statusCode) : 500;
+    send(res, statusCode, {
+      success: false,
+      error: error instanceof Error ? error.message : "Blueprint analysis failed",
+    });
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   if (req.method === "OPTIONS") {
     corsPreflight(res);
@@ -2453,9 +2551,11 @@ const server = http.createServer(async (req, res) => {
           ? "/crawl"
           : req.method === "POST" && pathname.startsWith("/stop-project/")
             ? "/stop-project"
-            : req.method === "POST" && pathname.startsWith("/stop/")
-              ? "/stop"
-              : null;
+            : req.method === "POST" && pathname === "/blueprint/analyze"
+              ? "/blueprint/analyze"
+              : req.method === "POST" && pathname.startsWith("/stop/")
+                ? "/stop"
+                : null;
   if (writeRouteKey) {
     const rateLimit = enforceWriteRateLimit(req, writeRouteKey);
     if (!rateLimit.ok) {
@@ -2477,8 +2577,16 @@ const server = http.createServer(async (req, res) => {
       await handleHealth(req, res);
       return;
     }
+    if (req.method === "GET" && pathname === "/browse-local-path") {
+      await handleBrowseLocalPath(req, res, url);
+      return;
+    }
     if (req.method === "GET" && pathname === "/runs") {
       handleRuns(req, res, url);
+      return;
+    }
+    if (req.method === "POST" && pathname === "/blueprint/analyze") {
+      await handleBlueprintAnalyze(req, res);
       return;
     }
     if (req.method === "POST" && pathname === "/start") {

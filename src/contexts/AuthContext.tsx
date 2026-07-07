@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "../lib/supabase/client";
 import { supabaseUrl } from "../utils/supabase/info";
+import { createGuestUser, shouldUseGuestMode } from "../lib/visudev/guest-mode";
 import type { Session, User } from "@jsr/supabase__supabase-js";
 import { AuthContext } from "./authContextRef";
 import type { AuthContextValue } from "./authContextRef";
@@ -39,6 +40,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState(false);
+
+  const applyGuestIfNeeded = useCallback((sessionUser: User | null | undefined) => {
+    if (sessionUser) {
+      setIsGuest(false);
+      return sessionUser;
+    }
+    if (shouldUseGuestMode(null)) {
+      setIsGuest(true);
+      return createGuestUser();
+    }
+    setIsGuest(false);
+    return null;
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,20 +72,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (shouldInvalidateSession(supabaseUrl, iss)) {
             void supabase.auth.signOut();
             setSession(null);
-            setUser(null);
+            setUser(applyGuestIfNeeded(null));
           } else {
             setSession(s);
-            setUser(s?.user ?? null);
+            setUser(applyGuestIfNeeded(s?.user ?? null));
           }
         } else {
           setSession(s);
-          setUser(s?.user ?? null);
+          setUser(applyGuestIfNeeded(s?.user ?? null));
         }
       })
       .catch(() => {
         if (cancelled) return;
         setSession(null);
-        setUser(null);
+        setUser(applyGuestIfNeeded(null));
       })
       .finally(() => {
         window.clearTimeout(safetyTimer);
@@ -85,12 +100,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (shouldInvalidateSession(supabaseUrl, iss)) {
           void supabase.auth.signOut();
           setSession(null);
-          setUser(null);
+          setUser(applyGuestIfNeeded(null));
           return;
         }
       }
       setSession(s);
-      setUser(s?.user ?? null);
+      setUser(applyGuestIfNeeded(s?.user ?? null));
     });
 
     return () => {
@@ -98,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [applyGuestIfNeeded]);
 
   const signInWithPassword = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -112,18 +127,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
-  }, []);
+    setSession(null);
+    setUser(applyGuestIfNeeded(null));
+  }, [applyGuestIfNeeded]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       session,
       loading,
+      isGuest,
       signInWithPassword,
       signUp,
       signOut,
     }),
-    [user, session, loading, signInWithPassword, signUp, signOut],
+    [user, session, loading, isGuest, signInWithPassword, signUp, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

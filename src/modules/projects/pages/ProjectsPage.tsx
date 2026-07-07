@@ -21,12 +21,17 @@ import {
   SelectValue,
 } from "../../../components/ui/select";
 import { useAuth } from "../../../contexts/useAuth";
+import { isLocalHostUI } from "../../../lib/visudev/guest-mode";
+import { hasPreviewSource, projectNameFromLocalPath } from "../../../lib/visudev/project-source";
 import { useVisudev } from "../../../lib/visudev/store";
-import type { PreviewMode, Project } from "../../../lib/visudev/types";
+import type { PreviewMode, Project, ProjectSourceMode } from "../../../lib/visudev/types";
 import { api } from "../../../utils/api";
 import { ProjectCard } from "../components/ProjectCard";
 import { ProjectListWithDnD, type ListSortColumn } from "../components/ProjectListWithDnD";
 import { GitHubRepoSelector } from "../components/GitHubRepoSelector";
+import { LocalPathPicker } from "../components/LocalPathPicker";
+import { buildProjectFormPayload } from "../services/project-form-payload";
+import { useProjectDeleteConfirm } from "../hooks/useProjectDeleteConfirm";
 import { useProjectOrder, sortProjectsByOrder } from "../hooks/useProjectOrder";
 import { SupabaseProjectSelector } from "../components/SupabaseProjectSelector";
 import styles from "../styles/ProjectsPage.module.css";
@@ -38,7 +43,7 @@ interface ProjectsPageProps {
 }
 
 export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: ProjectsPageProps) {
-  const { session, user, signInWithPassword } = useAuth();
+  const { session, user, signInWithPassword, isGuest } = useAuth();
   const {
     projects,
     projectsLoading,
@@ -77,12 +82,27 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
     });
   }, []);
 
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [deleteConfirmProjectId, setDeleteConfirmProjectId] = useState<string | null>(null);
-  const [deleteConfirmPassword, setDeleteConfirmPassword] = useState("");
-  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
+  const {
+    isDeleteConfirmOpen,
+    deleteConfirmPassword,
+    setDeleteConfirmPassword,
+    isDeleteLoading,
+    skipDeletePassword,
+    handleDeleteClick,
+    handleDeleteConfirmClose,
+    handleDeleteConfirmSubmit,
+  } = useProjectDeleteConfirm({
+    isGuest,
+    userEmail: user?.email,
+    signInWithPassword,
+    deleteProject,
+  });
 
   const [projectName, setProjectName] = useState("");
+  const [sourceMode, setSourceMode] = useState<ProjectSourceMode>(
+    isLocalHostUI() ? "local" : "github",
+  );
+  const [localPath, setLocalPath] = useState("");
   const [githubRepo, setGithubRepo] = useState("");
   const [githubBranch, setGithubBranch] = useState("main");
   const [githubAccessToken, setGithubAccessToken] = useState("");
@@ -93,45 +113,59 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
   const [supabaseAnonKey, setSupabaseAnonKey] = useState("");
   const [supabaseManagementToken, setSupabaseManagementToken] = useState("");
 
+  const projectFormState = useMemo(
+    () => ({
+      projectName,
+      sourceMode,
+      localPath,
+      githubRepo,
+      githubBranch,
+      githubAccessToken,
+      deployedUrl,
+      previewMode,
+      databaseType,
+      supabaseProjectId,
+      supabaseAnonKey,
+      supabaseManagementToken,
+    }),
+    [
+      projectName,
+      sourceMode,
+      localPath,
+      githubRepo,
+      githubBranch,
+      githubAccessToken,
+      deployedUrl,
+      previewMode,
+      databaseType,
+      supabaseProjectId,
+      supabaseAnonKey,
+      supabaseManagementToken,
+    ],
+  );
+
   const handleCreateProject = async () => {
     setIsLoading(true);
     try {
-      const newProject: Omit<Project, "id" | "createdAt" | "screens" | "flows"> = {
-        name: projectName,
-        github_repo: githubRepo,
-        github_branch: githubBranch,
-        github_access_token: githubAccessToken,
-        deployed_url: deployedUrl,
-        preview_mode: previewMode,
-        database_type: databaseType,
-        supabase_project_id: databaseType === "supabase" ? supabaseProjectId : undefined,
-        supabase_anon_key: databaseType === "supabase" ? supabaseAnonKey : undefined,
-        supabase_management_token:
-          databaseType === "supabase" ? supabaseManagementToken : undefined,
-        description: `GitHub: ${githubRepo}${deployedUrl ? ` | Live: ${deployedUrl}` : ""}`,
-      };
+      const newProject = buildProjectFormPayload(projectFormState);
 
       const created = await addProject(newProject);
-      if (githubRepo && accessToken && created.id) {
+      if (sourceMode === "github" && githubRepo && accessToken && created.id) {
         await api.integrations.github.setProjectGitHubRepo(
           created.id,
           { repo: githubRepo, branch: githubBranch || "main" },
           accessToken,
         );
       }
-      // Preview sofort anstoßen, sobald Projekt mit Repo angelegt ist (außer Modus "deployed")
-      if (created.id && created.github_repo?.trim() && created.preview_mode !== "deployed") {
-        void startPreview(
-          created.id,
-          created.github_repo,
-          created.github_branch || "main",
-          undefined,
-        );
+      if (created.id && created.preview_mode !== "deployed" && hasPreviewSource(created)) {
+        void startPreview(created.id);
       }
       setIsDialogOpen(false);
       setStep(1);
       resetForm();
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown error";
+      console.warn("[ProjectsPage] create project failed:", message);
       toast.error("Projekt konnte nicht erstellt werden.");
     } finally {
       setIsLoading(false);
@@ -145,22 +179,11 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
     try {
       const updatedProject: Project = {
         ...editingProject,
-        name: projectName,
-        github_repo: githubRepo,
-        github_branch: githubBranch,
-        github_access_token: githubAccessToken,
-        deployed_url: deployedUrl,
-        preview_mode: previewMode,
-        database_type: databaseType,
-        supabase_project_id: databaseType === "supabase" ? supabaseProjectId : undefined,
-        supabase_anon_key: databaseType === "supabase" ? supabaseAnonKey : undefined,
-        supabase_management_token:
-          databaseType === "supabase" ? supabaseManagementToken : undefined,
-        description: `GitHub: ${githubRepo}${deployedUrl ? ` | Live: ${deployedUrl}` : ""}`,
+        ...buildProjectFormPayload(projectFormState),
       };
 
       await updateProject(updatedProject);
-      if (githubRepo && accessToken) {
+      if (sourceMode === "github" && githubRepo && accessToken) {
         await api.integrations.github.setProjectGitHubRepo(
           editingProject.id,
           { repo: githubRepo, branch: githubBranch || "main" },
@@ -170,46 +193,12 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
       setIsEditDialogOpen(false);
       setEditingProject(null);
       resetForm();
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown error";
+      console.warn("[ProjectsPage] update project failed:", message);
       toast.error("Projekt konnte nicht gespeichert werden.");
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleDeleteClick = (id: string) => {
-    setDeleteConfirmProjectId(id);
-    setDeleteConfirmPassword("");
-    setIsDeleteConfirmOpen(true);
-  };
-
-  const handleDeleteConfirmClose = () => {
-    setIsDeleteConfirmOpen(false);
-    setDeleteConfirmProjectId(null);
-    setDeleteConfirmPassword("");
-  };
-
-  const handleDeleteConfirmSubmit = async () => {
-    if (!deleteConfirmProjectId || !deleteConfirmPassword.trim()) return;
-    const email = user?.email;
-    if (!email) {
-      toast.error("Nicht angemeldet. Bitte zuerst anmelden.");
-      return;
-    }
-    setIsDeleteLoading(true);
-    try {
-      const { error } = await signInWithPassword(email, deleteConfirmPassword.trim());
-      if (error) {
-        toast.error("Falsches Passwort. Löschen abgebrochen.");
-        return;
-      }
-      await deleteProject(deleteConfirmProjectId);
-      handleDeleteConfirmClose();
-      toast.success("Projekt wurde gelöscht.");
-    } catch {
-      toast.error("Fehler beim Löschen des Projekts");
-    } finally {
-      setIsDeleteLoading(false);
     }
   };
 
@@ -221,6 +210,8 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
   const handleEditClick = (project: Project) => {
     setEditingProject(project);
     setProjectName(project.name || "");
+    setSourceMode(project.source_mode ?? (project.local_path ? "local" : "github"));
+    setLocalPath(project.local_path || "");
     setGithubRepo(project.github_repo || "");
     setGithubBranch(project.github_branch || "main");
     setGithubAccessToken(project.github_access_token || "");
@@ -235,6 +226,8 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
 
   const resetForm = () => {
     setProjectName("");
+    setSourceMode(isLocalHostUI() ? "local" : "github");
+    setLocalPath("");
     setGithubRepo("");
     setGithubBranch("main");
     setGithubAccessToken("");
@@ -248,12 +241,36 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
 
   const handleNextStep = () => {
     if (step === 1) {
-      if (!githubRepo.trim()) {
+      if (sourceMode === "github" && !githubRepo.trim()) {
         alert("Bitte wähle zuerst ein GitHub-Repository aus.");
         return;
       }
+      if (sourceMode === "local") {
+        const path = localPath.trim();
+        if (!path) {
+          alert("Bitte gib einen absoluten Pfad zum Projektordner an.");
+          return;
+        }
+        if (!path.startsWith("/")) {
+          alert("Der lokale Pfad muss absolut sein (z. B. /Users/…/mein-projekt).");
+          return;
+        }
+      }
       if (!projectName.trim()) {
-        setProjectName(githubRepo.split("/").pop() ?? githubRepo);
+        if (sourceMode === "github") {
+          setProjectName(githubRepo.split("/").pop() ?? githubRepo);
+        } else if (sourceMode === "local") {
+          const derived = projectNameFromLocalPath(localPath);
+          if (derived) {
+            setProjectName(derived);
+          } else {
+            alert("Bitte gib einen Projektnamen an.");
+            return;
+          }
+        } else {
+          alert("Bitte gib einen Projektnamen an.");
+          return;
+        }
       }
     }
     setStep(step + 1);
@@ -445,7 +462,7 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
           <DialogHeader>
             <DialogTitle>Neues Projekt erstellen</DialogTitle>
             <DialogDescription>
-              {step === 1 && "Schritt 1 von 3: Repository & Projektname"}
+              {step === 1 && "Schritt 1 von 3: Quelle & Projektname"}
               {step === 2 && "Schritt 2 von 3: Preview-Modus"}
               {step === 3 && "Schritt 3 von 3: Datenbank (optional, nur für Daten-Ansicht)"}
             </DialogDescription>
@@ -455,26 +472,87 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
             {step === 1 && (
               <div className={styles.stackMd}>
                 <div className={styles.stackSm}>
-                  <Label>GitHub Repository *</Label>
-                  <GitHubRepoSelector
-                    projectId={null}
-                    onSelect={(repoFullName, branch) => {
-                      setGithubRepo(repoFullName);
-                      setGithubBranch(branch || "main");
-                      const nameFromRepo = repoFullName.split("/").pop() ?? repoFullName;
-                      setProjectName(nameFromRepo);
-                    }}
-                    onOpenSettings={onOpenSettings}
-                    initialRepo={githubRepo}
-                    initialBranch={githubBranch}
-                  />
-                  <Input
-                    className={styles.inputSpacing}
-                    value={githubRepo}
-                    onChange={(event) => setGithubRepo(event.target.value)}
-                    placeholder="username/repository"
-                  />
+                  <Label htmlFor="sourceMode">Projektquelle</Label>
+                  <Select
+                    value={sourceMode}
+                    onValueChange={(value) => setSourceMode(value as ProjectSourceMode)}
+                  >
+                    <SelectTrigger id="sourceMode">
+                      <SelectValue placeholder="Quelle wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="local">Lokal (Ordner auf diesem Mac)</SelectItem>
+                      <SelectItem value="github">GitHub Repository</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+
+                {sourceMode === "local" ? (
+                  <div className={styles.stackSm}>
+                    <Label htmlFor="localPath">Projektordner *</Label>
+                    <LocalPathPicker
+                      id="localPath"
+                      value={localPath}
+                      onChange={setLocalPath}
+                      onPathPicked={(picked) => {
+                        const name = projectNameFromLocalPath(picked);
+                        if (name) setProjectName(name);
+                      }}
+                    />
+                    <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
+                      „Ordner wählen…“ öffnet den macOS-Dialog. Pfad kannst du weiterhin manuell
+                      anpassen. Monorepo-Root reicht — der Runner erkennt die App automatisch.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className={styles.stackSm}>
+                      <Label>GitHub Repository *</Label>
+                      <GitHubRepoSelector
+                        projectId={null}
+                        onSelect={(repoFullName, branch) => {
+                          setGithubRepo(repoFullName);
+                          setGithubBranch(branch || "main");
+                          const nameFromRepo = repoFullName.split("/").pop() ?? repoFullName;
+                          setProjectName(nameFromRepo);
+                        }}
+                        onOpenSettings={onOpenSettings}
+                        initialRepo={githubRepo}
+                        initialBranch={githubBranch}
+                      />
+                      <Input
+                        className={styles.inputSpacing}
+                        value={githubRepo}
+                        onChange={(event) => setGithubRepo(event.target.value)}
+                        placeholder="username/repository"
+                      />
+                    </div>
+
+                    <div className={styles.stackSm}>
+                      <Label htmlFor="githubBranch">Branch</Label>
+                      <Input
+                        id="githubBranch"
+                        value={githubBranch}
+                        onChange={(event) => setGithubBranch(event.target.value)}
+                        placeholder="main"
+                      />
+                    </div>
+
+                    <div className={styles.stackSm}>
+                      <Label htmlFor="githubToken">GitHub Access Token (optional)</Label>
+                      <Input
+                        id="githubToken"
+                        type="password"
+                        value={githubAccessToken}
+                        onChange={(event) => setGithubAccessToken(event.target.value)}
+                        placeholder="ghp_..."
+                      />
+                      <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
+                        Nur für private Repositories nötig
+                      </p>
+                    </div>
+                  </>
+                )}
 
                 <div className={styles.stackSm}>
                   <Label htmlFor="projectName">Projektname *</Label>
@@ -482,35 +560,17 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
                     id="projectName"
                     value={projectName}
                     onChange={(event) => setProjectName(event.target.value)}
-                    placeholder="z.B. Meine App (wird aus dem Repository übernommen)"
+                    placeholder={
+                      sourceMode === "local"
+                        ? "z.B. Meine App"
+                        : "z.B. Meine App (wird aus dem Repository übernommen)"
+                    }
                   />
-                  <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
-                    Wird beim Auswählen des Repositories gesetzt; kannst du anpassen.
-                  </p>
-                </div>
-
-                <div className={styles.stackSm}>
-                  <Label htmlFor="githubBranch">Branch</Label>
-                  <Input
-                    id="githubBranch"
-                    value={githubBranch}
-                    onChange={(event) => setGithubBranch(event.target.value)}
-                    placeholder="main"
-                  />
-                </div>
-
-                <div className={styles.stackSm}>
-                  <Label htmlFor="githubToken">GitHub Access Token (optional)</Label>
-                  <Input
-                    id="githubToken"
-                    type="password"
-                    value={githubAccessToken}
-                    onChange={(event) => setGithubAccessToken(event.target.value)}
-                    placeholder="ghp_..."
-                  />
-                  <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
-                    Nur für private Repositories nötig
-                  </p>
+                  {sourceMode === "github" ? (
+                    <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
+                      Wird beim Auswählen des Repositories gesetzt; kannst du anpassen.
+                    </p>
+                  ) : null}
                 </div>
               </div>
             )}
@@ -849,22 +909,26 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
           <DialogHeader>
             <DialogTitle>Projekt löschen</DialogTitle>
             <DialogDescription>
-              Dieses Projekt wird endgültig gelöscht. Zum Bestätigen bitte dein Passwort eingeben.
+              {skipDeletePassword
+                ? "Dieses Projekt wird endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."
+                : "Dieses Projekt wird endgültig gelöscht. Zum Bestätigen bitte dein Passwort eingeben."}
             </DialogDescription>
           </DialogHeader>
           <div className={styles.stackMd}>
-            <div className={styles.stackSm}>
-              <Label htmlFor="deleteConfirmPassword">Passwort</Label>
-              <Input
-                id="deleteConfirmPassword"
-                type="password"
-                value={deleteConfirmPassword}
-                onChange={(e) => setDeleteConfirmPassword(e.target.value)}
-                placeholder="Dein Passwort"
-                autoComplete="current-password"
-                disabled={isDeleteLoading}
-              />
-            </div>
+            {!skipDeletePassword ? (
+              <div className={styles.stackSm}>
+                <Label htmlFor="deleteConfirmPassword">Passwort</Label>
+                <Input
+                  id="deleteConfirmPassword"
+                  type="password"
+                  value={deleteConfirmPassword}
+                  onChange={(e) => setDeleteConfirmPassword(e.target.value)}
+                  placeholder="Dein Passwort"
+                  autoComplete="current-password"
+                  disabled={isDeleteLoading}
+                />
+              </div>
+            ) : null}
             <div className={styles.actionsRow}>
               <div />
               <div className={styles.actionsGroup}>
@@ -878,7 +942,9 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
                 <Button
                   variant="destructive"
                   onClick={handleDeleteConfirmSubmit}
-                  disabled={!deleteConfirmPassword.trim() || isDeleteLoading}
+                  disabled={
+                    (!skipDeletePassword && !deleteConfirmPassword.trim()) || isDeleteLoading
+                  }
                 >
                   {isDeleteLoading ? (
                     <>

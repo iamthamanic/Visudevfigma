@@ -74,8 +74,9 @@
     "vite": "^6.4.3"
   },
   "scripts": {
-    "dev": "node scripts/dev-auto.js",
+    "dev": "node scripts/dev-hybrid.js",
     "dev:hybrid": "node scripts/dev-hybrid.js",
+    "dev:cloud": "node scripts/dev-auto.js",
     "ping:cloud": "node scripts/ping-cloud-supabase.js",
     "visudev-runner": "npm run dev:runner",
     "visudev-runner-status": "node scripts/visudev-runner-status.js",
@@ -83,6 +84,7 @@
     "dev:kill-preview-port": "bash scripts/kill-preview-port.sh",
     "dev:runner": "node scripts/run-preview-runner.js",
     "dev:app": "vite",
+    "seed:demo-user": "node scripts/seed-demo-user.js",
     "build": "vite build",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",

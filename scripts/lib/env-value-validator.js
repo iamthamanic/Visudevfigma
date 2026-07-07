@@ -10,6 +10,7 @@ const ALLOWED_ENV_KEYS = new Set([
   "VITE_PREVIEW_RUNNER_URL",
   "VITE_LOGS_RUNNER_URL",
   "VITE_DEMO_AUTH_EMAIL",
+  "VITE_DEMO_AUTH_PASSWORD",
   "VISUDEV_CLOUD_PROJECT_REF",
   "VISUDEV_CLOUD_ANON_KEY",
 ]);
@@ -39,6 +40,8 @@ function validateEnvValue(key, value) {
       return PROJECT_REF_PATTERN.test(value);
     case "VITE_DEMO_AUTH_EMAIL":
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    case "VITE_DEMO_AUTH_PASSWORD":
+      return typeof value === "string" && value.length >= 8;
     default:
       return false;
   }

@@ -14,6 +14,8 @@ export interface AuthState {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  /** True when using localhost guest mode without Supabase login */
+  isGuest: boolean;
 }
 
 export interface AuthActions {

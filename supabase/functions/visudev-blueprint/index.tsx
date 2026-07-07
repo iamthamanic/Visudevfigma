@@ -66,15 +66,28 @@ const kvDel = async (key: string): Promise<void> => {
   if (error) throw new Error(error.message);
 };
 
+const VISUDEV_GUEST_OWNER_ID = "visudev-local-guest";
+
+function isSupabaseLocalDockerStack(): boolean {
+  const dbUrl = Deno.env.get("SUPABASE_DB_URL") ?? "";
+  if (dbUrl.includes("@db:") || dbUrl.includes("@db/")) return true;
+  return Boolean(Deno.env.get("SUPABASE_INTERNAL_HOST_PORT"));
+}
+
 // API Implementation
-const app = new Hono();
+const app = new Hono().basePath("/visudev-blueprint");
 
 app.use("*", logger(console.log));
 app.use(
   "/*",
   cors({
     origin: "*",
-    allowHeaders: ["Content-Type", "Authorization"],
+    allowHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-VisuDev-Guest",
+      "X-VisuDev-Guest-Token",
+    ],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
@@ -86,6 +99,8 @@ async function getUserIdOptional(c: Context): Promise<string | null> {
   if (!authHeader?.startsWith("Bearer ")) return null;
   const token = authHeader.slice(7).trim();
   if (!token) return null;
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (anonKey && token === anonKey) return null;
   try {
     const supabase = kvClient();
     const { data } = await supabase.auth.getUser(token);
@@ -96,6 +111,20 @@ async function getUserIdOptional(c: Context): Promise<string | null> {
     });
     return null;
   }
+}
+
+async function resolveRequestUserId(c: Context): Promise<string | null> {
+  const jwtUserId = await getUserIdOptional(c);
+  if (jwtUserId) return jwtUserId;
+  if (!isSupabaseLocalDockerStack()) return null;
+  const guestToken = Deno.env.get("VISUDEV_LOCAL_GUEST_TOKEN")?.trim();
+  if (!guestToken) return null;
+  const guestHeader = c.req.header("X-VisuDev-Guest")?.trim().toLowerCase();
+  const guestTokenHeader = c.req.header("X-VisuDev-Guest-Token")?.trim();
+  if (guestHeader === "localhost" && guestTokenHeader === guestToken) {
+    return VISUDEV_GUEST_OWNER_ID;
+  }
+  return null;
 }
 
 async function getProjectOwnerId(projectId: string): Promise<string | null> {
@@ -110,7 +139,7 @@ app.use("*", async (c, next) => {
   const projectId = c.req.param("projectId");
   if (!projectId) return next();
   const ownerId = await getProjectOwnerId(projectId);
-  const userId = await getUserIdOptional(c);
+  const userId = await resolveRequestUserId(c);
   if (userId === null) {
     return c.json({ success: false, error: "Forbidden" }, 403);
   }

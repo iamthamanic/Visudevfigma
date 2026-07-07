@@ -1,5 +1,5 @@
 /**
- * Hybrid dev server startup (functions serve + dev-auto).
+ * Hybrid dev server startup (functions serve + dev-auto in parallel).
  * Location: scripts/lib/hybrid-dev-servers.js
  */
 const { spawn } = require("child_process");
@@ -41,9 +41,24 @@ function createHybridDevServerRunner(deps = {}) {
     const spawnFn = options.spawnFn ?? d.spawn;
     const baseUrl = options.env.VITE_SUPABASE_URL || d.defaultLocalSupabaseUrl();
 
-    const functionsServe = options.registerChild(
-      d.startFunctionsServe({ env: options.env, spawn: spawnFn }),
+    const functionsServe = options.registerChild(d.startFunctionsServe({ env: options.env }));
+
+    const devAuto = options.registerChild(
+      spawnFn(process.execPath, [d.devAutoScript], {
+        cwd: d.rootDir,
+        env: { ...options.env, VISUDEV_FAST_DEV: "1" },
+        stdio: "inherit",
+      }),
     );
+
+    void d.waitForSupabaseHealth(baseUrl, { maxAttempts: 120, intervalMs: 500 }).then((healthy) => {
+      if (healthy) options.onHealthOk?.();
+      else {
+        console.warn(
+          "[dev-hybrid] Edge Functions noch nicht bereit — Login/API kann kurz fehlschlagen.",
+        );
+      }
+    });
 
     return new Promise((resolve) => {
       let settled = false;
@@ -57,55 +72,23 @@ function createHybridDevServerRunner(deps = {}) {
         finish({ ok: false, error: `functions serve spawn failed: ${errorMessage(err)}` });
       });
 
-      const onEarlyExit = (code) => {
+      devAuto.once("error", (err) => {
+        finish({ ok: false, error: `dev-auto spawn failed: ${errorMessage(err)}` });
+      });
+
+      devAuto.on("exit", (code) => {
+        finish({ ok: true, exitCode: code ?? 0 });
+      });
+
+      functionsServe.on("exit", (code) => {
         if (!options.isShuttingDown()) {
-          functionsServe.off("exit", onEarlyExit);
           finish({
             ok: false,
-            error: `functions serve beendet vor Health-Check (code ${code ?? "?"})`,
+            error: `functions serve beendet (code ${code ?? "?"})`,
             exitCode: code ?? 1,
           });
         }
-      };
-      functionsServe.on("exit", onEarlyExit);
-
-      void (async () => {
-        const healthy = await d.waitForSupabaseHealth(baseUrl, { maxAttempts: 60 });
-        if (settled) return;
-
-        functionsServe.off("exit", onEarlyExit);
-
-        if (!healthy) {
-          finish({
-            ok: false,
-            error: "Lokale Edge Functions nicht erreichbar nach functions serve.",
-          });
-          return;
-        }
-
-        options.onHealthOk?.();
-
-        const devAuto = options.registerChild(
-          spawnFn(process.execPath, [d.devAutoScript], {
-            cwd: d.rootDir,
-            env: options.env,
-            stdio: "inherit",
-          }),
-        );
-
-        devAuto.on("exit", (code) => {
-          finish({ ok: true, exitCode: code ?? 0 });
-        });
-        functionsServe.on("exit", (code) => {
-          if (!options.isShuttingDown()) {
-            finish({
-              ok: false,
-              error: `functions serve beendet (code ${code ?? "?"})`,
-              exitCode: code ?? 1,
-            });
-          }
-        });
-      })();
+      });
     });
   }
 

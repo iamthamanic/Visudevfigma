@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 /**
- * Hybrid dev CLI entry — guards, env prep, delegate to orchestrator.
+ * Default dev CLI — local Supabase (start + functions serve) + dev-auto (Vite + runners).
  * Location: scripts/dev-hybrid.js
  */
 const path = require("path");
@@ -12,6 +12,8 @@ const {
   startHybridDevServers,
   healthUrlForSupabase,
 } = require("./lib/hybrid-dev-orchestrator");
+const { ensureLocalDemoUserFromStatus } = require("./lib/seed-demo-user");
+const { LOCAL_DEMO_AUTH_EMAIL, LOCAL_DEMO_AUTH_PASSWORD } = require("./lib/local-demo-user");
 
 const ROOT = path.join(__dirname, "..");
 
@@ -41,8 +43,25 @@ async function main() {
 
   Object.assign(process.env, prep.env);
   console.log(`[dev-hybrid] VITE_SUPABASE_URL=${prep.env.VITE_SUPABASE_URL}`);
-  console.log("[dev-hybrid] Starte supabase functions serve …");
-  console.log(`[dev-hybrid] Warte auf ${healthUrlForSupabase(prep.env.VITE_SUPABASE_URL)} …`);
+
+  if (prep.status) {
+    const seed = await ensureLocalDemoUserFromStatus(prep.status);
+    if (!seed.ok) {
+      console.warn(`[dev-hybrid] Demo-User: ${seed.error}`);
+    } else {
+      console.log(
+        seed.created
+          ? `[dev-hybrid] Demo-User angelegt: ${LOCAL_DEMO_AUTH_EMAIL}`
+          : `[dev-hybrid] Demo-User bereit: ${LOCAL_DEMO_AUTH_EMAIL}`,
+      );
+      console.log(`[dev-hybrid] Login: ${LOCAL_DEMO_AUTH_EMAIL} / ${LOCAL_DEMO_AUTH_PASSWORD}`);
+    }
+  }
+
+  console.log("[dev-hybrid] Starte functions serve + App parallel …");
+  console.log(
+    `[dev-hybrid] Edge Functions werden im Hintergrund bereit (${healthUrlForSupabase(prep.env.VITE_SUPABASE_URL)}) …`,
+  );
 
   const result = await startHybridDevServers({
     env: process.env,

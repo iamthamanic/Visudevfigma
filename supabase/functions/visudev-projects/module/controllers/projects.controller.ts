@@ -10,8 +10,13 @@ import {
   NotFoundException,
   ValidationException,
 } from "../internal/exceptions/index.ts";
-import { getUserIdOptional } from "../internal/helpers/auth-helper.ts";
+import { resolveRequestUserId } from "../internal/helpers/auth-helper.ts";
+import {
+  sanitizeProjectList,
+  sanitizeProjectResponse,
+} from "../internal/helpers/project-response-sanitizer.ts";
 import { ProjectsService } from "../services/projects.service.ts";
+import { ProjectsWriteRateLimitService } from "../services/projects-write-rate-limit.service.ts";
 import {
   createProjectBodySchema,
   projectIdSchema,
@@ -24,13 +29,16 @@ interface SuccessResponse<T> {
 }
 
 export class ProjectsController {
-  constructor(private readonly service: ProjectsService) {}
+  constructor(
+    private readonly service: ProjectsService,
+    private readonly writeRateLimit: ProjectsWriteRateLimitService,
+  ) {}
 
   /** IDOR: when JWT present, filter to owned projects only. */
   public async listProjects(c: Context): Promise<Response> {
-    const userId = await getUserIdOptional(c);
+    const userId = await resolveRequestUserId(c);
     const data = await this.service.listProjects(userId);
-    return this.ok<ProjectResponseDto[]>(c, data);
+    return this.ok<ProjectResponseDto[]>(c, sanitizeProjectList(data));
   }
 
   /** IDOR: require auth; require ownership when project has ownerId. */
@@ -40,29 +48,37 @@ export class ProjectsController {
     if (!project) {
       throw new NotFoundException("Project");
     }
-    const userId = await getUserIdOptional(c);
+    const userId = await resolveRequestUserId(c);
     if (userId === null) {
       throw new ForbiddenException("Not authorized to access this project");
     }
     const ownerId =
       (project as ProjectResponseDto & { ownerId?: string }).ownerId;
-    if (ownerId != null && userId !== ownerId) {
+    if (ownerId == null || userId !== ownerId) {
       throw new ForbiddenException("Not authorized to access this project");
     }
-    return this.ok<ProjectResponseDto>(c, project);
+    return this.ok<ProjectResponseDto>(c, sanitizeProjectResponse(project));
   }
 
-  /** Set ownerId from JWT when present (IDOR mitigation). */
+  /** Set ownerId from authenticated user (required). */
   public async createProject(c: Context): Promise<Response> {
     const body = await this.parseBody<CreateProjectDto>(
       c,
       createProjectBodySchema,
     );
-    const userId = await getUserIdOptional(c);
-    const payload = { ...body, ownerId: userId ?? undefined };
+    const userId = await resolveRequestUserId(c);
+    if (userId === null) {
+      throw new ForbiddenException("Not authorized to create projects");
+    }
+    if (!(await this.writeRateLimit.allow(userId))) {
+      throw new ValidationException("Too many write requests", [
+        { field: "rate", message: "Rate limit exceeded. Retry in a minute." },
+      ]);
+    }
+    const payload = { ...body, ownerId: userId };
     const id = this.extractId(body);
     const project = await this.service.createProject(id, payload);
-    return this.ok<ProjectResponseDto>(c, project);
+    return this.ok<ProjectResponseDto>(c, sanitizeProjectResponse(project));
   }
 
   /** IDOR: require auth; require ownership when project has ownerId. */
@@ -72,24 +88,29 @@ export class ProjectsController {
     if (!project) {
       throw new NotFoundException("Project");
     }
-    const userId = await getUserIdOptional(c);
+    const userId = await resolveRequestUserId(c);
     if (userId === null) {
       throw new ForbiddenException("Not authorized to access this project");
     }
     const ownerId =
       (project as ProjectResponseDto & { ownerId?: string }).ownerId;
-    if (ownerId != null && userId !== ownerId) {
+    if (ownerId == null || userId !== ownerId) {
       throw new ForbiddenException("Not authorized to access this project");
+    }
+    if (!(await this.writeRateLimit.allow(userId))) {
+      throw new ValidationException("Too many write requests", [
+        { field: "rate", message: "Rate limit exceeded. Retry in a minute." },
+      ]);
     }
     const body = await this.parseBody<UpdateProjectDto>(
       c,
       updateProjectBodySchema,
     );
-    const { ownerId: _omit, ...safeBody } = body as UpdateProjectDto & {
+    const { ownerId: _ignoredOwner, ...safeBody } = body as UpdateProjectDto & {
       ownerId?: string;
     };
     const updated = await this.service.updateProject(id, safeBody);
-    return this.ok<ProjectResponseDto>(c, updated);
+    return this.ok<ProjectResponseDto>(c, sanitizeProjectResponse(updated));
   }
 
   /** IDOR: require auth; require ownership when project has ownerId. */
@@ -99,14 +120,19 @@ export class ProjectsController {
     if (!project) {
       throw new NotFoundException("Project");
     }
-    const userId = await getUserIdOptional(c);
+    const userId = await resolveRequestUserId(c);
     if (userId === null) {
       throw new ForbiddenException("Not authorized to access this project");
     }
     const ownerId =
       (project as ProjectResponseDto & { ownerId?: string }).ownerId;
-    if (ownerId != null && userId !== ownerId) {
+    if (ownerId == null || userId !== ownerId) {
       throw new ForbiddenException("Not authorized to access this project");
+    }
+    if (!(await this.writeRateLimit.allow(userId))) {
+      throw new ValidationException("Too many write requests", [
+        { field: "rate", message: "Rate limit exceeded. Retry in a minute." },
+      ]);
     }
     await this.service.deleteProject(id);
     return c.json({ success: true }, 200);

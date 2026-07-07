@@ -1,0 +1,66 @@
+{
+  "epicSlug": "blueprint-local-runner",
+  "designPath": ".qa/design/blueprint-local-runner.md",
+  "defaultLabels": ["P1"],
+  "issues": [
+    {
+      "title": "Extract shared Deno Blueprint pipeline (analyzeFromFileEntries)",
+      "featureSlug": "blueprint-pipeline-shared",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": [],
+      "body": "## Intent\nFact → Concept → Policy → BlueprintDocument als wiederverwendbare Deno-Funktion extrahieren, damit GitHub- und Local-Pfad dieselbe Pipeline nutzen.\n\n## User Journey\n1. Entwickler startet Blueprint-Scan (GitHub oder lokal)\n2. System sammelt Datei-Inhalte aus einer Quelle\n3. Dieselbe Pipeline erzeugt routes, findings, securityMatrix\n\n## Problem\n`BlueprintAnalysisService` ist an `GitHubService` gekoppelt; Local Mode kann Facts/Policies nicht teilen.\n\n## Solution\n- Neu: `module/blueprint/services/blueprint-pipeline.service.ts` mit `analyzeFromFileEntries(entries, meta)`\n- Refactor: `blueprint-analysis.service.ts` ruft Pipeline nach GitHub-Fetch auf\n- Keine Verhaltensänderung für bestehenden GitHub-Endpoint\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| GitHub Edge | yes (refactor) |\n| Local Runner | prepares shared API |\n| Gastmodus | — |\n\n## Edge Cases\n- Leere Dateiliste → leeres BlueprintDocument mit `routes: []`\n- Einzelne Datei unreadable → skip + warn log\n\n## Acceptance\n- [ ] GitHub-Analyze liefert weiterhin BlueprintDocument (Regression)\n- [ ] `analyzeFromFileEntries` exportiert routes, findings, securityMatrix, facts (cap 500)\n- [ ] Deno unit test für Pipeline mit Fixture-Dateien\n\n## Design\nEpic: `.qa/design/blueprint-local-runner.md`\n\n## Runner\nFeature slug: `blueprint-pipeline-shared`"
+    },
+    {
+      "title": "Deno CLI analyze-local (stdin JSON → BlueprintDocument)",
+      "featureSlug": "blueprint-analyze-local-cli",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": ["Extract shared Deno Blueprint pipeline (analyzeFromFileEntries)"],
+      "body": "## Intent\nCLI-Einstiegspunkt für den Preview Runner: liest `{ files: [{path, content}], projectId, localPath }` von stdin, schreibt BlueprintDocument JSON nach stdout.\n\n## User Journey\n1. Runner walked lokales Verzeichnis\n2. Runner spawnt `deno run … analyze-local.ts`\n3. CLI nutzt shared Pipeline und gibt JSON zurück\n\n## Problem\nRunner (Node) kann Deno-Module nicht direkt importieren.\n\n## Solution\n- `src/supabase/functions/visudev-analyzer/module/blueprint/cli/analyze-local.ts`\n- Dokumentation: benötigt `deno` im PATH (Hybrid-Dev)\n- Exit code ≠ 0 bei Pipeline-Fehler; stderr für kurze Fehlermeldung\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local Runner | yes |\n| GitHub Edge | skip |\n\n## Edge Cases\n- Ungültiges stdin JSON → exit 1\n- Sehr große Projekte → file limit 250 (wie GitHub)\n\n## Acceptance\n- [ ] CLI mit 1 Fixture-TS-Datei (Hono route) → stdout enthält `routes.length >= 1`\n- [ ] `npm run checks` / Deno fmt+lint grün\n\n## Design\nEpic: `.qa/design/blueprint-local-runner.md`\n\n## Blockers\nDepends on shared pipeline slice\n\n## Runner\nFeature slug: `blueprint-analyze-local-cli`"
+    },
+    {
+      "title": "Preview Runner POST /blueprint/analyze + filesystem walk",
+      "featureSlug": "blueprint-runner-endpoint",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": ["Deno CLI analyze-local (stdin JSON → BlueprintDocument)"],
+      "body": "## Intent\nLokale Blueprint-Analyse über den Preview Runner: absoluter `localPath`, Path-Jail, Monorepo-App-Root, Deno-CLI-Aufruf.\n\n## User Journey\n1. VisuDEV sendet `POST http://127.0.0.1:4xxx/blueprint/analyze` mit `{ localPath, projectId }`\n2. Runner validiert Pfad (`resolveValidatedLocalPath`)\n3. Runner erkennt App-Root (`listPreviewCandidates`), walked `.ts/.tsx/.js/.jsx`\n4. Response: `{ success: true, data: { blueprint, analysisId } }`\n\n## Problem\nKein Endpoint; lokale Projekte können nicht analysiert werden.\n\n## Solution\n- `preview-runner/lib/blueprint-local.js` — walk, prioritize, spawn deno CLI\n- `preview-runner/index.js` — Route + CORS für `127.0.0.1:3005`\n- Reuse: `local-path-security.js`, `build-candidates.js`\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local Runner | yes |\n| GitHub Edge | skip |\n\n## Edge Cases\n- Pfad außerhalb allowed roots → 403 mit klarer Meldung\n- `deno` nicht gefunden → 503 „Deno nicht installiert“\n- Monorepo: erstes Candidate-App-Root wie Preview\n\n## Acceptance\n- [ ] `curl -X POST …/blueprint/analyze -d '{\"localPath\":\"/abs/path\",\"projectId\":\"test\"}'` → 200 + blueprint JSON\n- [ ] Path-Jail lehnt `/etc` ab\n- [ ] `/health` unverändert\n\n## Design\nEpic: `.qa/design/blueprint-local-runner.md`\n\n## Runner\nFeature slug: `blueprint-runner-endpoint`"
+    },
+    {
+      "title": "Frontend runBlueprintScan routing for local_path projects",
+      "featureSlug": "blueprint-scan-local-wiring",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": ["Preview Runner POST /blueprint/analyze + filesystem walk"],
+      "body": "## Intent\n`runBlueprintScan` wählt automatisch Local Runner (bei `local_path`) oder GitHub Edge (bei `github_repo`); KV-Persistenz bleibt über `blueprintAPI.update`.\n\n## User Journey\n1. Nutzer öffnet Blueprint bei lokalem Projekt (Gastmodus OK)\n2. Scan ruft Runner auf, speichert Ergebnis in KV\n3. Matrix und Inspector zeigen Daten wie bei GitHub-Projekten\n\n## Problem\n`blueprint-scan.ts` wirft `missing_repo` ohne GitHub.\n\n## Solution\n- `src/lib/visudev/blueprint-runner-client.ts` — Runner-URL discovery (wie Preview)\n- `blueprint-scan.ts` — Branch `hasPreviewSource` / `local_path`\n- `store.tsx` — Fehlercode `missing_local_path` / `runner_unreachable`\n- `guestRequestHeader()` in Runner-Request headers\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local | yes |\n| GitHub | regression |\n| Gastmodus | yes |\n\n## Edge Cases\n- Weder `local_path` noch `github_repo` → klare Meldung\n- Runner nicht erreichbar → Hinweis „npm run dev“\n- GitHub-Projekt unverändert\n\n## Acceptance\n- [ ] Lokales Projekt: Blueprint-Scan completed, KV gespeichert\n- [ ] GitHub-Projekt: weiterhin Edge-Analyze\n- [ ] Vitest: routing local vs github\n\n## Design\nEpic: `.qa/design/blueprint-local-runner.md`\n\n## Runner\nFeature slug: `blueprint-scan-local-wiring`"
+    },
+    {
+      "title": "BlueprintPage scan errors and local project subtitle",
+      "featureSlug": "blueprint-page-local-ux",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": ["Frontend runBlueprintScan routing for local_path projects"],
+      "body": "## Intent\nStatt generischem „Fehler bei der Blueprint-Generierung“ die echte `scanStatuses.blueprint.error` anzeigen; Subtitle zeigt `local_path` bei lokalen Projekten.\n\n## User Journey\n1. Scan schlägt fehl (z. B. Runner down)\n2. Nutzer liest konkrete Ursache + nächsten Schritt\n3. Bei Erfolg: Subtitle „Technische Diagnose · Projekt · /Users/…/app“\n\n## Problem\nScreenshot zeigt nur AlertCircle ohne Kontext.\n\n## Solution\n- `BlueprintPage.tsx` — `scanStatuses.blueprint.error` rendern\n- Empty state: „Lokales Projekt — Runner starten (npm run dev)“\n- Scan-Status-Bar: `local_path` statt leerem Repo\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local | yes |\n| UI only | yes |\n\n## Edge Cases\n- Langer Pfad → truncate mit title tooltip\n- Scan läuft → bestehender Loader bleibt\n\n## Acceptance\n- [ ] Fehlgeschlagener Scan zeigt Fehlertext aus store\n- [ ] Lokales Projekt zeigt Pfad im Subtitle/Status\n- [ ] Kein Passwort/Login für Anzeige nötig (Gastmodus)\n\n## Design\nEpic: `.qa/design/blueprint-local-runner.md`\n\n## Runner\nFeature slug: `blueprint-page-local-ux`"
+    },
+    {
+      "title": "Guest mode for GitHub Blueprint analyze (Edge IDOR)",
+      "featureSlug": "blueprint-guest-auth",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": [],
+      "body": "## Intent\n`BlueprintProjectAccessService` akzeptiert `X-VisuDev-Guest: localhost` auf lokalem Supabase — analog `visudev-projects`.\n\n## User Journey\n1. Gast auf localhost mit GitHub-Repo-Projekt\n2. Blueprint-Analyze über Edge klappt ohne Demo-Login\n\n## Problem\nEdge Analyze verlangt JWT-User; Anon-Key allein → 403.\n\n## Solution\n- `blueprint-project-access.service.ts` — Guest header + `VISUDEV_GUEST_OWNER_ID`\n- CORS: `X-VisuDev-Guest` in analyzer routes\n- Optional: skip `getUser` wenn Anon-Key als Bearer\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local Supabase | yes |\n| Cloud | skip (kein Guest) |\n\n## Edge Cases\n- Guest header auf Cloud-Deploy → ignoriert\n- Fremdes Projekt → weiterhin 403\n\n## Acceptance\n- [ ] Gast + GitHub-Projekt: Analyze 200\n- [ ] Ohne Guest auf Cloud: unverändert JWT-Pflicht\n\n## Design\nEpic: `.qa/design/blueprint-local-runner.md`\n\n## Runner\nFeature slug: `blueprint-guest-auth`"
+    },
+    {
+      "title": "Acceptance dogfood: local blueprint on HV123 / visudev portfolio",
+      "featureSlug": "blueprint-local-acceptance",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": [
+        "Frontend runBlueprintScan routing for local_path projects",
+        "BlueprintPage scan errors and local project subtitle"
+      ],
+      "body": "## Intent\nEnd-to-end Nachweis: lokales Projekt (z. B. HV123-Mobile-HABA) liefert Security Matrix mit mindestens einer Route.\n\n## User Journey\n1. `npm run dev`\n2. Lokales Projekt mit absolutem Pfad\n3. Blueprint-Tab → Neu analysieren → Matrix sichtbar\n\n## Problem\nKein automatisierter Nachweis für Local Blueprint.\n\n## Solution\n- `.qa/acceptance/blueprint-local-runner.md`\n- Optional Playwright-Spec (SKIP wenn Pfad nicht vorhanden)\n- Evidence-Screenshots in `.qa/evidence/blueprint-local-runner/`\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local | yes |\n\n## Edge Cases\n- Fixture-Repo ohne API-Routes → Empty state OK, kein false fail\n\n## Acceptance\n- [ ] Manuelle Checkliste in acceptance.md abgehakt\n- [ ] `npm run checks` grün nach Epic\n- [ ] Screenshot: Matrix mit ≥1 Route für bekanntes Dogfood-Projekt\n\n## Design\nEpic: `.qa/design/blueprint-local-runner.md`\n\n## Runner\nFeature slug: `blueprint-local-acceptance`"
+    }
+  ]
+}

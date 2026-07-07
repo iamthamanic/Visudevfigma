@@ -13,6 +13,7 @@ export async function localPreviewStart(
     repo?: string;
     branchOrCommit?: string;
     commitSha?: string;
+    localPath?: string;
     bootMode?: PreviewRuntimeOptions["bootMode"];
     injectSupabasePlaceholders?: PreviewRuntimeOptions["injectSupabasePlaceholders"];
   },
@@ -37,6 +38,7 @@ export async function localPreviewStart(
     body: JSON.stringify({
       projectId: validProjectId,
       repo: options?.repo,
+      localPath: options?.localPath,
       branchOrCommit: options?.branchOrCommit ?? "main",
       commitSha: options?.commitSha ?? undefined,
       bootMode: options?.bootMode ?? undefined,
