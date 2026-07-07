@@ -1,28 +1,36 @@
 /**
- * Start supabase functions serve for hybrid dev.
+ * Start supabase functions serve for hybrid dev (no check shim).
  * Location: scripts/lib/hybrid-supabase-stack.js
  */
-const { spawn } = require("child_process");
-const path = require("path");
+const { spawnSupabase } = require("./supabase-cli-direct");
 
-const ROOT = path.join(__dirname, "../..");
-const SUPABASE_SHIM = path.join(__dirname, "../supabase-checked.sh");
+/** Keys that break Docker edge workers when inherited from the host (.env.local). */
+const FUNCTIONS_SERVE_STRIP_KEYS = [
+  "SUPABASE_URL",
+  "SUPABASE_ANON_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "SUPABASE_DB_URL",
+  "SUPABASE_INTERNAL_HOST_PORT",
+];
 
 /**
- * @param {{ spawn?: typeof spawn, env?: NodeJS.ProcessEnv }} [deps]
+ * @param {NodeJS.ProcessEnv} [baseEnv]
  */
-function startFunctionsServe(deps = {}) {
-  const spawnFn = deps.spawn ?? spawn;
-  const env = deps.env ?? process.env;
-  return spawnFn(
-    "bash",
-    [SUPABASE_SHIM, "--no-ai-review", "--workdir", "src", "functions", "serve"],
-    {
-      cwd: ROOT,
-      env,
-      stdio: "inherit",
-    },
-  );
+function envForFunctionsServe(baseEnv = process.env) {
+  const env = { ...baseEnv };
+  for (const key of FUNCTIONS_SERVE_STRIP_KEYS) {
+    delete env[key];
+  }
+  return env;
 }
 
-module.exports = { startFunctionsServe };
+/**
+ * @param {{ spawnSupabase?: typeof spawnSupabase, env?: NodeJS.ProcessEnv }} [deps]
+ */
+function startFunctionsServe(deps = {}) {
+  const spawnSupabaseFn = deps.spawnSupabase ?? spawnSupabase;
+  const env = envForFunctionsServe(deps.env ?? process.env);
+  return spawnSupabaseFn(["functions", "serve"], { env, stdio: "inherit" });
+}
+
+module.exports = { startFunctionsServe, envForFunctionsServe };

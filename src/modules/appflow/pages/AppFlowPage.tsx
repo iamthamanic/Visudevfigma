@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, Download, Loader2, Map, Play, RefreshCw, Square, X } from "lucide-react";
+import { hasPreviewSource } from "../../../lib/visudev/project-source";
 import { useVisudev } from "../../../lib/visudev/store";
 import {
   discoverPreviewRunner,
@@ -177,9 +178,10 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     };
   }, [activeProject?.preview_mode, projectId]);
 
-  // Auto-start preview when repo is connected (once per project; also when status not yet loaded)
+  // Auto-start preview when project has a source (once per project; also when status not yet loaded)
   useEffect(() => {
-    if (!activeProject?.github_repo || activeProject.id !== projectId) return;
+    if (!activeProject || !hasPreviewSource(activeProject) || activeProject.id !== projectId)
+      return;
     if (activeProject.preview_mode === "deployed") return;
     if (preview.status === "ready" || preview.status === "starting") {
       autoPreviewDoneRef.current = true;
@@ -205,9 +207,12 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     };
   }, [
     projectId,
+    activeProject,
     activeProject?.id,
     activeProject?.github_repo,
     activeProject?.github_branch,
+    activeProject?.local_path,
+    activeProject?.source_mode,
     activeProject?.lastAnalyzedCommitSha,
     activeProject?.preview_mode,
     preview.projectId,
@@ -242,7 +247,8 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
 
   // Fallback: if preview is idle and no live URL is available, retry auto-start (throttled).
   useEffect(() => {
-    if (!activeProject?.github_repo || activeProject.id !== projectId) return;
+    if (!activeProject || !hasPreviewSource(activeProject) || activeProject.id !== projectId)
+      return;
     if (activeProject.preview_mode === "deployed") return;
     if (autoPreviewDoneRef.current) return;
     const isIdle =
@@ -270,9 +276,12 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     };
   }, [
     projectId,
+    activeProject,
     activeProject?.id,
     activeProject?.github_repo,
     activeProject?.github_branch,
+    activeProject?.local_path,
+    activeProject?.source_mode,
     activeProject?.deployed_url,
     activeProject?.lastAnalyzedCommitSha,
     activeProject?.preview_mode,

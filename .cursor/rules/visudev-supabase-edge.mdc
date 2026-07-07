@@ -11,4 +11,4 @@ alwaysApply: false
 - Dependency injection required (Supabase client, logger, config). No hardcoded secrets.
 - Validate inputs with Zod. Standard responses: `{ success: true, data }` / `{ success: false, error: { code, message } }`.
 - Use injected logger, not `console.*` in services. Deploy via `bash scripts/supabase-checked.sh functions deploy <name>`.
-- Local dev: `npm run dev:hybrid` or `supabase functions serve` with `--workdir src`.
+- Local dev: `npm run dev` (Docker Supabase) or `supabase functions serve` with `--workdir src`.

@@ -69,6 +69,8 @@ export interface Flow {
 export type PreviewStatus = "idle" | "starting" | "ready" | "failed" | "stopped";
 /** Preview mode selection per project */
 export type PreviewMode = "auto" | "local" | "central" | "deployed";
+/** Where project source code lives */
+export type ProjectSourceMode = "github" | "local";
 /** Runtime boot behavior for local preview runner (per start/refresh). */
 export type PreviewBootMode = "best_effort" | "strict";
 /** Optional per-run preview settings (not persisted to project config by default). */
@@ -81,6 +83,10 @@ export interface Project {
   id: string;
   name: string;
   description?: string;
+  /** github (default) or local disk path */
+  source_mode?: ProjectSourceMode;
+  /** Absolute path to project root on disk (local source_mode) */
+  local_path?: string;
   github_repo?: string;
   github_branch?: string;
   github_access_token?: string;

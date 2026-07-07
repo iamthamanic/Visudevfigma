@@ -13,7 +13,13 @@ Cursor Browser (Vite :3005)
 Cloud (tzfxbgxnjkthxwvoeyse) — optional: Backup, Deploy, Demo
 ```
 
-## Cloud-Anon-Key (Pflicht für `npm run dev`)
+## Standard: `npm run dev`
+
+Seit dem Hybrid-Default startet **`npm run dev`** automatisch lokalen Supabase (Docker), Edge Functions, Vite und Runner. **`dev:hybrid`** ist ein Alias.
+
+Cloud nur bei Bedarf: **`npm run dev:cloud`** (siehe unten „Zurück zu Cloud“).
+
+## Cloud-Anon-Key (nur für `npm run dev:cloud`)
 
 Der anon key liegt **nicht** im Repo. Vor dem ersten Cloud-Dev:
 
@@ -32,7 +38,7 @@ Ohne `.env.local` bricht die App beim Start mit klarer Fehlermeldung ab (kein st
 
 ```bash
 cd Visudevfigma
-npm run dev:hybrid
+npm run dev
 ```
 
 Das Script:
@@ -42,7 +48,16 @@ Das Script:
 3. startet `supabase functions serve --workdir src`
 4. startet Vite + Preview-Runner + Logs-Runner (`dev-auto`)
 
-**Erster Login:** Lokal existieren keine Cloud-User. In der App **Konto erstellen** oder User in Studio anlegen (`http://127.0.0.1:54323`).
+**Erster Login:** `npm run dev` legt automatisch einen Demo-User an und zeigt die Zugangsdaten in der Konsole.
+
+| Feld     | Wert                 |
+| -------- | -------------------- |
+| E-Mail   | `demo@visudev.local` |
+| Passwort | `visudev-demo`       |
+
+In der App: Sidebar → **Anmelden** → **Als Demo anmelden** (oder Zugangsdaten eingeben).
+
+Manuell anlegen: `npm run seed:demo-user`. Studio: `http://127.0.0.1:54323` → Authentication.
 
 ## Manueller Workflow (zwei Terminals)
 
@@ -60,12 +75,11 @@ Terminal 2:
 npm run dev
 ```
 
-## Zurück zu Cloud
-
-`.env.local` löschen oder `VITE_SUPABASE_URL` entfernen → App nutzt wieder Cloud-URL + anon key aus `.env.local` (siehe `.env.cloud.example`).
+## Cloud-Dev (optional)
 
 ```bash
-npm run dev   # Cloud + lokale Preview-Runner (benötigt .env.local mit VITE_SUPABASE_ANON_KEY)
+cp .env.cloud.example .env.local   # VITE_SUPABASE_ANON_KEY eintragen
+npm run dev:cloud
 ```
 
 ## GitHub OAuth (lokal, optional)
@@ -116,13 +130,14 @@ bash scripts/supabase-checked.sh functions deploy visudev-analyzer
 
 ## Fehlerbehebung
 
-| Problem                             | Lösung                                                            |
-| ----------------------------------- | ----------------------------------------------------------------- |
-| `Docker nicht erreichbar`           | Docker Desktop starten                                            |
-| `Lokales Supabase nicht erreichbar` | `npm run dev:hybrid` statt `npm run dev`                          |
-| Login schlägt fehl (lokal)          | Neuen User anlegen; E-Mail-Bestätigung in Studio deaktivieren     |
-| `Unsupported lockfile version 5`    | `deno.lock` mit Deno 1.46 regenerieren (`docs/SUPABASE_SETUP.md`) |
-| Cloud `INACTIVE`                    | Dashboard → Restore                                               |
+| Problem                                                      | Lösung                                                                                                       |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `Docker nicht erreichbar`                                    | Docker Desktop starten                                                                                       |
+| `Lokales Supabase nicht erreichbar`                          | Docker Desktop starten; `supabase start --workdir src` prüfen                                                |
+| Login schlägt fehl (lokal)                                   | Neuen User anlegen; E-Mail-Bestätigung in Studio deaktivieren                                                |
+| `Unsupported lockfile version 5`                             | `deno.lock` mit Deno 1.46 regenerieren (`docs/SUPABASE_SETUP.md`)                                            |
+| `REPOSITORY_ERROR: name resolution failed` (Projekt anlegen) | `npm run dev` neu starten — Edge Functions nutzen dann `http://127.0.0.1:54321` statt docker-internem `kong` |
+| CORS auf Logs-Runner (`/health`)                             | Harmlos im Gastmodus; Runner-Ports optional starten                                                          |
 
 ## Siehe auch
 

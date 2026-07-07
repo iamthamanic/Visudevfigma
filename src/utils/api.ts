@@ -32,6 +32,7 @@ import type {
 } from "../modules/data/types";
 import type { LogCreateInput, LogEntry } from "../modules/logs/types";
 import type { ProjectCreateInput, ProjectUpdateInput } from "../modules/projects/types";
+import { guestRequestHeader } from "../lib/visudev/guest-mode";
 import { publicAnonKey, supabaseUrl } from "./supabase/info";
 
 const BASE_URL = `${supabaseUrl}/functions/v1`;
@@ -56,6 +57,7 @@ async function apiRequest<T>(
       headers: {
         "Content-Type": "application/json",
         Authorization: authHeader,
+        ...guestRequestHeader(),
         ...fetchOptions.headers,
       },
     });
@@ -1014,7 +1016,12 @@ function runnerHeaders(projectId: string, withJson = false): HeadersInit {
 
 async function localPreviewStart(
   projectId: string,
-  options?: { repo?: string; branchOrCommit?: string; commitSha?: string },
+  options?: {
+    repo?: string;
+    branchOrCommit?: string;
+    commitSha?: string;
+    localPath?: string;
+  },
 ): Promise<{
   success: boolean;
   data?: { runId: string; status: string; reusedExistingRun?: boolean };
@@ -1024,6 +1031,7 @@ async function localPreviewStart(
   const body = JSON.stringify({
     projectId,
     repo: options?.repo,
+    localPath: options?.localPath,
     branchOrCommit: options?.branchOrCommit ?? "main",
     commitSha: options?.commitSha ?? undefined,
   });
@@ -1412,6 +1420,7 @@ export const previewAPI = {
       repo?: string;
       branchOrCommit?: string;
       commitSha?: string;
+      localPath?: string;
       accessToken?: string;
     },
     previewMode?: PreviewMode,

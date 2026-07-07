@@ -21,6 +21,7 @@ import {
   StepLogEntry,
 } from "./types";
 import type { PreviewMode, PreviewStatus } from "./types";
+import { getProjectSourceMode } from "./project-source";
 import { publicAnonKey, supabaseUrl } from "../../utils/supabase/info";
 import { api, previewAPI, type PreviewStepLog } from "../../utils/api";
 import { BlueprintScanError, runBlueprintScan } from "./blueprint-scan";
@@ -644,21 +645,34 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         setPreviewError("Preview-Modus ist 'Deployed URL'. Bitte eine URL im Projekt setzen.");
         return;
       }
-      if (repo) {
-        if (repo.startsWith("http://") || repo.startsWith("https://")) {
+      const projectRecord = projects.find((p) => p.id === projectId);
+      const sourceMode = projectRecord ? getProjectSourceMode(projectRecord) : "github";
+      const localPath =
+        sourceMode === "local" ? projectRecord?.local_path?.trim() || undefined : undefined;
+      const effectiveRepo =
+        repo ?? (sourceMode === "github" ? projectRecord?.github_repo : undefined);
+      if (!localPath && !effectiveRepo) {
+        setPreviewError("Keine Projektquelle: GitHub-Repo oder lokaler Pfad erforderlich.");
+        return;
+      }
+      if (effectiveRepo) {
+        if (effectiveRepo.startsWith("http://") || effectiveRepo.startsWith("https://")) {
           setPreviewError("Repo als 'owner/repo' angeben, keine URL.");
           return;
         }
-        if (!repo.includes("/")) {
+        if (!effectiveRepo.includes("/")) {
           setPreviewError("Repo-Format: owner/repo (z. B. user/my-app).");
           return;
         }
       }
-      const branch = (branchOrCommit ?? "").trim();
-      if (branch.startsWith("-")) {
+      const branch = (branchOrCommit ?? projectRecord?.github_branch ?? "").trim();
+      if (!localPath && branch.startsWith("-")) {
         setPreviewError("Branch darf nicht mit - beginnen (z. B. -h, --help).");
         return;
       }
+      const startLabel = localPath
+        ? `lokaler Pfad ${localPath}`
+        : `${effectiveRepo ?? "owner/repo"} @ ${branch || "main"}`;
       setPreview((prev) => ({
         ...prev,
         projectId,
@@ -666,9 +680,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         status: "starting",
         previewUrl: null,
         error: null,
-        refreshLogs: [
-          makePreviewLog(`Start angefordert (${repo ?? "owner/repo"} @ ${branch || "main"})`),
-        ],
+        refreshLogs: [makePreviewLog(`Start angefordert (${startLabel})`)],
         previewReadyAt: prev.projectId === projectId ? prev.previewReadyAt : null,
       }));
       await new Promise((r) => setTimeout(r, 0));
@@ -676,8 +688,9 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         const res = await previewAPI.start(
           projectId,
           {
-            repo,
-            branchOrCommit,
+            repo: effectiveRepo,
+            localPath,
+            branchOrCommit: branchOrCommit ?? projectRecord?.github_branch,
             commitSha,
             accessToken: previewAccessTokenRef.current ?? undefined,
           },
@@ -741,7 +754,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
       }
       // Keep status "starting"; UI will poll refreshPreviewStatus
     },
-    [getProjectPreviewMode, makePreviewLog],
+    [getProjectPreviewMode, makePreviewLog, projects],
   );
 
   const refreshPreviewStatus = useCallback(

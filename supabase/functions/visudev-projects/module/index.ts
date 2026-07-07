@@ -3,6 +3,7 @@ import type { ProjectsModuleConfig } from "./interfaces/module.interface.ts";
 import { initModuleServices } from "./services/base.service.ts";
 import { ProjectsRepository } from "./internal/repositories/projects.repository.ts";
 import { ProjectsService } from "./services/projects.service.ts";
+import { ProjectsWriteRateLimitService } from "./services/projects-write-rate-limit.service.ts";
 import { ProjectsController } from "./controllers/projects.controller.ts";
 import { registerProjectsRoutes } from "./routes/projects.routes.ts";
 
@@ -16,7 +17,12 @@ export function createProjectsModule(config: ProjectsModuleConfig): {
 
   const repository = new ProjectsRepository();
   const service = new ProjectsService(repository);
-  const controller = new ProjectsController(service);
+  const writeRateLimit = new ProjectsWriteRateLimitService(
+    config.supabase,
+    config.config.kvTableName,
+    config.logger,
+  );
+  const controller = new ProjectsController(service, writeRateLimit);
 
   return {
     registerRoutes: (app: Hono): void =>

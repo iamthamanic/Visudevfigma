@@ -7,6 +7,7 @@ import { RouteBlueprintCanvas } from "../components/RouteBlueprintCanvas";
 import { SecurityMatrix } from "../components/SecurityMatrix";
 import { findingsForRoute } from "../services/blueprint-helpers";
 import { normalizeBlueprintData } from "../../../lib/visudev/normalize-blueprint";
+import { getProjectSourceMode } from "../../../lib/visudev/project-source";
 import type { BlueprintData, BlueprintFinding, RouteBlueprint } from "../types";
 import styles from "../styles/BlueprintPage.module.css";
 
@@ -100,6 +101,8 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
 
   const isScanning = scanStatuses.blueprint.status === "running" || isRescan;
   const hasError = scanStatuses.blueprint.status === "failed";
+  const scanError = scanStatuses.blueprint.error;
+  const isLocalProject = activeProject ? getProjectSourceMode(activeProject) === "local" : false;
   const scanCompleted = scanStatuses.blueprint.status === "completed";
   const hasData = scanCompleted || routes.length > 0 || allFindings.length > 0;
 
@@ -116,7 +119,10 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
             <h1 className={styles.title}>Blueprint</h1>
             <p className={styles.subtitle}>
               Technische Diagnose · {activeProject?.name}
-              {blueprint?.commitSha && <> · {String(blueprint.commitSha).slice(0, 8)}</>}
+              {isLocalProject && activeProject?.local_path && <> · {activeProject.local_path}</>}
+              {!isLocalProject && blueprint?.commitSha && (
+                <> · {String(blueprint.commitSha).slice(0, 8)}</>
+              )}
             </p>
           </div>
           <div className={styles.headerActions}>
@@ -159,7 +165,9 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
             <div>
               <p className={styles.statusTitle}>Blueprint wird analysiert...</p>
               <p className={styles.statusMeta}>
-                Repo: {activeProject?.github_repo ?? "—"} @ {activeProject?.github_branch ?? "main"}
+                {isLocalProject
+                  ? `Lokal: ${activeProject?.local_path ?? "—"}`
+                  : `Repo: ${activeProject?.github_repo ?? "—"} @ ${activeProject?.github_branch ?? "main"}`}
               </p>
             </div>
           </div>
@@ -182,6 +190,7 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
                 aria-hidden="true"
               />
               <p className={styles.emptyTitle}>Fehler bei der Blueprint-Generierung</p>
+              {scanError ? <p className={styles.emptyHint}>{scanError}</p> : null}
             </div>
           </div>
         ) : !hasData ? (
@@ -189,7 +198,9 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
             <div className={styles.emptyCard}>
               <p className={styles.emptyHint}>
                 {blueprintLoadError ??
-                  "Keine Blueprint-Daten. Starte „Neu analysieren“ oder verbinde ein GitHub-Repo."}
+                  (isLocalProject
+                    ? "Keine Blueprint-Daten. Starte „Neu analysieren“ (npm run dev muss laufen)."
+                    : "Keine Blueprint-Daten. Starte „Neu analysieren“ oder verbinde ein GitHub-Repo.")}
               </p>
             </div>
           </div>

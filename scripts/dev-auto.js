@@ -51,6 +51,10 @@ const requestedLogsRunnerPort = parsePort(process.env.LOGS_RUNNER_PORT, 5000, "L
 const reuseExistingRunner = process.env.REUSE_PREVIEW_RUNNER === "1";
 const reuseExistingLogsRunner = process.env.REUSE_LOGS_RUNNER === "1";
 
+function isFastDev() {
+  return process.env.VISUDEV_FAST_DEV === "1";
+}
+
 function tryListen(port, hostToCheck) {
   return new Promise((resolve) => {
     const server = net.createServer();
@@ -205,6 +209,12 @@ async function getOrStartLogsRunner() {
     console.error("[dev-auto] Logs Runner spawn failed:", err.message);
     process.exit(1);
   });
+  if (isFastDev()) {
+    void waitForLogsRunner(logsRunnerUrl)
+      .then(() => console.log("[dev-auto] Logs Runner bereit."))
+      .catch((err) => console.warn("[dev-auto] Logs Runner noch nicht bereit:", err.message));
+    return { logsRunnerUrl, logsRunner };
+  }
   await waitForLogsRunner(logsRunnerUrl).catch((err) => {
     console.error("[dev-auto] Logs Runner nicht bereit:", err.message);
     logsRunner.kill("SIGTERM");
@@ -320,8 +330,10 @@ async function getOrStartRunner() {
     hasDockerOverride && ["1", "true", "yes"].includes(dockerOverrideRaw.trim().toLowerCase());
   if (hasDockerOverride) {
     envForRunner.USE_DOCKER = dockerOverride ? "1" : "0";
-  } else if (spawnSync("docker", ["info"], { stdio: "ignore", timeout: 5000 }).status === 0) {
-    envForRunner.USE_DOCKER = "1";
+  } else if (!isFastDev()) {
+    if (spawnSync("docker", ["info"], { stdio: "ignore", timeout: 5000 }).status === 0) {
+      envForRunner.USE_DOCKER = "1";
+    }
   }
   console.log(
     `[dev-auto] Runner: ${previewUrl} (local preview-runner/index.js)${runnerPort !== requestedRunnerPort ? ` — port ${requestedRunnerPort} war belegt` : ""}`,
@@ -335,6 +347,12 @@ async function getOrStartRunner() {
     console.error("[dev-auto] Runner spawn failed:", err.message);
     process.exit(1);
   });
+  if (isFastDev()) {
+    void waitForRunner(previewUrl)
+      .then(() => console.log("[dev-auto] Runner bereit."))
+      .catch((err) => console.warn("[dev-auto] Runner noch nicht bereit:", err.message));
+    return { previewUrl, runner };
+  }
   await waitForRunner(previewUrl).catch((err) => {
     console.error("[dev-auto] Runner nicht bereit:", err.message);
     runner.kill("SIGTERM");
@@ -423,7 +441,11 @@ async function assertLocalSupabaseIfConfigured() {
 }
 
 async function main() {
-  await assertLocalSupabaseIfConfigured();
+  if (!isFastDev()) {
+    await assertLocalSupabaseIfConfigured();
+  } else {
+    console.log("[dev-auto] Fast-Start (parallel zu functions serve) — Vite öffnet zuerst.");
+  }
   const vitePort = await findFreePort(requestedVitePort);
   const { previewUrl, runner } = await getOrStartRunner();
   const { logsRunnerUrl, logsRunner } = await getOrStartLogsRunner();
