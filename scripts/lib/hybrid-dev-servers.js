@@ -42,7 +42,7 @@ function createHybridDevServerRunner(deps = {}) {
     const baseUrl = options.env.VITE_SUPABASE_URL || d.defaultLocalSupabaseUrl();
 
     const functionsServe = options.registerChild(
-      d.startFunctionsServe({ env: options.env, spawn: spawnFn }),
+      d.startFunctionsServe({ env: options.env }),
     );
 
     return new Promise((resolve) => {

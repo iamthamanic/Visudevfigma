@@ -5,12 +5,12 @@
 const { spawnSupabase } = require("./supabase-cli-direct");
 
 /**
- * @param {{ spawn?: typeof spawnSupabase, env?: NodeJS.ProcessEnv }} [deps]
+ * @param {{ spawnSupabase?: typeof spawnSupabase, env?: NodeJS.ProcessEnv }} [deps]
  */
 function startFunctionsServe(deps = {}) {
-  const spawnFn = deps.spawn ?? spawnSupabase;
+  const spawnSupabaseFn = deps.spawnSupabase ?? spawnSupabase;
   const env = deps.env ?? process.env;
-  return spawnFn(["functions", "serve"], { env, stdio: "inherit" });
+  return spawnSupabaseFn(["functions", "serve"], { env, stdio: "inherit" });
 }
 
 module.exports = { startFunctionsServe };
