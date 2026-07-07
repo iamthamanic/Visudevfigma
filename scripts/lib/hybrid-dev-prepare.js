@@ -7,6 +7,15 @@ const { createSupabaseStatusClient } = require("./hybrid-supabase-status");
 const { localSupabaseEnvFromStatus } = require("./hybrid-supabase-env");
 const { withLocalDemoAuthEnv } = require("./local-demo-user");
 
+function isLocalStackReady(status) {
+  if (!status || typeof status !== "object") return false;
+  const anonKey =
+    (typeof status.ANON_KEY === "string" && status.ANON_KEY.trim()) ||
+    (typeof status.anon_key === "string" && status.anon_key.trim()) ||
+    "";
+  return anonKey.length > 0;
+}
+
 /**
  * @param {Record<string, unknown>} [deps]
  */
@@ -30,7 +39,7 @@ function createHybridDevPreparer(deps = {}) {
     let result = statusClient.readSupabaseStatus();
     let startedStack = false;
 
-    if (!result.ok || !result.status?.API_URL) {
+    if (!result.ok || !isLocalStackReady(result.status)) {
       startedStack = true;
       const start = statusClient.startSupabaseStack();
       if (!start.ok) {
@@ -41,10 +50,12 @@ function createHybridDevPreparer(deps = {}) {
         };
       }
       result = statusClient.readSupabaseStatus();
-      if (!result.ok || !result.status?.API_URL) {
+      if (!result.ok || !isLocalStackReady(result.status)) {
         return {
           ok: false,
-          error: result.ok ? "supabase status lieferte keine API_URL" : result.error,
+          error: result.ok
+            ? "supabase status lieferte keinen Anon-Key (Stack nicht bereit?)"
+            : result.error,
         };
       }
     }

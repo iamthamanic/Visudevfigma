@@ -13,6 +13,44 @@ function redactSecrets(text) {
 }
 
 /**
+ * CLI may print human lines before/after JSON (workdir hint, stopped services, upgrade notice).
+ * @param {string} stdout
+ */
+function parseSupabaseStatusStdout(stdout) {
+  const text = stdout.trim();
+  const start = text.indexOf("{");
+  if (start === -1) {
+    throw new Error("no JSON object in supabase status output");
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === "{") depth += 1;
+    else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return JSON.parse(text.slice(start, i + 1));
+      }
+    }
+  }
+
+  throw new Error("incomplete JSON object in supabase status output");
+}
+
+/**
  * @param {{ spawnSync?: typeof spawnSync }} [deps]
  */
 function createSupabaseStatusClient(deps = {}) {
@@ -36,7 +74,7 @@ function createSupabaseStatusClient(deps = {}) {
       return { ok: false, error: "supabase status returned empty output" };
     }
     try {
-      return { ok: true, status: JSON.parse(result.stdout) };
+      return { ok: true, status: parseSupabaseStatusStdout(result.stdout) };
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       return { ok: false, error: `supabase status JSON parse failed: ${msg}` };
@@ -60,4 +98,4 @@ function createSupabaseStatusClient(deps = {}) {
   return { readSupabaseStatus, startSupabaseStack };
 }
 
-module.exports = { createSupabaseStatusClient };
+module.exports = { createSupabaseStatusClient, parseSupabaseStatusStdout };

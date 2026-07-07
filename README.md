@@ -59,6 +59,7 @@ Der Vite-Dev-Server und `npm run preview` laufen fest auf **Port 3005** (`vite.c
 
 ## Recent changes
 
+- **2026-07-07** — Fix `npm run dev` wenn Supabase-CLI Text vor/nach `status -o json` ausgibt (`issue/1-blueprint-engine-core`)
 - **2026-07-07** — `npm run dev` startet lokales Supabase (Docker); Demo-Login `demo@visudev.local` / `npm run seed:demo-user` (`issue/1-blueprint-engine-core`)
 
 ---
