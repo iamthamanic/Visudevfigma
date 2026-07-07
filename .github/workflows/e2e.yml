@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+# CI-only placeholder JWT (format-valid). E2E mocks Supabase; not a deploy secret.
+env:
+  VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjIwOTAxMjUyODV9.e2e-ci-placeholder-signature
+
 jobs:
   e2e:
     runs-on: ubuntu-latest

@@ -1,0 +1,79 @@
+/** SecurityMatrix layout styles — Blueprint module. */
+
+.wrap {
+  overflow-x: auto;
+}
+
+.table {
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  width: 100%;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.5rem 0.625rem;
+  text-align: center;
+}
+
+.table th:first-child,
+.table td:first-child {
+  text-align: left;
+}
+
+.routeButton {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0;
+  text-align: left;
+}
+
+.routeButton:hover {
+  color: var(--color-primary);
+}
+
+.method {
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.path {
+  font-size: 0.75rem;
+}
+
+.selectedRow {
+  background-color: var(--color-hover);
+}
+
+.stateConfirmed {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.stateMissing {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.statePartial {
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+.stateUnknown {
+  color: var(--color-muted-foreground);
+}
+
+.empty {
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+  padding: 1rem 0;
+}

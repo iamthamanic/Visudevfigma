@@ -66,13 +66,20 @@
     "prettier": "^3.5.3",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.27.0",
-    "vite": "^6.4.1",
-    "vitest": "^2.1.9"
+    "vite": "^6.4.3",
+    "vitest": "^3.2.6"
+  },
+  "overrides": {
+    "esbuild": "^0.25.0",
+    "vite": "^6.4.3"
   },
   "scripts": {
     "dev": "node scripts/dev-auto.js",
+    "dev:hybrid": "node scripts/dev-hybrid.js",
+    "ping:cloud": "node scripts/ping-cloud-supabase.js",
     "visudev-runner": "npm run dev:runner",
     "visudev-runner-status": "node scripts/visudev-runner-status.js",
+    "visudev-logs-runner": "node scripts/run-logs-runner.js",
     "dev:kill-preview-port": "bash scripts/kill-preview-port.sh",
     "dev:runner": "node scripts/run-preview-runner.js",
     "dev:app": "vite",
@@ -92,6 +99,7 @@
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:install": "playwright install chromium",
+    "crawl:appflow": "node scripts/crawl-appflow/crawl.mjs",
     "e2e:maestro": "maestro test -e BASE_URL=http://127.0.0.1:3000 maestro/visudev-smoke.yaml",
     "e2e:maestro:preview": "bash scripts/maestro-test-preview.sh",
     "test:preview-runner": "cd preview-runner && npm run test:build",

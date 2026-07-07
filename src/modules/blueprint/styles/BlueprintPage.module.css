@@ -120,6 +120,32 @@
   padding: 1.5rem;
 }
 
+.workspace {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr minmax(16rem, 22rem);
+  min-height: 0;
+}
+
+.mainPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.panelTitle {
+  color: var(--color-foreground);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+@media (max-width: 960px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
 .centerState {
   align-items: center;
   display: flex;

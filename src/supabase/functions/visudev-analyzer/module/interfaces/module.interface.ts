@@ -116,4 +116,6 @@ export interface AnalyzerModuleConfig {
   supabase: SupabaseClientLike;
   logger: LoggerLike;
   config: AnalyzerModuleSettings;
+  /** Resolve authenticated user id from JWT (injected at Edge Function bootstrap). */
+  resolveUserIdFromJwt: (jwt: string) => Promise<string | null>;
 }

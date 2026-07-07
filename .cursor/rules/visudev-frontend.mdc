@@ -1,0 +1,14 @@
+---
+description: VisuDEV frontend — TypeScript, CSS Modules, module boundaries
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Frontend (Vite + React)
+
+- Modules: `src/modules/<domain>/` — no cross-module imports; export via `index.ts`.
+- TypeScript strict; no `any` in new code. No `console.log` in production paths.
+- Styling: CSS Modules only (`.module.css` / `.module.scss`). No Tailwind in JSX, no inline `style={{}}`, no hardcoded colors outside `src/styles/globals.css`.
+- API calls in services or `src/lib/api.ts` — not in page components.
+- Shared UI only in `src/components/`. Use semantic HTML and `aria-label` on icon buttons.
+- Supabase URL/key: `src/utils/supabase/info.tsx` — `VITE_SUPABASE_ANON_KEY` required in `.env.local`.

@@ -1,0 +1,129 @@
+/** FindingInspector layout — Blueprint module. */
+
+.root {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.title {
+  color: var(--color-foreground);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.empty {
+  color: var(--color-muted-foreground);
+  font-size: 0.8125rem;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.item,
+.itemSelected {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  text-align: left;
+  width: 100%;
+}
+
+.itemSelected {
+  border-color: var(--color-primary);
+  background-color: var(--color-hover);
+}
+
+.itemMessage {
+  font-size: 0.8125rem;
+}
+
+.sevHigh {
+  color: var(--color-danger);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.sevMedium {
+  color: var(--color-warning);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.sevLow {
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.detail {
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.75rem;
+}
+
+.detailTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.dl {
+  display: grid;
+  font-size: 0.8125rem;
+  gap: 0.25rem 0.5rem;
+  grid-template-columns: auto 1fr;
+  margin-bottom: 0.75rem;
+}
+
+.dl dt {
+  color: var(--color-muted-foreground);
+}
+
+.evidenceTitle {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin-bottom: 0.375rem;
+}
+
+.evidenceList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.evidenceItem code {
+  font-size: 0.6875rem;
+}
+
+.snippet {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-sm);
+  font-size: 0.6875rem;
+  margin-top: 0.25rem;
+  overflow-x: auto;
+  padding: 0.375rem;
+  white-space: pre-wrap;
+}

@@ -1,0 +1,16 @@
+---
+description: VisuDEV mandatory checks, push gates, and AI review workflow
+alwaysApply: true
+---
+
+# VisuDEV agent workflow
+
+- Run `npm run checks` before push/deploy. Prefer `npm run push` or `git push` (pre-push hook + AI review).
+- Never bypass the Supabase shim — use `bash scripts/supabase-checked.sh` or `npm run supabase:checked`, not raw `npx supabase`.
+- AI review: score ≥ 95% and verdict ACCEPT required. On REJECT: read `.shimwrapper/review-failed.json` and latest `.shimwrapper/reviews/*.md`, fix **all** deductions with a broad pass per affected file, then re-run checks.
+- Do not push to `main`/`master` unless explicitly instructed. Feature work on `issue/*` branches.
+- Do not delete lockfiles to fix builds — regenerate with a compatible tool version.
+- Secrets: never commit `.env`, `.env.local`, or anon keys. Cloud anon key via `.env.cloud.example` → `.env.local`.
+- Components live in `src/components/` (shared UI only). Domain code in `src/modules/<domain>/`.
+
+See `AGENTS.md` for full rules.

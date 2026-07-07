@@ -1,0 +1,9 @@
+appRoot: Visudevfigma
+locale: de
+nav:
+  - projects
+  - appflow
+  - blueprint
+  - data
+  - logs
+  - settings

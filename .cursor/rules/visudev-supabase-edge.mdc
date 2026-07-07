@@ -1,0 +1,14 @@
+---
+description: VisuDEV Supabase Edge Functions — Deno, Hono, DI, validation
+globs: src/supabase/functions/**/*
+alwaysApply: false
+---
+
+# Supabase Edge Functions
+
+- Stack: Deno + Hono (not Prisma/Next). One function per folder under `src/supabase/functions/<domain>/`.
+- `index.tsx`: HTTP routing only. Business logic in `services/`, repos in `internal/repositories/`.
+- Dependency injection required (Supabase client, logger, config). No hardcoded secrets.
+- Validate inputs with Zod. Standard responses: `{ success: true, data }` / `{ success: false, error: { code, message } }`.
+- Use injected logger, not `console.*` in services. Deploy via `bash scripts/supabase-checked.sh functions deploy <name>`.
+- Local dev: `npm run dev:hybrid` or `supabase functions serve` with `--workdir src`.

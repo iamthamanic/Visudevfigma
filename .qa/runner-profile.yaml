@@ -1,0 +1,21 @@
+issueBackend: github
+
+github:
+  defaultLabels: []
+  milestone: null
+
+stackProfile: visudev-vite
+
+locale: de
+
+runtimeAxes:
+  - local
+  - github
+
+checksSnippet: "npm run checks"
+
+helperSkills: {}
+
+epicPrdSearch:
+  - docs/visudev-blueprint-engine.md
+  - docs/**/*.md

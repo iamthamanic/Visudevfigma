@@ -27,7 +27,12 @@ export class AnalyzerController {
     return this.ok(c, {
       service: "visudev-analyzer",
       version: "4.0.0",
-      endpoints: ["/analyze", "/screenshots", "/analysis/:id"],
+      endpoints: [
+        "/analyze",
+        "/blueprint/analyze",
+        "/screenshots",
+        "/analysis/:id",
+      ],
     });
   }
 
