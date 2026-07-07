@@ -5,6 +5,7 @@
 const { checkDockerAvailable } = require("./hybrid-docker-check");
 const { createSupabaseStatusClient } = require("./hybrid-supabase-status");
 const { localSupabaseEnvFromStatus } = require("./hybrid-supabase-env");
+const { withLocalDemoAuthEnv } = require("./local-demo-user");
 
 /**
  * @param {Record<string, unknown>} [deps]
@@ -51,7 +52,12 @@ function createHybridDevPreparer(deps = {}) {
     const envResult = d.localSupabaseEnvFromStatus(result.status);
     if (!envResult.ok) return { ok: false, error: envResult.error };
 
-    return { ok: true, env: envResult.env, startedStack };
+    return {
+      ok: true,
+      env: withLocalDemoAuthEnv(envResult.env),
+      status: result.status,
+      startedStack,
+    };
   }
 
   return { prepareHybridDevEnv };
