@@ -13,6 +13,7 @@ import {
 import type { RouteScope } from "../../dto/blueprint/route-scope.dto.ts";
 import type { VisuDevGraph } from "../../dto/graph/visudev-graph.dto.ts";
 import { buildPipelineFromExecutionGraph } from "../graph/execution-graph.pipeline.ts";
+import { buildSecurityMatrixFromGraph } from "../graph/graph-security-matrix.ts";
 
 interface PolicyRule {
   id: string;
@@ -299,7 +300,12 @@ function nodeFromConcept(
 export function buildSecurityMatrix(
   routes: RouteBlueprint[],
   findings: BlueprintFinding[],
+  graph?: VisuDevGraph,
 ): import("../../dto/blueprint/blueprint-document.dto.ts").SecurityMatrixRow[] {
+  if (graph) {
+    return buildSecurityMatrixFromGraph(routes, graph, findings);
+  }
+
   const findingsByRoute = new Map<string, BlueprintFinding[]>();
   for (const finding of findings) {
     const routeFindings = findingsByRoute.get(finding.scopeId);
