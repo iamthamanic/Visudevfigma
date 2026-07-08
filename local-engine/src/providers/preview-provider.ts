@@ -4,6 +4,8 @@
  */
 
 import type {
+  CrawlPreviewInput,
+  CrawlPreviewResult,
   LocalVisuDevProject,
   PreviewStartResult,
   PreviewStatusResult,
@@ -17,4 +19,5 @@ export interface PreviewProvider {
   startPreview(input: StartPreviewInput, project: LocalVisuDevProject): Promise<PreviewStartResult>;
   getPreviewStatus(projectId: string): Promise<PreviewStatusResult>;
   stopPreview(projectId: string): Promise<PreviewStopResult>;
+  crawlPreview(projectId: string, input: CrawlPreviewInput): Promise<CrawlPreviewResult>;
 }

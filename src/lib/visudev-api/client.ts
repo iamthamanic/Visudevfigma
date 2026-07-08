@@ -8,11 +8,14 @@ import type {
   AnalyzeProjectRequest,
   BrowseLocalPathInput,
   BrowseLocalPathResult,
+  CrawlPreviewInput,
+  CrawlPreviewResult,
   CreateProjectInput,
   LocalAppflowLatest,
   LocalBlueprintLatest,
   LocalDataLatest,
   LocalEngineAnalysisResult,
+  LocalRuntimeLatest,
   PreviewStartResult,
   PreviewStatusResult,
   PreviewStopResult,
@@ -46,6 +49,9 @@ export interface VisuDevApiClient {
   startPreview(projectId: string, input?: StartPreviewInput): Promise<PreviewStartResult>;
   getPreviewStatus(projectId: string): Promise<PreviewStatusResult>;
   stopPreview(projectId: string): Promise<PreviewStopResult>;
+
+  crawlPreview(projectId: string, input: CrawlPreviewInput): Promise<CrawlPreviewResult>;
+  getRuntimeLatest(projectId: string): Promise<LocalRuntimeLatest | null>;
 
   browseLocalPath(input?: BrowseLocalPathInput): Promise<BrowseLocalPathResult>;
 }

@@ -55,7 +55,7 @@ export async function createApp(config: EngineConfig = getEngineConfig()) {
     config.previewRunnerUrl,
     config.analysisProvider,
   );
-  const previewService = new PreviewService(projectService, previewProvider);
+  const previewService = new PreviewService(config.storageDir, projectService, previewProvider);
 
   const baseUrl = `http://${config.host}:${config.port}`;
   const app = new Hono();

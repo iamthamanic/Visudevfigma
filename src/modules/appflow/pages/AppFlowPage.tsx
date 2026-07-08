@@ -150,6 +150,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
         lastAnalyzedCommitSha: latest.commitSha ?? activeProject.lastAnalyzedCommitSha,
         analysisGraph: latest.graph as typeof activeProject.analysisGraph,
         analysisQuality: latest.quality as typeof activeProject.analysisQuality,
+        analysisRuntime: latest.runtime as typeof activeProject.analysisRuntime,
       });
     })().catch(() => {
       // ignore hydration errors; user can rescan manually

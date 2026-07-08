@@ -434,15 +434,83 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
               if (status.status === "success" || status.status === "partial") {
                 const result = await client.getAnalysisResult(activeProject.id, started.runId);
                 if (result.kind === "appflow") {
-                  const screens = result.screens as Screen[];
+                  let screens = result.screens as Screen[];
                   const flows = result.flows as Project["flows"];
+                  let graph = result.graph as Project["analysisGraph"];
+                  let quality = result.quality as Project["analysisQuality"];
+                  let runtime = undefined;
+
+                  if (
+                    screens.length > 0 &&
+                    activeProject.preview_mode !== "deployed" &&
+                    activeProject.local_path
+                  ) {
+                    appendScanLog(
+                      `Runtime-Crawl angefragt (${Math.min(screens.length, 8)} Route-Screen(s)) über Local Engine.`,
+                      "info",
+                    );
+                    try {
+                      let previewStatus = await client.getPreviewStatus(activeProject.id);
+                      if (previewStatus.status !== "ready") {
+                        appendScanLog("Preview wird für Runtime-Crawl gestartet …", "info");
+                        await client.startPreview(activeProject.id, {
+                          projectId: activeProject.id,
+                          localPath: activeProject.local_path,
+                          branchOrCommit: activeProject.github_branch,
+                          commitSha: result.commitSha ?? activeProject.lastAnalyzedCommitSha,
+                        });
+                        const previewDeadline = Date.now() + 420_000;
+                        while (Date.now() < previewDeadline) {
+                          previewStatus = await client.getPreviewStatus(activeProject.id);
+                          if (previewStatus.status === "ready") break;
+                          if (previewStatus.status === "failed") {
+                            throw new Error("Preview start failed before crawl.");
+                          }
+                          await new Promise((resolve) => setTimeout(resolve, 2500));
+                        }
+                      }
+
+                      if (previewStatus.status === "ready") {
+                        const crawlResult = await client.crawlPreview(activeProject.id, {
+                          screens: screens.map((screen) => ({
+                            id: screen.id,
+                            name: screen.name,
+                            path: screen.path,
+                            type: screen.type,
+                            parentScreenId: screen.parentScreenId,
+                            parentPath: screen.parentPath,
+                            stateKey: screen.stateKey,
+                          })),
+                          maxScreens: 8,
+                          maxClicksPerScreen: 4,
+                        });
+                        runtime = crawlResult.runtime as unknown as Project["analysisRuntime"];
+                        screens = crawlResult.screens as Screen[];
+                        const merged = mergeRuntimeIntoAnalysis(graph, quality, runtime);
+                        graph = merged.graph;
+                        quality = merged.quality;
+                        appendScanLog(
+                          `Runtime-Crawl abgeschlossen: ${runtime?.summary?.verifiedEdges ?? 0} verifizierte Kanten, ${runtime?.summary?.stateCaptures ?? 0} State-Captures.`,
+                          "success",
+                        );
+                      } else {
+                        appendScanLog("Runtime-Crawl übersprungen: Preview nicht bereit.", "info");
+                      }
+                    } catch (crawlError) {
+                      const message =
+                        crawlError instanceof Error ? crawlError.message : String(crawlError);
+                      appendScanLog(`Runtime-Crawl übersprungen: ${message}`, "info");
+                    }
+                  }
+
                   const updatedProject: Project = {
                     ...activeProject,
                     screens,
                     flows,
                     lastAnalyzedCommitSha: result.commitSha ?? activeProject.lastAnalyzedCommitSha,
-                    analysisGraph: result.graph as Project["analysisGraph"],
-                    analysisQuality: result.quality as Project["analysisQuality"],
+                    analysisGraph: graph,
+                    analysisQuality: quality,
+                    analysisRuntime: runtime,
                   };
                   await updateProject(updatedProject);
                   appendScanLog(
