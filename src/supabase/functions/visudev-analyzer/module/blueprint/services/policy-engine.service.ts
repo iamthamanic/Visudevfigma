@@ -11,6 +11,8 @@ import {
   indexConceptsByScope,
 } from "../internal/fact-scope-index.ts";
 import type { RouteScope } from "../../dto/blueprint/route-scope.dto.ts";
+import type { VisuDevGraph } from "../../dto/graph/visudev-graph.dto.ts";
+import { buildPipelineFromExecutionGraph } from "../graph/execution-graph.pipeline.ts";
 
 interface PolicyRule {
   id: string;
@@ -190,6 +192,7 @@ function buildFinding(
 export function buildRouteBlueprints(
   routes: RouteScope[],
   concepts: TechnicalConcept[],
+  graph?: VisuDevGraph,
 ): RouteBlueprint[] {
   const conceptsByScope = indexConceptsByScope(concepts);
 
@@ -201,7 +204,15 @@ export function buildRouteBlueprints(
       conceptMap[concept.type] = concept.state;
     }
 
-    const pipeline = buildPipeline(route, routeConcepts);
+    const templatePipeline = buildPipeline(route, routeConcepts);
+    const pipeline = graph
+      ? buildPipelineFromExecutionGraph(
+        route,
+        graph,
+        routeConcepts,
+        templatePipeline,
+      )
+      : templatePipeline;
 
     return {
       id: route.id,
