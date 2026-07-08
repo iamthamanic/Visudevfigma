@@ -71,7 +71,7 @@ export function registerHealthRoutes(app: Hono, config: EngineConfig): void {
         blueprint: true,
         appflow: true,
         data: true,
-        all: false,
+        all: true,
       },
       preview: true,
       browseLocalPath: true,

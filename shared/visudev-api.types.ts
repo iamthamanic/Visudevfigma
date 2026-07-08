@@ -72,13 +72,23 @@ export type AnalyzeProjectRequest = {
   branchOrCommit?: string;
 };
 
+export type SupportedScanType = "blueprint" | "appflow" | "data";
+
+export type AnalysisChildRunStatus = {
+  scanType: SupportedScanType;
+  runId: string;
+  status: AnalysisStatus;
+  error?: ApiFailure["error"];
+};
+
 export type StartAnalysisResponse = {
   projectId: string;
   runId: string;
-  scanType: "blueprint" | "appflow" | "data";
+  scanType: SupportedScanType | "all";
   status: "queued" | "running";
   statusUrl: string;
   resultUrl: string;
+  childRuns?: AnalysisChildRunStatus[];
 };
 
 export type AnalysisRunStatus = {
@@ -89,6 +99,7 @@ export type AnalysisRunStatus = {
   startedAt?: string;
   finishedAt?: string;
   error?: ApiFailure["error"];
+  children?: AnalysisChildRunStatus[];
 };
 
 export type BlueprintDocument = Record<string, unknown>;
@@ -177,10 +188,31 @@ export type LocalFailedAnalysisResult = {
   error: ApiFailure["error"];
 };
 
+export type LocalAllAnalysisResult = {
+  kind: "all";
+  projectId: string;
+  runId: string;
+  status: "success" | "partial" | "failed";
+  createdAt: string;
+  summary: {
+    blueprint: AnalysisStatus;
+    appflow: AnalysisStatus;
+    data: AnalysisStatus;
+    warnings: number;
+    errors: number;
+  };
+  children: {
+    blueprint?: LocalBlueprintAnalysisResult;
+    appflow?: LocalAppflowAnalysisResult;
+    data?: LocalDataAnalysisResult;
+  };
+};
+
 export type LocalEngineAnalysisResult =
   | LocalBlueprintAnalysisResult
   | LocalAppflowAnalysisResult
   | LocalDataAnalysisResult
+  | LocalAllAnalysisResult
   | LocalUnsupportedAnalysisResult
   | LocalFailedAnalysisResult;
 
@@ -330,10 +362,21 @@ export type LocalPreviewMapping = {
   };
 };
 
+export type EngineParentAnalysisRun = {
+  runId: string;
+  projectId: string;
+  scanType: "all";
+  status: AnalysisStatus;
+  childRuns: AnalysisChildRunStatus[];
+  createdAt: string;
+  updatedAt: string;
+  error?: ApiFailure["error"];
+};
+
 export type EngineAnalysisRun = {
   runId: string;
   projectId: string;
-  scanType: "blueprint" | "appflow" | "data";
+  scanType: SupportedScanType;
   providerId:
     | BlueprintAnalysisProviderId
     | "legacy-appflow-runner"
@@ -345,3 +388,5 @@ export type EngineAnalysisRun = {
   updatedAt: string;
   error?: ApiFailure["error"];
 };
+
+export type EngineAnalysisRunRecord = EngineAnalysisRun | EngineParentAnalysisRun;

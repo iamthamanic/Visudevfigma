@@ -78,6 +78,16 @@ When `VISUDEV_ANALYSIS_PROVIDER` is unset, blueprint scans use `legacy-blueprint
 
 `GET /api/capabilities` reports AutoGuide package availability under `analysis.autoguide`.
 
+## scanType: all
+
+`POST /api/projects/:id/analyze` with `{ "scanType": "all" }` creates a **parent run** that sequentially executes blueprint → appflow → data.
+
+- Poll parent: `GET /api/projects/:id/analyze/:parentRunId` — includes `children[]` with per-scan status
+- Parent terminal status: `success` (all ok), `partial` (mixed), `failed` (all failed)
+- `GET /api/capabilities` → `scans.all: true`
+- UI: Projects page **Alles scannen** (requires `local_path`)
+- App Flow runtime crawl still runs in the frontend after the parent run completes (same as single appflow scan)
+
 ## Not migrated yet (Phase 2+)
 
 - WebSocket/SSE progress streaming
