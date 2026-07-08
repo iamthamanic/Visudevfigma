@@ -7,11 +7,10 @@ import type {
   TechnicalConcept,
 } from "../../dto/blueprint/blueprint-document.dto.ts";
 import {
+  buildRouteFactsIndex,
   indexConceptsByScope,
-  indexFactsByFilePath,
-  scopeFactsForRoute,
 } from "../internal/fact-scope-index.ts";
-import type { RouteScope } from "./concept-engine.service.ts";
+import type { RouteScope } from "../../dto/blueprint/route-scope.dto.ts";
 
 interface PolicyRule {
   id: string;
@@ -35,12 +34,13 @@ export function evaluatePolicies(
 ): BlueprintFinding[] {
   const findings: BlueprintFinding[] = [];
   let findingIdx = 0;
-  const factsByFile = indexFactsByFilePath(facts);
+  const routeFactsIndex = buildRouteFactsIndex(routes, facts);
   const conceptsByScope = indexConceptsByScope(concepts);
 
   for (const route of routes) {
-    const scopeFacts = scopeFactsForRoute(route, factsByFile);
-    const routeConcepts = conceptsByScope.get(route.id) ?? new Map();
+    const scopeFacts = routeFactsIndex.get(route.id) ?? [];
+    const routeConcepts = conceptsByScope.get(route.id) ??
+      new Map<string, TechnicalConcept>();
 
     for (const rule of CORE_POLICIES) {
       const result = rule.evaluate(route, routeConcepts, scopeFacts);
@@ -194,7 +194,8 @@ export function buildRouteBlueprints(
   const conceptsByScope = indexConceptsByScope(concepts);
 
   return routes.map((route) => {
-    const routeConcepts = conceptsByScope.get(route.id) ?? new Map();
+    const routeConcepts = conceptsByScope.get(route.id) ??
+      new Map<string, TechnicalConcept>();
     const conceptMap: RouteBlueprint["concepts"] = {};
     for (const concept of routeConcepts.values()) {
       conceptMap[concept.type] = concept.state;

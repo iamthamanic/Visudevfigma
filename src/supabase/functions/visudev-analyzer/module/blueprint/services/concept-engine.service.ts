@@ -6,29 +6,20 @@ import type {
   ConceptType,
   TechnicalConcept,
 } from "../../dto/blueprint/blueprint-document.dto.ts";
-import {
-  indexFactsByFilePath,
-  scopeFactsForRoute,
-} from "../internal/fact-scope-index.ts";
+import type { RouteScope } from "../../dto/blueprint/route-scope.dto.ts";
+import { buildRouteFactsIndex } from "../internal/fact-scope-index.ts";
 
-export interface RouteScope {
-  id: string;
-  method: string;
-  path: string;
-  filePath: string;
-  line: number;
-  relatedFiles: string[];
-}
+export type { RouteScope };
 
 export function buildConceptsForRoutes(
   routes: RouteScope[],
   facts: CodeFact[],
 ): TechnicalConcept[] {
   const concepts: TechnicalConcept[] = [];
-  const factsByFile = indexFactsByFilePath(facts);
+  const routeFactsIndex = buildRouteFactsIndex(routes, facts);
 
   for (const route of routes) {
-    const scopeFacts = scopeFactsForRoute(route, factsByFile);
+    const scopeFacts = routeFactsIndex.get(route.id) ?? [];
     const scopeId = route.id;
 
     concepts.push(

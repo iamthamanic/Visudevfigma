@@ -1,4 +1,4 @@
-/** Line-based fact extractors for Blueprint Engine v1 (Hono, Next, Supabase, Zod, Auth). */
+/** Line-based fact extractors for Blueprint Engine v1 (Hono, Next, Express, Supabase, Zod, Auth). */
 
 import type { CodeFact } from "../../dto/blueprint/blueprint-document.dto.ts";
 
@@ -20,11 +20,20 @@ export function extractFactsFromFile(
   content: string,
 ): CodeFact[] {
   const facts: CodeFact[] = [];
+  const routeKeys = new Set<string>();
+  const routeFramework = resolveRouteFramework(filePath, content);
   const lines = content.split("\n");
 
   lines.forEach((line, index) => {
     const lineNum = index + 1;
-    extractHonoRoutes(filePath, line, lineNum, facts);
+    extractRouteFrameworkFacts(
+      filePath,
+      line,
+      lineNum,
+      facts,
+      routeKeys,
+      routeFramework,
+    );
     extractNextRouteHandlers(filePath, line, lineNum, facts);
     extractRequestBody(filePath, line, lineNum, facts);
     extractValidation(filePath, line, lineNum, facts);
@@ -38,16 +47,52 @@ export function extractFactsFromFile(
   return facts;
 }
 
+function resolveRouteFramework(
+  filePath: string,
+  content: string,
+): "hono" | "express" {
+  if (/from\s+['"]hono['"]|from\s+['"]@hono\//.test(content)) return "hono";
+  if (
+    /from\s+['"]express['"]|require\(\s*['"]express['"]\s*\)/.test(content)
+  ) return "express";
+  if (/\basync\s*\(\s*c\s*\)|\bc\.req\.|\bc\.json\(/.test(content)) {
+    return "hono";
+  }
+  if (isLikelyExpressRouteFile(filePath)) return "express";
+  return "hono";
+}
+
+function extractRouteFrameworkFacts(
+  filePath: string,
+  line: string,
+  lineNum: number,
+  facts: CodeFact[],
+  routeKeys: Set<string>,
+  routeFramework: "hono" | "express",
+): void {
+  if (routeFramework === "express") {
+    extractExpressRoutes(filePath, line, lineNum, facts, routeKeys);
+    return;
+  }
+  extractHonoRoutes(filePath, line, lineNum, facts, routeKeys);
+}
+
 function extractHonoRoutes(
   filePath: string,
   line: string,
   lineNum: number,
   facts: CodeFact[],
+  routeKeys: Set<string>,
 ): void {
   const honoRegex =
     /\bapp\.(get|post|put|patch|delete|all)\s*\(\s*['"`]([^'"`]+)['"`]/gi;
   let m: RegExpExecArray | null;
   while ((m = honoRegex.exec(line)) !== null) {
+    const method = m[1].toUpperCase();
+    const path = m[2];
+    const key = `${filePath}:${lineNum}:${method}:${path}`;
+    if (routeKeys.has(key)) continue;
+    routeKeys.add(key);
     facts.push({
       id: makeFactId(filePath, lineNum, "api-route"),
       kind: "api-route",
@@ -55,6 +100,71 @@ function extractHonoRoutes(
       line: lineNum,
       snippet: trimSnippet(line),
       metadata: { method: m[1].toUpperCase(), path: m[2], framework: "hono" },
+    });
+  }
+}
+
+function extractExpressRoutes(
+  filePath: string,
+  line: string,
+  lineNum: number,
+  facts: CodeFact[],
+  routeKeys: Set<string>,
+): void {
+  extractExpressRouteMatches(
+    filePath,
+    line,
+    lineNum,
+    facts,
+    routeKeys,
+    /\bapp\.(get|post|put|patch|delete|all)\s*\(\s*['"`]([^'"`]+)['"`]/gi,
+  );
+  if (!isLikelyExpressRouteFile(filePath)) return;
+  extractExpressRouteMatches(
+    filePath,
+    line,
+    lineNum,
+    facts,
+    routeKeys,
+    /\brouter\.(get|post|put|patch|delete|all)\s*\(\s*['"`]([^'"`]+)['"`]/gi,
+  );
+}
+
+function isLikelyExpressRouteFile(filePath: string): boolean {
+  const normalized = filePath.replace(/\\/g, "/").toLowerCase();
+  return normalized.includes("/routes/") ||
+    normalized.endsWith(".routes.ts") ||
+    normalized.endsWith(".routes.js") ||
+    normalized.endsWith(".routes.tsx") ||
+    normalized.endsWith(".routes.jsx");
+}
+
+function extractExpressRouteMatches(
+  filePath: string,
+  line: string,
+  lineNum: number,
+  facts: CodeFact[],
+  routeKeys: Set<string>,
+  expressRegex: RegExp,
+): void {
+  let m: RegExpExecArray | null;
+  while ((m = expressRegex.exec(line)) !== null) {
+    const method = m[1].toUpperCase();
+    const path = m[2];
+    const key = `${filePath}:${lineNum}:${method}:${path}`;
+    if (routeKeys.has(key)) continue;
+    routeKeys.add(key);
+    facts.push({
+      id: makeFactId(filePath, lineNum, `api-route-express-${method}-${path}`),
+      kind: "api-route",
+      filePath,
+      line: lineNum,
+      snippet: trimSnippet(line),
+      metadata: {
+        method,
+        path,
+        framework: "express",
+      },
     });
   }
 }
@@ -168,6 +278,8 @@ function extractAuth(
     "requireAuth",
     "requireProjectOwner",
     "authenticateApiKey",
+    "authorize(",
+    "authorizeAny(",
     "Authorization",
   ];
   if (authPatterns.some((p) => line.includes(p))) {
@@ -261,6 +373,7 @@ function extractErrorStatus(
   if (line.includes("401") || line.match(/\b401\b/)) {
     facts.push({
       id: makeFactId(filePath, lineNum, "auth-deny-401"),
+      kind: "auth-deny-401",
       filePath,
       line: lineNum,
       snippet: trimSnippet(line),

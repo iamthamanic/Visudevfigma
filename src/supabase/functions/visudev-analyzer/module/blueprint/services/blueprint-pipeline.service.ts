@@ -11,15 +11,23 @@ import {
   type FileIndexEntry,
   prioritizeBlueprintFiles,
 } from "../graph/call-graph.builder.ts";
+import type { RouteScope } from "../../dto/blueprint/route-scope.dto.ts";
 import {
-  buildConceptsForRoutes,
-  type RouteScope,
-} from "./concept-engine.service.ts";
+  buildRouteScopeId,
+  validateRouteScopes,
+} from "../graph/route-scope.validate.ts";
+import {
+  MAX_BLUEPRINT_FACTS,
+  sanitizeFactsForExport,
+} from "../internal/export-sanitizer.ts";
+import { buildConceptsForRoutes } from "./concept-engine.service.ts";
 import {
   buildRouteBlueprints,
   buildSecurityMatrix,
   evaluatePolicies,
 } from "./policy-engine.service.ts";
+import { assembleBlueprintGraph } from "./blueprint-graph-assembly.ts";
+import { resolveRoutePath } from "../internal/route-path.util.ts";
 
 const DEFAULT_PROFILE: ProjectProfile = {
   appType: "saas",
@@ -67,11 +75,17 @@ export function analyzeFromFileEntries(
     analyzed += 1;
   }
 
-  const routeScopes = buildRouteScopes(allFacts, fileIndex);
+  const routeScopes = validateRouteScopes(
+    buildRouteScopes(allFacts, fileIndex),
+  );
+  const exportFacts = sanitizeFactsForExport(
+    allFacts.slice(0, MAX_BLUEPRINT_FACTS),
+  );
   const concepts = buildConceptsForRoutes(routeScopes, allFacts);
   const findings = evaluatePolicies(routeScopes, concepts, allFacts);
   const routes = buildRouteBlueprints(routeScopes, concepts);
   const securityMatrix = buildSecurityMatrix(routes, findings);
+  const graph = assembleBlueprintGraph(allFacts, routeScopes);
 
   return {
     version: 1,
@@ -84,8 +98,9 @@ export function analyzeFromFileEntries(
     routes,
     securityMatrix,
     findings,
-    facts: allFacts.slice(0, 500),
+    facts: exportFacts,
     concepts,
+    graph,
     filesAnalyzed: analyzed,
     frameworkHints: detectFrameworkHints(allFacts),
   };
@@ -98,11 +113,18 @@ function buildRouteScopes(
   const routeFacts = facts.filter((fact) => fact.kind === "api-route");
   const scopes: RouteScope[] = [];
   const seen = new Set<string>();
+  const usedBaseIds = new Set<string>();
 
   for (const fact of routeFacts) {
     const method = String(fact.metadata.method ?? "GET").toUpperCase();
-    const path = String(fact.metadata.path ?? "/");
-    const id = `${method} ${path}`;
+    const path = resolveRoutePath(fact);
+    const id = buildRouteScopeId(
+      method,
+      path,
+      fact.filePath,
+      fact.line,
+      usedBaseIds,
+    );
     if (seen.has(id)) continue;
     seen.add(id);
 
