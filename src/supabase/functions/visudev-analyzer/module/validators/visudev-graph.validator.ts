@@ -156,47 +156,61 @@ export const EMPTY_VISU_DEV_GRAPH: VisuDevGraph = {
   scopes: [],
 };
 
+function logCoercionDrop(section: string, dropped: number): void {
+  if (dropped > 0) {
+    console.warn(
+      `[visudev-graph] coerceVisuDevGraphInput: dropped ${dropped} invalid ${section} entr${
+        dropped === 1 ? "y" : "ies"
+      }`,
+    );
+  }
+}
+
 function coerceNodes(items: unknown[] | undefined): VisuDevNode[] {
   if (!Array.isArray(items)) return [];
-  const next: VisuDevNode[] = [];
+  const nodes: VisuDevNode[] = [];
   let dropped = 0;
-  for (const item of items) {
-    const parsed = visuDevNodeLooseSchema.safeParse(item);
+  for (const nodeCandidate of items) {
+    const parsed = visuDevNodeLooseSchema.safeParse(nodeCandidate);
     if (!parsed.success) {
       dropped += 1;
       continue;
     }
-    next.push({ ...parsed.data, evidenceIds: parsed.data.evidenceIds ?? [] });
+    nodes.push({ ...parsed.data, evidenceIds: parsed.data.evidenceIds ?? [] });
   }
-  return next;
+  logCoercionDrop("node", dropped);
+  return nodes;
 }
 
 function coerceEdges(items: unknown[] | undefined): VisuDevEdge[] {
   if (!Array.isArray(items)) return [];
-  const next: VisuDevEdge[] = [];
+  const edges: VisuDevEdge[] = [];
   let dropped = 0;
-  for (const item of items) {
-    const parsed = visuDevEdgeLooseSchema.safeParse(item);
+  for (const edgeCandidate of items) {
+    const parsed = visuDevEdgeLooseSchema.safeParse(edgeCandidate);
     if (!parsed.success) {
       dropped += 1;
       continue;
     }
-    next.push({ ...parsed.data, evidenceIds: parsed.data.evidenceIds ?? [] });
+    edges.push({ ...parsed.data, evidenceIds: parsed.data.evidenceIds ?? [] });
   }
-  return next;
+  logCoercionDrop("edge", dropped);
+  return edges;
 }
 
 function coerceEvidence(items: unknown[] | undefined): VisuDevEvidence[] {
   if (!Array.isArray(items)) return [];
-  const next: VisuDevEvidence[] = [];
+  const evidence: VisuDevEvidence[] = [];
+  let repaired = 0;
   for (let index = 0; index < items.length; index++) {
-    const item = items[index];
-    const parsed = visuDevEvidenceLooseSchema.safeParse(item);
+    const evidenceCandidate = items[index];
+    const parsed = visuDevEvidenceLooseSchema.safeParse(evidenceCandidate);
     if (parsed.success) {
-      next.push(parsed.data);
+      evidence.push(parsed.data);
       continue;
     }
-    next.push({
+    repaired += 1;
+    evidence.push({
       id: `evidence-fallback-${index + 1}`,
       factId: `fact-fallback-${index + 1}`,
       subjectType: "scope",
@@ -207,26 +221,34 @@ function coerceEvidence(items: unknown[] | undefined): VisuDevEvidence[] {
       summary: "Code fact: unknown",
     });
   }
-  return next;
+  if (repaired > 0) {
+    console.warn(
+      `[visudev-graph] coerceVisuDevGraphInput: repaired ${repaired} invalid evidence entr${
+        repaired === 1 ? "y" : "ies"
+      } with fallback placeholders`,
+    );
+  }
+  return evidence;
 }
 
 function coerceScopes(items: unknown[] | undefined): VisuDevScope[] {
   if (!Array.isArray(items)) return [];
-  const next: VisuDevScope[] = [];
+  const scopes: VisuDevScope[] = [];
   let dropped = 0;
-  for (const item of items) {
-    const parsed = visuDevScopeLooseSchema.safeParse(item);
+  for (const scopeCandidate of items) {
+    const parsed = visuDevScopeLooseSchema.safeParse(scopeCandidate);
     if (!parsed.success) {
       dropped += 1;
       continue;
     }
-    next.push({
+    scopes.push({
       ...parsed.data,
       nodeIds: parsed.data.nodeIds ?? [],
       edgeIds: parsed.data.edgeIds ?? [],
     });
   }
-  return next;
+  logCoercionDrop("scope", dropped);
+  return scopes;
 }
 
 export function coerceVisuDevGraphInput(input: unknown): VisuDevGraph {

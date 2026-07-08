@@ -27,12 +27,18 @@ export function buildVisuDevGraphFromFacts(
   const shapeValidFacts = inputFacts.filter((fact): fact is CodeFact =>
     validateCodeFactShape(fact as CodeFact)
   );
+  const rejectedCount = inputFacts.length - shapeValidFacts.length;
+  if (rejectedCount > 0) {
+    console.warn(
+      `[visudev-graph] buildVisuDevGraphFromFacts: rejected ${rejectedCount} fact(s) with invalid shape before mapping`,
+    );
+  }
   const mappableFacts = shapeValidFacts.filter((fact) =>
     validateCodeFactForMapping(fact)
   );
   const safeScopes = Array.isArray(routeScopes) ? routeScopes : [];
   const validatedScopes = validateRouteScopes(safeScopes);
-  const evidence = buildEvidenceIndex(inputFacts);
+  const evidence = buildEvidenceIndex(shapeValidFacts);
   const graphContext = createGraphBuildContext(evidence);
 
   if (validatedScopes.length === 0) {

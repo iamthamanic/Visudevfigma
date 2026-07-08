@@ -66,12 +66,11 @@ Deno.test("buildVisuDevGraphFromFacts maps route validation and db write", () =>
   assertEquals(graph.scopes[0].nodeIds.includes(routeNode!.id), true);
 });
 
-Deno.test("buildVisuDevGraphFromFacts keeps evidence for malformed facts", () => {
+Deno.test("buildVisuDevGraphFromFacts rejects malformed facts before mapping", () => {
   const facts = [{ id: "", kind: "db-read" }, null] as unknown as CodeFact[];
   const graph = buildVisuDevGraphFromFacts(facts, []);
-  assertEquals(graph.evidence.length, 2);
-  assertEquals(graph.evidence[0].summary, "Code fact: db-read");
-  assertEquals(graph.evidence[1].factId, "malformed-fact-2");
+  assertEquals(graph.evidence.length, 0);
+  assertEquals(graph.nodes.length, 0);
 });
 
 Deno.test("buildVisuDevGraphFromFacts keeps evidence for unknown fact kinds", () => {
