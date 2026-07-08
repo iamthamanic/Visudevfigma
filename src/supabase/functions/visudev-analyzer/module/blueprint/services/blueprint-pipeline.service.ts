@@ -71,7 +71,10 @@ export function analyzeFromFileEntries(
 
   for (const file of prioritized) {
     fileIndex.set(file.path, { path: file.path, content: file.content });
-    const facts = extractFactsFromFile(file.path, file.content);
+  }
+
+  for (const file of prioritized) {
+    const facts = extractFactsFromFile(file.path, file.content, fileIndex);
     allFacts.push(...facts);
     analyzed += 1;
   }

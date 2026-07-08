@@ -7,6 +7,7 @@ import {
   buildOwnershipRangesByFile,
   buildSortedRoutesByFile,
   resolveOwnerRouteId,
+  type RouteLineRange,
 } from "./route-ownership.ts";
 import { buildRelatedRouteIdsByFile } from "./route-related-files.ts";
 import { resolveRoutePath } from "./route-path.util.ts";
@@ -57,6 +58,7 @@ export function buildRouteFactsIndex(
     const unownedFacts: CodeFact[] = [];
 
     for (const fact of fileFacts) {
+      if (fact.kind === "ast-import" || fact.kind === "ast-call") continue;
       const ownerId = resolveOwnerRouteId(
         filePath,
         fact.line,
@@ -79,6 +81,8 @@ export function buildRouteFactsIndex(
       index,
     );
   }
+
+  attachAstCallFacts(routeScopes, facts, ownershipRangesByFile, index);
 
   return index;
 }
@@ -105,4 +109,49 @@ function assignSharedFileFacts(
 
 function routeScopeLineKey(route: RouteScope): string {
   return `${route.filePath}:${route.line}:${route.method}:${route.path}`;
+}
+
+function attachAstCallFacts(
+  routeScopes: RouteScope[],
+  facts: CodeFact[],
+  ownershipRangesByFile: Map<string, RouteLineRange[]>,
+  index: Map<string, CodeFact[]>,
+): void {
+  const factsByFile = new Map<string, CodeFact[]>();
+  for (const fact of facts) {
+    if (fact.kind === "ast-import" || fact.kind === "ast-call") continue;
+    const fileFacts = factsByFile.get(fact.filePath) ?? [];
+    fileFacts.push(fact);
+    factsByFile.set(fact.filePath, fileFacts);
+  }
+
+  const astCalls = facts.filter((fact) => fact.kind === "ast-call");
+  const attached = new Map<string, Set<string>>();
+
+  for (const route of routeScopes) {
+    const routeFacts = index.get(route.id) ?? [];
+    const routeFactIds = attached.get(route.id) ?? new Set<string>();
+    attached.set(route.id, routeFactIds);
+
+    for (const callFact of astCalls) {
+      if (callFact.filePath !== route.filePath) continue;
+      const ownerId = resolveOwnerRouteId(
+        callFact.filePath,
+        callFact.line,
+        ownershipRangesByFile,
+      );
+      if (ownerId !== route.id) continue;
+
+      const targetFile = String(callFact.metadata.targetFile ?? "").trim();
+      if (!targetFile) continue;
+
+      for (const remoteFact of factsByFile.get(targetFile) ?? []) {
+        if (routeFactIds.has(remoteFact.id)) continue;
+        routeFacts.push(remoteFact);
+        routeFactIds.add(remoteFact.id);
+      }
+    }
+
+    index.set(route.id, routeFacts);
+  }
 }

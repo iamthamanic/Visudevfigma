@@ -1,6 +1,8 @@
 /** Line-based fact extractors for Blueprint Engine v1 (Hono, Next, Express, Supabase, Zod, Auth). */
 
 import type { CodeFact } from "../../dto/blueprint/blueprint-document.dto.ts";
+import { extractAstFactsFromFile } from "../graph/ast-call-graph.ts";
+import type { FileIndexEntry } from "../graph/call-graph.builder.ts";
 
 function makeFactId(filePath: string, line: number, kind: string): string {
   const safePath = filePath.replace(/[^a-zA-Z0-9]+/g, "-").replace(
@@ -16,6 +18,16 @@ function trimSnippet(line: string, max = 120): string {
 }
 
 export function extractFactsFromFile(
+  filePath: string,
+  content: string,
+  fileIndex?: ReadonlyMap<string, FileIndexEntry>,
+): CodeFact[] {
+  const regexFacts = extractRegexFactsFromFile(filePath, content);
+  const astFacts = extractAstFactsFromFile(filePath, content, fileIndex);
+  return mergeFacts(regexFacts, astFacts);
+}
+
+function extractRegexFactsFromFile(
   filePath: string,
   content: string,
 ): CodeFact[] {
@@ -45,6 +57,18 @@ export function extractFactsFromFile(
   });
 
   return facts;
+}
+
+function mergeFacts(regexFacts: CodeFact[], astFacts: CodeFact[]): CodeFact[] {
+  if (astFacts.length === 0) return regexFacts;
+  const seen = new Set(regexFacts.map((fact) => fact.id));
+  const merged = [...regexFacts];
+  for (const fact of astFacts) {
+    if (seen.has(fact.id)) continue;
+    seen.add(fact.id);
+    merged.push(fact);
+  }
+  return merged;
 }
 
 function resolveRouteFramework(
