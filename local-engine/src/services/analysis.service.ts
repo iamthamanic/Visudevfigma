@@ -6,14 +6,17 @@
 import path from "node:path";
 import { appendJsonLog, readJsonFile, writeJsonFile } from "../storage/file-store.js";
 import { AutoGuideAnalysisProvider } from "../providers/autoguide-analysis.provider.js";
+import { AutoGuideStubProvider } from "../providers/autoguide-stub.provider.js";
 import type { AnalysisProvider } from "../providers/analysis-provider.js";
 import { LegacyAppflowRunnerProvider } from "../providers/legacy-appflow-runner.provider.js";
 import { LocalDataIntrospectionProvider } from "../providers/local-data-introspection.provider.js";
 import { LegacyVisuDevAnalysisProvider } from "../providers/legacy-visudev-analysis.provider.js";
+import type { EngineConfig } from "../config.js";
 import type { ProjectService } from "./project.service.js";
 import type {
   AnalysisRunStatus,
   AnalyzeProjectRequest,
+  BlueprintAnalysisProviderId,
   EngineAnalysisRun,
   LocalAppflowAnalysisResult,
   LocalAppflowLatest,
@@ -31,31 +34,47 @@ function createRunId(): string {
   return `run_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function providerIdForScanType(scanType: SupportedScanType): EngineAnalysisRun["providerId"] {
+function providerIdForScanType(
+  scanType: SupportedScanType,
+  blueprintProviderId: BlueprintAnalysisProviderId,
+): EngineAnalysisRun["providerId"] {
   if (scanType === "appflow") return "legacy-appflow-runner";
   if (scanType === "data") return "local-data-introspection";
+  return blueprintProviderId;
+}
+
+function resolveBlueprintProviderId(config: EngineConfig): BlueprintAnalysisProviderId {
+  if (config.analysisProvider === "autoguide") return "autoguide";
   return "legacy-blueprint-runner";
 }
 
 export class AnalysisService {
   private readonly providers: Map<string, AnalysisProvider>;
+  private readonly blueprintProviderId: BlueprintAnalysisProviderId;
 
   constructor(
     private readonly storageDir: string,
     private readonly projectService: ProjectService,
     runnerUrl: string,
-    defaultProviderId: string,
+    config: EngineConfig,
   ) {
+    this.blueprintProviderId = resolveBlueprintProviderId(config);
     this.providers = new Map<string, AnalysisProvider>([
       ["legacy-blueprint-runner", new LegacyVisuDevAnalysisProvider(runnerUrl)],
       ["legacy-appflow-runner", new LegacyAppflowRunnerProvider(runnerUrl)],
       ["local-data-introspection", new LocalDataIntrospectionProvider()],
-      ["autoguide-stub", new AutoGuideAnalysisProvider()],
+      [
+        "autoguide",
+        new AutoGuideAnalysisProvider({
+          autoguideRoot: config.autoguideRoot,
+          sourceSubdir: config.autoguideSourceDir,
+        }),
+      ],
     ]);
-    this.defaultProviderId = defaultProviderId;
+    if (config.autoguideStub) {
+      this.providers.set("autoguide-stub", new AutoGuideStubProvider());
+    }
   }
-
-  private readonly defaultProviderId: string;
 
   private runDir(runId: string): string {
     return path.join(this.storageDir, "runs", runId);
@@ -121,7 +140,7 @@ export class AnalysisService {
       throw Object.assign(new Error("Project not found"), { statusCode: 404 });
     }
 
-    const providerId = providerIdForScanType(scanType);
+    const providerId = providerIdForScanType(scanType, this.blueprintProviderId);
 
     const runId = createRunId();
     const now = new Date().toISOString();

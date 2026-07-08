@@ -10,6 +10,7 @@ export type {
   ApiFailure,
   ApiResponse,
   ApiSuccess,
+  BlueprintAnalysisProviderId,
   BlueprintDocument,
   CrawlPreviewInput,
   CrawlPreviewResult,

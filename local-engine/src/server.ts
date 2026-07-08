@@ -55,7 +55,7 @@ export async function createApp(config: EngineConfig = getEngineConfig()) {
     config.storageDir,
     projectService,
     config.previewRunnerUrl,
-    config.analysisProvider,
+    config,
   );
   const previewService = new PreviewService(config.storageDir, projectService, previewProvider);
   const migrationService = new MigrationService(config.storageDir, projectService);

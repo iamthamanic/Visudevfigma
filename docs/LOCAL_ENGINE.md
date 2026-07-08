@@ -36,6 +36,8 @@ VITE_VISUDEV_ENGINE_URL=http://localhost:4317
 VISUDEV_ENGINE_PORT=4317
 VISUDEV_PREVIEW_RUNNER_URL=http://localhost:4000
 # VISUDEV_STORAGE_DIR=~/.visudev
+# VISUDEV_ANALYSIS_PROVIDER=autoguide
+# VISUDEV_AUTOGUIDE_ROOT=/path/to/autoguide
 ```
 
 ## Modes
@@ -58,8 +60,23 @@ Browser UI (3005)
 
 ## AutoGuide-ready adapters
 
-- `legacy-visudev-analysis.provider.ts` — production blueprint path today
-- `autoguide-analysis.provider.ts` — stub/TODO for future `@autoguide/*` packages
+- `legacy-visudev-analysis.provider.ts` — default blueprint path (Preview Runner + Deno pipeline)
+- `autoguide-analysis.provider.ts` — optional `@autoguide/scanner` integration
+- `autoguide-stub.provider.ts` — dev stub when `VISUDEV_AUTOGUIDE_STUB=1`
+
+### Enable AutoGuide blueprint scans
+
+```env
+VISUDEV_ANALYSIS_PROVIDER=autoguide
+VISUDEV_AUTOGUIDE_ROOT=/absolute/path/to/autoguide   # built monorepo with packages/*/dist
+# optional:
+VISUDEV_AUTOGUIDE_SOURCE_DIR=src
+VISUDEV_AUTOGUIDE_STUB=1   # keep stub provider registered (no real scan)
+```
+
+When `VISUDEV_ANALYSIS_PROVIDER` is unset, blueprint scans use `legacy-blueprint-runner`.
+
+`GET /api/capabilities` reports AutoGuide package availability under `analysis.autoguide`.
 
 ## Not migrated yet (Phase 2+)
 

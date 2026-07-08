@@ -93,11 +93,13 @@ export type AnalysisRunStatus = {
 
 export type BlueprintDocument = Record<string, unknown>;
 
+export type BlueprintAnalysisProviderId = "legacy-blueprint-runner" | "autoguide";
+
 export type LocalBlueprintAnalysisResult = {
   kind: "blueprint";
   projectId: string;
   runId: string;
-  providerId: "legacy-blueprint-runner";
+  providerId: BlueprintAnalysisProviderId;
   status: "success" | "partial" | "failed";
   createdAt: string;
   summary: {
@@ -332,7 +334,11 @@ export type EngineAnalysisRun = {
   runId: string;
   projectId: string;
   scanType: "blueprint" | "appflow" | "data";
-  providerId: "legacy-blueprint-runner" | "legacy-appflow-runner" | "local-data-introspection";
+  providerId:
+    | BlueprintAnalysisProviderId
+    | "legacy-appflow-runner"
+    | "local-data-introspection"
+    | "autoguide-stub";
   runnerAnalysisId?: string;
   status: AnalysisStatus;
   createdAt: string;
