@@ -83,9 +83,9 @@ export function analyzeFromFileEntries(
   );
   const concepts = buildConceptsForRoutes(routeScopes, allFacts);
   const findings = evaluatePolicies(routeScopes, concepts, allFacts);
-  const routes = buildRouteBlueprints(routeScopes, concepts);
-  const securityMatrix = buildSecurityMatrix(routes, findings);
   const graph = assembleBlueprintGraph(allFacts, routeScopes);
+  const routes = buildRouteBlueprints(routeScopes, concepts, graph);
+  const securityMatrix = buildSecurityMatrix(routes, findings);
 
   return {
     version: 1,
