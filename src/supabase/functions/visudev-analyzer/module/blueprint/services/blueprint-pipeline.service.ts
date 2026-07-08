@@ -27,6 +27,7 @@ import {
   evaluatePolicies,
 } from "./policy-engine.service.ts";
 import { assembleBlueprintGraph } from "./blueprint-graph-assembly.ts";
+import { attachGraphFindings } from "../graph/graph-policy-findings.ts";
 import { resolveRoutePath } from "../internal/route-path.util.ts";
 
 const DEFAULT_PROFILE: ProjectProfile = {
@@ -83,9 +84,10 @@ export function analyzeFromFileEntries(
   );
   const concepts = buildConceptsForRoutes(routeScopes, allFacts);
   const findings = evaluatePolicies(routeScopes, concepts, allFacts);
-  const graph = assembleBlueprintGraph(allFacts, routeScopes);
+  let graph = assembleBlueprintGraph(allFacts, routeScopes);
   const routes = buildRouteBlueprints(routeScopes, concepts, graph);
   const securityMatrix = buildSecurityMatrix(routes, findings, graph);
+  graph = attachGraphFindings(graph, routes, routeScopes, allFacts, findings);
 
   return {
     version: 1,

@@ -4,6 +4,7 @@ import { z } from "zod";
 import type {
   VisuDevEdge,
   VisuDevEvidence,
+  VisuDevFinding,
   VisuDevGraph,
   VisuDevNode,
   VisuDevScope,
@@ -73,12 +74,27 @@ const visuDevScopeSchema = z.object({
   metadata: exportMetadataSchema,
 });
 
+const visuDevFindingSchema = z.object({
+  id: z.string().trim().min(1).max(80),
+  ruleId: z.string().trim().min(1).max(120),
+  scopeId: z.string().trim().min(1).max(120),
+  controlKind: z.enum(["auth", "validation", "rate-limit", "db-write"]),
+  expectedControlNodeId: z.string().max(80).optional(),
+  outcome: z.enum(["missing", "not_applicable"]),
+  message: z.string().max(240),
+  expectedState: z.string().max(120),
+  actualState: z.string().max(120),
+  evidenceIds: z.array(z.string().max(80)),
+  severity: z.enum(["info", "low", "medium", "high", "critical"]).optional(),
+});
+
 const visuDevGraphSchema = z.object({
   version: z.literal(1),
   nodes: z.array(visuDevNodeSchema),
   edges: z.array(visuDevEdgeSchema),
   evidence: z.array(visuDevEvidenceSchema),
   scopes: z.array(visuDevScopeSchema),
+  findings: z.array(visuDevFindingSchema),
 });
 
 const visuDevEvidenceLooseSchema = z.object({
@@ -144,6 +160,7 @@ const visuDevGraphRootSchema = z.object({
   edges: z.array(z.unknown()).optional(),
   evidence: z.array(z.unknown()).optional(),
   scopes: z.array(z.unknown()).optional(),
+  findings: z.array(z.unknown()).optional(),
 });
 
 export { visuDevGraphSchema };
@@ -154,6 +171,7 @@ export const EMPTY_VISU_DEV_GRAPH: VisuDevGraph = {
   edges: [],
   evidence: [],
   scopes: [],
+  findings: [],
 };
 
 function logCoercionDrop(section: string, dropped: number): void {
@@ -251,6 +269,39 @@ function coerceScopes(items: unknown[] | undefined): VisuDevScope[] {
   return scopes;
 }
 
+const visuDevFindingLooseSchema = z.object({
+  id: z.string().trim().min(1),
+  ruleId: z.string().trim().min(1),
+  scopeId: z.string().trim().min(1),
+  controlKind: z.enum(["auth", "validation", "rate-limit", "db-write"]),
+  expectedControlNodeId: z.string().optional(),
+  outcome: z.enum(["missing", "not_applicable"]),
+  message: z.string(),
+  expectedState: z.string(),
+  actualState: z.string(),
+  evidenceIds: z.array(z.string()).optional(),
+  severity: z.enum(["info", "low", "medium", "high", "critical"]).optional(),
+});
+
+function coerceFindings(items: unknown[] | undefined): VisuDevFinding[] {
+  if (!Array.isArray(items)) return [];
+  const findings: VisuDevFinding[] = [];
+  let dropped = 0;
+  for (const findingCandidate of items) {
+    const parsed = visuDevFindingLooseSchema.safeParse(findingCandidate);
+    if (!parsed.success) {
+      dropped += 1;
+      continue;
+    }
+    findings.push({
+      ...parsed.data,
+      evidenceIds: parsed.data.evidenceIds ?? [],
+    });
+  }
+  logCoercionDrop("finding", dropped);
+  return findings;
+}
+
 export function coerceVisuDevGraphInput(input: unknown): VisuDevGraph {
   const parsed = visuDevGraphRootSchema.safeParse(input);
   if (!parsed.success) return { ...EMPTY_VISU_DEV_GRAPH };
@@ -261,6 +312,7 @@ export function coerceVisuDevGraphInput(input: unknown): VisuDevGraph {
     edges: coerceEdges(parsed.data.edges),
     evidence: coerceEvidence(parsed.data.evidence),
     scopes: coerceScopes(parsed.data.scopes),
+    findings: coerceFindings(parsed.data.findings),
   };
 }
 
@@ -281,12 +333,17 @@ function pruneGraphForExport(graph: VisuDevGraph): VisuDevGraph {
     const parsed = visuDevScopeSchema.safeParse(scope);
     return parsed.success ? [parsed.data] : [];
   });
+  const findings = graph.findings.flatMap((finding) => {
+    const parsed = visuDevFindingSchema.safeParse(finding);
+    return parsed.success ? [parsed.data] : [];
+  });
   return repairGraphReferences({
     version: 1,
     nodes,
     edges,
     evidence,
     scopes,
+    findings,
   });
 }
 
