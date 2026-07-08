@@ -350,6 +350,37 @@ export class SupabaseVisuDevClient implements VisuDevApiClient {
     return { projectId, status: "stopped" };
   }
 
+  async crawlPreview(
+    projectId: string,
+    input: import("./types").CrawlPreviewInput,
+  ): Promise<import("./types").CrawlPreviewResult> {
+    const project = await this.getProject(projectId);
+    const res = await previewAPI.crawl(
+      projectId,
+      {
+        screens: input.screens,
+        maxScreens: input.maxScreens,
+        maxClicksPerScreen: input.maxClicksPerScreen,
+      },
+      (project.preview_mode ?? "auto") as PreviewMode,
+    );
+    if (!res.success || !res.data) {
+      throw new VisuDevApiError(res.error ?? "Crawl failed", "CRAWL_FAILED", "supabase");
+    }
+    return {
+      projectId,
+      previewRunId: "",
+      runtime: res.data as unknown as Record<string, unknown>,
+      screens: input.screens,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  async getRuntimeLatest(projectId: string): Promise<import("./types").LocalRuntimeLatest | null> {
+    void projectId;
+    return null;
+  }
+
   async browseLocalPath(input: BrowseLocalPathInput = {}): Promise<BrowseLocalPathResult> {
     const result = await browseLocalFolderViaRunner(input.startDir);
     if (result.cancelled) return { cancelled: true };

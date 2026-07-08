@@ -198,6 +198,7 @@ export type LocalAppflowLatest = {
   quality?: unknown;
   framework?: unknown;
   commitSha?: string;
+  runtime?: unknown;
   updatedAt: string;
 };
 
@@ -209,6 +210,37 @@ export type LocalDataLatest = {
   message?: string;
   dialect?: "postgres" | "sqlite";
   source?: string;
+  updatedAt: string;
+};
+
+export type CrawlPreviewScreenInput = {
+  id: string;
+  name: string;
+  path: string;
+  type?: string;
+  parentScreenId?: string;
+  parentPath?: string;
+  stateKey?: string;
+};
+
+export type CrawlPreviewInput = {
+  screens: CrawlPreviewScreenInput[];
+  maxScreens?: number;
+  maxClicksPerScreen?: number;
+};
+
+export type CrawlPreviewResult = {
+  projectId: string;
+  previewRunId: string;
+  runtime: Record<string, unknown>;
+  screens: unknown[];
+  updatedAt: string;
+};
+
+export type LocalRuntimeLatest = {
+  projectId: string;
+  previewRunId: string;
+  runtime: Record<string, unknown>;
   updatedAt: string;
 };
 

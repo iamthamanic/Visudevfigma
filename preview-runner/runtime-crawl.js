@@ -63,6 +63,17 @@ export async function runRuntimeCrawl(options) {
 
       result.summary.visitedScreens += 1;
       const before = await collectDomSnapshot(page);
+      const routeScreenshotUrl = await captureStateScreenshot(page, before);
+      if (!stateCaptureByScreenId.has(screen.id)) {
+        stateCaptureByScreenId.set(screen.id, {
+          screenId: screen.id,
+          parentScreenId: screen.id,
+          type: "modal",
+          label: screen.name,
+          screenshotUrl: routeScreenshotUrl,
+          matchedBy: "route-visit",
+        });
+      }
       result.snapshots.push({
         screenId: screen.id,
         route: before.route,

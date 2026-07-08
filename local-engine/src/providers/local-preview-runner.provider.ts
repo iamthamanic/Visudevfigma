@@ -6,6 +6,8 @@
 import path from "node:path";
 import { appendJsonLog, readJsonFile, writeJsonFile } from "../storage/file-store.js";
 import type {
+  CrawlPreviewInput,
+  CrawlPreviewResult,
   LocalPreviewMapping,
   LocalVisuDevProject,
   PreviewStartResult,
@@ -275,5 +277,63 @@ export class LocalPreviewRunnerProvider implements PreviewProvider {
     }
 
     return { projectId, status: "stopped" };
+  }
+
+  async crawlPreview(projectId: string, input: CrawlPreviewInput): Promise<CrawlPreviewResult> {
+    const mapping = await this.readMapping(projectId);
+    if (!mapping?.runId) {
+      throw Object.assign(new Error("No active preview run for this project."), {
+        statusCode: 409,
+        code: "PREVIEW_NOT_STARTED",
+      });
+    }
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (mapping.projectToken) {
+      headers["x-visudev-project-token"] = mapping.projectToken;
+    }
+
+    const response = await this.runnerFetch(`/crawl/${encodeURIComponent(mapping.runId)}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        screens: input.screens,
+        maxScreens: input.maxScreens ?? 8,
+        maxClicksPerScreen: input.maxClicksPerScreen ?? 4,
+      }),
+    });
+
+    const text = await response.text();
+    let payload: { success?: boolean; data?: Record<string, unknown>; error?: string };
+    try {
+      payload = text ? (JSON.parse(text) as typeof payload) : {};
+    } catch {
+      throw Object.assign(new Error("Preview Runner returned invalid JSON for crawl."), {
+        statusCode: 502,
+        code: "CRAWL_INVALID_JSON",
+      });
+    }
+
+    if (!response.ok || !payload.success || !payload.data) {
+      const message = payload.error || `Runner crawl failed (${response.status})`;
+      const code =
+        response.status === 409
+          ? "PREVIEW_NOT_READY"
+          : response.status === 404
+            ? "PREVIEW_RUN_NOT_FOUND"
+            : "CRAWL_FAILED";
+      throw Object.assign(new Error(message), { statusCode: response.status || 500, code });
+    }
+
+    const now = new Date().toISOString();
+    return {
+      projectId,
+      previewRunId: mapping.runId,
+      runtime: payload.data,
+      screens: input.screens,
+      updatedAt: now,
+    };
   }
 }

@@ -5,7 +5,7 @@
 
 import type { Hono } from "hono";
 import type { PreviewService } from "../services/preview.service.js";
-import type { StartPreviewInput } from "../types/api.types.js";
+import type { CrawlPreviewInput, StartPreviewInput } from "../types/api.types.js";
 import { fail, getErrorStatus, ok } from "./http.js";
 
 export function registerPreviewRoutes(app: Hono, previewService: PreviewService): void {
@@ -53,5 +53,29 @@ export function registerPreviewRoutes(app: Hono, previewService: PreviewService)
         getErrorStatus(error, 404),
       );
     }
+  });
+
+  app.post("/api/projects/:projectId/preview/crawl", async (c) => {
+    try {
+      const body = (await c.req.json()) as CrawlPreviewInput;
+      const result = await previewService.crawlPreview(c.req.param("projectId"), body);
+      return ok(c, result);
+    } catch (error) {
+      const code =
+        error && typeof error === "object" && "code" in error
+          ? String((error as { code?: string }).code)
+          : "PREVIEW_CRAWL_FAILED";
+      return fail(
+        c,
+        code,
+        error instanceof Error ? error.message : "Failed to crawl preview",
+        getErrorStatus(error, 500),
+      );
+    }
+  });
+
+  app.get("/api/projects/:projectId/runtime/latest", async (c) => {
+    const latest = await previewService.getRuntimeLatest(c.req.param("projectId"));
+    return ok(c, latest);
   });
 }

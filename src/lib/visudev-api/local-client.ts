@@ -12,11 +12,14 @@ import type {
   ApiResponse,
   BrowseLocalPathInput,
   BrowseLocalPathResult,
+  CrawlPreviewInput,
+  CrawlPreviewResult,
   CreateProjectInput,
   LocalAppflowLatest,
   LocalBlueprintLatest,
   LocalDataLatest,
   LocalEngineAnalysisResult,
+  LocalRuntimeLatest,
   LocalVisuDevProject,
   PreviewStartResult,
   PreviewStatusResult,
@@ -222,6 +225,22 @@ export class LocalVisuDevClient implements VisuDevApiClient {
         method: "POST",
         body: "{}",
       },
+    );
+  }
+
+  async crawlPreview(projectId: string, input: CrawlPreviewInput): Promise<CrawlPreviewResult> {
+    return request<CrawlPreviewResult>(
+      `/api/projects/${encodeURIComponent(projectId)}/preview/crawl`,
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      },
+    );
+  }
+
+  async getRuntimeLatest(projectId: string): Promise<LocalRuntimeLatest | null> {
+    return request<LocalRuntimeLatest | null>(
+      `/api/projects/${encodeURIComponent(projectId)}/runtime/latest`,
     );
   }
 
