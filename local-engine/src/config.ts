@@ -37,13 +37,22 @@ export function getEngineConfig() {
     .map((entry) => entry.trim())
     .filter(Boolean);
 
+  const analysisProvider =
+    process.env.VISUDEV_ANALYSIS_PROVIDER?.trim() || "legacy-blueprint-runner";
+  const autoguideRoot = process.env.VISUDEV_AUTOGUIDE_ROOT?.trim() || "";
+  const autoguideSourceDir = process.env.VISUDEV_AUTOGUIDE_SOURCE_DIR?.trim() || "src";
+  const autoguideStub = process.env.VISUDEV_AUTOGUIDE_STUB === "1";
+
   return {
     port,
     host,
     storageDir,
     previewRunnerUrl,
     allowedOrigins,
-    analysisProvider: process.env.VISUDEV_ANALYSIS_PROVIDER?.trim() || "legacy-blueprint-runner",
+    analysisProvider,
+    autoguideRoot: autoguideRoot || undefined,
+    autoguideSourceDir,
+    autoguideStub,
   };
 }
 

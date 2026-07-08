@@ -8,6 +8,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { ENGINE_VERSION } from "../config.js";
 import type { EngineConfig } from "../config.js";
+import { detectAutoGuidePackages } from "../lib/autoguide-loader.js";
 import { fail, ok } from "./http.js";
 
 const execFileAsync = promisify(execFile);
@@ -62,8 +63,9 @@ export function registerHealthRoutes(app: Hono, config: EngineConfig): void {
     });
   });
 
-  app.get("/api/capabilities", (c) =>
-    ok(c, {
+  app.get("/api/capabilities", async (c) => {
+    const autoguide = await detectAutoGuidePackages(config.autoguideRoot);
+    return ok(c, {
       mode: "local",
       scans: {
         blueprint: true,
@@ -73,8 +75,17 @@ export function registerHealthRoutes(app: Hono, config: EngineConfig): void {
       },
       preview: true,
       browseLocalPath: true,
-    }),
-  );
+      analysis: {
+        defaultBlueprintProvider: config.analysisProvider,
+        autoguide: {
+          available: autoguide.available,
+          stubEnabled: config.autoguideStub,
+          root: autoguide.root,
+          packages: autoguide.packages,
+        },
+      },
+    });
+  });
 
   app.get("/api/health", async (c) => {
     const base = await app.request(new Request(`${c.req.url.split("/api")[0]}/health?details=1`));
