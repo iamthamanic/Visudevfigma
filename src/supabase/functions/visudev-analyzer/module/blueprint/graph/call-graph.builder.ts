@@ -1,5 +1,6 @@
 /** BFS call-path expansion across import graph (Blueprint v1). */
 
+import { collectAstCallTargets } from "./ast-call-graph.ts";
 import { extractImports } from "./import-resolver.ts";
 
 export interface FileIndexEntry {
@@ -30,6 +31,17 @@ export function collectRelatedFiles(
 
     const entry = fileIndex.get(current.path)!;
     const knownPaths = new Set(fileIndex.keys());
+    const astTargets = collectAstCallTargets(
+      entry.content,
+      current.path,
+      knownPaths,
+    );
+    for (const targetPath of astTargets) {
+      if (fileIndex.has(targetPath)) {
+        queue.push({ path: targetPath, depth: current.depth + 1 });
+      }
+    }
+
     const imports = extractImports(entry.content, current.path, knownPaths);
     for (const imp of imports) {
       if (imp.resolvedPath && fileIndex.has(imp.resolvedPath)) {
