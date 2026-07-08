@@ -1,5 +1,7 @@
 /** Blueprint Engine IR — neutral analysis model (VisuDEV analyzer module). */
 
+import type { VisuDevGraph } from "../graph/visudev-graph.dto.ts";
+
 export type ConceptType =
   | "api-route"
   | "auth-gate"
@@ -120,6 +122,7 @@ export interface BlueprintDocument {
   findings: BlueprintFinding[];
   facts: CodeFact[];
   concepts: TechnicalConcept[];
+  graph?: VisuDevGraph;
   filesAnalyzed: number;
   frameworkHints: string[];
 }

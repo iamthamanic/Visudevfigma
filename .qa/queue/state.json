@@ -1,21 +1,21 @@
 {
   "version": 2,
   "repo": "iamthamanic/Visudevfigma",
-  "activeIssue": null,
-  "featureSlug": "blueprint-local-runner",
-  "phase": "done",
-  "branch": "issue/7-blueprint-local-runner",
-  "prUrl": "https://github.com/iamthamanic/Visudevfigma/pull/9",
+  "activeIssue": 10,
+  "featureSlug": "visudev-graph-dto",
+  "phase": "blocked",
+  "branch": "issue/10-visudev-graph-dto",
+  "prUrl": null,
   "milestoneFilter": null,
   "paused": false,
   "runMode": "batch",
-  "queue": [],
+  "queue": [10, 11, 12, 13, 14, 15, 16, 17],
   "completedIssues": [7],
   "retries": {
     "implement": 0,
     "verifyTicket": 0,
     "verifyUi": 0,
-    "review": 2
+    "review": 3
   },
   "maxRetries": {
     "implement": 3,
@@ -24,8 +24,8 @@
     "review": 2,
     "sameRootCause": 2
   },
-  "lastError": null,
-  "lastErrorCount": 0,
-  "issuesProcessedInSession": 1,
-  "updatedAt": "2026-07-07T19:32:00.000Z"
+  "lastError": "AI review REJECT on pre-push hook (score 60%, review-20260708-081438)",
+  "lastErrorCount": 1,
+  "issuesProcessedInSession": 0,
+  "updatedAt": "2026-07-08T08:15:00.000Z"
 }
