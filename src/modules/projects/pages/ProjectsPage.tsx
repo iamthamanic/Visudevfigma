@@ -22,6 +22,7 @@ import {
 } from "../../../components/ui/select";
 import { useAuth } from "../../../contexts/useAuth";
 import { isLocalHostUI } from "../../../lib/visudev/guest-mode";
+import { isLocalVisuDevMode } from "../../../lib/visudev-api";
 import { hasPreviewSource, projectNameFromLocalPath } from "../../../lib/visudev/project-source";
 import { useVisudev } from "../../../lib/visudev/store";
 import type { PreviewMode, Project, ProjectSourceMode } from "../../../lib/visudev/types";
@@ -54,6 +55,7 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
     startPreview,
   } = useVisudev();
   const accessToken = session?.access_token ?? null;
+  const localMode = isLocalVisuDevMode();
   const defaultPreviewMode: PreviewMode = (() => {
     const localUrl =
       (typeof import.meta !== "undefined" && import.meta.env?.VITE_PREVIEW_RUNNER_URL) ||
@@ -241,11 +243,11 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
 
   const handleNextStep = () => {
     if (step === 1) {
-      if (sourceMode === "github" && !githubRepo.trim()) {
+      if (!localMode && sourceMode === "github" && !githubRepo.trim()) {
         alert("Bitte wähle zuerst ein GitHub-Repository aus.");
         return;
       }
-      if (sourceMode === "local") {
+      if (sourceMode === "local" || localMode) {
         const path = localPath.trim();
         if (!path) {
           alert("Bitte gib einen absoluten Pfad zum Projektordner an.");
@@ -272,6 +274,10 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
           return;
         }
       }
+    }
+    if (localMode) {
+      void handleCreateProject();
+      return;
     }
     setStep(step + 1);
   };
@@ -462,32 +468,38 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
           <DialogHeader>
             <DialogTitle>Neues Projekt erstellen</DialogTitle>
             <DialogDescription>
-              {step === 1 && "Schritt 1 von 3: Quelle & Projektname"}
-              {step === 2 && "Schritt 2 von 3: Preview-Modus"}
-              {step === 3 && "Schritt 3 von 3: Datenbank (optional, nur für Daten-Ansicht)"}
+              {localMode
+                ? "Lokales Projekt: Ordner und Name angeben."
+                : step === 1
+                  ? "Schritt 1 von 3: Quelle & Projektname"
+                  : step === 2
+                    ? "Schritt 2 von 3: Preview-Modus"
+                    : "Schritt 3 von 3: Datenbank (optional, nur für Daten-Ansicht)"}
             </DialogDescription>
           </DialogHeader>
 
           <div className={styles.stackLg}>
             {step === 1 && (
               <div className={styles.stackMd}>
-                <div className={styles.stackSm}>
-                  <Label htmlFor="sourceMode">Projektquelle</Label>
-                  <Select
-                    value={sourceMode}
-                    onValueChange={(value) => setSourceMode(value as ProjectSourceMode)}
-                  >
-                    <SelectTrigger id="sourceMode">
-                      <SelectValue placeholder="Quelle wählen" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="local">Lokal (Ordner auf diesem Mac)</SelectItem>
-                      <SelectItem value="github">GitHub Repository</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {!localMode ? (
+                  <div className={styles.stackSm}>
+                    <Label htmlFor="sourceMode">Projektquelle</Label>
+                    <Select
+                      value={sourceMode}
+                      onValueChange={(value) => setSourceMode(value as ProjectSourceMode)}
+                    >
+                      <SelectTrigger id="sourceMode">
+                        <SelectValue placeholder="Quelle wählen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="local">Lokal (Ordner auf diesem Mac)</SelectItem>
+                        <SelectItem value="github">GitHub Repository</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
 
-                {sourceMode === "local" ? (
+                {sourceMode === "local" || localMode ? (
                   <div className={styles.stackSm}>
                     <Label htmlFor="localPath">Projektordner *</Label>
                     <LocalPathPicker
@@ -575,7 +587,7 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
               </div>
             )}
 
-            {step === 2 && (
+            {!localMode && step === 2 && (
               <div className={styles.stackMd}>
                 <div className={styles.stackSm}>
                   <Label htmlFor="previewMode">Preview-Modus</Label>
@@ -614,7 +626,7 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
               </div>
             )}
 
-            {step === 3 && (
+            {!localMode && step === 3 && (
               <div className={styles.stackMd}>
                 <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
                   Nur für die <strong>Daten-Ansicht</strong> (ERD / Tabellen & RLS). Entweder
@@ -715,7 +727,7 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
                 >
                   Abbrechen
                 </Button>
-                {step < 3 ? (
+                {step < 3 && !localMode ? (
                   <Button onClick={handleNextStep}>Weiter</Button>
                 ) : (
                   <Button onClick={handleCreateProject} disabled={isLoading}>
@@ -755,119 +767,130 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
               />
             </div>
 
-            <div className={styles.stackSm}>
-              <Label htmlFor="editGithubRepo">GitHub Repository</Label>
-              <Input
-                id="editGithubRepo"
-                value={githubRepo}
-                onChange={(event) => setGithubRepo(event.target.value)}
-              />
-            </div>
-
-            <div className={styles.stackSm}>
-              <Label htmlFor="editGithubBranch">Branch</Label>
-              <Input
-                id="editGithubBranch"
-                value={githubBranch}
-                onChange={(event) => setGithubBranch(event.target.value)}
-              />
-            </div>
-
-            <div className={styles.stackSm}>
-              <Label htmlFor="editPreviewMode">Preview-Modus</Label>
-              <Select
-                value={previewMode}
-                onValueChange={(value) => setPreviewMode(value as PreviewMode)}
-              >
-                <SelectTrigger id="editPreviewMode" className={styles.selectTrigger}>
-                  <SelectValue placeholder="Preview-Modus auswählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="central">Server (zentral)</SelectItem>
-                  <SelectItem value="local">Lokal (Docker erforderlich)</SelectItem>
-                  <SelectItem value="deployed">Deployed URL</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
-                Server nutzt zentrale Runner‑Instanz. Lokal erfordert Docker.
-              </p>
-            </div>
-
-            {previewMode === "deployed" && (
+            {(localMode || sourceMode === "local") && (
               <div className={styles.stackSm}>
-                <Label htmlFor="editDeployedUrl">Deployed URL</Label>
-                <Input
-                  id="editDeployedUrl"
-                  value={deployedUrl}
-                  onChange={(event) => setDeployedUrl(event.target.value)}
-                />
-                <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
-                  Für Live‑Screenshots aus der Deploy‑Preview
-                </p>
+                <Label htmlFor="editLocalPath">Projektordner</Label>
+                <LocalPathPicker id="editLocalPath" value={localPath} onChange={setLocalPath} />
               </div>
             )}
 
-            <div className={styles.stackSm}>
-              <Label>Datenbank-Typ (Daten-Ansicht)</Label>
-              <Select
-                value={databaseType}
-                onValueChange={(v) => setDatabaseType(v as "supabase" | "local")}
-              >
-                <SelectTrigger id="editDatabaseType" className={styles.selectTrigger}>
-                  <SelectValue placeholder="Datenbank wählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="supabase">Supabase (Cloud)</SelectItem>
-                  <SelectItem value="local">Lokal</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {databaseType === "supabase" && (
+            {!localMode ? (
               <>
                 <div className={styles.stackSm}>
-                  <Label>Supabase Projekt</Label>
-                  <SupabaseProjectSelector
-                    onSelect={(projectId, anonKey, managementToken) => {
-                      setSupabaseProjectId(projectId);
-                      setSupabaseAnonKey(anonKey);
-                      setSupabaseManagementToken(managementToken);
-                    }}
-                    initialProjectId={supabaseProjectId}
-                    initialAnonKey={supabaseAnonKey}
-                  />
-                </div>
-                <div className={styles.stackSm}>
-                  <Label htmlFor="editSupabaseToken">Supabase Management Token</Label>
+                  <Label htmlFor="editGithubRepo">GitHub Repository</Label>
                   <Input
-                    id="editSupabaseToken"
-                    type="password"
-                    value={supabaseManagementToken}
-                    onChange={(e) => setSupabaseManagementToken(e.target.value)}
-                    placeholder="sbp_..."
+                    id="editGithubRepo"
+                    value={githubRepo}
+                    onChange={(event) => setGithubRepo(event.target.value)}
                   />
                 </div>
+
                 <div className={styles.stackSm}>
-                  <Label htmlFor="editSupabaseProjectId">Supabase Project ID</Label>
+                  <Label htmlFor="editGithubBranch">Branch</Label>
                   <Input
-                    id="editSupabaseProjectId"
-                    value={supabaseProjectId}
-                    onChange={(e) => setSupabaseProjectId(e.target.value)}
-                    placeholder="abc123..."
+                    id="editGithubBranch"
+                    value={githubBranch}
+                    onChange={(event) => setGithubBranch(event.target.value)}
                   />
                 </div>
+
                 <div className={styles.stackSm}>
-                  <Label htmlFor="editSupabaseAnonKey">Supabase Anon Key</Label>
-                  <Input
-                    id="editSupabaseAnonKey"
-                    type="password"
-                    value={supabaseAnonKey}
-                    onChange={(e) => setSupabaseAnonKey(e.target.value)}
-                    placeholder="eyJ..."
-                  />
+                  <Label htmlFor="editPreviewMode">Preview-Modus</Label>
+                  <Select
+                    value={previewMode}
+                    onValueChange={(value) => setPreviewMode(value as PreviewMode)}
+                  >
+                    <SelectTrigger id="editPreviewMode" className={styles.selectTrigger}>
+                      <SelectValue placeholder="Preview-Modus auswählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="central">Server (zentral)</SelectItem>
+                      <SelectItem value="local">Lokal (Docker erforderlich)</SelectItem>
+                      <SelectItem value="deployed">Deployed URL</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
+                    Server nutzt zentrale Runner‑Instanz. Lokal erfordert Docker.
+                  </p>
                 </div>
+
+                {previewMode === "deployed" && (
+                  <div className={styles.stackSm}>
+                    <Label htmlFor="editDeployedUrl">Deployed URL</Label>
+                    <Input
+                      id="editDeployedUrl"
+                      value={deployedUrl}
+                      onChange={(event) => setDeployedUrl(event.target.value)}
+                    />
+                    <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
+                      Für Live‑Screenshots aus der Deploy‑Preview
+                    </p>
+                  </div>
+                )}
+
+                <div className={styles.stackSm}>
+                  <Label>Datenbank-Typ (Daten-Ansicht)</Label>
+                  <Select
+                    value={databaseType}
+                    onValueChange={(v) => setDatabaseType(v as "supabase" | "local")}
+                  >
+                    <SelectTrigger id="editDatabaseType" className={styles.selectTrigger}>
+                      <SelectValue placeholder="Datenbank wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="supabase">Supabase (Cloud)</SelectItem>
+                      <SelectItem value="local">Lokal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {databaseType === "supabase" && (
+                  <>
+                    <div className={styles.stackSm}>
+                      <Label>Supabase Projekt</Label>
+                      <SupabaseProjectSelector
+                        onSelect={(projectId, anonKey, managementToken) => {
+                          setSupabaseProjectId(projectId);
+                          setSupabaseAnonKey(anonKey);
+                          setSupabaseManagementToken(managementToken);
+                        }}
+                        initialProjectId={supabaseProjectId}
+                        initialAnonKey={supabaseAnonKey}
+                      />
+                    </div>
+                    <div className={styles.stackSm}>
+                      <Label htmlFor="editSupabaseToken">Supabase Management Token</Label>
+                      <Input
+                        id="editSupabaseToken"
+                        type="password"
+                        value={supabaseManagementToken}
+                        onChange={(e) => setSupabaseManagementToken(e.target.value)}
+                        placeholder="sbp_..."
+                      />
+                    </div>
+                    <div className={styles.stackSm}>
+                      <Label htmlFor="editSupabaseProjectId">Supabase Project ID</Label>
+                      <Input
+                        id="editSupabaseProjectId"
+                        value={supabaseProjectId}
+                        onChange={(e) => setSupabaseProjectId(e.target.value)}
+                        placeholder="abc123..."
+                      />
+                    </div>
+                    <div className={styles.stackSm}>
+                      <Label htmlFor="editSupabaseAnonKey">Supabase Anon Key</Label>
+                      <Input
+                        id="editSupabaseAnonKey"
+                        type="password"
+                        value={supabaseAnonKey}
+                        onChange={(e) => setSupabaseAnonKey(e.target.value)}
+                        placeholder="eyJ..."
+                      />
+                    </div>
+                  </>
+                )}
               </>
-            )}
+            ) : null}
 
             <div className={styles.actionsRow}>
               <div />

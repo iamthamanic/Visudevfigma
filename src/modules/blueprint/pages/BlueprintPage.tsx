@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, Download, Loader2, RefreshCw } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
+import { getVisuDevClient, isLocalVisuDevMode } from "../../../lib/visudev-api";
 import { blueprintAPI } from "../../../utils/api";
 import { FindingInspector } from "../components/FindingInspector";
 import { RouteBlueprintCanvas } from "../components/RouteBlueprintCanvas";
@@ -35,6 +36,15 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
   const loadBlueprint = useCallback(async () => {
     if (!projectId) return;
     setBlueprintLoadError(null);
+    if (isLocalVisuDevMode()) {
+      const latest = await getVisuDevClient().getBlueprintLatest(projectId);
+      if (latest?.blueprint) {
+        setBlueprint(normalizeBlueprintData(latest.blueprint as Record<string, unknown>));
+      } else {
+        setBlueprint(null);
+      }
+      return;
+    }
     const res = await blueprintAPI.get(projectId);
     if (res.success && res.data) {
       setBlueprint(normalizeBlueprintData(res.data as Record<string, unknown>));
@@ -55,7 +65,11 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
   }, [startScan]);
 
   useEffect(() => {
-    if (activeProject && scanStatuses.blueprint.status === "idle") {
+    if (
+      activeProject &&
+      (!isLocalVisuDevMode() || activeProject.local_path) &&
+      scanStatuses.blueprint.status === "idle"
+    ) {
       handleRescan();
     }
   }, [activeProject, projectId, scanStatuses.blueprint.status, handleRescan]);

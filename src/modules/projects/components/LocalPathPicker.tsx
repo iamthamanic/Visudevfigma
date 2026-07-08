@@ -1,5 +1,5 @@
 /**
- * Local project path field with native folder picker (via Preview-Runner).
+ * Local project path field with native folder picker (via VisuDevApiClient or legacy runner).
  * Location: src/modules/projects/components/LocalPathPicker.tsx
  */
 
@@ -8,6 +8,7 @@ import { FolderOpen, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "../../../components/ui/input";
 import { Button } from "../../../components/ui/button";
+import { getVisuDevClient, isLocalVisuDevMode } from "../../../lib/visudev-api";
 import { browseLocalFolderViaRunner } from "../../../utils/preview-runner-browse-path";
 import styles from "../styles/LocalPathPicker.module.css";
 
@@ -24,6 +25,16 @@ export function LocalPathPicker({ id, value, onChange, onPathPicked }: LocalPath
   const handleBrowse = useCallback(async () => {
     setPicking(true);
     try {
+      if (isLocalVisuDevMode()) {
+        const result = await getVisuDevClient().browseLocalPath({
+          startDir: value.trim() || undefined,
+        });
+        if (result.cancelled) return;
+        onChange(result.path);
+        onPathPicked?.(result.path);
+        return;
+      }
+
       const result = await browseLocalFolderViaRunner(value.trim() || undefined);
       if (result.cancelled) return;
       if (!result.success || !result.path) {

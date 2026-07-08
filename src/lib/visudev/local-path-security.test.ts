@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { resolveValidatedLocalPath } from "../../../preview-runner/lib/local-path-security.js";
+import { resolveValidatedLocalPath } from "../../../shared/local-path-security.mjs";
 
 describe("resolveValidatedLocalPath", () => {
   it("rejects relative paths", () => {

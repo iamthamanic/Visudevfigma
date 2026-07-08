@@ -35,7 +35,7 @@ if [ "$run_all" = false ]; then
     fi
 
     case "$file" in
-      src/*|index.html|vite.config.ts|package.json|package-lock.json|tsconfig.json|eslint.config.*|.prettierrc.*|prettier.config.*|vitest.config.*)
+      src/*|shared/*|local-engine/*|index.html|vite.config.ts|package.json|package-lock.json|tsconfig.json|eslint.config.*|.prettierrc.*|prettier.config.*|vitest.config.*)
         has_frontend_changes=true
         ;;
     esac

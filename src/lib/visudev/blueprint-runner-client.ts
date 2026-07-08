@@ -1,5 +1,6 @@
 /**
- * Local Blueprint Runner client — discover runner URL and POST /blueprint/analyze.
+ * @deprecated Local-first mode must call Local Engine via VisuDevApiClient.
+ * Direct Frontend → Runner access is kept only as legacy/debug fallback.
  * Location: src/lib/visudev/blueprint-runner-client.ts
  */
 

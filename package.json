@@ -7,6 +7,7 @@
     "push": "./scripts/push-checked.sh"
   },
   "dependencies": {
+    "@hono/node-server": "^1.14.4",
     "@jsr/supabase__supabase-js": "^2.49.8",
     "@radix-ui/react-accordion": "^1.2.3",
     "@radix-ui/react-alert-dialog": "^1.1.6",
@@ -52,18 +53,19 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2",
     "@playwright/test": "^1.58.1",
     "@types/node": "^20.10.0",
     "@types/react": "^18.3.24",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react-swc": "^3.10.2",
+    "concurrently": "^9.1.2",
     "eslint": "^9.19.0",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "jsdom": "^26.0.0",
     "prettier": "^3.5.3",
+    "tsx": "^4.20.3",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.27.0",
     "vite": "^6.4.3",
@@ -74,8 +76,16 @@
     "vite": "^6.4.3"
   },
   "scripts": {
-    "dev": "node scripts/dev-hybrid.js",
-    "dev:hybrid": "node scripts/dev-hybrid.js",
+    "dev": "node scripts/dev-local.js",
+    "dev:local": "node scripts/dev-local.js",
+    "dev:local:no-runner": "node scripts/dev-local.js --no-runner",
+    "dev:engine": "tsx watch local-engine/src/index.ts",
+    "build:engine": "tsc -p local-engine/tsconfig.json",
+    "start:engine": "node local-engine/dist/index.js",
+    "dev:supabase": "node scripts/dev-hybrid.js",
+    "dev:legacy": "npm run dev:supabase",
+    "dev:hybrid": "npm run dev:supabase",
+    "dev:hybrid:supabase": "node scripts/dev-hybrid.js",
     "dev:cloud": "node scripts/dev-auto.js",
     "ping:cloud": "node scripts/ping-cloud-supabase.js",
     "visudev-runner": "npm run dev:runner",
@@ -89,7 +99,9 @@
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p local-engine/tsconfig.json",
+    "typecheck:app": "tsc --noEmit -p tsconfig.json",
+    "typecheck:engine": "tsc --noEmit -p local-engine/tsconfig.json",
     "test": "vitest",
     "test:run": "vitest run --passWithNoTests",
     "rules:check": "bash scripts/checks/project-rules.sh",
@@ -106,5 +118,8 @@
     "e2e:maestro:preview": "bash scripts/maestro-test-preview.sh",
     "test:preview-runner": "cd preview-runner && npm run test:build",
     "postinstall": "node -e \"const fs=require('fs'),path=require('path');const cwd=process.cwd(),binDir=path.join(cwd,'node_modules','.bin');const links=[['supabase','supabase-checked.sh'],['push','push-checked.sh']];try{fs.mkdirSync(binDir,{recursive:true});for(const [name,script] of links){const bin=path.join(binDir,name),target=path.resolve(cwd,'scripts',script);try{fs.unlinkSync(bin);}catch(_){} fs.symlinkSync(target,bin);}}catch(e){}\""
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-darwin-arm64": "^4.62.2"
   }
 }

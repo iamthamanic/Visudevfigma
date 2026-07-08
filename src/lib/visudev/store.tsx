@@ -22,8 +22,16 @@ import {
 } from "./types";
 import type { PreviewMode, PreviewStatus } from "./types";
 import { getProjectSourceMode } from "./project-source";
+import {
+  getVisuDevClient,
+  isLocalVisuDevMode,
+  setSupabaseAccessToken,
+  VisuDevApiError,
+} from "../visudev-api";
+import type { CreateProjectInput } from "../visudev-api/types";
 import { publicAnonKey, supabaseUrl } from "../../utils/supabase/info";
-import { api, previewAPI, type PreviewStepLog } from "../../utils/api";
+import type { PreviewStepLog } from "../../utils/api";
+import { previewAPI } from "../../utils/api";
 import { BlueprintScanError, runBlueprintScan } from "./blueprint-scan";
 
 export type { PreviewStepLog };
@@ -89,13 +97,6 @@ function normalizeProject(p: Record<string, unknown> & { id: string }): Project 
   } as Project;
 }
 
-function apiErrorMsg(err: unknown): string {
-  if (typeof err === "string") return err;
-  if (err && typeof err === "object" && "message" in err)
-    return String((err as { message: unknown }).message);
-  return "Request failed";
-}
-
 function applyRuntimeScreenshots(
   screens: Screen[],
   captures: Project["analysisRuntime"],
@@ -128,6 +129,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
   const previewAccessTokenRef = useRef<string | null>(null);
   const setPreviewAccessToken = useCallback((token: string | null) => {
     previewAccessTokenRef.current = token;
+    setSupabaseAccessToken(token);
   }, []);
 
   const [projects, setProjects] = useState<Project[]>([]);
@@ -162,17 +164,13 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
   const loadProjects = useCallback(async () => {
     setProjectsLoading(true);
     try {
-      const res = await api.projects.getAll();
-      if (res.success && Array.isArray(res.data)) {
-        setProjects(
-          res.data.map((p) =>
-            normalizeProject(p as unknown as Record<string, unknown> & { id: string }),
-          ),
-        );
-      } else {
-        setProjects([]);
-      }
-    } catch {
+      const client = getVisuDevClient();
+      const data = await client.listProjects();
+      setProjects(
+        data.map((p) => normalizeProject(p as unknown as Record<string, unknown> & { id: string })),
+      );
+    } catch (error) {
+      console.error("[VisuDEV] loadProjects failed:", error);
       setProjects([]);
     } finally {
       setProjectsLoading(false);
@@ -187,13 +185,26 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
     async (
       projectData: Omit<Project, "id" | "createdAt" | "screens" | "flows">,
     ): Promise<Project> => {
-      const res = await api.projects.create(projectData);
-      if (!res.success) throw new Error(apiErrorMsg(res.error));
-      const raw = res.data as unknown as (Record<string, unknown> & { id: string }) | undefined;
-      if (!raw?.id) throw new Error("Projekt wurde nicht zurückgegeben.");
-      const newProject = normalizeProject(raw);
-      setProjects((prev) => [...prev, newProject]);
-      return newProject;
+      const client = getVisuDevClient();
+      if (isLocalVisuDevMode()) {
+        const newProject = await client.createProject({
+          name: projectData.name,
+          localPath: projectData.local_path,
+          repositoryUrl: projectData.github_repo,
+        });
+        const normalized = normalizeProject(
+          newProject as unknown as Record<string, unknown> & { id: string },
+        );
+        setProjects((prev) => [...prev, normalized]);
+        return normalized;
+      }
+
+      const created = await client.createProject(projectData as unknown as CreateProjectInput);
+      const normalized = normalizeProject(
+        created as unknown as Record<string, unknown> & { id: string },
+      );
+      setProjects((prev) => [...prev, normalized]);
+      return normalized;
     },
     [],
   );
@@ -206,19 +217,34 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
   }, [projects, activeProject, setActiveProject]);
 
   const updateProject = useCallback(async (project: Project) => {
+    const client = getVisuDevClient();
+    if (isLocalVisuDevMode()) {
+      const updated = await client.updateProject(project.id, {
+        name: project.name,
+        localPath: project.local_path ?? null,
+        repositoryUrl: project.github_repo ?? null,
+      });
+      const normalized = normalizeProject(
+        updated as unknown as Record<string, unknown> & { id: string },
+      );
+      setProjects((prev) => prev.map((p) => (p.id === normalized.id ? normalized : p)));
+      setActiveProjectState((current) => (current?.id === normalized.id ? normalized : current));
+      return;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- omit from payload
     const { id, createdAt, updatedAt, ...payload } = project;
-    const res = await api.projects.update(id, payload);
-    if (!res.success) throw new Error(apiErrorMsg(res.error));
-    const raw = res.data as unknown as (Record<string, unknown> & { id: string }) | undefined;
-    const updated = raw ? normalizeProject(raw) : project;
-    setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-    setActiveProjectState((current) => (current?.id === updated.id ? updated : current));
+    const updated = await client.updateProject(id, payload);
+    const normalized = normalizeProject(
+      updated as unknown as Record<string, unknown> & { id: string },
+    );
+    setProjects((prev) => prev.map((p) => (p.id === normalized.id ? normalized : p)));
+    setActiveProjectState((current) => (current?.id === normalized.id ? normalized : current));
   }, []);
 
   const deleteProject = useCallback(async (id: string) => {
-    const res = await api.projects.delete(id);
-    if (!res.success) throw new Error(apiErrorMsg(res.error));
+    const client = getVisuDevClient();
+    await client.deleteProject(id);
     setProjects((prev) => prev.filter((p) => p.id !== id));
     setActiveProjectState((current) => (current?.id === id ? null : current));
     setScans((prev) => prev.filter((s) => s.projectId !== id));
@@ -240,6 +266,21 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         scanType === "all" ? (["appflow", "blueprint", "data"] as const) : [scanType];
 
       for (const type of scanTypes) {
+        if (isLocalVisuDevMode() && type !== "blueprint") {
+          const blockedMessage =
+            "This scan type is not available in Local Mode yet. Use dev:supabase for legacy scans.";
+          setScanStatuses((prev) => ({
+            ...prev,
+            [type]: {
+              status: "failed",
+              progress: 0,
+              message: blockedMessage,
+              error: blockedMessage,
+            },
+          }));
+          continue;
+        }
+
         const scanId = crypto.randomUUID();
         const timestamp = new Date().toISOString();
         const repoLabel = activeProject.github_repo ?? "unknown";
@@ -299,15 +340,51 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
             }));
 
             try {
-              const scanResult = await runBlueprintScan(
-                activeProject,
-                previewAccessTokenRef.current,
-              );
-              appendScanLog(
-                `Blueprint: ${scanResult.routeCount} Routes, ${scanResult.findingCount} Findings.`,
-                "success",
-              );
-              appendScanLog("Blueprint in KV gespeichert.", "success");
+              const client = getVisuDevClient();
+              if (isLocalVisuDevMode()) {
+                const started = await client.startAnalysis(activeProject.id, {
+                  scanType: "blueprint",
+                  localPath: activeProject.local_path,
+                });
+                const deadline = Date.now() + 150_000;
+                let terminal = false;
+                while (Date.now() < deadline) {
+                  const status = await client.getAnalysisStatus(activeProject.id, started.runId);
+                  if (status.status === "success" || status.status === "partial") {
+                    const result = await client.getAnalysisResult(activeProject.id, started.runId);
+                    if (result.kind === "blueprint") {
+                      appendScanLog(
+                        `Blueprint: ${result.summary.routesDetected} Routes, ${result.summary.findings} Findings.`,
+                        "success",
+                      );
+                      appendScanLog("Blueprint lokal gespeichert.", "success");
+                    }
+                    terminal = true;
+                    break;
+                  }
+                  if (status.status === "failed") {
+                    throw new VisuDevApiError(
+                      status.error?.message ?? "Blueprint analysis failed",
+                      status.error?.code ?? "BLUEPRINT_ANALYSIS_FAILED",
+                      "local",
+                    );
+                  }
+                  await new Promise((resolve) => setTimeout(resolve, 1500));
+                }
+                if (!terminal) {
+                  throw new Error("Blueprint analysis timed out.");
+                }
+              } else {
+                const scanResult = await runBlueprintScan(
+                  activeProject,
+                  previewAccessTokenRef.current,
+                );
+                appendScanLog(
+                  `Blueprint: ${scanResult.routeCount} Routes, ${scanResult.findingCount} Findings.`,
+                  "success",
+                );
+                appendScanLog("Blueprint in KV gespeichert.", "success");
+              }
             } catch (scanError) {
               const message =
                 scanError instanceof BlueprintScanError
@@ -685,45 +762,46 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
       }));
       await new Promise((r) => setTimeout(r, 0));
       try {
-        const res = await previewAPI.start(
+        const client = getVisuDevClient();
+        const res = await client.startPreview(projectId, {
           projectId,
-          {
-            repo: effectiveRepo,
-            localPath,
-            branchOrCommit: branchOrCommit ?? projectRecord?.github_branch,
-            commitSha,
-            accessToken: previewAccessTokenRef.current ?? undefined,
-          },
-          getProjectPreviewMode(projectId),
-        );
-        if (!res.success) {
+          repo: effectiveRepo,
+          localPath,
+          branchOrCommit: branchOrCommit ?? projectRecord?.github_branch,
+          commitSha,
+        });
+        if (res.status === "failed") {
           setPreview((prev) =>
             prev.projectId === projectId
               ? {
                   ...prev,
                   status: "failed",
-                  error: res.error ?? "Start failed",
+                  error: "Preview start failed",
                   refreshLogs: [
                     ...prev.refreshLogs,
-                    makePreviewLog(`Fehlgeschlagen (Start): ${res.error ?? "Start failed"}`),
+                    makePreviewLog("Fehlgeschlagen (Start): Preview start failed"),
                   ],
                 }
               : prev,
           );
           return;
         }
-        const nextRunId = res.data?.runId ?? null;
-        const nextStatusRaw = res.data?.status;
-        const nextStatus: PreviewStatus =
-          nextStatusRaw === "idle" ||
-          nextStatusRaw === "starting" ||
-          nextStatusRaw === "ready" ||
-          nextStatusRaw === "failed" ||
-          nextStatusRaw === "stopped"
-            ? nextStatusRaw
-            : "starting";
+        const nextRunId = res.runId ?? null;
+        const nextStatusRaw = res.status;
+        const allowedPreviewStatuses: PreviewStatus[] = [
+          "idle",
+          "starting",
+          "ready",
+          "failed",
+          "stopped",
+        ];
+        const nextStatus: PreviewStatus = allowedPreviewStatuses.includes(
+          nextStatusRaw as PreviewStatus,
+        )
+          ? (nextStatusRaw as PreviewStatus)
+          : "starting";
         const startMessage =
-          res.data?.reusedExistingRun === true
+          res.reusedExistingRun === true
             ? `Start wiederverwendet. Aktiver Run: ${nextRunId ?? "unbekannt"} (${nextStatus}).`
             : `Start akzeptiert. Run: ${nextRunId ?? "unbekannt"}. Warte auf Build/Runner-Status …`;
         setPreview((prev) =>
@@ -759,13 +837,9 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
 
   const refreshPreviewStatus = useCallback(
     async (projectId: string): Promise<PreviewStatus | undefined> => {
-      let res: Awaited<ReturnType<typeof previewAPI.status>>;
+      let res: Awaited<ReturnType<ReturnType<typeof getVisuDevClient>["getPreviewStatus"]>>;
       try {
-        res = await previewAPI.status(
-          projectId,
-          getProjectPreviewMode(projectId),
-          previewAccessTokenRef.current ?? undefined,
-        );
+        res = await getVisuDevClient().getPreviewStatus(projectId);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setPreview((prev) =>
@@ -784,8 +858,8 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         );
         return undefined;
       }
-      if (!res.success) {
-        const error = (res as { error?: string }).error ?? "Status-Abfrage fehlgeschlagen";
+      if (res.status === "failed" && res.error?.message) {
+        const error = res.error.message;
         setPreview((prev) =>
           prev.projectId === projectId && prev.status === "starting"
             ? {
@@ -802,17 +876,11 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         );
         return undefined;
       }
-      const payload = res as {
-        runId?: string | null;
-        status?: PreviewStatus;
-        previewUrl?: string | null;
-        error?: string | null;
-        logs?: PreviewStepLog[];
-      };
+      const payload = res;
       const status = (payload.status as PreviewStatus) ?? "idle";
       const payloadRunId =
         typeof payload.runId === "string" && payload.runId.trim() ? payload.runId : null;
-      const logs = Array.isArray(payload.logs) ? payload.logs : [];
+      const logs: PreviewStepLog[] = [];
       setPreview((prev) =>
         prev.projectId !== projectId
           ? prev
@@ -821,7 +889,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
                 ...prev,
                 // Do not override a local timeout/failure with stale "starting" responses.
                 runId: payloadRunId ?? prev.runId,
-                error: payload.error ?? prev.error,
+                error: payload.error?.message ?? prev.error,
                 refreshLogs: logs.length > 0 ? logs : prev.refreshLogs,
               }
             : {
@@ -830,7 +898,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
                   status === "idle" || status === "stopped" ? null : (payloadRunId ?? prev.runId),
                 status,
                 previewUrl: status === "failed" ? null : (payload.previewUrl ?? prev.previewUrl),
-                error: payload.error ?? prev.error,
+                error: payload.error?.message ?? prev.error,
                 refreshLogs: logs.length > 0 ? logs : prev.refreshLogs,
                 previewReadyAt:
                   status === "ready" && prev.status !== "ready"
@@ -840,37 +908,30 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
       );
       return status;
     },
-    [getProjectPreviewMode, makePreviewLog],
+    [makePreviewLog],
   );
 
-  const stopPreview = useCallback(
-    async (projectId: string) => {
-      try {
-        await previewAPI.stop(
-          projectId,
-          getProjectPreviewMode(projectId),
-          previewAccessTokenRef.current ?? undefined,
-        );
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn("[VisuDEV] stopPreview failed (state reset anyway):", msg);
-      } finally {
-        setPreview((prev) =>
-          prev.projectId === projectId
-            ? {
-                ...prev,
-                runId: null,
-                status: "stopped",
-                previewUrl: null,
-                error: null,
-                refreshLogs: [],
-              }
-            : prev,
-        );
-      }
-    },
-    [getProjectPreviewMode],
-  );
+  const stopPreview = useCallback(async (projectId: string) => {
+    try {
+      await getVisuDevClient().stopPreview(projectId);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn("[VisuDEV] stopPreview failed (state reset anyway):", msg);
+    } finally {
+      setPreview((prev) =>
+        prev.projectId === projectId
+          ? {
+              ...prev,
+              runId: null,
+              status: "stopped",
+              previewUrl: null,
+              error: null,
+              refreshLogs: [],
+            }
+          : prev,
+      );
+    }
+  }, []);
 
   const refreshPreview = useCallback(
     async (projectId: string) => {
@@ -884,6 +945,46 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
             }
           : prev,
       );
+      if (isLocalVisuDevMode()) {
+        try {
+          const project = projects.find((p) => p.id === projectId);
+          await getVisuDevClient().startPreview(projectId, {
+            projectId,
+            localPath: project?.local_path,
+            repo: project?.github_repo,
+            branchOrCommit: project?.github_branch,
+          });
+          setPreview((prev) =>
+            prev.projectId === projectId
+              ? {
+                  ...prev,
+                  status: "starting",
+                  error: null,
+                  refreshLogs: [
+                    ...prev.refreshLogs,
+                    makePreviewLog("Refresh akzeptiert. Warte auf Status …"),
+                  ],
+                }
+              : prev,
+          );
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          setPreview((prev) =>
+            prev.projectId === projectId
+              ? {
+                  ...prev,
+                  status: "failed",
+                  error: message,
+                  refreshLogs: [
+                    ...prev.refreshLogs,
+                    makePreviewLog(`Fehlgeschlagen (Refresh): ${message}`),
+                  ],
+                }
+              : prev,
+          );
+        }
+        return;
+      }
       const res = await previewAPI.refresh(projectId, getProjectPreviewMode(projectId));
       if (!res.success) {
         setPreview((prev) =>
@@ -915,21 +1016,26 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
           : prev,
       );
     },
-    [getProjectPreviewMode, makePreviewLog],
+    [getProjectPreviewMode, makePreviewLog, projects],
   );
 
   const markPreviewStuck = useCallback(
     async (projectId: string, error: string) => {
       let stopSummary = "Timeout-Cleanup: aktive Projekt-Runs konnten nicht gestoppt werden.";
       try {
-        const stopRes = await previewAPI.stopProject(
-          projectId,
-          getProjectPreviewMode(projectId),
-          previewAccessTokenRef.current ?? undefined,
-        );
-        stopSummary = stopRes.success
-          ? `Timeout-Cleanup: ${stopRes.stopped ?? 0} aktive Projekt-Run(s) gestoppt.`
-          : `Timeout-Cleanup fehlgeschlagen: ${stopRes.error ?? "Unbekannter Fehler"}`;
+        if (isLocalVisuDevMode()) {
+          await getVisuDevClient().stopPreview(projectId);
+          stopSummary = "Timeout-Cleanup: Preview über Local Engine gestoppt.";
+        } else {
+          const stopRes = await previewAPI.stopProject(
+            projectId,
+            getProjectPreviewMode(projectId),
+            previewAccessTokenRef.current ?? undefined,
+          );
+          stopSummary = stopRes.success
+            ? `Timeout-Cleanup: ${stopRes.stopped ?? 0} aktive Projekt-Run(s) gestoppt.`
+            : `Timeout-Cleanup fehlgeschlagen: ${stopRes.error ?? "Unbekannter Fehler"}`;
+        }
       } catch (cleanupErr) {
         const msg = cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr);
         stopSummary = `Timeout-Cleanup fehlgeschlagen: ${msg}`;

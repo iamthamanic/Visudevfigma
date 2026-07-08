@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, Loader2, RefreshCw, X } from "lucide-react";
 import clsx from "clsx";
 import { useVisudev } from "../../../lib/visudev/store";
+import { isLocalVisuDevMode } from "../../../lib/visudev-api";
 import { api } from "../../../utils/api";
 import { useERD } from "../../../utils/useVisuDev";
 import type { ERDTableNode } from "../types";
@@ -29,6 +30,7 @@ export function DataPage({ projectId }: DataPageProps) {
   const [isRescan, setIsRescan] = useState(false);
   const [selectedTable, setSelectedTable] = useState<ERDTableNode | null>(null);
   const [detailTab, setDetailTab] = useState<"columns" | "rls" | "sample">("columns");
+  const localScanBlocked = isLocalVisuDevMode();
 
   const handleRescan = useCallback(async () => {
     setIsRescan(true);
@@ -42,10 +44,11 @@ export function DataPage({ projectId }: DataPageProps) {
   }, [projectId, startScan, refreshERD]);
 
   useEffect(() => {
+    if (localScanBlocked) return;
     if (activeProject && scanStatuses.data.status === "idle") {
       handleRescan();
     }
-  }, [activeProject, projectId, scanStatuses.data.status, handleRescan]);
+  }, [activeProject, projectId, scanStatuses.data.status, handleRescan, localScanBlocked]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -75,8 +78,13 @@ export function DataPage({ projectId }: DataPageProps) {
           <button
             type="button"
             onClick={handleRescan}
-            disabled={isScanning}
+            disabled={isScanning || localScanBlocked}
             className={styles.primaryButton}
+            title={
+              localScanBlocked
+                ? "Data Scan ist im Local Mode noch nicht verfügbar. Nutze npm run dev:supabase."
+                : undefined
+            }
           >
             {isScanning ? (
               <>

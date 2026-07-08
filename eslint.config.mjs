@@ -8,18 +8,35 @@ export default tseslint.config(
   {
     ignores: [
       "build",
+      "local-engine/dist/**",
       "node_modules",
       "preview-runner/**",
       "logs-runner/**",
       "scripts/**", // Node.js dev scripts (require, process, etc.)
       "src/supabase/functions/**",
+      "shared/**",
       "supabase/**", // Backup-Layout (Deno/Edge Functions)
     ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    files: ["local-engine/**/*.ts", "shared/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        process: "readonly",
+        Buffer: "readonly",
+      },
+    },
+    rules: {
+      "no-console": ["error", { allow: ["warn", "error", "log"] }],
+    },
+  },
+  {
     files: ["**/*.{ts,tsx}"],
+    ignores: ["local-engine/**"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",

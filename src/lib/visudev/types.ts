@@ -94,7 +94,7 @@ export interface Project {
   /** Preview mode: local runner (Docker), central runner (server), or auto */
   preview_mode?: PreviewMode;
   /** Data view (ERD): used by ProjectsPage, ProjectCard, visudev-server for Supabase vs local DB */
-  database_type?: "supabase" | "local";
+  database_type?: "supabase" | "local" | "none";
   supabase_project_id?: string;
   supabase_anon_key?: string;
   supabase_management_token?: string;
