@@ -63,11 +63,42 @@ Browser UI (3005)
 
 ## Not migrated yet (Phase 2+)
 
-- Local App Flow scans
-- Local Data scans
-- Screenshot capture
-- Supabase project import/export
 - WebSocket/SSE progress streaming
+
+## Project migration (Supabase ↔ local)
+
+Optional import/export of **project metadata and analysis artifacts** (no secrets).
+
+### Bundle format
+
+Version `1` JSON with:
+
+- `project` — name, paths, repo, preview/database hints (tokens stripped)
+- `artifacts` — optional `blueprint`, `appflow`, `erd`
+
+### Engine API
+
+| Endpoint                                     | Description                                         |
+| -------------------------------------------- | --------------------------------------------------- |
+| `POST /api/migration/export/supabase`        | Fetch project + artifacts from Supabase Edge        |
+| `GET /api/migration/export/local/:projectId` | Export from `~/.visudev`                            |
+| `POST /api/migration/import/local`           | Import bundle into `~/.visudev`                     |
+| `POST /api/migration/import/supabase`        | Create Supabase project from bundle (auth required) |
+
+### CLI
+
+```bash
+# Requires Local Engine on :4317
+npm run migrate -- export-local --project-id=<uuid> --out=./bundle.json
+npm run migrate -- import-local --file=./bundle.json
+
+npm run migrate -- export-supabase --project-id=<uuid> --out=./bundle.json
+npm run migrate -- import-supabase --file=./bundle.json --access-token=<jwt>
+```
+
+Environment: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` or `SUPABASE_ACCESS_TOKEN` for Supabase calls.
+
+Secrets (`github_access_token`, `supabase_*_key`, integration tokens) are **never** exported or imported.
 
 ## Phase 1 verification
 

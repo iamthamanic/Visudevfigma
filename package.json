@@ -116,6 +116,7 @@
     "e2e:ui": "playwright test --ui",
     "e2e:install": "playwright install chromium",
     "crawl:appflow": "node scripts/crawl-appflow/crawl.mjs",
+    "migrate": "node scripts/migration/visudev-migrate.mjs",
     "e2e:maestro": "maestro test -e BASE_URL=http://127.0.0.1:3000 maestro/visudev-smoke.yaml",
     "e2e:maestro:preview": "bash scripts/maestro-test-preview.sh",
     "test:preview-runner": "cd preview-runner && npm run test:build",
