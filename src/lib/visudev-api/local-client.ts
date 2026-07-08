@@ -15,6 +15,7 @@ import type {
   CreateProjectInput,
   LocalAppflowLatest,
   LocalBlueprintLatest,
+  LocalDataLatest,
   LocalEngineAnalysisResult,
   LocalVisuDevProject,
   PreviewStartResult,
@@ -186,6 +187,12 @@ export class LocalVisuDevClient implements VisuDevApiClient {
   async getAppflowLatest(projectId: string): Promise<LocalAppflowLatest | null> {
     return request<LocalAppflowLatest | null>(
       `/api/projects/${encodeURIComponent(projectId)}/appflow/latest`,
+    );
+  }
+
+  async getDataLatest(projectId: string): Promise<LocalDataLatest | null> {
+    return request<LocalDataLatest | null>(
+      `/api/projects/${encodeURIComponent(projectId)}/data/latest`,
     );
   }
 

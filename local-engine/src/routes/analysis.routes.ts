@@ -75,4 +75,9 @@ export function registerAnalysisRoutes(
     const latest = await analysisService.getAppflowLatest(c.req.param("projectId"));
     return ok(c, latest);
   });
+
+  app.get("/api/projects/:projectId/data/latest", async (c) => {
+    const latest = await analysisService.getDataLatest(c.req.param("projectId"));
+    return ok(c, latest);
+  });
 }

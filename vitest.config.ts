@@ -6,7 +6,8 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
-    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    include: ["src/**/*.{test,spec}.{ts,tsx}", "local-engine/**/*.{test,spec}.ts"],
+    environmentMatchGlobs: [["local-engine/**", "node"]],
     exclude: ["src/supabase/functions/**"],
     passWithNoTests: true,
   },

@@ -68,7 +68,7 @@ export function registerHealthRoutes(app: Hono, config: EngineConfig): void {
       scans: {
         blueprint: true,
         appflow: true,
-        data: false,
+        data: true,
         all: false,
       },
       preview: true,

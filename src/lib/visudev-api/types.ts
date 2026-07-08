@@ -18,6 +18,8 @@ export type {
   LocalAppflowLatest,
   LocalBlueprintAnalysisResult,
   LocalBlueprintLatest,
+  LocalDataAnalysisResult,
+  LocalDataLatest,
   LocalEngineAnalysisResult,
   LocalVisuDevProject,
   PreviewStartResult,

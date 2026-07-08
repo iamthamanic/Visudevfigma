@@ -1,5 +1,5 @@
 /**
- * Async analysis orchestration for Local Engine (blueprint + appflow).
+ * Async analysis orchestration for Local Engine (blueprint + appflow + data).
  * Location: local-engine/src/services/analysis.service.ts
  */
 
@@ -8,6 +8,7 @@ import { appendJsonLog, readJsonFile, writeJsonFile } from "../storage/file-stor
 import { AutoGuideAnalysisProvider } from "../providers/autoguide-analysis.provider.js";
 import type { AnalysisProvider } from "../providers/analysis-provider.js";
 import { LegacyAppflowRunnerProvider } from "../providers/legacy-appflow-runner.provider.js";
+import { LocalDataIntrospectionProvider } from "../providers/local-data-introspection.provider.js";
 import { LegacyVisuDevAnalysisProvider } from "../providers/legacy-visudev-analysis.provider.js";
 import type { ProjectService } from "./project.service.js";
 import type {
@@ -18,18 +19,22 @@ import type {
   LocalAppflowLatest,
   LocalBlueprintAnalysisResult,
   LocalBlueprintLatest,
+  LocalDataAnalysisResult,
+  LocalDataLatest,
   LocalEngineAnalysisResult,
   StartAnalysisResponse,
 } from "../types/api.types.js";
 
-type SupportedScanType = "blueprint" | "appflow";
+type SupportedScanType = "blueprint" | "appflow" | "data";
 
 function createRunId(): string {
   return `run_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function providerIdForScanType(scanType: SupportedScanType): EngineAnalysisRun["providerId"] {
-  return scanType === "appflow" ? "legacy-appflow-runner" : "legacy-blueprint-runner";
+  if (scanType === "appflow") return "legacy-appflow-runner";
+  if (scanType === "data") return "local-data-introspection";
+  return "legacy-blueprint-runner";
 }
 
 export class AnalysisService {
@@ -44,6 +49,7 @@ export class AnalysisService {
     this.providers = new Map<string, AnalysisProvider>([
       ["legacy-blueprint-runner", new LegacyVisuDevAnalysisProvider(runnerUrl)],
       ["legacy-appflow-runner", new LegacyAppflowRunnerProvider(runnerUrl)],
+      ["local-data-introspection", new LocalDataIntrospectionProvider()],
       ["autoguide-stub", new AutoGuideAnalysisProvider()],
     ]);
     this.defaultProviderId = defaultProviderId;
@@ -65,7 +71,11 @@ export class AnalysisService {
 
   private latestPointerPath(projectId: string, scanType: SupportedScanType): string {
     const fileName =
-      scanType === "appflow" ? "latest-appflow-run.json" : "latest-blueprint-run.json";
+      scanType === "appflow"
+        ? "latest-appflow-run.json"
+        : scanType === "data"
+          ? "latest-data-run.json"
+          : "latest-blueprint-run.json";
     return path.join(this.storageDir, "projects", projectId, fileName);
   }
 
@@ -77,6 +87,10 @@ export class AnalysisService {
     return path.join(this.storageDir, "projects", projectId, "appflow.json");
   }
 
+  private dataCachePath(projectId: string): string {
+    return path.join(this.storageDir, "projects", projectId, "erd.json");
+  }
+
   private resolveProvider(providerId: string): AnalysisProvider {
     const provider = this.providers.get(providerId);
     if (!provider) {
@@ -86,7 +100,7 @@ export class AnalysisService {
   }
 
   private assertSupportedScanType(scanType: AnalyzeProjectRequest["scanType"]): SupportedScanType {
-    if (scanType === "blueprint" || scanType === "appflow") {
+    if (scanType === "blueprint" || scanType === "appflow" || scanType === "data") {
       return scanType;
     }
     const error = {
@@ -178,7 +192,12 @@ export class AnalysisService {
       return;
     }
 
-    await this.persistAppflowRun(runId, projectId, providerId, runningAt, finishedAt, result);
+    if (scanType === "appflow") {
+      await this.persistAppflowRun(runId, projectId, providerId, runningAt, finishedAt, result);
+      return;
+    }
+
+    await this.persistDataRun(runId, projectId, providerId, runningAt, finishedAt, result);
   }
 
   private async persistBlueprintRun(
@@ -346,6 +365,84 @@ export class AnalysisService {
     }
   }
 
+  private async persistDataRun(
+    runId: string,
+    projectId: string,
+    providerId: EngineAnalysisRun["providerId"],
+    runningAt: string,
+    finishedAt: string,
+    result: LocalEngineAnalysisResult,
+  ): Promise<void> {
+    if (result.kind !== "data") {
+      await writeJsonFile(this.statusPath(runId), {
+        runId,
+        projectId,
+        scanType: "data",
+        providerId,
+        status: "failed",
+        createdAt: runningAt,
+        updatedAt: finishedAt,
+        error:
+          result.kind === "failed"
+            ? result.error
+            : result.kind === "unsupported"
+              ? {
+                  code: "ANALYSIS_UNSUPPORTED",
+                  message: result.message,
+                }
+              : {
+                  code: "ANALYSIS_UNSUPPORTED",
+                  message: "Unexpected analysis result.",
+                },
+      } satisfies EngineAnalysisRun);
+      return;
+    }
+
+    const dataResult: LocalDataAnalysisResult = {
+      ...result,
+      runId,
+      createdAt: finishedAt,
+    };
+
+    await writeJsonFile(this.resultPath(runId), dataResult);
+    await writeJsonFile(this.statusPath(runId), {
+      runId,
+      projectId,
+      scanType: "data",
+      providerId,
+      status: "success",
+      createdAt: runningAt,
+      updatedAt: finishedAt,
+    } satisfies EngineAnalysisRun);
+
+    await writeJsonFile(this.latestPointerPath(projectId, "data"), {
+      projectId,
+      runId,
+      updatedAt: finishedAt,
+    });
+    await writeJsonFile(this.dataCachePath(projectId), {
+      projectId,
+      runId,
+      nodes: dataResult.erd.nodes,
+      tables: dataResult.erd.tables,
+      message: dataResult.erd.message,
+      dialect: dataResult.erd.dialect,
+      source: dataResult.erd.source,
+      updatedAt: finishedAt,
+    } satisfies LocalDataLatest);
+
+    const current = await this.projectService.getProject(projectId);
+    if (current) {
+      current.analysis = {
+        ...current.analysis,
+        latestDataRunId: runId,
+        latestDataStatus: "success",
+        updatedAt: finishedAt,
+      };
+      await this.projectService.saveProject(current);
+    }
+  }
+
   async getStatus(projectId: string, runId: string): Promise<AnalysisRunStatus> {
     const status = await readJsonFile<EngineAnalysisRun | null>(this.statusPath(runId), null);
     if (!status || status.projectId !== projectId) {
@@ -410,6 +507,26 @@ export class AnalysisService {
       return result;
     }
 
+    if (status.scanType === "data") {
+      const result = await readJsonFile<LocalDataAnalysisResult | null>(
+        this.resultPath(runId),
+        null,
+      );
+      if (!result) {
+        return {
+          kind: "failed",
+          projectId,
+          runId,
+          status: "failed",
+          error: {
+            code: "ANALYSIS_RESULT_MISSING",
+            message: "Analysis result file is missing.",
+          },
+        };
+      }
+      return result;
+    }
+
     const result = await readJsonFile<LocalBlueprintAnalysisResult | null>(
       this.resultPath(runId),
       null,
@@ -435,5 +552,9 @@ export class AnalysisService {
 
   async getAppflowLatest(projectId: string): Promise<LocalAppflowLatest | null> {
     return readJsonFile<LocalAppflowLatest | null>(this.appflowCachePath(projectId), null);
+  }
+
+  async getDataLatest(projectId: string): Promise<LocalDataLatest | null> {
+    return readJsonFile<LocalDataLatest | null>(this.dataCachePath(projectId), null);
   }
 }

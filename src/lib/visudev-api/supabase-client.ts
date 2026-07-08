@@ -266,6 +266,11 @@ export class SupabaseVisuDevClient implements VisuDevApiClient {
     return null;
   }
 
+  async getDataLatest(projectId: string): Promise<import("./types").LocalDataLatest | null> {
+    void projectId;
+    return null;
+  }
+
   async startPreview(
     projectId: string,
     input: StartPreviewInput = { projectId },
