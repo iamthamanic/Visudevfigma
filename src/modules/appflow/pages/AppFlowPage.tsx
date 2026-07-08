@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, Download, Loader2, Map, Play, RefreshCw, Square, X } from "lucide-react";
 import { hasPreviewSource } from "../../../lib/visudev/project-source";
-import { isLocalVisuDevMode } from "../../../lib/visudev-api";
+import { getVisuDevClient, isLocalVisuDevMode } from "../../../lib/visudev-api";
 import { useVisudev } from "../../../lib/visudev/store";
 import {
   discoverPreviewRunner,
@@ -48,6 +48,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     scans,
     scanStatuses,
     startScan,
+    updateProject,
     preview,
     startPreview,
     refreshPreviewStatus,
@@ -64,7 +65,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
   const autoPreviewDoneRef = useRef(false);
   const autoPreviewRetryAtRef = useRef(0);
   const startingActionRef = useRef<PendingPreviewAction>(null);
-  const localScanBlocked = isLocalVisuDevMode();
+  const localScanBlocked = isLocalVisuDevMode() && !activeProject?.local_path;
 
   const handleRescan = useCallback(async () => {
     setIsRescan(true);
@@ -113,12 +114,12 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     });
   }, [projectId, refreshPreview, triggerPreviewAction]);
 
-  // Auto-scan, sobald ein Projekt mit verbundenem Repo geladen ist und noch keine Screens (einmal pro Projekt)
+  // Auto-scan when project has a source and no screens yet.
   useEffect(() => {
     if (localScanBlocked) return;
     if (
       activeProject?.id === projectId &&
-      activeProject?.github_repo &&
+      (activeProject?.github_repo || activeProject?.local_path) &&
       activeProject.screens.length === 0 &&
       scanStatuses.appflow.status === "idle"
     ) {
@@ -127,12 +128,36 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
   }, [
     activeProject?.id,
     activeProject?.github_repo,
+    activeProject?.local_path,
     activeProject?.screens?.length,
     projectId,
     scanStatuses.appflow.status,
     handleRescan,
     localScanBlocked,
   ]);
+
+  useEffect(() => {
+    if (!isLocalVisuDevMode() || !activeProject?.id || activeProject.id !== projectId) return;
+    if (activeProject.screens.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      const latest = await getVisuDevClient().getAppflowLatest(projectId);
+      if (cancelled || !latest?.screens?.length) return;
+      await updateProject({
+        ...activeProject,
+        screens: latest.screens as typeof activeProject.screens,
+        flows: (latest.flows ?? []) as typeof activeProject.flows,
+        lastAnalyzedCommitSha: latest.commitSha ?? activeProject.lastAnalyzedCommitSha,
+        analysisGraph: latest.graph as typeof activeProject.analysisGraph,
+        analysisQuality: latest.quality as typeof activeProject.analysisQuality,
+      });
+    })().catch(() => {
+      // ignore hydration errors; user can rescan manually
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeProject, projectId, updateProject]);
 
   // Zuerst Runner ermitteln (4000, 4100, …), danach Preview-Status – sonst erscheint „nicht erreichbar“, obwohl Runner läuft
   useEffect(() => {

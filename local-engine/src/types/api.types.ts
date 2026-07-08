@@ -14,6 +14,8 @@ export type {
   BrowseLocalPathResult,
   CreateProjectInput,
   EngineAnalysisRun,
+  LocalAppflowAnalysisResult,
+  LocalAppflowLatest,
   LocalBlueprintAnalysisResult,
   LocalBlueprintLatest,
   LocalEngineAnalysisResult,

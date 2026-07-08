@@ -57,7 +57,7 @@ export function registerHealthRoutes(app: Hono, config: EngineConfig): void {
       version: ENGINE_VERSION,
       dependencies: {
         previewRunner: { reachable: runnerReachable, url: config.previewRunnerUrl },
-        deno: { ...deno, requiredFor: ["blueprint"] },
+        deno: { ...deno, requiredFor: ["blueprint", "appflow"] },
       },
     });
   });
@@ -67,7 +67,7 @@ export function registerHealthRoutes(app: Hono, config: EngineConfig): void {
       mode: "local",
       scans: {
         blueprint: true,
-        appflow: false,
+        appflow: true,
         data: false,
         all: false,
       },

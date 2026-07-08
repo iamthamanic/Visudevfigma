@@ -70,4 +70,9 @@ export function registerAnalysisRoutes(
     const latest = await analysisService.getBlueprintLatest(c.req.param("projectId"));
     return ok(c, latest);
   });
+
+  app.get("/api/projects/:projectId/appflow/latest", async (c) => {
+    const latest = await analysisService.getAppflowLatest(c.req.param("projectId"));
+    return ok(c, latest);
+  });
 }

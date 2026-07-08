@@ -40,6 +40,8 @@ export type LocalVisuDevProject = {
   analysis?: {
     latestBlueprintRunId?: string;
     latestBlueprintStatus?: AnalysisStatus;
+    latestAppflowRunId?: string;
+    latestAppflowStatus?: AnalysisStatus;
     updatedAt?: string;
   };
 };
@@ -71,7 +73,7 @@ export type AnalyzeProjectRequest = {
 export type StartAnalysisResponse = {
   projectId: string;
   runId: string;
-  scanType: "blueprint";
+  scanType: "blueprint" | "appflow";
   status: "queued" | "running";
   statusUrl: string;
   resultUrl: string;
@@ -107,6 +109,29 @@ export type LocalBlueprintAnalysisResult = {
   raw?: unknown;
 };
 
+export type LocalAppflowAnalysisResult = {
+  kind: "appflow";
+  projectId: string;
+  runId: string;
+  providerId: "legacy-appflow-runner";
+  status: "success" | "partial" | "failed";
+  createdAt: string;
+  summary: {
+    screensDetected: number;
+    flowsDetected: number;
+    filesAnalyzed?: number;
+    warnings: number;
+    errors: number;
+  };
+  screens: unknown[];
+  flows: unknown[];
+  graph?: unknown;
+  quality?: unknown;
+  framework?: unknown;
+  commitSha?: string;
+  raw?: unknown;
+};
+
 export type LocalUnsupportedAnalysisResult = {
   kind: "unsupported";
   scanType: string;
@@ -123,6 +148,7 @@ export type LocalFailedAnalysisResult = {
 
 export type LocalEngineAnalysisResult =
   | LocalBlueprintAnalysisResult
+  | LocalAppflowAnalysisResult
   | LocalUnsupportedAnalysisResult
   | LocalFailedAnalysisResult;
 
@@ -130,6 +156,18 @@ export type LocalBlueprintLatest = {
   projectId: string;
   runId: string;
   blueprint: BlueprintDocument;
+  updatedAt: string;
+};
+
+export type LocalAppflowLatest = {
+  projectId: string;
+  runId: string;
+  screens: unknown[];
+  flows: unknown[];
+  graph?: unknown;
+  quality?: unknown;
+  framework?: unknown;
+  commitSha?: string;
   updatedAt: string;
 };
 
@@ -220,8 +258,8 @@ export type LocalPreviewMapping = {
 export type EngineAnalysisRun = {
   runId: string;
   projectId: string;
-  scanType: "blueprint";
-  providerId: "legacy-blueprint-runner";
+  scanType: "blueprint" | "appflow";
+  providerId: "legacy-blueprint-runner" | "legacy-appflow-runner";
   runnerAnalysisId?: string;
   status: AnalysisStatus;
   createdAt: string;

@@ -40,6 +40,7 @@ import {
 import { runRuntimeCrawl } from "./runtime-crawl.js";
 import { resolveValidatedLocalPath } from "./lib/local-path-security.js";
 import { analyzeLocalBlueprint, validateBlueprintAnalyzeInput } from "./lib/blueprint-local.js";
+import { analyzeLocalAppflow, validateAppflowAnalyzeInput } from "./lib/appflow-local.js";
 import { pickNativeFolder } from "./lib/native-folder-picker.js";
 
 const PORT = Number(process.env.PORT) || 4000;
@@ -2491,6 +2492,56 @@ async function handleBlueprintAnalyze(req, res) {
   }
 }
 
+async function handleAppflowAnalyze(req, res) {
+  let body;
+  try {
+    body = await parseBody(req);
+  } catch (error) {
+    const statusCode = Number.isFinite(Number(error?.statusCode)) ? Number(error.statusCode) : 400;
+    send(res, statusCode, {
+      success: false,
+      error: error instanceof Error ? error.message : "Invalid JSON body",
+    });
+    return;
+  }
+
+  const validation = validateAppflowAnalyzeInput(body);
+  if (!validation.ok) {
+    send(res, validation.statusCode ?? 400, {
+      success: false,
+      error: validation.error,
+    });
+    return;
+  }
+
+  try {
+    const result = await analyzeLocalAppflow({
+      localPath: validation.localPath,
+      projectId: validation.projectId,
+    });
+    send(res, 200, {
+      success: true,
+      data: {
+        screens: result.screens,
+        flows: result.flows,
+        graph: result.graph,
+        quality: result.quality,
+        framework: result.framework,
+        analysisId: result.analysisId,
+        commitSha: result.commitSha,
+        filesAnalyzed: result.filesAnalyzed,
+        workspaceRoot: result.workspaceRoot,
+      },
+    });
+  } catch (error) {
+    const statusCode = Number.isFinite(Number(error?.statusCode)) ? Number(error.statusCode) : 500;
+    send(res, statusCode, {
+      success: false,
+      error: error instanceof Error ? error.message : "Appflow analysis failed",
+    });
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   if (req.method === "OPTIONS") {
     corsPreflight(res);
@@ -2553,9 +2604,11 @@ const server = http.createServer(async (req, res) => {
             ? "/stop-project"
             : req.method === "POST" && pathname === "/blueprint/analyze"
               ? "/blueprint/analyze"
-              : req.method === "POST" && pathname.startsWith("/stop/")
-                ? "/stop"
-                : null;
+              : req.method === "POST" && pathname === "/appflow/analyze"
+                ? "/appflow/analyze"
+                : req.method === "POST" && pathname.startsWith("/stop/")
+                  ? "/stop"
+                  : null;
   if (writeRouteKey) {
     const rateLimit = enforceWriteRateLimit(req, writeRouteKey);
     if (!rateLimit.ok) {
@@ -2587,6 +2640,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "POST" && pathname === "/blueprint/analyze") {
       await handleBlueprintAnalyze(req, res);
+      return;
+    }
+    if (req.method === "POST" && pathname === "/appflow/analyze") {
+      await handleAppflowAnalyze(req, res);
       return;
     }
     if (req.method === "POST" && pathname === "/start") {

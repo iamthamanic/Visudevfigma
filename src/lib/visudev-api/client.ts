@@ -9,6 +9,7 @@ import type {
   BrowseLocalPathInput,
   BrowseLocalPathResult,
   CreateProjectInput,
+  LocalAppflowLatest,
   LocalBlueprintLatest,
   LocalEngineAnalysisResult,
   PreviewStartResult,
@@ -38,6 +39,7 @@ export interface VisuDevApiClient {
   getAnalysisStatus(projectId: string, runId: string): Promise<AnalysisRunStatus>;
   getAnalysisResult(projectId: string, runId: string): Promise<LocalEngineAnalysisResult>;
   getBlueprintLatest(projectId: string): Promise<LocalBlueprintLatest | null>;
+  getAppflowLatest(projectId: string): Promise<LocalAppflowLatest | null>;
 
   startPreview(projectId: string, input?: StartPreviewInput): Promise<PreviewStartResult>;
   getPreviewStatus(projectId: string): Promise<PreviewStatusResult>;
