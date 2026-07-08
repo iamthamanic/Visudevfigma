@@ -1,5 +1,5 @@
 /**
- * Async blueprint analysis orchestration for Local Engine.
+ * Async analysis orchestration for Local Engine (blueprint + appflow).
  * Location: local-engine/src/services/analysis.service.ts
  */
 
@@ -7,20 +7,29 @@ import path from "node:path";
 import { appendJsonLog, readJsonFile, writeJsonFile } from "../storage/file-store.js";
 import { AutoGuideAnalysisProvider } from "../providers/autoguide-analysis.provider.js";
 import type { AnalysisProvider } from "../providers/analysis-provider.js";
+import { LegacyAppflowRunnerProvider } from "../providers/legacy-appflow-runner.provider.js";
 import { LegacyVisuDevAnalysisProvider } from "../providers/legacy-visudev-analysis.provider.js";
 import type { ProjectService } from "./project.service.js";
 import type {
   AnalysisRunStatus,
   AnalyzeProjectRequest,
   EngineAnalysisRun,
+  LocalAppflowAnalysisResult,
+  LocalAppflowLatest,
   LocalBlueprintAnalysisResult,
   LocalBlueprintLatest,
   LocalEngineAnalysisResult,
   StartAnalysisResponse,
 } from "../types/api.types.js";
 
+type SupportedScanType = "blueprint" | "appflow";
+
 function createRunId(): string {
   return `run_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function providerIdForScanType(scanType: SupportedScanType): EngineAnalysisRun["providerId"] {
+  return scanType === "appflow" ? "legacy-appflow-runner" : "legacy-blueprint-runner";
 }
 
 export class AnalysisService {
@@ -34,6 +43,7 @@ export class AnalysisService {
   ) {
     this.providers = new Map<string, AnalysisProvider>([
       ["legacy-blueprint-runner", new LegacyVisuDevAnalysisProvider(runnerUrl)],
+      ["legacy-appflow-runner", new LegacyAppflowRunnerProvider(runnerUrl)],
       ["autoguide-stub", new AutoGuideAnalysisProvider()],
     ]);
     this.defaultProviderId = defaultProviderId;
@@ -53,12 +63,18 @@ export class AnalysisService {
     return path.join(this.runDir(runId), "result.json");
   }
 
-  private latestPointerPath(projectId: string): string {
-    return path.join(this.storageDir, "projects", projectId, "latest-blueprint-run.json");
+  private latestPointerPath(projectId: string, scanType: SupportedScanType): string {
+    const fileName =
+      scanType === "appflow" ? "latest-appflow-run.json" : "latest-blueprint-run.json";
+    return path.join(this.storageDir, "projects", projectId, fileName);
   }
 
   private blueprintCachePath(projectId: string): string {
     return path.join(this.storageDir, "projects", projectId, "blueprint.json");
+  }
+
+  private appflowCachePath(projectId: string): string {
+    return path.join(this.storageDir, "projects", projectId, "appflow.json");
   }
 
   private resolveProvider(providerId: string): AnalysisProvider {
@@ -69,36 +85,37 @@ export class AnalysisService {
     return provider;
   }
 
+  private assertSupportedScanType(scanType: AnalyzeProjectRequest["scanType"]): SupportedScanType {
+    if (scanType === "blueprint" || scanType === "appflow") {
+      return scanType;
+    }
+    const error = {
+      code: "NOT_IMPLEMENTED_LOCAL_SCAN_TYPE",
+      message: `Scan type "${scanType}" is not available in local mode yet.`,
+    };
+    throw Object.assign(new Error(error.message), { code: error.code, statusCode: 501 });
+  }
+
   async startAnalysis(
     projectId: string,
     request: AnalyzeProjectRequest,
     baseUrl: string,
   ): Promise<StartAnalysisResponse> {
-    if (request.scanType !== "blueprint") {
-      const error = {
-        code: "NOT_IMPLEMENTED_LOCAL_SCAN_TYPE",
-        message: `Scan type "${request.scanType}" is not available in local mode yet.`,
-      };
-      throw Object.assign(new Error(error.message), { code: error.code, statusCode: 501 });
-    }
-
+    const scanType = this.assertSupportedScanType(request.scanType);
     const project = await this.projectService.getProject(projectId);
     if (!project) {
       throw Object.assign(new Error("Project not found"), { statusCode: 404 });
     }
 
-    const providerId = this.defaultProviderId;
-    if (providerId === "autoguide-stub") {
-      throw Object.assign(new Error("AutoGuide provider is not implemented"), { statusCode: 501 });
-    }
+    const providerId = providerIdForScanType(scanType);
 
     const runId = createRunId();
     const now = new Date().toISOString();
     const status: EngineAnalysisRun = {
       runId,
       projectId,
-      scanType: "blueprint",
-      providerId: "legacy-blueprint-runner",
+      scanType,
+      providerId,
       status: "queued",
       createdAt: now,
       updatedAt: now,
@@ -108,17 +125,17 @@ export class AnalysisService {
     await appendJsonLog(path.join(this.runDir(runId), "log.jsonl"), {
       at: now,
       message: "Analysis queued",
-      scanType: request.scanType,
+      scanType,
     });
 
-    void this.executeRun(runId, projectId, request, providerId).catch((error) => {
+    void this.executeRun(runId, projectId, request, providerId, scanType).catch((error) => {
       console.error("[analysis] background run failed:", error);
     });
 
     return {
       projectId,
       runId,
-      scanType: "blueprint",
+      scanType,
       status: "queued",
       statusUrl: `${baseUrl}/api/projects/${projectId}/analyze/${runId}`,
       resultUrl: `${baseUrl}/api/projects/${projectId}/analyze/${runId}/result`,
@@ -129,7 +146,8 @@ export class AnalysisService {
     runId: string,
     projectId: string,
     request: AnalyzeProjectRequest,
-    providerId: string,
+    providerId: EngineAnalysisRun["providerId"],
+    scanType: SupportedScanType,
   ): Promise<void> {
     const project = await this.projectService.getProject(projectId);
     if (!project) return;
@@ -138,8 +156,8 @@ export class AnalysisService {
     await writeJsonFile(this.statusPath(runId), {
       runId,
       projectId,
-      scanType: "blueprint",
-      providerId: "legacy-blueprint-runner",
+      scanType,
+      providerId,
       status: "running",
       createdAt: runningAt,
       updatedAt: runningAt,
@@ -155,24 +173,44 @@ export class AnalysisService {
 
     const finishedAt = new Date().toISOString();
 
+    if (scanType === "blueprint") {
+      await this.persistBlueprintRun(runId, projectId, providerId, runningAt, finishedAt, result);
+      return;
+    }
+
+    await this.persistAppflowRun(runId, projectId, providerId, runningAt, finishedAt, result);
+  }
+
+  private async persistBlueprintRun(
+    runId: string,
+    projectId: string,
+    providerId: EngineAnalysisRun["providerId"],
+    runningAt: string,
+    finishedAt: string,
+    result: LocalEngineAnalysisResult,
+  ): Promise<void> {
     if (result.kind !== "blueprint") {
-      const failed = {
+      await writeJsonFile(this.statusPath(runId), {
         runId,
         projectId,
-        scanType: "blueprint" as const,
-        providerId: "legacy-blueprint-runner" as const,
-        status: "failed" as const,
+        scanType: "blueprint",
+        providerId,
+        status: "failed",
         createdAt: runningAt,
         updatedAt: finishedAt,
         error:
           result.kind === "failed"
             ? result.error
-            : {
-                code: "ANALYSIS_UNSUPPORTED",
-                message: result.message,
-              },
-      };
-      await writeJsonFile(this.statusPath(runId), failed);
+            : result.kind === "unsupported"
+              ? {
+                  code: "ANALYSIS_UNSUPPORTED",
+                  message: result.message,
+                }
+              : {
+                  code: "ANALYSIS_UNSUPPORTED",
+                  message: "Unexpected analysis result.",
+                },
+      } satisfies EngineAnalysisRun);
       return;
     }
 
@@ -192,14 +230,14 @@ export class AnalysisService {
       runId,
       projectId,
       scanType: "blueprint",
-      providerId: "legacy-blueprint-runner",
+      providerId,
       runnerAnalysisId,
       status: "success",
       createdAt: runningAt,
       updatedAt: finishedAt,
     } satisfies EngineAnalysisRun);
 
-    await writeJsonFile(this.latestPointerPath(projectId), {
+    await writeJsonFile(this.latestPointerPath(projectId, "blueprint"), {
       projectId,
       runId,
       updatedAt: finishedAt,
@@ -214,8 +252,94 @@ export class AnalysisService {
     const current = await this.projectService.getProject(projectId);
     if (current) {
       current.analysis = {
+        ...current.analysis,
         latestBlueprintRunId: runId,
         latestBlueprintStatus: "success",
+        updatedAt: finishedAt,
+      };
+      await this.projectService.saveProject(current);
+    }
+  }
+
+  private async persistAppflowRun(
+    runId: string,
+    projectId: string,
+    providerId: EngineAnalysisRun["providerId"],
+    runningAt: string,
+    finishedAt: string,
+    result: LocalEngineAnalysisResult,
+  ): Promise<void> {
+    if (result.kind !== "appflow") {
+      await writeJsonFile(this.statusPath(runId), {
+        runId,
+        projectId,
+        scanType: "appflow",
+        providerId,
+        status: "failed",
+        createdAt: runningAt,
+        updatedAt: finishedAt,
+        error:
+          result.kind === "failed"
+            ? result.error
+            : result.kind === "unsupported"
+              ? {
+                  code: "ANALYSIS_UNSUPPORTED",
+                  message: result.message,
+                }
+              : {
+                  code: "ANALYSIS_UNSUPPORTED",
+                  message: "Unexpected analysis result.",
+                },
+      } satisfies EngineAnalysisRun);
+      return;
+    }
+
+    const appflowResult: LocalAppflowAnalysisResult = {
+      ...result,
+      runId,
+      createdAt: finishedAt,
+    };
+
+    const runnerAnalysisId =
+      result.raw && typeof result.raw === "object" && "runnerAnalysisId" in result.raw
+        ? String((result.raw as { runnerAnalysisId?: string }).runnerAnalysisId ?? "")
+        : undefined;
+
+    await writeJsonFile(this.resultPath(runId), appflowResult);
+    await writeJsonFile(this.statusPath(runId), {
+      runId,
+      projectId,
+      scanType: "appflow",
+      providerId,
+      runnerAnalysisId,
+      status: "success",
+      createdAt: runningAt,
+      updatedAt: finishedAt,
+    } satisfies EngineAnalysisRun);
+
+    await writeJsonFile(this.latestPointerPath(projectId, "appflow"), {
+      projectId,
+      runId,
+      updatedAt: finishedAt,
+    });
+    await writeJsonFile(this.appflowCachePath(projectId), {
+      projectId,
+      runId,
+      screens: appflowResult.screens,
+      flows: appflowResult.flows,
+      graph: appflowResult.graph,
+      quality: appflowResult.quality,
+      framework: appflowResult.framework,
+      commitSha: appflowResult.commitSha,
+      updatedAt: finishedAt,
+    } satisfies LocalAppflowLatest);
+
+    const current = await this.projectService.getProject(projectId);
+    if (current) {
+      current.analysis = {
+        ...current.analysis,
+        latestAppflowRunId: runId,
+        latestAppflowStatus: "success",
         updatedAt: finishedAt,
       };
       await this.projectService.saveProject(current);
@@ -266,6 +390,26 @@ export class AnalysisService {
       };
     }
 
+    if (status.scanType === "appflow") {
+      const result = await readJsonFile<LocalAppflowAnalysisResult | null>(
+        this.resultPath(runId),
+        null,
+      );
+      if (!result) {
+        return {
+          kind: "failed",
+          projectId,
+          runId,
+          status: "failed",
+          error: {
+            code: "ANALYSIS_RESULT_MISSING",
+            message: "Analysis result file is missing.",
+          },
+        };
+      }
+      return result;
+    }
+
     const result = await readJsonFile<LocalBlueprintAnalysisResult | null>(
       this.resultPath(runId),
       null,
@@ -287,5 +431,9 @@ export class AnalysisService {
 
   async getBlueprintLatest(projectId: string): Promise<LocalBlueprintLatest | null> {
     return readJsonFile<LocalBlueprintLatest | null>(this.blueprintCachePath(projectId), null);
+  }
+
+  async getAppflowLatest(projectId: string): Promise<LocalAppflowLatest | null> {
+    return readJsonFile<LocalAppflowLatest | null>(this.appflowCachePath(projectId), null);
   }
 }

@@ -266,7 +266,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         scanType === "all" ? (["appflow", "blueprint", "data"] as const) : [scanType];
 
       for (const type of scanTypes) {
-        if (isLocalVisuDevMode() && type !== "blueprint") {
+        if (isLocalVisuDevMode() && type !== "blueprint" && type !== "appflow") {
           const blockedMessage =
             "This scan type is not available in Local Mode yet. Use dev:supabase for legacy scans.";
           setScanStatuses((prev) => ({
@@ -411,6 +411,76 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
             setScanStatuses((prev) => ({
               ...prev,
               [type]: { status: "completed", progress: 100, message: "Blueprint abgeschlossen" },
+            }));
+            continue;
+          }
+
+          if (type === "appflow" && isLocalVisuDevMode()) {
+            appendScanLog("App-Flow-Analyzer wird lokal aufgerufen …", "info");
+            setScanStatuses((prev) => ({
+              ...prev,
+              [type]: { status: "running", progress: 60, message: "App Flow wird ausgewertet" },
+            }));
+
+            const client = getVisuDevClient();
+            const started = await client.startAnalysis(activeProject.id, {
+              scanType: "appflow",
+              localPath: activeProject.local_path,
+            });
+            const deadline = Date.now() + 150_000;
+            let terminal = false;
+            while (Date.now() < deadline) {
+              const status = await client.getAnalysisStatus(activeProject.id, started.runId);
+              if (status.status === "success" || status.status === "partial") {
+                const result = await client.getAnalysisResult(activeProject.id, started.runId);
+                if (result.kind === "appflow") {
+                  const screens = result.screens as Screen[];
+                  const flows = result.flows as Project["flows"];
+                  const updatedProject: Project = {
+                    ...activeProject,
+                    screens,
+                    flows,
+                    lastAnalyzedCommitSha: result.commitSha ?? activeProject.lastAnalyzedCommitSha,
+                    analysisGraph: result.graph as Project["analysisGraph"],
+                    analysisQuality: result.quality as Project["analysisQuality"],
+                  };
+                  await updateProject(updatedProject);
+                  appendScanLog(
+                    `App Flow: ${result.summary.screensDetected} Screens, ${result.summary.flowsDetected} Flows.`,
+                    "success",
+                  );
+                }
+                terminal = true;
+                break;
+              }
+              if (status.status === "failed") {
+                throw new VisuDevApiError(
+                  status.error?.message ?? "App Flow analysis failed",
+                  status.error?.code ?? "APPFLOW_ANALYSIS_FAILED",
+                  "local",
+                );
+              }
+              await new Promise((resolve) => setTimeout(resolve, 1500));
+            }
+            if (!terminal) {
+              throw new Error("App Flow analysis timed out.");
+            }
+
+            setScans((prev) =>
+              prev.map((scan) =>
+                scan.id === scanId
+                  ? {
+                      ...scan,
+                      status: "completed",
+                      progress: 100,
+                      completedAt: new Date().toISOString(),
+                    }
+                  : scan,
+              ),
+            );
+            setScanStatuses((prev) => ({
+              ...prev,
+              [type]: { status: "completed", progress: 100, message: "App Flow abgeschlossen" },
             }));
             continue;
           }
