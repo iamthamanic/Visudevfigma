@@ -1,21 +1,21 @@
 {
   "version": 2,
   "repo": "iamthamanic/Visudevfigma",
-  "activeIssue": 10,
-  "featureSlug": "visudev-graph-dto",
-  "phase": "blocked",
-  "branch": "issue/10-visudev-graph-dto",
-  "prUrl": null,
+  "activeIssue": null,
+  "featureSlug": "local-first-visudev",
+  "phase": "queued",
+  "branch": "issue/18-local-first-visudev",
+  "prUrl": "https://github.com/iamthamanic/Visudevfigma/pull/32",
   "milestoneFilter": null,
-  "paused": false,
+  "paused": true,
   "runMode": "batch",
-  "queue": [10, 11, 12, 13, 14, 15, 16, 17],
-  "completedIssues": [7],
+  "queue": [13, 14, 15, 16, 17, 26, 29, 30],
+  "completedIssues": [7, 10, 11, 12, 18, 19, 20, 21, 22, 23, 24, 25],
   "retries": {
     "implement": 0,
     "verifyTicket": 0,
     "verifyUi": 0,
-    "review": 3
+    "review": 0
   },
   "maxRetries": {
     "implement": 3,
@@ -24,8 +24,9 @@
     "review": 2,
     "sameRootCause": 2
   },
-  "lastError": "AI review REJECT on pre-push hook (score 60%, review-20260708-081438)",
-  "lastErrorCount": 1,
+  "lastError": null,
+  "lastErrorCount": 0,
   "issuesProcessedInSession": 0,
-  "updatedAt": "2026-07-08T08:15:00.000Z"
+  "updatedAt": "2026-07-08T12:02:00.000Z",
+  "notes": "Paused until PR #32 merged. Graph-DTO merged via PR #31. Next ecc-runner: #13 after PR #32."
 }

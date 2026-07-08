@@ -1,0 +1,105 @@
+{
+  "epic": "local-first-visudev",
+  "designDoc": ".qa/design/local-first-visudev.md",
+  "status": "phase1-complete",
+  "completedAt": "2026-07-08",
+  "issues": [
+    {
+      "title": "Shared foundation: path security + API types",
+      "status": "done",
+      "scope": ["shared/local-path-security.mjs", "shared/visudev-api.types.ts"],
+      "acceptance": [
+        "Single canonical path jail in shared/",
+        "preview-runner re-exports shared module",
+        "Types exported for engine + frontend"
+      ]
+    },
+    {
+      "title": "Local Engine: Hono server + file storage + health",
+      "status": "done",
+      "scope": [
+        "local-engine/src/index.ts",
+        "local-engine/src/server.ts",
+        "local-engine/src/storage/"
+      ],
+      "acceptance": [
+        "GET /health returns ok",
+        "Storage defaults to ~/.visudev",
+        "Atomic JSON writes"
+      ]
+    },
+    {
+      "title": "Local Engine: projects CRUD API",
+      "status": "done",
+      "scope": [
+        "local-engine/src/routes/projects.routes.ts",
+        "local-engine/src/services/project.service.ts"
+      ],
+      "acceptance": ["GET/POST/PATCH/DELETE /api/projects", "Projects persist in projects.json"]
+    },
+    {
+      "title": "Local Engine: blueprint analysis + preview + browse",
+      "status": "done",
+      "scope": [
+        "local-engine/src/routes/analysis.routes.ts",
+        "local-engine/src/routes/preview.routes.ts",
+        "local-engine/src/providers/"
+      ],
+      "acceptance": [
+        "POST analyze returns 202 with runId",
+        "Blueprint via legacy runner provider",
+        "Preview proxied to runner",
+        "Browse proxies /browse-local-path"
+      ]
+    },
+    {
+      "title": "Frontend: visudev-api client layer",
+      "status": "done",
+      "scope": ["src/lib/visudev-api/"],
+      "acceptance": [
+        "getVisuDevClient() factory",
+        "Local + Supabase clients",
+        "isLocalVisuDevMode() helper"
+      ]
+    },
+    {
+      "title": "Frontend: store + pages migration",
+      "status": "done",
+      "scope": ["src/lib/visudev/store.tsx", "src/modules/blueprint/", "src/modules/projects/"],
+      "acceptance": [
+        "Projects CRUD via client",
+        "Blueprint scan + polling in local mode",
+        "Local path browse via engine",
+        "AppFlow/Data scans disabled in local mode"
+      ]
+    },
+    {
+      "title": "Dev orchestration: dev-local.js + scripts",
+      "status": "done",
+      "scope": ["scripts/dev-local.js", "package.json"],
+      "acceptance": [
+        "npm run dev starts UI + engine + runner",
+        "dev:supabase preserves legacy stack",
+        "Port checks for 3005/4317/4000"
+      ]
+    },
+    {
+      "title": "Docs + env + CI checks",
+      "status": "done",
+      "scope": [
+        "docs/LOCAL_ENGINE.md",
+        ".env.example",
+        "eslint.config.mjs",
+        "scripts/checks/run.sh"
+      ],
+      "acceptance": [
+        "LOCAL_ENGINE.md documents architecture",
+        "typecheck covers app + engine",
+        "eslint includes local-engine and shared",
+        "npm run checks passes"
+      ]
+    }
+  ],
+  "phase1Issues": [18, 19, 20, 21, 22, 23, 24, 25],
+  "phase2Issues": [26, 27, 28, 29, 30]
+}

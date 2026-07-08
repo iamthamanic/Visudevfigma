@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, Download, Loader2, Map, Play, RefreshCw, Square, X } from "lucide-react";
 import { hasPreviewSource } from "../../../lib/visudev/project-source";
+import { isLocalVisuDevMode } from "../../../lib/visudev-api";
 import { useVisudev } from "../../../lib/visudev/store";
 import {
   discoverPreviewRunner,
@@ -63,6 +64,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
   const autoPreviewDoneRef = useRef(false);
   const autoPreviewRetryAtRef = useRef(0);
   const startingActionRef = useRef<PendingPreviewAction>(null);
+  const localScanBlocked = isLocalVisuDevMode();
 
   const handleRescan = useCallback(async () => {
     setIsRescan(true);
@@ -113,6 +115,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
 
   // Auto-scan, sobald ein Projekt mit verbundenem Repo geladen ist und noch keine Screens (einmal pro Projekt)
   useEffect(() => {
+    if (localScanBlocked) return;
     if (
       activeProject?.id === projectId &&
       activeProject?.github_repo &&
@@ -128,6 +131,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
     projectId,
     scanStatuses.appflow.status,
     handleRescan,
+    localScanBlocked,
   ]);
 
   // Zuerst Runner ermitteln (4000, 4100, …), danach Preview-Status – sonst erscheint „nicht erreichbar“, obwohl Runner läuft
@@ -455,8 +459,13 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
             <button
               type="button"
               onClick={handleRescan}
-              disabled={isScanning}
+              disabled={isScanning || localScanBlocked}
               className={styles.primaryButton}
+              title={
+                localScanBlocked
+                  ? "App Flow Scan ist im Local Mode noch nicht verfügbar. Nutze npm run dev:supabase."
+                  : undefined
+              }
             >
               {isScanning ? (
                 <>
@@ -708,7 +717,7 @@ export function AppFlowPage({ projectId, githubRepo, githubBranch }: AppFlowPage
                       <button
                         type="button"
                         onClick={handleRescan}
-                        disabled={isScanning}
+                        disabled={isScanning || localScanBlocked}
                         className={styles.primaryButton}
                       >
                         <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
