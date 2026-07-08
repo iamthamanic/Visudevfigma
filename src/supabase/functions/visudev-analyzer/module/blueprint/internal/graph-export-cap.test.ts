@@ -42,6 +42,7 @@ const baseGraph = (): VisuDevGraph => ({
     nodeIds: ["node-1"],
     edgeIds: ["edge-1"],
   }],
+  findings: [],
 });
 
 Deno.test("sanitizeGraphForExport remaps scope nodeIds and edgeIds with node ids", () => {
@@ -87,6 +88,7 @@ Deno.test("capGraphForExport returns empty graph for malformed input", () => {
     edges: [],
     evidence: [],
     scopes: [],
+    findings: [],
   });
 });
 
@@ -97,6 +99,7 @@ Deno.test("coerceVisuDevGraphInput keeps valid nodes when evidence is malformed"
     edges: [],
     evidence: [{ id: "", factId: "x" }],
     scopes: [],
+    findings: [],
   });
   assertEquals(result.nodes.length, 1);
   assertEquals(result.evidence.length, 1);
@@ -126,6 +129,7 @@ Deno.test("sanitizeGraphForExport avoids id collisions after truncation", () => 
     ],
     edges: [],
     scopes: [],
+    findings: [],
   };
   const sanitized = sanitizeGraphForExport(graph);
   assertEquals(sanitized.nodes[0].id !== sanitized.nodes[1].id, true);

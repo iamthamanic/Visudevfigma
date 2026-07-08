@@ -1,5 +1,7 @@
 /** VisuDevGraph IR — shared analysis graph for Blueprint. */
 
+import type { FindingSeverity } from "../blueprint/blueprint-document.dto.ts";
+
 export type VisuDevNodeKind =
   | "route"
   | "auth"
@@ -63,10 +65,33 @@ export interface VisuDevScope {
   metadata?: Record<string, unknown>;
 }
 
+export type VisuDevControlKind =
+  | "auth"
+  | "validation"
+  | "rate-limit"
+  | "db-write";
+
+export type VisuDevFindingOutcome = "missing" | "not_applicable";
+
+export interface VisuDevFinding {
+  id: string;
+  ruleId: string;
+  scopeId: string;
+  controlKind: VisuDevControlKind;
+  expectedControlNodeId?: string;
+  outcome: VisuDevFindingOutcome;
+  message: string;
+  expectedState: string;
+  actualState: string;
+  evidenceIds: string[];
+  severity?: FindingSeverity;
+}
+
 export interface VisuDevGraph {
   version: 1;
   nodes: VisuDevNode[];
   edges: VisuDevEdge[];
   evidence: VisuDevEvidence[];
   scopes: VisuDevScope[];
+  findings: VisuDevFinding[];
 }

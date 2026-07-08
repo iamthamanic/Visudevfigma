@@ -45,5 +45,6 @@ export function assembleVisuDevGraph(
     edges: ctx.edges,
     evidence: ctx.evidence.list,
     scopes: ctx.scopes,
+    findings: [],
   };
 }
