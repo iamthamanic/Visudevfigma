@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, Loader2, RefreshCw, X } from "lucide-react";
 import clsx from "clsx";
 import { useVisudev } from "../../../lib/visudev/store";
-import { isLocalVisuDevMode } from "../../../lib/visudev-api";
+import { getVisuDevClient, isLocalVisuDevMode } from "../../../lib/visudev-api";
 import { api } from "../../../utils/api";
 import { useERD } from "../../../utils/useVisuDev";
 import type { ERDTableNode } from "../types";
@@ -30,13 +30,15 @@ export function DataPage({ projectId }: DataPageProps) {
   const [isRescan, setIsRescan] = useState(false);
   const [selectedTable, setSelectedTable] = useState<ERDTableNode | null>(null);
   const [detailTab, setDetailTab] = useState<"columns" | "rls" | "sample">("columns");
-  const localScanBlocked = isLocalVisuDevMode();
+  const localScanBlocked = isLocalVisuDevMode() && !activeProject?.local_path;
 
   const handleRescan = useCallback(async () => {
     setIsRescan(true);
     try {
       await startScan("data");
-      await api.data.syncERD(projectId);
+      if (!isLocalVisuDevMode()) {
+        await api.data.syncERD(projectId);
+      }
       await refreshERD();
     } finally {
       setIsRescan(false);
@@ -49,6 +51,21 @@ export function DataPage({ projectId }: DataPageProps) {
       handleRescan();
     }
   }, [activeProject, projectId, scanStatuses.data.status, handleRescan, localScanBlocked]);
+
+  useEffect(() => {
+    if (!isLocalVisuDevMode() || !activeProject?.id || activeProject.id !== projectId) return;
+    let cancelled = false;
+    (async () => {
+      const latest = await getVisuDevClient().getDataLatest(projectId);
+      if (cancelled || !latest) return;
+      await refreshERD();
+    })().catch(() => {
+      // ignore hydration errors; user can rescan manually
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeProject, projectId, refreshERD]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -82,7 +99,7 @@ export function DataPage({ projectId }: DataPageProps) {
             className={styles.primaryButton}
             title={
               localScanBlocked
-                ? "Data Scan ist im Local Mode noch nicht verfügbar. Nutze npm run dev:supabase."
+                ? "Data Scan benötigt ein lokales Projekt mit .env (DATABASE_URL)."
                 : undefined
             }
           >

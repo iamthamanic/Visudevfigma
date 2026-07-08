@@ -266,7 +266,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         scanType === "all" ? (["appflow", "blueprint", "data"] as const) : [scanType];
 
       for (const type of scanTypes) {
-        if (isLocalVisuDevMode() && type !== "blueprint" && type !== "appflow") {
+        if (isLocalVisuDevMode() && type !== "blueprint" && type !== "appflow" && type !== "data") {
           const blockedMessage =
             "This scan type is not available in Local Mode yet. Use dev:supabase for legacy scans.";
           setScanStatuses((prev) => ({
@@ -481,6 +481,68 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
             setScanStatuses((prev) => ({
               ...prev,
               [type]: { status: "completed", progress: 100, message: "App Flow abgeschlossen" },
+            }));
+            continue;
+          }
+
+          if (type === "data" && isLocalVisuDevMode()) {
+            appendScanLog("Data-Analyzer wird lokal aufgerufen …", "info");
+            setScanStatuses((prev) => ({
+              ...prev,
+              [type]: { status: "running", progress: 60, message: "Schema wird ausgewertet" },
+            }));
+
+            const client = getVisuDevClient();
+            const started = await client.startAnalysis(activeProject.id, {
+              scanType: "data",
+              localPath: activeProject.local_path,
+            });
+            const deadline = Date.now() + 60_000;
+            let terminal = false;
+            while (Date.now() < deadline) {
+              const status = await client.getAnalysisStatus(activeProject.id, started.runId);
+              if (status.status === "success" || status.status === "partial") {
+                const result = await client.getAnalysisResult(activeProject.id, started.runId);
+                if (result.kind === "data") {
+                  appendScanLog(
+                    `Data: ${result.summary.tablesDetected} Tabellen, ${result.summary.columnsDetected} Spalten.`,
+                    "success",
+                  );
+                  if (result.erd.message) {
+                    appendScanLog(result.erd.message, "info");
+                  }
+                }
+                terminal = true;
+                break;
+              }
+              if (status.status === "failed") {
+                throw new VisuDevApiError(
+                  status.error?.message ?? "Data analysis failed",
+                  status.error?.code ?? "DATA_ANALYSIS_FAILED",
+                  "local",
+                );
+              }
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
+            if (!terminal) {
+              throw new Error("Data analysis timed out.");
+            }
+
+            setScans((prev) =>
+              prev.map((scan) =>
+                scan.id === scanId
+                  ? {
+                      ...scan,
+                      status: "completed",
+                      progress: 100,
+                      completedAt: new Date().toISOString(),
+                    }
+                  : scan,
+              ),
+            );
+            setScanStatuses((prev) => ({
+              ...prev,
+              [type]: { status: "completed", progress: 100, message: "Data abgeschlossen" },
             }));
             continue;
           }

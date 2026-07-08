@@ -42,6 +42,8 @@ export type LocalVisuDevProject = {
     latestBlueprintStatus?: AnalysisStatus;
     latestAppflowRunId?: string;
     latestAppflowStatus?: AnalysisStatus;
+    latestDataRunId?: string;
+    latestDataStatus?: AnalysisStatus;
     updatedAt?: string;
   };
 };
@@ -73,7 +75,7 @@ export type AnalyzeProjectRequest = {
 export type StartAnalysisResponse = {
   projectId: string;
   runId: string;
-  scanType: "blueprint" | "appflow";
+  scanType: "blueprint" | "appflow" | "data";
   status: "queued" | "running";
   statusUrl: string;
   resultUrl: string;
@@ -132,6 +134,33 @@ export type LocalAppflowAnalysisResult = {
   raw?: unknown;
 };
 
+export type LocalErdDocument = {
+  projectId: string;
+  updatedAt: string;
+  nodes: unknown[];
+  tables: unknown[];
+  message?: string;
+  dialect?: "postgres" | "sqlite";
+  source?: string;
+};
+
+export type LocalDataAnalysisResult = {
+  kind: "data";
+  projectId: string;
+  runId: string;
+  providerId: "local-data-introspection";
+  status: "success" | "partial" | "failed";
+  createdAt: string;
+  summary: {
+    tablesDetected: number;
+    columnsDetected: number;
+    warnings: number;
+    errors: number;
+  };
+  erd: LocalErdDocument;
+  raw?: unknown;
+};
+
 export type LocalUnsupportedAnalysisResult = {
   kind: "unsupported";
   scanType: string;
@@ -149,6 +178,7 @@ export type LocalFailedAnalysisResult = {
 export type LocalEngineAnalysisResult =
   | LocalBlueprintAnalysisResult
   | LocalAppflowAnalysisResult
+  | LocalDataAnalysisResult
   | LocalUnsupportedAnalysisResult
   | LocalFailedAnalysisResult;
 
@@ -168,6 +198,17 @@ export type LocalAppflowLatest = {
   quality?: unknown;
   framework?: unknown;
   commitSha?: string;
+  updatedAt: string;
+};
+
+export type LocalDataLatest = {
+  projectId: string;
+  runId: string;
+  nodes: unknown[];
+  tables: unknown[];
+  message?: string;
+  dialect?: "postgres" | "sqlite";
+  source?: string;
   updatedAt: string;
 };
 
@@ -258,8 +299,8 @@ export type LocalPreviewMapping = {
 export type EngineAnalysisRun = {
   runId: string;
   projectId: string;
-  scanType: "blueprint" | "appflow";
-  providerId: "legacy-blueprint-runner" | "legacy-appflow-runner";
+  scanType: "blueprint" | "appflow" | "data";
+  providerId: "legacy-blueprint-runner" | "legacy-appflow-runner" | "local-data-introspection";
   runnerAnalysisId?: string;
   status: AnalysisStatus;
   createdAt: string;

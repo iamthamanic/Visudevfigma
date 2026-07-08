@@ -22,6 +22,7 @@ import type {
 import type { LogCreateInput, LogEntry } from "../modules/logs/types";
 import type { ProjectCreateInput, ProjectUpdateInput } from "../modules/projects/types";
 import { api } from "./api";
+import { getVisuDevClient, isLocalVisuDevMode } from "../lib/visudev-api";
 
 // ==================== PROJECTS ====================
 
@@ -297,6 +298,36 @@ export function useERD(projectId: string | null) {
   const fetchERD = useCallback(async () => {
     if (!projectId) return;
     setLoading(true);
+    if (isLocalVisuDevMode()) {
+      try {
+        const latest = await getVisuDevClient().getDataLatest(projectId);
+        if (latest) {
+          setERD({
+            projectId,
+            updatedAt: latest.updatedAt,
+            nodes: latest.nodes as ERDData["nodes"],
+            tables: latest.tables as ERDData["tables"],
+            message: latest.message,
+          });
+          setError(null);
+        } else {
+          setERD({
+            projectId,
+            nodes: [],
+            tables: [],
+            message:
+              "Noch keine Tabellen. Schema analysieren oder DATABASE_URL in der Projekt-.env setzen.",
+          });
+          setError(null);
+        }
+      } catch (err) {
+        setERD(null);
+        setError(err instanceof Error ? err.message : "Failed to fetch ERD");
+      }
+      setLoading(false);
+      return;
+    }
+
     const result = await api.data.getERD(projectId);
     if (result.success && result.data) {
       setERD(result.data);
