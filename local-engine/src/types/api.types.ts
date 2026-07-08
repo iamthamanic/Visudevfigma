@@ -13,7 +13,6 @@ export type {
   BlueprintDocument,
   CrawlPreviewInput,
   CrawlPreviewResult,
-  LocalRuntimeLatest,
   CreateProjectInput,
   EngineAnalysisRun,
   LocalAppflowAnalysisResult,
@@ -24,6 +23,7 @@ export type {
   LocalDataLatest,
   LocalEngineAnalysisResult,
   LocalPreviewMapping,
+  LocalRuntimeLatest,
   LocalVisuDevProject,
   PreviewStartResult,
   PreviewStatusResult,
@@ -36,3 +36,13 @@ export type {
   VisuDevHealth,
   VisuDevMode,
 } from "../../../shared/visudev-api.types.js";
+
+export type {
+  ExportSupabaseProjectInput,
+  ImportLocalBundleInput,
+  ImportSupabaseBundleInput,
+  MigrationResult,
+  ProjectMigrationArtifacts,
+  ProjectMigrationBundle,
+  ProjectMigrationMetadata,
+} from "../../../shared/project-migration.types.js";

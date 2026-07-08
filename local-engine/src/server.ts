@@ -13,10 +13,12 @@ import { LocalPreviewRunnerProvider } from "./providers/local-preview-runner.pro
 import { ProjectService } from "./services/project.service.js";
 import { AnalysisService } from "./services/analysis.service.js";
 import { PreviewService } from "./services/preview.service.js";
+import { MigrationService } from "./services/migration.service.js";
 import { registerHealthRoutes } from "./routes/health.routes.js";
 import { registerProjectRoutes } from "./routes/projects.routes.js";
 import { registerAnalysisRoutes } from "./routes/analysis.routes.js";
 import { registerPreviewRoutes } from "./routes/preview.routes.js";
+import { registerMigrationRoutes } from "./routes/migration.routes.js";
 import { registerLocalPathRoutes } from "./routes/local-path.routes.js";
 
 async function acquireEngineLock(storageDir: string, port: number): Promise<void> {
@@ -56,6 +58,7 @@ export async function createApp(config: EngineConfig = getEngineConfig()) {
     config.analysisProvider,
   );
   const previewService = new PreviewService(config.storageDir, projectService, previewProvider);
+  const migrationService = new MigrationService(config.storageDir, projectService);
 
   const baseUrl = `http://${config.host}:${config.port}`;
   const app = new Hono();
@@ -76,6 +79,7 @@ export async function createApp(config: EngineConfig = getEngineConfig()) {
   registerProjectRoutes(app, projectService);
   registerAnalysisRoutes(app, analysisService, baseUrl);
   registerPreviewRoutes(app, previewService);
+  registerMigrationRoutes(app, migrationService);
   registerLocalPathRoutes(app, config);
 
   return { app, config };
