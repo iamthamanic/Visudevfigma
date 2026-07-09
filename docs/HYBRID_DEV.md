@@ -37,7 +37,7 @@ Ohne `.env.local` bricht die App beim Start mit klarer Fehlermeldung ab (kein st
 **Voraussetzungen:** Docker Desktop, Supabase CLI (`brew install supabase/tap/supabase`)
 
 ```bash
-cd Visudevfigma
+cd visudev-app
 npm run dev
 ```
 
@@ -107,7 +107,7 @@ npm run ping:cloud
 Optional Cron (montags 9:00):
 
 ```cron
-0 9 * * 1 cd /path/to/Visudevfigma && bash scripts/ping-cloud-supabase.sh
+0 9 * * 1 cd /path/to/visudev-app && bash scripts/ping-cloud-supabase.sh
 ```
 
 **Cloud reaktivieren:** [Dashboard](https://supabase.com/dashboard/project/tzfxbgxnjkthxwvoeyse) → Restore.

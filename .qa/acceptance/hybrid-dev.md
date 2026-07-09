@@ -10,7 +10,7 @@ VisuDEV soll im Cursor-Browser mit **lokalem Supabase** (Auth, KV, Edge Function
 
 - Docker Desktop läuft (für `supabase start`)
 - Supabase CLI installiert (`brew install supabase/tap/supabase`)
-- Repo-Root: `Visudevfigma/`
+- Repo-Root: `visudev-app/` (GitHub); lokaler App-Ordner kann noch `Visudevfigma/` heißen
 
 ## Happy Path
 

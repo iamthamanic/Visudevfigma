@@ -19,7 +19,7 @@ Ziel v1: evidence-basierte Blueprint Engine mit Security Matrix, Finding Inspect
 ## Assumptions
 
 - Portfolio unter `2-DEV-PROJEKTE`: ~53 TS-Fullstack-Apps; Packs: next, hono, express, fastify, supabase, prisma, monorepo
-- Dogfood: hrkoordinator, competeer v2, visudevfigma
+- Dogfood: hrkoordinator, competeer v2, visudev-app
 - Local Mode via Runner (Filesystem), GitHub via Edge Function
 - Route Canvas: linear pipeline pro Route (nicht freies Graph)
 

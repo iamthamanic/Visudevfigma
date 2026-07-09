@@ -49,7 +49,7 @@ Ja – du kannst die **komplette Supabase-Umgebung lokal** auf deinem Mac betrei
 - Am **Repo-Root** (dort liegt `supabase/config.toml`):
 
 ```bash
-cd /path/to/Visudevfigma
+cd /path/to/visudev-app
 supabase start
 ```
 
@@ -147,7 +147,7 @@ Damit hast du Datenbank und alles Supabase-Relevante lokal auf deinem Mac.
 supabase login
 
 # Projekt verlinken (am Repo-Root)
-cd /path/to/Visudevfigma
+cd /path/to/visudev-app
 supabase link --project-ref tzfxbgxnjkthxwvoeyse
 ```
 

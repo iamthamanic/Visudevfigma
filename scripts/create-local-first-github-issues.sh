@@ -8,7 +8,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-REPO="${1:-iamthamanic/Visudevfigma}"
+REPO="${1:-iamthamanic/visudev-app}"
 ECC_ROOT="${ECC_RUNNER_ROOT:-$HOME/.cursor/skills/ecc-runner}"
 
 gh auth status >/dev/null

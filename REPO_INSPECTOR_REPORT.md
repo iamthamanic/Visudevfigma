@@ -6,7 +6,7 @@ Nur Fakten aus dem Repo; keine Bewertung, keine Lösungsvorschläge. Secrets/Tok
 
 ## 0) Snapshot
 
-- **Repo-Root:** `Visudevfigma` (Workspace-Pfad: …/arsvivai/visudevfigma/Visudevfigma)
+- **Repo-Root:** `visudev-app` auf GitHub (lokal oft noch `Visudevfigma/` im Workspace)
 - **Branch/Commit (falls verfügbar):** `main`, Commit `77c4344`
 - **Package Manager / Node-Version Hinweise:** `package.json` enthält keine `engines`- oder `volta`-Angaben; kein `.nvmrc` im Repo-Root. Lockfile: `package-lock.json` (npm).
 - **Wie startet man das Tool lokal?** Aus README/scripts abgeleitet: `npm i` → `npm run dev`. Startet VisuDEV-App (Vite, Port 3005) und Preview-Runner (Port 4000). Alternativ: `npm run dev:app` (nur Vite), `npm run dev:runner` (nur Runner). Build: `npm run build`; Preview des Builds: `npm run preview` (ebenfalls Port 3005).
@@ -16,7 +16,7 @@ Nur Fakten aus dem Repo; keine Bewertung, keine Lösungsvorschläge. Secrets/Tok
 ## 1) Repo-Struktur (max depth 3)
 
 ```
-Visudevfigma/
+visudev-app/   # GitHub-Repo (lokal ggf. noch Visudevfigma/)
 ├── .github/workflows/
 │   └── e2e.yml
 ├── .githooks/
