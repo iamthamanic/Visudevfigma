@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "repo": "iamthamanic/Visudevfigma",
+  "repo": "iamthamanic/visudev-app",
   "activeIssue": null,
   "featureSlug": "local-first-visudev",
   "phase": "queued",
   "branch": "issue/18-local-first-visudev",
-  "prUrl": "https://github.com/iamthamanic/Visudevfigma/pull/32",
+  "prUrl": "https://github.com/iamthamanic/visudev-app/pull/32",
   "milestoneFilter": null,
   "paused": true,
   "runMode": "batch",

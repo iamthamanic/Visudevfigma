@@ -5,7 +5,7 @@ PARTIAL
 ## Projekt
 
 - Workspace: `/Users/halteverbotsocialmacpro/Desktop/arsvivai/2-DEV-PROJEKTE/visudevfigma`
-- App root: `Visudevfigma`
+- App root: `Visudevfigma` (lokaler Ordner; GitHub-Repo: `visudev-app`)
 - Stack: Vite + React (port 3005 preview)
 - Playwright: existing (`playwright.config.ts`, `tests/e2e/`)
 

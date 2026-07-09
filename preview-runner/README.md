@@ -1,6 +1,6 @@
 # visudev
 
-Preview Runner for [VisuDEV](https://github.com/iamthamanic/Visudevfigma): clone repo, build and run the app, expose a URL for the Live App / AppFlow view.
+Preview Runner for [VisuDEV](https://github.com/iamthamanic/visudev-app): clone repo, build and run the app, expose a URL for the Live App / AppFlow view.
 
 ## Quick start
 
