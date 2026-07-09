@@ -133,7 +133,7 @@ export interface AnalysisResult {
 export interface ScanResult {
   id: string;
   projectId: string;
-  scanType: "appflow" | "blueprint" | "data";
+  scanType: "appflow" | "blueprint" | "data" | "all";
   status: ScanStatus;
   progress: number;
   logs?: StepLogEntry[];

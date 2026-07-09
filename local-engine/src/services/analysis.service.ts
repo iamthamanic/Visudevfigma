@@ -12,12 +12,16 @@ import { LegacyAppflowRunnerProvider } from "../providers/legacy-appflow-runner.
 import { LocalDataIntrospectionProvider } from "../providers/local-data-introspection.provider.js";
 import { LegacyVisuDevAnalysisProvider } from "../providers/legacy-visudev-analysis.provider.js";
 import type { EngineConfig } from "../config.js";
+import { ALL_SCAN_SEQUENCE, aggregateParentStatus, isParentScanType } from "../lib/analysis-all.js";
 import type { ProjectService } from "./project.service.js";
 import type {
+  AnalysisChildRunStatus,
   AnalysisRunStatus,
   AnalyzeProjectRequest,
   BlueprintAnalysisProviderId,
   EngineAnalysisRun,
+  EngineParentAnalysisRun,
+  LocalAllAnalysisResult,
   LocalAppflowAnalysisResult,
   LocalAppflowLatest,
   LocalBlueprintAnalysisResult,
@@ -26,9 +30,8 @@ import type {
   LocalDataLatest,
   LocalEngineAnalysisResult,
   StartAnalysisResponse,
+  SupportedScanType,
 } from "../types/api.types.js";
-
-type SupportedScanType = "blueprint" | "appflow" | "data";
 
 function createRunId(): string {
   return `run_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
@@ -118,7 +121,7 @@ export class AnalysisService {
     return provider;
   }
 
-  private assertSupportedScanType(scanType: AnalyzeProjectRequest["scanType"]): SupportedScanType {
+  private assertLeafScanType(scanType: AnalyzeProjectRequest["scanType"]): SupportedScanType {
     if (scanType === "blueprint" || scanType === "appflow" || scanType === "data") {
       return scanType;
     }
@@ -129,12 +132,46 @@ export class AnalysisService {
     throw Object.assign(new Error(error.message), { code: error.code, statusCode: 501 });
   }
 
+  private async readRunStatus(runId: string): Promise<EngineAnalysisRun | null> {
+    return readJsonFile<EngineAnalysisRun | null>(this.statusPath(runId), null);
+  }
+
+  private async readParentRun(runId: string): Promise<EngineParentAnalysisRun | null> {
+    return readJsonFile<EngineParentAnalysisRun | null>(this.statusPath(runId), null);
+  }
+
+  private async syncParentChildStatuses(
+    parent: EngineParentAnalysisRun,
+  ): Promise<EngineParentAnalysisRun> {
+    const childRuns: AnalysisChildRunStatus[] = [];
+    for (const child of parent.childRuns) {
+      const childStatus = await this.readRunStatus(child.runId);
+      childRuns.push({
+        scanType: child.scanType,
+        runId: child.runId,
+        status: childStatus?.status ?? child.status,
+        error: childStatus?.error,
+      });
+    }
+    const status = aggregateParentStatus(childRuns.map((entry) => entry.status));
+    return {
+      ...parent,
+      childRuns,
+      status,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
   async startAnalysis(
     projectId: string,
     request: AnalyzeProjectRequest,
     baseUrl: string,
   ): Promise<StartAnalysisResponse> {
-    const scanType = this.assertSupportedScanType(request.scanType);
+    if (request.scanType === "all") {
+      return this.startAllAnalyses(projectId, request, baseUrl);
+    }
+
+    const scanType = this.assertLeafScanType(request.scanType);
     const project = await this.projectService.getProject(projectId);
     if (!project) {
       throw Object.assign(new Error("Project not found"), { statusCode: 404 });
@@ -173,6 +210,182 @@ export class AnalysisService {
       statusUrl: `${baseUrl}/api/projects/${projectId}/analyze/${runId}`,
       resultUrl: `${baseUrl}/api/projects/${projectId}/analyze/${runId}/result`,
     };
+  }
+
+  private async startAllAnalyses(
+    projectId: string,
+    request: AnalyzeProjectRequest,
+    baseUrl: string,
+  ): Promise<StartAnalysisResponse> {
+    const project = await this.projectService.getProject(projectId);
+    if (!project) {
+      throw Object.assign(new Error("Project not found"), { statusCode: 404 });
+    }
+
+    const parentRunId = createRunId();
+    const now = new Date().toISOString();
+    const childRuns: AnalysisChildRunStatus[] = ALL_SCAN_SEQUENCE.map((scanType) => ({
+      scanType,
+      runId: createRunId(),
+      status: "queued",
+    }));
+
+    const parentStatus: EngineParentAnalysisRun = {
+      runId: parentRunId,
+      projectId,
+      scanType: "all",
+      status: "queued",
+      childRuns,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await writeJsonFile(this.statusPath(parentRunId), parentStatus);
+    await appendJsonLog(path.join(this.runDir(parentRunId), "log.jsonl"), {
+      at: now,
+      message: "All-scan orchestration queued",
+      scanType: "all",
+    });
+
+    void this.executeAllRuns(parentRunId, projectId, request, childRuns).catch((error) => {
+      console.error("[analysis] all-scan background run failed:", error);
+    });
+
+    return {
+      projectId,
+      runId: parentRunId,
+      scanType: "all",
+      status: "queued",
+      childRuns,
+      statusUrl: `${baseUrl}/api/projects/${projectId}/analyze/${parentRunId}`,
+      resultUrl: `${baseUrl}/api/projects/${projectId}/analyze/${parentRunId}/result`,
+    };
+  }
+
+  private async executeAllRuns(
+    parentRunId: string,
+    projectId: string,
+    request: AnalyzeProjectRequest,
+    childRuns: AnalysisChildRunStatus[],
+  ): Promise<void> {
+    const startedAt = new Date().toISOString();
+    await writeJsonFile(this.statusPath(parentRunId), {
+      runId: parentRunId,
+      projectId,
+      scanType: "all",
+      status: "running",
+      childRuns,
+      createdAt: startedAt,
+      updatedAt: startedAt,
+    } satisfies EngineParentAnalysisRun);
+
+    const children: LocalAllAnalysisResult["children"] = {};
+    const childStatusByType: Record<SupportedScanType, AnalysisChildRunStatus["status"]> = {
+      blueprint: "queued",
+      appflow: "queued",
+      data: "queued",
+    };
+    let errorCount = 0;
+
+    for (const child of childRuns) {
+      const providerId = providerIdForScanType(child.scanType, this.blueprintProviderId);
+      const runningChildRuns = childRuns.map((entry) =>
+        entry.scanType === child.scanType ? { ...entry, status: "running" as const } : entry,
+      );
+      await writeJsonFile(this.statusPath(parentRunId), {
+        runId: parentRunId,
+        projectId,
+        scanType: "all",
+        status: "running",
+        childRuns: runningChildRuns,
+        createdAt: startedAt,
+        updatedAt: new Date().toISOString(),
+      } satisfies EngineParentAnalysisRun);
+
+      const leafRequest: AnalyzeProjectRequest = {
+        ...request,
+        scanType: child.scanType,
+      };
+
+      await this.executeRun(child.runId, projectId, leafRequest, providerId, child.scanType);
+
+      const childStatus = await this.readRunStatus(child.runId);
+      const finalStatus = childStatus?.status ?? "failed";
+      childStatusByType[child.scanType] = finalStatus;
+      if (finalStatus === "failed") {
+        errorCount += 1;
+      } else {
+        const result = await readJsonFile<LocalEngineAnalysisResult | null>(
+          this.resultPath(child.runId),
+          null,
+        );
+        if (result?.kind === "blueprint") {
+          children.blueprint = result;
+        } else if (result?.kind === "appflow") {
+          children.appflow = result;
+        } else if (result?.kind === "data") {
+          children.data = result;
+        }
+      }
+
+      const updatedChildRuns = childRuns.map((entry) =>
+        entry.scanType === child.scanType
+          ? {
+              ...entry,
+              status: finalStatus,
+              error: childStatus?.error,
+            }
+          : entry,
+      );
+      childRuns.splice(0, childRuns.length, ...updatedChildRuns);
+
+      await writeJsonFile(this.statusPath(parentRunId), {
+        runId: parentRunId,
+        projectId,
+        scanType: "all",
+        status: aggregateParentStatus(updatedChildRuns.map((entry) => entry.status)),
+        childRuns: updatedChildRuns,
+        createdAt: startedAt,
+        updatedAt: new Date().toISOString(),
+      } satisfies EngineParentAnalysisRun);
+    }
+
+    const finishedAt = new Date().toISOString();
+    const parentStatus = aggregateParentStatus(childRuns.map((entry) => entry.status));
+    const allResult: LocalAllAnalysisResult = {
+      kind: "all",
+      projectId,
+      runId: parentRunId,
+      status:
+        parentStatus === "success" ? "success" : parentStatus === "failed" ? "failed" : "partial",
+      createdAt: finishedAt,
+      summary: {
+        blueprint: childStatusByType.blueprint,
+        appflow: childStatusByType.appflow,
+        data: childStatusByType.data,
+        warnings: 0,
+        errors: errorCount,
+      },
+      children,
+    };
+
+    await writeJsonFile(this.resultPath(parentRunId), allResult);
+    await writeJsonFile(this.statusPath(parentRunId), {
+      runId: parentRunId,
+      projectId,
+      scanType: "all",
+      status: parentStatus,
+      childRuns,
+      createdAt: startedAt,
+      updatedAt: finishedAt,
+      error:
+        parentStatus === "failed"
+          ? {
+              code: "ALL_SCANS_FAILED",
+              message: "Blueprint, App Flow, and Data scans all failed.",
+            }
+          : undefined,
+    } satisfies EngineParentAnalysisRun);
   }
 
   private async executeRun(
@@ -463,18 +676,39 @@ export class AnalysisService {
   }
 
   async getStatus(projectId: string, runId: string): Promise<AnalysisRunStatus> {
-    const status = await readJsonFile<EngineAnalysisRun | null>(this.statusPath(runId), null);
+    const parent = await this.readParentRun(runId);
+    if (parent && parent.projectId === projectId) {
+      const synced = await this.syncParentChildStatuses(parent);
+      if (synced.status !== parent.status) {
+        await writeJsonFile(this.statusPath(runId), synced);
+      }
+      const isTerminal =
+        synced.status === "success" || synced.status === "partial" || synced.status === "failed";
+      return {
+        projectId: synced.projectId,
+        runId: synced.runId,
+        scanType: synced.scanType,
+        status: synced.status,
+        startedAt: synced.createdAt,
+        finishedAt: isTerminal ? synced.updatedAt : undefined,
+        error: synced.error,
+        children: synced.childRuns,
+      };
+    }
+
+    const status = await this.readRunStatus(runId);
     if (!status || status.projectId !== projectId) {
       throw Object.assign(new Error("Analysis run not found"), { statusCode: 404 });
     }
+    const isTerminal =
+      status.status === "success" || status.status === "partial" || status.status === "failed";
     return {
       projectId: status.projectId,
       runId: status.runId,
       scanType: status.scanType,
       status: status.status,
       startedAt: status.createdAt,
-      finishedAt:
-        status.status === "success" || status.status === "failed" ? status.updatedAt : undefined,
+      finishedAt: isTerminal ? status.updatedAt : undefined,
       error: status.error,
     };
   }
@@ -504,6 +738,26 @@ export class AnalysisService {
           message: "Analysis failed.",
         },
       };
+    }
+
+    if (isParentScanType(status.scanType)) {
+      const result = await readJsonFile<LocalAllAnalysisResult | null>(
+        this.resultPath(runId),
+        null,
+      );
+      if (!result) {
+        return {
+          kind: "failed",
+          projectId,
+          runId,
+          status: "failed",
+          error: {
+            code: "ANALYSIS_RESULT_MISSING",
+            message: "Analysis result file is missing.",
+          },
+        };
+      }
+      return result;
     }
 
     if (status.scanType === "appflow") {

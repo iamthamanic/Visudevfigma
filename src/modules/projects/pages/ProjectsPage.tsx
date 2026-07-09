@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import clsx from "clsx";
-import { FolderGit2, LayoutGrid, List, Loader2, Plus, Search } from "lucide-react";
+import { FolderGit2, LayoutGrid, List, Loader2, Plus, Scan, Search } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -53,9 +53,17 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
     updateProject,
     deleteProject,
     startPreview,
+    activeProject,
+    startScan,
+    scanStatuses,
   } = useVisudev();
   const accessToken = session?.access_token ?? null;
   const localMode = isLocalVisuDevMode();
+  const localScanBlocked = localMode && !activeProject?.local_path;
+  const isAnyScanRunning =
+    scanStatuses.blueprint.status === "running" ||
+    scanStatuses.appflow.status === "running" ||
+    scanStatuses.data.status === "running";
   const defaultPreviewMode: PreviewMode = (() => {
     const localUrl =
       (typeof import.meta !== "undefined" && import.meta.env?.VITE_PREVIEW_RUNNER_URL) ||
@@ -335,16 +343,37 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
               Mode
             </p>
           </div>
-          <Button
-            onClick={() => {
-              setIsDialogOpen(true);
-              onNewProject?.();
-            }}
-            className={styles.primaryButton}
-          >
-            <Plus aria-hidden="true" />
-            Neues Projekt
-          </Button>
+          <div className={styles.headerActions}>
+            {localMode && activeProject?.local_path && (
+              <Button
+                variant="outline"
+                disabled={localScanBlocked || isAnyScanRunning}
+                onClick={async () => {
+                  toast.info("Blueprint, App Flow und Data werden nacheinander analysiert …");
+                  try {
+                    await startScan("all");
+                    toast.success("Gesamt-Scan abgeschlossen.");
+                  } catch (error) {
+                    const message = error instanceof Error ? error.message : String(error);
+                    toast.error(message);
+                  }
+                }}
+              >
+                <Scan className={styles.inlineIcon} aria-hidden="true" />
+                Alles scannen
+              </Button>
+            )}
+            <Button
+              onClick={() => {
+                setIsDialogOpen(true);
+                onNewProject?.();
+              }}
+              className={styles.primaryButton}
+            >
+              <Plus aria-hidden="true" />
+              Neues Projekt
+            </Button>
+          </div>
         </div>
 
         <div className={styles.toolbar}>

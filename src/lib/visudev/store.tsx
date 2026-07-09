@@ -33,6 +33,7 @@ import { publicAnonKey, supabaseUrl } from "../../utils/supabase/info";
 import type { PreviewStepLog } from "../../utils/api";
 import { previewAPI } from "../../utils/api";
 import { BlueprintScanError, runBlueprintScan } from "./blueprint-scan";
+import { runLocalAppflowCrawlIfNeeded } from "./run-local-appflow-crawl";
 
 export type { PreviewStepLog };
 
@@ -262,6 +263,177 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      if (scanType === "all" && isLocalVisuDevMode()) {
+        const scanId = crypto.randomUUID();
+        const timestamp = new Date().toISOString();
+        const makeScanLog = (
+          message: string,
+          logType: StepLogEntry["type"] = "info",
+        ): StepLogEntry => ({
+          time: new Date().toISOString(),
+          message,
+          type: logType,
+        });
+        const appendScanLog = (message: string, logType: StepLogEntry["type"] = "info") => {
+          setScans((prev) =>
+            prev.map((scan) =>
+              scan.id === scanId
+                ? {
+                    ...scan,
+                    logs: [...(scan.logs ?? []), makeScanLog(message, logType)],
+                  }
+                : scan,
+            ),
+          );
+        };
+
+        setScanStatuses((prev) => ({
+          ...prev,
+          blueprint: { status: "running", progress: 10, message: "Blueprint wird gestartet …" },
+          appflow: { status: "running", progress: 10, message: "Wartet auf Blueprint …" },
+          data: { status: "running", progress: 10, message: "Wartet auf App Flow …" },
+        }));
+        setScans((prev) => [
+          ...prev,
+          {
+            id: scanId,
+            projectId: activeProject.id,
+            scanType: "all",
+            status: "running",
+            progress: 10,
+            startedAt: timestamp,
+            logs: [makeScanLog("Gesamt-Scan gestartet (Blueprint → App Flow → Data)", "info")],
+          },
+        ]);
+
+        try {
+          const client = getVisuDevClient();
+          const started = await client.startAnalysis(activeProject.id, {
+            scanType: "all",
+            localPath: activeProject.local_path,
+          });
+          appendScanLog("Local Engine orchestriert alle Scans …", "info");
+
+          const deadline = Date.now() + 480_000;
+          let terminal = false;
+          while (Date.now() < deadline) {
+            const status = await client.getAnalysisStatus(activeProject.id, started.runId);
+            if (status.children) {
+              for (const child of status.children) {
+                const progress =
+                  child.status === "success" || child.status === "partial"
+                    ? 100
+                    : child.status === "running"
+                      ? 60
+                      : child.status === "failed"
+                        ? 0
+                        : 20;
+                const messageByType = {
+                  blueprint: "Blueprint",
+                  appflow: "App Flow",
+                  data: "Data",
+                } as const;
+                setScanStatuses((prev) => ({
+                  ...prev,
+                  [child.scanType]: {
+                    status:
+                      child.status === "success" || child.status === "partial"
+                        ? "completed"
+                        : child.status === "failed"
+                          ? "failed"
+                          : "running",
+                    progress,
+                    message:
+                      child.status === "failed"
+                        ? (child.error?.message ??
+                          `${messageByType[child.scanType]} fehlgeschlagen`)
+                        : `${messageByType[child.scanType]}: ${child.status}`,
+                    error: child.error?.message,
+                  },
+                }));
+              }
+            }
+
+            if (status.status === "success" || status.status === "partial") {
+              const result = await client.getAnalysisResult(activeProject.id, started.runId);
+              if (result.kind === "all") {
+                if (result.children.blueprint) {
+                  appendScanLog(
+                    `Blueprint: ${result.children.blueprint.summary.routesDetected} Routes, ${result.children.blueprint.summary.findings} Findings.`,
+                    "success",
+                  );
+                }
+                if (result.children.appflow) {
+                  appendScanLog("App Flow abgeschlossen — Runtime-Crawl wird geprüft …", "info");
+                  await runLocalAppflowCrawlIfNeeded(
+                    activeProject,
+                    result.children.appflow,
+                    appendScanLog,
+                    updateProject,
+                    client,
+                  );
+                }
+                if (result.children.data) {
+                  appendScanLog(
+                    `Data: ${result.children.data.summary.tablesDetected} Tabellen, ${result.children.data.summary.columnsDetected} Spalten.`,
+                    "success",
+                  );
+                }
+                appendScanLog("Gesamt-Scan abgeschlossen.", "success");
+              }
+              terminal = true;
+              break;
+            }
+            if (status.status === "failed") {
+              throw new VisuDevApiError(
+                status.error?.message ?? "All-scan failed",
+                status.error?.code ?? "ALL_SCAN_FAILED",
+                "local",
+              );
+            }
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+          }
+          if (!terminal) {
+            throw new Error("All-scan timed out.");
+          }
+
+          setScans((prev) =>
+            prev.map((scan) =>
+              scan.id === scanId
+                ? {
+                    ...scan,
+                    status: "completed",
+                    progress: 100,
+                    completedAt: new Date().toISOString(),
+                  }
+                : scan,
+            ),
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          appendScanLog(message, "error");
+          setScanStatuses((prev) => ({
+            ...prev,
+            blueprint: { ...prev.blueprint, status: "failed", error: message },
+            appflow: { ...prev.appflow, status: "failed", error: message },
+            data: { ...prev.data, status: "failed", error: message },
+          }));
+          setScans((prev) =>
+            prev.map((scan) =>
+              scan.id === scanId
+                ? {
+                    ...scan,
+                    status: "failed",
+                    progress: 0,
+                    completedAt: new Date().toISOString(),
+                  }
+                : scan,
+            ),
+          );
+        }
+        return;
+      }
+
       const scanTypes =
         scanType === "all" ? (["appflow", "blueprint", "data"] as const) : [scanType];
 
@@ -434,88 +606,12 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
               if (status.status === "success" || status.status === "partial") {
                 const result = await client.getAnalysisResult(activeProject.id, started.runId);
                 if (result.kind === "appflow") {
-                  let screens = result.screens as Screen[];
-                  const flows = result.flows as Project["flows"];
-                  let graph = result.graph as Project["analysisGraph"];
-                  let quality = result.quality as Project["analysisQuality"];
-                  let runtime = undefined;
-
-                  if (
-                    screens.length > 0 &&
-                    activeProject.preview_mode !== "deployed" &&
-                    activeProject.local_path
-                  ) {
-                    appendScanLog(
-                      `Runtime-Crawl angefragt (${Math.min(screens.length, 8)} Route-Screen(s)) über Local Engine.`,
-                      "info",
-                    );
-                    try {
-                      let previewStatus = await client.getPreviewStatus(activeProject.id);
-                      if (previewStatus.status !== "ready") {
-                        appendScanLog("Preview wird für Runtime-Crawl gestartet …", "info");
-                        await client.startPreview(activeProject.id, {
-                          projectId: activeProject.id,
-                          localPath: activeProject.local_path,
-                          branchOrCommit: activeProject.github_branch,
-                          commitSha: result.commitSha ?? activeProject.lastAnalyzedCommitSha,
-                        });
-                        const previewDeadline = Date.now() + 420_000;
-                        while (Date.now() < previewDeadline) {
-                          previewStatus = await client.getPreviewStatus(activeProject.id);
-                          if (previewStatus.status === "ready") break;
-                          if (previewStatus.status === "failed") {
-                            throw new Error("Preview start failed before crawl.");
-                          }
-                          await new Promise((resolve) => setTimeout(resolve, 2500));
-                        }
-                      }
-
-                      if (previewStatus.status === "ready") {
-                        const crawlResult = await client.crawlPreview(activeProject.id, {
-                          screens: screens.map((screen) => ({
-                            id: screen.id,
-                            name: screen.name,
-                            path: screen.path,
-                            type: screen.type,
-                            parentScreenId: screen.parentScreenId,
-                            parentPath: screen.parentPath,
-                            stateKey: screen.stateKey,
-                          })),
-                          maxScreens: 8,
-                          maxClicksPerScreen: 4,
-                        });
-                        runtime = crawlResult.runtime as unknown as Project["analysisRuntime"];
-                        screens = crawlResult.screens as Screen[];
-                        const merged = mergeRuntimeIntoAnalysis(graph, quality, runtime);
-                        graph = merged.graph;
-                        quality = merged.quality;
-                        appendScanLog(
-                          `Runtime-Crawl abgeschlossen: ${runtime?.summary?.verifiedEdges ?? 0} verifizierte Kanten, ${runtime?.summary?.stateCaptures ?? 0} State-Captures.`,
-                          "success",
-                        );
-                      } else {
-                        appendScanLog("Runtime-Crawl übersprungen: Preview nicht bereit.", "info");
-                      }
-                    } catch (crawlError) {
-                      const message =
-                        crawlError instanceof Error ? crawlError.message : String(crawlError);
-                      appendScanLog(`Runtime-Crawl übersprungen: ${message}`, "info");
-                    }
-                  }
-
-                  const updatedProject: Project = {
-                    ...activeProject,
-                    screens,
-                    flows,
-                    lastAnalyzedCommitSha: result.commitSha ?? activeProject.lastAnalyzedCommitSha,
-                    analysisGraph: graph,
-                    analysisQuality: quality,
-                    analysisRuntime: runtime,
-                  };
-                  await updateProject(updatedProject);
-                  appendScanLog(
-                    `App Flow: ${result.summary.screensDetected} Screens, ${result.summary.flowsDetected} Flows.`,
-                    "success",
+                  await runLocalAppflowCrawlIfNeeded(
+                    activeProject,
+                    result,
+                    appendScanLog,
+                    updateProject,
+                    client,
                   );
                 }
                 terminal = true;

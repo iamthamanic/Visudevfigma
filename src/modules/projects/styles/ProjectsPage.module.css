@@ -18,6 +18,13 @@
   justify-content: space-between;
 }
 
+.headerActions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .title {
   color: var(--color-foreground);
   font-size: 1.5rem;
