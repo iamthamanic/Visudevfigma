@@ -1,10 +1,10 @@
 {
   "version": 2,
   "repo": "iamthamanic/visudev-app",
-  "activeIssue": 51,
+  "activeIssue": 52,
   "featureSlug": null,
   "phase": "implement",
-  "branch": "issue/51-security-findings-enrichment",
+  "branch": "issue/52-provider-selector-ui",
   "prUrl": "",
   "milestoneFilter": null,
   "paused": false,
@@ -27,7 +27,7 @@
   "lastError": null,
   "lastErrorCount": 0,
   "issuesProcessedInSession": 0,
-  "updatedAt": 1783882451.483965,
+  "updatedAt": 1783882541.563581,
   "mergedIssues": [],
   "prUrls": {},
   "notes": "blueprint-engine-pluggable runner loop"
