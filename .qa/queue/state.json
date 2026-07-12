@@ -1,10 +1,10 @@
 {
   "version": 2,
   "repo": "iamthamanic/visudev-app",
-  "activeIssue": 49,
+  "activeIssue": 50,
   "featureSlug": null,
   "phase": "implement",
-  "branch": "issue/49-legacy-raw-dto",
+  "branch": "issue/50-autoguide-raw-dto",
   "prUrl": "",
   "milestoneFilter": null,
   "paused": false,
@@ -27,7 +27,7 @@
   "lastError": null,
   "lastErrorCount": 0,
   "issuesProcessedInSession": 0,
-  "updatedAt": 1783882169.911551,
+  "updatedAt": 1783882274.436073,
   "mergedIssues": [],
   "prUrls": {},
   "notes": "blueprint-engine-pluggable runner loop"
