@@ -1,4 +1,5 @@
 ---
+
 issue: #52
 title: Minimal provider selector UI
 started: 2026-07-12T18:55:34Z

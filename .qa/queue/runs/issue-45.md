@@ -1,4 +1,5 @@
 ---
+
 issue: #45
 title: Blueprint provider interface + registry refactor
 started: 2026-07-12T18:26:15Z

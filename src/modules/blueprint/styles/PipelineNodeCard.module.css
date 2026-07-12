@@ -104,21 +104,28 @@
   border-left-color: var(--color-border);
 }
 
-/* Placeholder (missing gate) */
+/* Placeholder / missing gate */
 
-.placeholder {
-  border-style: dashed;
+.placeholder,
+.stateUnknown.placeholder,
+.stateMissing.placeholder {
+  border: 1px dashed var(--color-danger);
+  background-color: var(--color-danger-soft);
   background-image: repeating-linear-gradient(
     45deg,
     transparent,
-    transparent 8px,
-    var(--color-danger-soft) 8px,
-    var(--color-danger-soft) 16px
+    transparent 6px,
+    var(--color-danger-soft) 6px,
+    var(--color-danger-soft) 12px
   );
 }
 
-.stateMissing.placeholder {
-  background-color: var(--color-danger-soft);
+.placeholder .state {
+  color: var(--color-danger);
+}
+
+.placeholder .label {
+  color: var(--color-danger);
 }
 
 /* Related findings */

@@ -1,4 +1,5 @@
 ---
+
 issue: #50
 title: Refactor AutoGuide adapter to raw DTO
 started: 2026-07-12T18:51:09Z

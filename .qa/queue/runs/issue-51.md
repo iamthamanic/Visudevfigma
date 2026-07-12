@@ -1,4 +1,5 @@
 ---
+
 issue: #51
 title: Security Matrix + Findings enrichment
 started: 2026-07-12T18:54:05Z
