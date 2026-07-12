@@ -232,7 +232,12 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
                   setSelectedFindingId(null);
                 }}
               />
-              <RouteBlueprintCanvas route={selectedRoute} />
+              <RouteBlueprintCanvas
+                route={selectedRoute}
+                findings={routeFindings}
+                selectedFindingId={selectedFindingId}
+                onSelectFinding={setSelectedFindingId}
+              />
             </section>
             <FindingInspector
               findings={routeFindings}

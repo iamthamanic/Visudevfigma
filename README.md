@@ -59,6 +59,7 @@ Der Vite-Dev-Server und `npm run preview` laufen fest auf **Port 3005** (`vite.c
 
 ## Recent changes
 
+- **2026-07-12** — Route Blueprint Canvas: fixed linear pipeline visualization (Request → Auth → Role → Validation → Handler → DB → Audit → External) with color-coded nodes, dashed missing-gate placeholders, and click-to-highlight findings (`feature/blueprint-route-canvas-pipeline`)
 - **2026-07-07** — Local Blueprint: `visudev-blueprint` basePath + Gastmodus; lokale Projekte mit `local_path` (`issue/7-blueprint-local-runner`)
 - **2026-07-07** — `npm run dev` Fast-Start: Vite parallel zu Edge Functions (kein blockierender Health-Wait) (`issue/1-blueprint-engine-core`)
 - **2026-07-07** — Fix `npm run dev` wenn Supabase-CLI Text vor/nach `status -o json` ausgibt (`issue/1-blueprint-engine-core`)
