@@ -1,0 +1,228 @@
+{
+  "epicSlug": "blueprint-engine-pluggable",
+  "epicTitle": "Pluggable Blueprint Engine with AutoGuide Adapter + VisuDEV Enrichment",
+  "designPath": ".qa/design/blueprint-engine-pluggable.md",
+  "draftPath": ".qa/intake/blueprint-engine-pluggable-issues.md",
+  "issues": [
+    {
+      "title": "Blueprint provider interface + registry refactor",
+      "priority": "P0",
+      "labels": ["needs-design"],
+      "dependsOn": [],
+      "featureSlug": "blueprint-provider-interface",
+      "bodySections": {
+        "intent": "Define a clean, narrow blueprint-provider contract so legacy and AutoGuide providers can be registered and selected interchangeably.",
+        "userJourney": "Engineer opens Local Engine config and sees a typed registry of blueprint providers (`legacy-blueprint-runner`, `autoguide`). Adding a future provider requires only implementing the interface and registering it.",
+        "problem": "Current `AnalysisProvider` is too broad (covers appflow/data too) and provider selection is buried in a hard-coded `resolveBlueprintProviderId` function. There is no intermediate raw-scan contract.",
+        "solution": "Introduce `BlueprintProvider` interface with `scan(input) → Promise<RawBlueprintScan>`. Keep `AnalysisProvider` for non-blueprint scans. Update `AnalysisService` registry to distinguish blueprint providers from other providers.",
+        "edgeCases": "A provider ID that is not registered must return a clear `PROVIDER_NOT_FOUND` error. Unknown future provider IDs must not break existing appflow/data runs.",
+        "acceptance": [
+          "`BlueprintProvider` interface exists in `local-engine/src/providers/blueprint-provider.interface.ts`.",
+          "`AnalysisService` stores blueprint providers separately from appflow/data providers.",
+          "`providerIdForScanType` still maps `blueprint` to the selected blueprint provider.",
+          "`npm run checks` green."
+        ],
+        "runtime": "local: yes; github: yes (shared types only)."
+      }
+    },
+    {
+      "title": "Robust parent/leaf run status handling",
+      "priority": "P0",
+      "labels": [],
+      "dependsOn": ["Blueprint provider interface + registry refactor"],
+      "featureSlug": "robust-parent-leaf-status",
+      "bodySections": {
+        "intent": "Eliminate the `parent.childRuns is not iterable` error by validating whether a status file actually represents a parent run before iterating children.",
+        "userJourney": "User creates a new project and clicks “Neu analysieren” in Blueprint view. The status endpoint returns a clear JSON status instead of throwing TypeError.",
+        "problem": "`readParentRun` casts the JSON file to `EngineParentAnalysisRun | null` without runtime validation. If the file is a leaf-run status (or corrupted), `syncParentChildStatuses` iterates `undefined`.",
+        "solution": "Add `isParentAnalysisRun(value)` type guard checking `scanType === 'all'` and `Array.isArray(childRuns)`. Guard `syncParentChildStatuses` and `getStatus`. Return `RUN_STATUS_INVALID` if a leaf run is misread as parent.",
+        "edgeCases": "Partially written status, missing `childRuns`, and leaf-run IDs polled as parent must all fail gracefully with structured errors.",
+        "acceptance": [
+          "`parent.childRuns is not iterable` no longer appears in logs or UI.",
+          "`getStatus` returns `{ success: false, error: { code: 'RUN_STATUS_INVALID' } }` when status file is not a valid parent run.",
+          "Unit tests cover leaf-run misread and missing `childRuns` scenarios.",
+          "`npm run checks` green."
+        ],
+        "runtime": "local: yes; github: yes (same shared types)."
+      }
+    },
+    {
+      "title": "Per-project blueprint provider selection + API",
+      "priority": "P0",
+      "labels": [],
+      "dependsOn": ["Blueprint provider interface + registry refactor"],
+      "featureSlug": "per-project-provider-selection",
+      "bodySections": {
+        "intent": "Allow each VisuDEV project to choose its blueprint provider independently, falling back to the global env default.",
+        "userJourney": "In project creation/editing, user selects “Blueprint Provider” (AutoGuide / Legacy). The selected provider is stored with the project and used for subsequent blueprint scans.",
+        "problem": "`VISUDEV_ANALYSIS_PROVIDER` is global; a user cannot compare AutoGuide and legacy output on two different projects side-by-side.",
+        "solution": "Add `blueprintProviderId` to `LocalVisuDevProject` and project DTO. Persist in `projects.json`. Expose on `POST /api/projects` and `PATCH /api/projects/:id`. `AnalysisService` resolves provider per project, falling back to env default.",
+        "edgeCases": "Invalid/missing provider ID falls back to env default, then `legacy-blueprint-runner`. Changing provider after a scan does not corrupt previous blueprint cache.",
+        "acceptance": [
+          "`LocalVisuDevProject` has optional `blueprintProviderId`.",
+          "Create and update project APIs accept and persist `blueprintProviderId`.",
+          "`AnalysisService.startAnalysis` resolves provider from project first, then config.",
+          "`GET /api/capabilities` still lists available providers.",
+          "`npm run checks` green."
+        ],
+        "runtime": "local: yes; github: yes (projects.json / Supabase project row)."
+      }
+    },
+    {
+      "title": "Raw-to-canonical Blueprint DTO + enrichment service",
+      "priority": "P0",
+      "labels": ["needs-design"],
+      "dependsOn": ["Blueprint provider interface + registry refactor"],
+      "featureSlug": "blueprint-enrichment-service",
+      "bodySections": {
+        "intent": "Decouple raw scan output from the final `BlueprintDocument` so VisuDEV enrichment is independent of the analysis provider.",
+        "userJourney": "Whether the scan came from AutoGuide or legacy runner, the Blueprint page receives the same canonical shape (routes, securityMatrix, findings, facts).",
+        "problem": "AutoGuide mapper currently builds the entire `BlueprintDocument` inline, duplicating defaults and making it hard to enrich consistently across providers.",
+        "solution": "Create `RawBlueprintScan` DTO (routes, facts, filesAnalyzed, providerMetadata). Build `BlueprintEnrichmentService.enrich(input)` that returns a typed `BlueprintDocument` with normalized routes, default project profile, and extension points for Security Matrix / findings.",
+        "edgeCases": "Empty raw scans still produce a valid empty `BlueprintDocument` (routes=[], findings=[], etc.). Unknown provider metadata is preserved under a namespaced key.",
+        "acceptance": [
+          "`RawBlueprintScan` type exists in shared API types.",
+          "`BlueprintEnrichmentService` exists in `local-engine/src/services/blueprint-enrichment.service.ts`.",
+          "Both providers can be routed through the same enrichment step.",
+          "Output passes `normalizeBlueprintData` on the client without data loss.",
+          "`npm run checks` green."
+        ],
+        "runtime": "local: yes; github: yes."
+      }
+    },
+    {
+      "title": "Refactor legacy blueprint provider to raw DTO",
+      "priority": "P0",
+      "labels": [],
+      "dependsOn": ["Raw-to-canonical Blueprint DTO + enrichment service"],
+      "featureSlug": "legacy-raw-dto",
+      "bodySections": {
+        "intent": "Make the legacy Preview-Runner blueprint provider return a `RawBlueprintScan` instead of a fully-formed `BlueprintDocument`.",
+        "userJourney": "Legacy scan completes and enrichment service normalizes its output exactly like AutoGuide output, so UI behavior is consistent.",
+        "problem": "Legacy provider currently builds `BlueprintDocument` directly; route shapes and security matrix may differ from AutoGuide output.",
+        "solution": "Update `LegacyVisuDevAnalysisProvider` to parse the runner response into `RawBlueprintScan` (routes, facts, raw metadata) and return `kind: 'blueprintRaw'`. `AnalysisService` passes the raw result to `BlueprintEnrichmentService`.",
+        "edgeCases": "Legacy runner still returns full legacy shape on its HTTP API; only the Local Engine provider mapping changes. Missing or partial runner response handled gracefully.",
+        "acceptance": [
+          "Legacy provider returns raw scan shape consumed by enrichment service.",
+          "Final persisted `blueprint.json` remains compatible with `BlueprintPage`.",
+          "Regression: legacy provider still default when no override is set.",
+          "`npm run checks` green."
+        ],
+        "runtime": "local: yes; github: n/a (legacy runner is local-only)."
+      }
+    },
+    {
+      "title": "Refactor AutoGuide adapter to raw DTO",
+      "priority": "P0",
+      "labels": [],
+      "dependsOn": ["Raw-to-canonical Blueprint DTO + enrichment service"],
+      "featureSlug": "autoguide-raw-dto",
+      "bodySections": {
+        "intent": "Make AutoGuide provider return the same `RawBlueprintScan` shape so it can share VisuDEV enrichment with the legacy provider.",
+        "userJourney": "With `VISUDEV_ANALYSIS_PROVIDER=autoguide`, the scan produces the same canonical blueprint page as legacy, enriched by VisuDEV.",
+        "problem": "`autoguide-to-blueprint.mapper.ts` builds a complete `BlueprintDocument` with hard-coded defaults. It duplicates enrichment logic that should be shared.",
+        "solution": "Replace mapper with `autoguide-to-raw.mapper.ts` producing `RawBlueprintScan`. Preserve original AutoGuide metadata under `providerMetadata.autoguide`. Route and fact IDs become stable. Enrichment service consumes the raw scan.",
+        "edgeCases": "`@autoguide/scanner` unavailable still returns `AUTOGUIDE_PACKAGES_UNAVAILABLE`. Empty routes/elements produce empty but valid raw scan.",
+        "acceptance": [
+          "AutoGuide provider returns raw scan shape.",
+          "Old `autoguide-to-blueprint.mapper.ts` logic is moved or replaced; no duplication with enrichment service.",
+          "Final blueprint still renders Security Matrix, Route Canvas, and Findings.",
+          "`npm run checks` green."
+        ],
+        "runtime": "local: yes; github: n/a (AutoGuide load is local-only)."
+      }
+    },
+    {
+      "title": "Security Matrix + Findings enrichment",
+      "priority": "P1",
+      "labels": [],
+      "dependsOn": [
+        "Refactor legacy blueprint provider to raw DTO",
+        "Refactor AutoGuide adapter to raw DTO"
+      ],
+      "featureSlug": "security-findings-enrichment",
+      "bodySections": {
+        "intent": "Populate Security Matrix and VisuDEV-specific findings from the canonical raw scan, independent of provider.",
+        "userJourney": "After any blueprint scan, the Security Matrix shows one row per route with auth/validation/role states, and the Finding Inspector lists maintainability/security findings derived from facts.",
+        "problem": "Security Matrix is currently scaffolded with all `unknown/n/a` in AutoGuide mapper and may differ in legacy output. Findings are limited to aria-label hints.",
+        "solution": "Extend `BlueprintEnrichmentService` with `buildSecurityMatrix(routes, facts)` and `buildFindings(routes, facts)`. Matrix columns: auth, role, validation, rateLimit, db, rls, audit. Initial state derived from heuristics (e.g., presence of auth middleware in file path, validation imports, RLS policy strings). Findings: missing aria-label, unvalidated route parameters, missing auth guard on mutating routes.",
+        "edgeCases": "Routes with no evidence keep `unknown` state, not false positives. Mutating methods (POST/PUT/PATCH/DELETE) flagged more strictly for auth than GET.",
+        "acceptance": [
+          "Security Matrix rows align with normalized routes for both providers.",
+          "At least three finding rules run heuristically on raw facts.",
+          "`BlueprintPage` displays matrix and findings without provider-specific branching.",
+          "`npm run checks` green."
+        ],
+        "runtime": "local: yes; github: yes."
+      }
+    },
+    {
+      "title": "Minimal provider selector UI",
+      "priority": "P1",
+      "labels": [],
+      "dependsOn": ["Per-project blueprint provider selection + API"],
+      "featureSlug": "provider-selector-ui",
+      "bodySections": {
+        "intent": "Let users choose a project’s blueprint provider without editing env files.",
+        "userJourney": "On the Projects page, the create/edit form includes a “Blueprint-Anbieter” select with “Systemstandard / Legacy / AutoGuide”.",
+        "problem": "Provider selection is hidden behind environment variables, making it hard to experiment.",
+        "solution": "Add a DaisyUI select in `ProjectsPage` create/edit form. Options map to `undefined | 'legacy-blueprint-runner' | 'autoguide'`. Disabled when `analysis.autoguide.available === false`. Persist via existing project API.",
+        "edgeCases": "Supabase mode hides the selector or shows read-only fallback. Invalid provider ID from API falls back gracefully.",
+        "acceptance": [
+          "Select appears in project creation and editing form.",
+          "AutoGuide option disabled when packages unavailable.",
+          "Selected value persisted and used on next blueprint scan.",
+          "`npm run checks` green."
+        ],
+        "runtime": "local: primary; github: selector hidden or read-only."
+      }
+    },
+    {
+      "title": "Update docs + env examples",
+      "priority": "P1",
+      "labels": [],
+      "dependsOn": [
+        "Per-project blueprint provider selection + API",
+        "Security Matrix + Findings enrichment"
+      ],
+      "featureSlug": "docs-env-update",
+      "bodySections": {
+        "intent": "Document the new pluggable provider model so team members know how to switch providers and add new ones.",
+        "userJourney": "Developer reads `docs/LOCAL_ENGINE.md` and understands: default provider, per-project override, how to add a new `BlueprintProvider`, and how enrichment works.",
+        "problem": "Docs currently only describe env-based AutoGuide enablement, not the broader provider architecture.",
+        "solution": "Update `docs/LOCAL_ENGINE.md` with a “Pluggable Blueprint Providers” section. Add optional `VISUDEV_DEFAULT_BLUEPRINT_PROVIDER` to `.env.local.example` if present. Mention new `BlueprintProvider` interface.",
+        "edgeCases": "If `.env.local.example` does not exist, skip or create only if consistent with project conventions.",
+        "acceptance": [
+          "`docs/LOCAL_ENGINE.md` explains provider interface, registry, per-project selection, and enrichment.",
+          "Env examples mention default provider configuration.",
+          "No dead references to removed files.",
+          "`npm run checks` green."
+        ],
+        "runtime": "docs only."
+      }
+    },
+    {
+      "title": "Regression tests + npm run checks green",
+      "priority": "P0",
+      "labels": [],
+      "dependsOn": [
+        "Robust parent/leaf run status handling",
+        "Security Matrix + Findings enrichment"
+      ],
+      "featureSlug": "regression-tests",
+      "bodySections": {
+        "intent": "Ensure the refactored provider and enrichment pipeline does not break existing blueprint behavior.",
+        "userJourney": "Running `npm run checks` after all changes passes lint, typecheck, tests, and build.",
+        "problem": "Wide refactor across providers, service, and shared types risks type or runtime regressions.",
+        "solution": "Add/update unit tests for: provider registry, status handling, enrichment service, legacy raw DTO mapping, AutoGuide raw DTO mapping. Run `npm run checks` and fix all warnings/errors.",
+        "edgeCases": "Tests must run without real AutoGuide packages installed (mock raw scan). Legacy runner tests mock HTTP response.",
+        "acceptance": [
+          "Unit tests cover provider registry, status handling, and enrichment.",
+          "`npm run checks` exits 0 with zero warnings.",
+          "Manual smoke test: create project → blueprint scan via legacy → no `childRuns` error."
+        ],
+        "runtime": "local: yes; github: yes (CI)."
+      }
+    }
+  ]
+}

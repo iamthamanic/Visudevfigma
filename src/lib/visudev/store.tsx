@@ -192,6 +192,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
           name: projectData.name,
           localPath: projectData.local_path,
           repositoryUrl: projectData.github_repo,
+          blueprintProviderId: projectData.blueprint_provider_id,
         });
         const normalized = normalizeProject(
           newProject as unknown as Record<string, unknown> & { id: string },
@@ -224,6 +225,7 @@ export function VisudevProvider({ children }: { children: ReactNode }) {
         name: project.name,
         localPath: project.local_path ?? null,
         repositoryUrl: project.github_repo ?? null,
+        blueprintProviderId: project.blueprint_provider_id ?? null,
       });
       const normalized = normalizeProject(
         updated as unknown as Record<string, unknown> & { id: string },

@@ -1,16 +1,16 @@
 {
   "version": 2,
   "repo": "iamthamanic/visudev-app",
-  "activeIssue": null,
-  "featureSlug": "local-first-visudev",
-  "phase": "queued",
-  "branch": "issue/18-local-first-visudev",
-  "prUrl": "https://github.com/iamthamanic/visudev-app/pull/32",
+  "activeIssue": 45,
+  "featureSlug": null,
+  "phase": "implement",
+  "branch": "issue/45-blueprint-provider-interface",
+  "prUrl": "",
   "milestoneFilter": null,
-  "paused": true,
-  "runMode": "batch",
-  "queue": [13, 14, 15, 16, 17, 26, 29, 30],
-  "completedIssues": [7, 10, 11, 12, 18, 19, 20, 21, 22, 23, 24, 25],
+  "paused": false,
+  "runMode": "loop",
+  "queue": [45],
+  "completedIssues": [],
   "retries": {
     "implement": 0,
     "verifyTicket": 0,
@@ -27,6 +27,8 @@
   "lastError": null,
   "lastErrorCount": 0,
   "issuesProcessedInSession": 0,
-  "updatedAt": "2026-07-08T12:02:00.000Z",
-  "notes": "Paused until PR #32 merged. Graph-DTO merged via PR #31. Next ecc-runner: #13 after PR #32."
+  "updatedAt": 1783880780.646016,
+  "mergedIssues": [],
+  "prUrls": {},
+  "notes": "blueprint-engine-pluggable runner loop"
 }

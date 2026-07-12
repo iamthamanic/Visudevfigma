@@ -3,7 +3,12 @@
  * Location: src/modules/projects/services/project-form-payload.ts
  */
 
-import type { PreviewMode, Project, ProjectSourceMode } from "../../../lib/visudev/types";
+import type {
+  BlueprintProviderId,
+  PreviewMode,
+  Project,
+  ProjectSourceMode,
+} from "../../../lib/visudev/types";
 
 export interface ProjectFormState {
   projectName: string;
@@ -15,6 +20,7 @@ export interface ProjectFormState {
   deployedUrl: string;
   previewMode: PreviewMode;
   databaseType: "supabase" | "local";
+  blueprintProviderId?: BlueprintProviderId;
   supabaseProjectId: string;
   supabaseAnonKey: string;
   supabaseManagementToken: string;
@@ -40,6 +46,7 @@ export function buildProjectFormPayload(
     deployed_url: form.deployedUrl,
     preview_mode: form.previewMode,
     database_type: form.databaseType,
+    blueprint_provider_id: form.blueprintProviderId,
     supabase_project_id: form.databaseType === "supabase" ? form.supabaseProjectId : undefined,
     supabase_anon_key: form.databaseType === "supabase" ? form.supabaseAnonKey : undefined,
     supabase_management_token:
