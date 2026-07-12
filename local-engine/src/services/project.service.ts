@@ -13,6 +13,7 @@ import {
   writeJsonFile,
 } from "../storage/file-store.js";
 import type {
+  BlueprintAnalysisProviderId,
   CreateProjectInput,
   LocalVisuDevProject,
   ProjectsIndex,
@@ -51,6 +52,16 @@ export class ProjectService {
     return validated.path;
   }
 
+  private validateBlueprintProviderId(
+    providerId?: string | null,
+  ): BlueprintAnalysisProviderId | undefined {
+    if (!providerId) return undefined;
+    if (providerId === "legacy-blueprint-runner" || providerId === "autoguide") {
+      return providerId;
+    }
+    throw new Error(`Invalid blueprint provider id: ${providerId}`);
+  }
+
   async init(): Promise<void> {
     await ensureVisuDevDir(this.storageDir);
     const index = await this.readIndex();
@@ -72,11 +83,13 @@ export class ProjectService {
   async createProject(input: CreateProjectInput): Promise<LocalVisuDevProject> {
     const now = new Date().toISOString();
     const localPath = this.validateLocalPath(input.localPath);
+    const blueprintProviderId = this.validateBlueprintProviderId(input.blueprintProviderId);
     const project: LocalVisuDevProject = {
       id: randomUUID(),
       name: input.name.trim(),
       repositoryUrl: input.repositoryUrl?.trim() || undefined,
       localPath,
+      blueprintProviderId,
       createdAt: now,
       updatedAt: now,
       source: "local",
@@ -105,6 +118,12 @@ export class ProjectService {
     if (input.localPath !== undefined) {
       existing.localPath =
         input.localPath === null ? undefined : this.validateLocalPath(input.localPath);
+    }
+    if (input.blueprintProviderId !== undefined) {
+      existing.blueprintProviderId =
+        input.blueprintProviderId === null
+          ? undefined
+          : this.validateBlueprintProviderId(input.blueprintProviderId);
     }
     existing.updatedAt = new Date().toISOString();
     await this.writeIndex(index);

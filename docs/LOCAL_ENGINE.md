@@ -53,16 +53,44 @@ Browser UI (3005)
   → getVisuDevClient()
     → Local Engine (4317)
       → ~/.visudev storage
-      → LegacyBlueprintRunnerProvider → Runner /blueprint/analyze
+      → BlueprintProvider registry
+        → LegacyBlueprintRunnerProvider → Runner /blueprint/analyze
+        → AutoGuideAnalysisProvider → @autoguide/scanner
+      → BlueprintEnrichmentService → canonical BlueprintDocument
       → LocalPreviewRunnerProvider → Runner /start|status|stop-project
       → Browse proxy → Runner /browse-local-path
 ```
 
-## AutoGuide-ready adapters
+## Pluggable Blueprint Providers
 
-- `legacy-visudev-analysis.provider.ts` — default blueprint path (Preview Runner + Deno pipeline)
-- `autoguide-analysis.provider.ts` — optional `@autoguide/scanner` integration
-- `autoguide-stub.provider.ts` — dev stub when `VISUDEV_AUTOGUIDE_STUB=1`
+Blueprint analysis is split into two layers:
+
+1. **Provider** — scans source files and returns a `RawBlueprintScan` (routes, facts, metadata).
+2. **Enrichment** — `BlueprintEnrichmentService` turns any raw scan into the canonical `BlueprintDocument` used by the UI.
+
+This means AutoGuide supplies the **base scan**, while VisuDEV owns Security Matrix, findings, and project profile.
+
+### Built-in providers
+
+| Provider                  | File                                                             | Default |
+| ------------------------- | ---------------------------------------------------------------- | ------- |
+| `legacy-blueprint-runner` | `local-engine/src/providers/legacy-visudev-analysis.provider.ts` | yes     |
+| `autoguide`               | `local-engine/src/providers/autoguide-analysis.provider.ts`      | no      |
+
+### Adding a new BlueprintProvider
+
+1. Implement `BlueprintProvider` in `local-engine/src/providers/<id>.provider.ts`.
+2. Return a `RawBlueprintScan` from `scanProject()`.
+3. Register it in `AnalysisService` constructor.
+4. Add the new id to `BlueprintAnalysisProviderId` in `shared/visudev-api.types.ts`.
+
+### Provider selection
+
+Priority (highest first):
+
+1. Per-project `blueprintProviderId` (set via Projects page UI or API)
+2. `VISUDEV_ANALYSIS_PROVIDER` environment variable
+3. `legacy-blueprint-runner`
 
 ### Enable AutoGuide blueprint scans
 

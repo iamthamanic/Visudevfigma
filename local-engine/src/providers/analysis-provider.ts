@@ -1,5 +1,6 @@
 /**
- * Analysis provider interface for Local Engine.
+ * Analysis provider interface for non-blueprint scans (appflow, data, preview).
+ * Blueprint providers use the narrower `BlueprintProvider` interface.
  * Location: local-engine/src/providers/analysis-provider.ts
  */
 
@@ -19,3 +20,5 @@ export interface AnalysisProvider {
   name: string;
   analyzeProject(input: AnalyzeProjectInput): Promise<LocalEngineAnalysisResult>;
 }
+
+export type { BlueprintProvider, BlueprintProviderInput } from "./blueprint-provider.interface.js";

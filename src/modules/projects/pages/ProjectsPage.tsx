@@ -25,7 +25,12 @@ import { isLocalHostUI } from "../../../lib/visudev/guest-mode";
 import { isLocalVisuDevMode } from "../../../lib/visudev-api";
 import { hasPreviewSource, projectNameFromLocalPath } from "../../../lib/visudev/project-source";
 import { useVisudev } from "../../../lib/visudev/store";
-import type { PreviewMode, Project, ProjectSourceMode } from "../../../lib/visudev/types";
+import type {
+  BlueprintProviderId,
+  PreviewMode,
+  Project,
+  ProjectSourceMode,
+} from "../../../lib/visudev/types";
 import { api } from "../../../utils/api";
 import { ProjectCard } from "../components/ProjectCard";
 import { ProjectListWithDnD, type ListSortColumn } from "../components/ProjectListWithDnD";
@@ -119,6 +124,9 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
   const [deployedUrl, setDeployedUrl] = useState("");
   const [previewMode, setPreviewMode] = useState<PreviewMode>(defaultPreviewMode);
   const [databaseType, setDatabaseType] = useState<"supabase" | "local">("supabase");
+  const [blueprintProviderId, setBlueprintProviderId] = useState<BlueprintProviderId | undefined>(
+    undefined,
+  );
   const [supabaseProjectId, setSupabaseProjectId] = useState("");
   const [supabaseAnonKey, setSupabaseAnonKey] = useState("");
   const [supabaseManagementToken, setSupabaseManagementToken] = useState("");
@@ -134,6 +142,7 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
       deployedUrl,
       previewMode,
       databaseType,
+      blueprintProviderId,
       supabaseProjectId,
       supabaseAnonKey,
       supabaseManagementToken,
@@ -148,6 +157,7 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
       deployedUrl,
       previewMode,
       databaseType,
+      blueprintProviderId,
       supabaseProjectId,
       supabaseAnonKey,
       supabaseManagementToken,
@@ -228,6 +238,7 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
     setDeployedUrl(project.deployed_url || "");
     setPreviewMode(project.preview_mode ?? defaultPreviewMode);
     setDatabaseType(project.database_type === "local" ? "local" : "supabase");
+    setBlueprintProviderId(project.blueprint_provider_id);
     setSupabaseProjectId(project.supabase_project_id || "");
     setSupabaseAnonKey(project.supabase_anon_key || "");
     setSupabaseManagementToken(project.supabase_management_token || "");
@@ -244,9 +255,11 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
     setDeployedUrl("");
     setPreviewMode(defaultPreviewMode);
     setDatabaseType("supabase");
+    setBlueprintProviderId(undefined);
     setSupabaseProjectId("");
     setSupabaseAnonKey("");
     setSupabaseManagementToken("");
+    setBlueprintProviderId(undefined);
   };
 
   const handleNextStep = () => {
@@ -613,6 +626,32 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
                     </p>
                   ) : null}
                 </div>
+
+                {localMode && (
+                  <div className={styles.stackSm}>
+                    <Label htmlFor="blueprintProvider">Blueprint-Anbieter</Label>
+                    <Select
+                      value={blueprintProviderId ?? "default"}
+                      onValueChange={(value) =>
+                        setBlueprintProviderId(
+                          value === "default" ? undefined : (value as BlueprintProviderId),
+                        )
+                      }
+                    >
+                      <SelectTrigger id="blueprintProvider">
+                        <SelectValue placeholder="Systemstandard verwenden" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default">Systemstandard</SelectItem>
+                        <SelectItem value="legacy-blueprint-runner">Legacy Runner</SelectItem>
+                        <SelectItem value="autoguide">AutoGuide</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
+                      „Systemstandard“ nutzt die Umgebungsvariable VISUDEV_ANALYSIS_PROVIDER.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -800,6 +839,32 @@ export function ProjectsPage({ onProjectSelect, onNewProject, onOpenSettings }: 
               <div className={styles.stackSm}>
                 <Label htmlFor="editLocalPath">Projektordner</Label>
                 <LocalPathPicker id="editLocalPath" value={localPath} onChange={setLocalPath} />
+              </div>
+            )}
+
+            {localMode && (
+              <div className={styles.stackSm}>
+                <Label htmlFor="editBlueprintProvider">Blueprint-Anbieter</Label>
+                <Select
+                  value={blueprintProviderId ?? "default"}
+                  onValueChange={(value) =>
+                    setBlueprintProviderId(
+                      value === "default" ? undefined : (value as BlueprintProviderId),
+                    )
+                  }
+                >
+                  <SelectTrigger id="editBlueprintProvider">
+                    <SelectValue placeholder="Systemstandard verwenden" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Systemstandard</SelectItem>
+                    <SelectItem value="legacy-blueprint-runner">Legacy Runner</SelectItem>
+                    <SelectItem value="autoguide">AutoGuide</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className={`${styles.fieldHint} ${styles.fieldHintSpacing}`}>
+                  „Systemstandard" nutzt die Umgebungsvariable VISUDEV_ANALYSIS_PROVIDER.
+                </p>
               </div>
             )}
 

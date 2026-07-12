@@ -8,12 +8,14 @@ import { appendJsonLog, readJsonFile, writeJsonFile } from "../storage/file-stor
 import { AutoGuideAnalysisProvider } from "../providers/autoguide-analysis.provider.js";
 import { AutoGuideStubProvider } from "../providers/autoguide-stub.provider.js";
 import type { AnalysisProvider } from "../providers/analysis-provider.js";
+import type { BlueprintProvider } from "../providers/blueprint-provider.interface.js";
 import { LegacyAppflowRunnerProvider } from "../providers/legacy-appflow-runner.provider.js";
 import { LocalDataIntrospectionProvider } from "../providers/local-data-introspection.provider.js";
 import { LegacyVisuDevAnalysisProvider } from "../providers/legacy-visudev-analysis.provider.js";
 import type { EngineConfig } from "../config.js";
 import { ALL_SCAN_SEQUENCE, aggregateParentStatus, isParentScanType } from "../lib/analysis-all.js";
 import type { ProjectService } from "./project.service.js";
+import { enrichBlueprint } from "./blueprint-enrichment.service.js";
 import type {
   AnalysisChildRunStatus,
   AnalysisRunStatus,
@@ -29,6 +31,8 @@ import type {
   LocalDataAnalysisResult,
   LocalDataLatest,
   LocalEngineAnalysisResult,
+  LocalVisuDevProject,
+  RawBlueprintScan,
   StartAnalysisResponse,
   SupportedScanType,
 } from "../types/api.types.js";
@@ -46,14 +50,35 @@ function providerIdForScanType(
   return blueprintProviderId;
 }
 
-function resolveBlueprintProviderId(config: EngineConfig): BlueprintAnalysisProviderId {
+function resolveBlueprintProviderId(
+  config: EngineConfig,
+  project?: LocalVisuDevProject,
+): BlueprintAnalysisProviderId {
+  if (project?.blueprintProviderId) return project.blueprintProviderId;
   if (config.analysisProvider === "autoguide") return "autoguide";
   return "legacy-blueprint-runner";
 }
 
+function isParentAnalysisRun(value: unknown): value is EngineParentAnalysisRun {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    candidate.scanType === "all" &&
+    Array.isArray(candidate.childRuns) &&
+    candidate.childRuns.every(
+      (child) =>
+        child &&
+        typeof child === "object" &&
+        typeof (child as { scanType?: unknown }).scanType === "string" &&
+        typeof (child as { runId?: unknown }).runId === "string",
+    )
+  );
+}
+
 export class AnalysisService {
-  private readonly providers: Map<string, AnalysisProvider>;
-  private readonly blueprintProviderId: BlueprintAnalysisProviderId;
+  private readonly analysisProviders: Map<string, AnalysisProvider>;
+  private readonly blueprintProviders: Map<string, BlueprintProvider>;
+  private readonly defaultBlueprintProviderId: BlueprintAnalysisProviderId;
 
   constructor(
     private readonly storageDir: string,
@@ -61,21 +86,25 @@ export class AnalysisService {
     runnerUrl: string,
     config: EngineConfig,
   ) {
-    this.blueprintProviderId = resolveBlueprintProviderId(config);
-    this.providers = new Map<string, AnalysisProvider>([
-      ["legacy-blueprint-runner", new LegacyVisuDevAnalysisProvider(runnerUrl)],
+    this.defaultBlueprintProviderId = resolveBlueprintProviderId(config);
+
+    const legacyBlueprintProvider = new LegacyVisuDevAnalysisProvider(runnerUrl);
+    const autoguideProvider = new AutoGuideAnalysisProvider({
+      autoguideRoot: config.autoguideRoot,
+      sourceSubdir: config.autoguideSourceDir,
+    });
+
+    this.blueprintProviders = new Map<string, BlueprintProvider>([
+      [legacyBlueprintProvider.id, legacyBlueprintProvider],
+      [autoguideProvider.id, autoguideProvider],
+    ]);
+
+    this.analysisProviders = new Map<string, AnalysisProvider>([
       ["legacy-appflow-runner", new LegacyAppflowRunnerProvider(runnerUrl)],
       ["local-data-introspection", new LocalDataIntrospectionProvider()],
-      [
-        "autoguide",
-        new AutoGuideAnalysisProvider({
-          autoguideRoot: config.autoguideRoot,
-          sourceSubdir: config.autoguideSourceDir,
-        }),
-      ],
     ]);
     if (config.autoguideStub) {
-      this.providers.set("autoguide-stub", new AutoGuideStubProvider());
+      this.analysisProviders.set("autoguide-stub", new AutoGuideStubProvider());
     }
   }
 
@@ -114,11 +143,25 @@ export class AnalysisService {
   }
 
   private resolveProvider(providerId: string): AnalysisProvider {
-    const provider = this.providers.get(providerId);
+    const provider = this.analysisProviders.get(providerId);
     if (!provider) {
       throw new Error(`Unknown analysis provider: ${providerId}`);
     }
     return provider;
+  }
+
+  private resolveBlueprintProvider(providerId: BlueprintAnalysisProviderId): BlueprintProvider {
+    const provider = this.blueprintProviders.get(providerId);
+    if (!provider) {
+      throw new Error(`Unknown blueprint provider: ${providerId}`);
+    }
+    return provider;
+  }
+
+  private resolveProjectBlueprintProviderId(
+    project?: LocalVisuDevProject,
+  ): BlueprintAnalysisProviderId {
+    return project?.blueprintProviderId ?? this.defaultBlueprintProviderId;
   }
 
   private assertLeafScanType(scanType: AnalyzeProjectRequest["scanType"]): SupportedScanType {
@@ -137,7 +180,12 @@ export class AnalysisService {
   }
 
   private async readParentRun(runId: string): Promise<EngineParentAnalysisRun | null> {
-    return readJsonFile<EngineParentAnalysisRun | null>(this.statusPath(runId), null);
+    const raw = await readJsonFile<unknown | null>(this.statusPath(runId), null);
+    if (!raw) return null;
+    if (!isParentAnalysisRun(raw)) {
+      return null;
+    }
+    return raw;
   }
 
   private async syncParentChildStatuses(
@@ -177,7 +225,8 @@ export class AnalysisService {
       throw Object.assign(new Error("Project not found"), { statusCode: 404 });
     }
 
-    const providerId = providerIdForScanType(scanType, this.blueprintProviderId);
+    const blueprintProviderId = this.resolveProjectBlueprintProviderId(project);
+    const providerId = providerIdForScanType(scanType, blueprintProviderId);
 
     const runId = createRunId();
     const now = new Date().toISOString();
@@ -198,9 +247,11 @@ export class AnalysisService {
       scanType,
     });
 
-    void this.executeRun(runId, projectId, request, providerId, scanType).catch((error) => {
-      console.error("[analysis] background run failed:", error);
-    });
+    void this.executeRun(runId, projectId, request, providerId, scanType, project).catch(
+      (error) => {
+        console.error("[analysis] background run failed:", error);
+      },
+    );
 
     return {
       projectId,
@@ -247,7 +298,7 @@ export class AnalysisService {
       scanType: "all",
     });
 
-    void this.executeAllRuns(parentRunId, projectId, request, childRuns).catch((error) => {
+    void this.executeAllRuns(parentRunId, projectId, request, childRuns, project).catch((error) => {
       console.error("[analysis] all-scan background run failed:", error);
     });
 
@@ -267,7 +318,9 @@ export class AnalysisService {
     projectId: string,
     request: AnalyzeProjectRequest,
     childRuns: AnalysisChildRunStatus[],
+    project: LocalVisuDevProject,
   ): Promise<void> {
+    const blueprintProviderId = this.resolveProjectBlueprintProviderId(project);
     const startedAt = new Date().toISOString();
     await writeJsonFile(this.statusPath(parentRunId), {
       runId: parentRunId,
@@ -288,7 +341,7 @@ export class AnalysisService {
     let errorCount = 0;
 
     for (const child of childRuns) {
-      const providerId = providerIdForScanType(child.scanType, this.blueprintProviderId);
+      const providerId = providerIdForScanType(child.scanType, blueprintProviderId);
       const runningChildRuns = childRuns.map((entry) =>
         entry.scanType === child.scanType ? { ...entry, status: "running" as const } : entry,
       );
@@ -307,7 +360,14 @@ export class AnalysisService {
         scanType: child.scanType,
       };
 
-      await this.executeRun(child.runId, projectId, leafRequest, providerId, child.scanType);
+      await this.executeRun(
+        child.runId,
+        projectId,
+        leafRequest,
+        providerId,
+        child.scanType,
+        project,
+      );
 
       const childStatus = await this.readRunStatus(child.runId);
       const finalStatus = childStatus?.status ?? "failed";
@@ -394,10 +454,8 @@ export class AnalysisService {
     request: AnalyzeProjectRequest,
     providerId: EngineAnalysisRun["providerId"],
     scanType: SupportedScanType,
+    project: LocalVisuDevProject,
   ): Promise<void> {
-    const project = await this.projectService.getProject(projectId);
-    if (!project) return;
-
     const runningAt = new Date().toISOString();
     await writeJsonFile(this.statusPath(runId), {
       runId,
@@ -409,13 +467,41 @@ export class AnalysisService {
       updatedAt: runningAt,
     } satisfies EngineAnalysisRun);
 
-    const provider = this.resolveProvider(providerId);
-    const result = await provider.analyzeProject({
-      ...request,
-      projectId,
-      project,
-      localPath: request.localPath ?? project.localPath,
-    });
+    let result: LocalEngineAnalysisResult;
+    try {
+      if (scanType === "blueprint") {
+        const blueprintProviderId = this.resolveProjectBlueprintProviderId(project);
+        const provider = this.resolveBlueprintProvider(blueprintProviderId);
+        const rawScan = await provider.scanProject({
+          ...request,
+          projectId,
+          project,
+          localPath: request.localPath ?? project.localPath,
+        });
+        result = this.buildBlueprintResult(runId, projectId, blueprintProviderId, rawScan);
+      } else {
+        const provider = this.resolveProvider(providerId);
+        result = await provider.analyzeProject({
+          ...request,
+          projectId,
+          project,
+          localPath: request.localPath ?? project.localPath,
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Analysis failed.";
+      const code =
+        error && typeof error === "object" && "code" in error
+          ? String((error as { code?: unknown }).code ?? "ANALYSIS_FAILED")
+          : "ANALYSIS_FAILED";
+      result = {
+        kind: "failed",
+        projectId,
+        runId,
+        status: "failed",
+        error: { code, message },
+      };
+    }
 
     const finishedAt = new Date().toISOString();
 
@@ -430,6 +516,35 @@ export class AnalysisService {
     }
 
     await this.persistDataRun(runId, projectId, providerId, runningAt, finishedAt, result);
+  }
+
+  private buildBlueprintResult(
+    runId: string,
+    projectId: string,
+    providerId: BlueprintAnalysisProviderId,
+    rawScan: RawBlueprintScan,
+  ): LocalBlueprintAnalysisResult {
+    const blueprint = enrichBlueprint(rawScan);
+    const routesDetected = rawScan.routes.length;
+    const findings = Array.isArray(blueprint.findings) ? blueprint.findings.length : 0;
+
+    return {
+      kind: "blueprint",
+      projectId,
+      runId,
+      providerId,
+      status: "success",
+      createdAt: new Date().toISOString(),
+      summary: {
+        routesDetected,
+        findings,
+        filesAnalyzed: rawScan.filesAnalyzed,
+        warnings: 0,
+        errors: 0,
+      },
+      blueprint,
+      raw: rawScan.providerMetadata,
+    };
   }
 
   private async persistBlueprintRun(
@@ -472,8 +587,11 @@ export class AnalysisService {
     };
 
     const runnerAnalysisId =
-      result.raw && typeof result.raw === "object" && "runnerAnalysisId" in result.raw
-        ? String((result.raw as { runnerAnalysisId?: string }).runnerAnalysisId ?? "")
+      result.raw && typeof result.raw === "object" && "legacy" in result.raw
+        ? String(
+            (result.raw as { legacy?: { runnerAnalysisId?: string } }).legacy?.runnerAnalysisId ??
+              "",
+          )
         : undefined;
 
     await writeJsonFile(this.resultPath(runId), blueprintResult);

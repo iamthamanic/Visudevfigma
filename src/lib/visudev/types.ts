@@ -79,6 +79,8 @@ export interface PreviewRuntimeOptions {
   injectSupabasePlaceholders?: boolean;
 }
 
+export type BlueprintProviderId = "legacy-blueprint-runner" | "autoguide";
+
 export interface Project {
   id: string;
   name: string;
@@ -95,6 +97,8 @@ export interface Project {
   preview_mode?: PreviewMode;
   /** Data view (ERD): used by ProjectsPage, ProjectCard, visudev-server for Supabase vs local DB */
   database_type?: "supabase" | "local" | "none";
+  /** Blueprint analysis provider override; undefined falls back to system default. */
+  blueprint_provider_id?: BlueprintProviderId;
   supabase_project_id?: string;
   supabase_anon_key?: string;
   supabase_management_token?: string;

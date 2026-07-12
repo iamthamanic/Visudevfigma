@@ -50,6 +50,7 @@ function mapLocalProject(project: LocalVisuDevProject): Project {
     local_path: project.localPath,
     github_repo: normalizeGithubRepo(project.repositoryUrl),
     source_mode: project.localPath ? "local" : "github",
+    blueprint_provider_id: project.blueprintProviderId,
     screens: [],
     flows: [],
     preview_mode: "local",

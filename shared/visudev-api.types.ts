@@ -23,11 +23,14 @@ export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
 
 export type AnalysisStatus = "queued" | "running" | "success" | "partial" | "failed";
 
+export type BlueprintAnalysisProviderId = "legacy-blueprint-runner" | "autoguide";
+
 export type LocalVisuDevProject = {
   id: string;
   name: string;
   repositoryUrl?: string;
   localPath?: string;
+  blueprintProviderId?: BlueprintAnalysisProviderId;
   createdAt: string;
   updatedAt: string;
   source: "local";
@@ -57,12 +60,14 @@ export type CreateProjectInput = {
   name: string;
   repositoryUrl?: string;
   localPath?: string;
+  blueprintProviderId?: BlueprintAnalysisProviderId;
 };
 
 export type UpdateProjectInput = {
   name?: string;
   repositoryUrl?: string | null;
   localPath?: string | null;
+  blueprintProviderId?: BlueprintAnalysisProviderId | null;
 };
 
 export type AnalyzeProjectRequest = {
@@ -104,7 +109,35 @@ export type AnalysisRunStatus = {
 
 export type BlueprintDocument = Record<string, unknown>;
 
-export type BlueprintAnalysisProviderId = "legacy-blueprint-runner" | "autoguide";
+export type RawBlueprintRoute = {
+  id: string;
+  method: string;
+  path: string;
+  filePath: string;
+  line: number;
+  pipeline?: unknown[];
+  concepts?: Record<string, unknown>;
+};
+
+export type RawBlueprintFact = {
+  id: string;
+  kind: string;
+  filePath: string;
+  line: number;
+  snippet: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type RawBlueprintScan = {
+  providerId: BlueprintAnalysisProviderId;
+  projectId: string;
+  localPath: string;
+  analyzedAt: string;
+  routes: RawBlueprintRoute[];
+  facts: RawBlueprintFact[];
+  filesAnalyzed: number;
+  providerMetadata?: Record<string, unknown>;
+};
 
 export type LocalBlueprintAnalysisResult = {
   kind: "blueprint";
