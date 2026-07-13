@@ -173,15 +173,89 @@ export function deriveDiagnosticsFromGraph(graph: SoftwareGraph): {
 } {
   const facts = deriveFactsFromGraph(graph);
   const routes = deriveRoutesFromGraph(graph);
-  const findings = deriveFindingsFromGraph(graph);
-  const securityMatrixBase = deriveSecurityMatrixFromGraph(graph);
-  const findingCountByRoute = new Map<string, number>();
-  for (const finding of findings) {
-    findingCountByRoute.set(finding.scopeId, (findingCountByRoute.get(finding.scopeId) ?? 0) + 1);
+
+  const factsByFilePath = new Map<string, CodeFact[]>();
+  for (const fact of facts) {
+    const list = factsByFilePath.get(fact.filePath) ?? [];
+    list.push(fact);
+    factsByFilePath.set(fact.filePath, list);
   }
-  const securityMatrix = securityMatrixBase.map((row) => ({
-    ...row,
-    findingCount: findingCountByRoute.get(row.routeId) ?? 0,
-  }));
+
+  const findings: BlueprintFinding[] = [];
+  const findingCountByRoute = new Map<string, number>();
+  const securityMatrix: SecurityMatrixRow[] = [];
+
+  for (const route of routes) {
+    const routeFacts = factsByFilePath.get(route.filePath) ?? [];
+    const authState = inferAuthState(route, facts);
+    const validationState = inferValidationState(route, facts);
+
+    if (authState === "missing") {
+      const finding: BlueprintFinding = {
+        id: `finding-auth-${route.id}`,
+        ruleId: "visudev/missing-auth",
+        category: "security",
+        severity: "medium",
+        scopeId: route.id,
+        message: `Route ${route.method} ${route.path} appears to lack an auth guard.`,
+        expectedState: "protected",
+        actualState: "unprotected",
+        evidenceFactIds: routeFacts.map((fact) => fact.id),
+        confidence: 0.6,
+      };
+      findings.push(finding);
+      findingCountByRoute.set(route.id, (findingCountByRoute.get(route.id) ?? 0) + 1);
+    }
+
+    if (validationState === "missing") {
+      const finding: BlueprintFinding = {
+        id: `finding-validation-${route.id}`,
+        ruleId: "visudev/missing-validation",
+        category: "security",
+        severity: "medium",
+        scopeId: route.id,
+        message: `Route ${route.method} ${route.path} has no visible input validation.`,
+        expectedState: "validated",
+        actualState: "unvalidated",
+        evidenceFactIds: routeFacts.map((fact) => fact.id),
+        confidence: 0.55,
+      };
+      findings.push(finding);
+      findingCountByRoute.set(route.id, (findingCountByRoute.get(route.id) ?? 0) + 1);
+    }
+
+    for (const fact of routeFacts) {
+      if (fact.kind !== "autoguide:missing-aria-label") continue;
+      const finding: BlueprintFinding = {
+        id: `finding-aria-${fact.id}`,
+        ruleId: "visudev/missing-aria-label",
+        category: "maintainability",
+        severity: "low",
+        scopeId: route.id,
+        message: `Interactive element in ${fact.filePath} is missing an accessible label.`,
+        expectedState: "labeled",
+        actualState: "missing",
+        evidenceFactIds: [fact.id],
+        confidence: 0.8,
+      };
+      findings.push(finding);
+      findingCountByRoute.set(route.id, (findingCountByRoute.get(route.id) ?? 0) + 1);
+    }
+
+    securityMatrix.push({
+      routeId: route.id,
+      method: route.method,
+      path: route.path,
+      auth: { state: authState },
+      role: { state: "unknown" },
+      validation: { state: validationState },
+      rateLimit: { state: "n/a" },
+      db: { state: "n/a" },
+      rls: { state: "n/a" },
+      audit: { state: "n/a" },
+      findingCount: findingCountByRoute.get(route.id) ?? 0,
+    });
+  }
+
   return { routes, securityMatrix, findings, facts };
 }
