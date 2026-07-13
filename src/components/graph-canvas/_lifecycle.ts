@@ -5,7 +5,7 @@
 import type cytoscape from "cytoscape";
 import type { GraphCanvasEdge, GraphCanvasNode } from "./types.js";
 import { buildElements } from "./_elements.js";
-import { buildLayoutOptions } from "./_layout.js";
+import { buildLayoutOptions, type LayoutPreset } from "./_layout.js";
 import { buildStylesheet } from "./_styles.js";
 
 type CytoscapeFactory = typeof cytoscape;
@@ -36,13 +36,14 @@ export async function createCytoscapeInstance(
   container: HTMLDivElement,
   nodes: GraphCanvasNode[],
   edges: GraphCanvasEdge[],
+  layoutPreset: LayoutPreset = "default",
 ): Promise<cytoscape.Core> {
   const cytoscape = await loadCytoscape();
   return cytoscape({
     container,
     elements: buildElements(nodes, edges),
     style: buildStylesheet(),
-    layout: buildLayoutOptions(nodes.length, true),
+    layout: buildLayoutOptions(nodes.length, true, layoutPreset),
     wheelSensitivity: 0.2,
     minZoom: 0.1,
     maxZoom: 3,

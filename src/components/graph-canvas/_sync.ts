@@ -7,12 +7,13 @@
 import type cytoscape from "cytoscape";
 import type { GraphCanvasEdge, GraphCanvasNode } from "./types.js";
 import { buildElements } from "./_elements.js";
-import { runGraphLayout } from "./_layout.js";
+import { runGraphLayout, type LayoutPreset } from "./_layout.js";
 
 export function syncGraphElements(
   graph: cytoscape.Core,
   nodes: GraphCanvasNode[],
   edges: GraphCanvasEdge[],
+  layoutPreset: LayoutPreset = "default",
 ): void {
   const nextElements = buildElements(nodes, edges);
   const nextById = new Map(nextElements.map((element) => [element.data.id as string, element]));
@@ -47,5 +48,5 @@ export function syncGraphElements(
     }
   });
 
-  runGraphLayout(graph, false);
+  runGraphLayout(graph, false, layoutPreset);
 }

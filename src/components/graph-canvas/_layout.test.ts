@@ -6,6 +6,12 @@ describe("buildLayoutOptions", () => {
     expect(buildLayoutOptions(MAX_DAGRE_NODES).name).toBe("dagre");
   });
 
+  it("uses hierarchical dagre preset with top-to-bottom rank", () => {
+    const options = buildLayoutOptions(10, true, "hierarchical");
+    expect(options.name).toBe("dagre");
+    expect((options as { rankDir?: string }).rankDir).toBe("TB");
+  });
+
   it("uses grid layout for large graphs", () => {
     expect(buildLayoutOptions(MAX_DAGRE_NODES + 1).name).toBe("grid");
   });

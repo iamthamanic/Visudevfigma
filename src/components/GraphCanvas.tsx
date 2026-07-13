@@ -8,6 +8,7 @@ import { GraphToolbar } from "./graph-canvas/_toolbar.tsx";
 import { useCytoscapeGraphLifecycle } from "./graph-canvas/useCytoscapeGraphLifecycle.js";
 import { useGraphCanvasToolbar } from "./graph-canvas/useGraphCanvasToolbar.js";
 import { useValidatedGraphElements } from "./graph-canvas/useValidatedGraphElements.js";
+import type { LayoutPreset } from "./graph-canvas/_layout.js";
 import type { GraphCanvasEdge, GraphCanvasNode } from "./graph-canvas/types.js";
 
 export type { GraphCanvasEdge, GraphCanvasNode };
@@ -15,11 +16,15 @@ export type { GraphCanvasEdge, GraphCanvasNode };
 export interface GraphCanvasProps {
   nodes: GraphCanvasNode[];
   edges: GraphCanvasEdge[];
+  layoutPreset?: LayoutPreset;
 }
 
-export function GraphCanvas({ nodes, edges }: GraphCanvasProps) {
+export function GraphCanvas({ nodes, edges, layoutPreset = "default" }: GraphCanvasProps) {
   const validated = useValidatedGraphElements(nodes, edges);
-  const { setContainerRef, hasGraph, initError, graphRef } = useCytoscapeGraphLifecycle(validated);
+  const { setContainerRef, hasGraph, initError, graphRef } = useCytoscapeGraphLifecycle(
+    validated,
+    layoutPreset,
+  );
   const { handleFit, handleZoomIn, handleZoomOut } = useGraphCanvasToolbar(graphRef);
 
   return (
