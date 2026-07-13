@@ -1,16 +1,16 @@
 {
   "version": 2,
   "repo": "iamthamanic/visudev-app",
-  "activeIssue": 53,
+  "activeIssue": null,
   "featureSlug": null,
-  "phase": "merged",
-  "branch": "issue/53-docs-env-update",
-  "prUrl": "https://github.com/iamthamanic/visudev-app/pull/65",
+  "phase": "setup",
+  "branch": null,
+  "prUrl": null,
   "milestoneFilter": null,
   "paused": false,
   "runMode": "loop",
-  "queue": [],
-  "completedIssues": [53],
+  "queue": [67, 68, 69, 70, 71, 72, 73, 74, 75],
+  "completedIssues": [],
   "retries": {
     "implement": 0,
     "verifyTicket": 0,
@@ -27,8 +27,8 @@
   "lastError": null,
   "lastErrorCount": 0,
   "issuesProcessedInSession": 0,
-  "updatedAt": "2026-07-12T18:58:48.000Z",
-  "mergedIssues": [53],
+  "updatedAt": "2026-07-13T08:21:19.000Z",
+  "mergedIssues": [],
   "prUrls": {},
-  "notes": "blueprint-engine-pluggable runner loop"
+  "notes": "blueprint-v2 runner loop"
 }

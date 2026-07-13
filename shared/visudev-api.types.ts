@@ -107,7 +107,36 @@ export type AnalysisRunStatus = {
   children?: AnalysisChildRunStatus[];
 };
 
-export type BlueprintDocument = Record<string, unknown>;
+import type {
+  SoftwareGraph,
+  SoftwareGraphEdge,
+  SoftwareGraphEdgeKind,
+  SoftwareGraphEvidence,
+  SoftwareGraphGroup,
+  SoftwareGraphMetric,
+  SoftwareGraphNode,
+  SoftwareGraphNodeKind,
+  SoftwareGraphScope,
+  SoftwareGraphScopeLevel,
+} from "./software-graph.types.js";
+
+export type BlueprintDocument = Record<string, unknown> & {
+  /** Optional neutral Software Graph IR for Blueprint v2 views. */
+  graph?: SoftwareGraph;
+};
+
+export type {
+  SoftwareGraph,
+  SoftwareGraphScope,
+  SoftwareGraphScopeLevel,
+  SoftwareGraphNode,
+  SoftwareGraphNodeKind,
+  SoftwareGraphEdge,
+  SoftwareGraphEdgeKind,
+  SoftwareGraphEvidence,
+  SoftwareGraphGroup,
+  SoftwareGraphMetric,
+};
 
 export type RawBlueprintRoute = {
   id: string;

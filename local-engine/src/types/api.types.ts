@@ -55,3 +55,16 @@ export type {
   ProjectMigrationBundle,
   ProjectMigrationMetadata,
 } from "../../../shared/project-migration.types.js";
+
+export type {
+  SoftwareGraph,
+  SoftwareGraphScope,
+  SoftwareGraphScopeLevel,
+  SoftwareGraphNode,
+  SoftwareGraphNodeKind,
+  SoftwareGraphEdge,
+  SoftwareGraphEdgeKind,
+  SoftwareGraphEvidence,
+  SoftwareGraphGroup,
+  SoftwareGraphMetric,
+} from "../../../shared/software-graph.types.js";

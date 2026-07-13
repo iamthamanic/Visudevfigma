@@ -1,0 +1,218 @@
+{
+  "epicSlug": "blueprint-v2",
+  "epicTitle": "VisuDEV Blueprint v2 — Multi-View Technical Architecture Tool",
+  "designPath": ".qa/design/blueprint-v2.md",
+  "draftPath": ".qa/intake/blueprint-v2-issues.md",
+  "issues": [
+    {
+      "title": "Phase 0 — Software Graph IR schema and builder",
+      "priority": "P0",
+      "labels": [],
+      "dependsOn": [],
+      "featureSlug": "software-graph-ir",
+      "bodySections": {
+        "intent": "Define the neutral Software Graph schema and a builder that turns RawBlueprintScan into a graph of nodes, edges, evidence, groups, metrics, findings, snapshots, and layouts.",
+        "userJourney": "After a blueprint scan, the persisted document contains a machine-readable Software Graph alongside the legacy report. Later views will render projections of this graph instead of brittle legacy fields.",
+        "problem": "v1 Blueprint is a flat Security Matrix plus route canvas. There is no shared, neutral structure that Atlas, Architecture, Dependencies, Execution, Infrastructure, Diagnostics, and Evolution can all read from.",
+        "solution": "Add SoftwareGraph types to shared/local-engine types. Add an optional graph field to BlueprintDocument. Implement software-graph-builder.service.ts that maps RawBlueprintScan routes, files, and facts into graph nodes/edges with hierarchical scopes (World, Region, City, District, Building, Floor, Room). Attach the graph inside blueprint-enrichment.service.ts. Deno unit tests validate the builder.",
+        "edgeCases": "Empty raw scans still produce a valid empty graph. Old documents without a graph field continue to load. Large repos (20k source files) hit soft node limits with hierarchical condensation hints, not crashes.",
+        "acceptance": [
+          "SoftwareGraph types exist and are imported by both local-engine and frontend.",
+          "BlueprintDocument.graph is optional and additive; legacy UI still works without it.",
+          "software-graph-builder.service.ts converts RawBlueprintScan into nodes + edges + evidence.",
+          "Hierarchical scope model is encoded in graph groups/nodes: Organization/World, Runtime/Region, Application/City, Domain/District, Module/Building, File/Floor, Symbol/Room.",
+          "Deno unit tests for builder pass.",
+          "npm run checks green."
+        ],
+        "runtime": "local: yes; github: yes."
+      }
+    },
+    {
+      "title": "Phase 1 — Blueprint view shell and Infrastructure view",
+      "priority": "P0",
+      "labels": [],
+      "dependsOn": ["Phase 0 — Software Graph IR schema and builder"],
+      "featureSlug": "view-shell-infrastructure",
+      "bodySections": {
+        "intent": "Give users a unified shell to switch between the seven Blueprint v2 views and deliver the first real view: Infrastructure.",
+        "userJourney": "The user opens Blueprint and sees a navigation shell with Atlas, Architecture, Dependencies, Execution, Infrastructure, Diagnostics, and Evolution. Infrastructure is the default tab and shows where code runs (browser, server, edge, database, external services) inferred from the Software Graph.",
+        "problem": "v1 Blueprint is a single page with Security Matrix and Route Canvas. There is no place for multi-view navigation, and no way to visualize runtime/deployment topology.",
+        "solution": "Create BlueprintViewShell with seven-view tab navigation using CSS Modules and DaisyUI tabs. Move existing v1 Security Matrix + Route Canvas + Finding Inspector into a DiagnosticsView tab. Build InfrastructureView as the first graph projection using the shared GraphCanvas wrapper with a Cytoscape dagre/coSE layout. Node kinds: runtime, service, database, external, deployment target. Edge kinds: hosts, calls, stores-in, external-dependency. Keep v1 behavior unchanged inside Diagnostics.",
+        "edgeCases": "If SoftwareGraph is missing, Infrastructure shows an empty-state with a rescan hint. Tabs are keyboard accessible. Mobile tab list scrolls horizontally.",
+        "acceptance": [
+          "BlueprintViewShell renders seven tabs and switches views without page reload.",
+          "Diagnostics tab contains the existing v1 Security Matrix, Route Canvas, and Inspector unchanged.",
+          "Infrastructure view is the default active tab.",
+          "InfrastructureView renders runtime nodes and dependency edges from SoftwareGraph.",
+          "GraphCanvas shared Cytoscape wrapper exists and is used by InfrastructureView.",
+          "Vitest for shell; Playwright smoke for tab navigation.",
+          "npm run checks green."
+        ],
+        "runtime": "local: yes; github: yes."
+      }
+    },
+    {
+      "title": "Phase 2 — Diagnostics migration to graph-derived projections",
+      "priority": "P0",
+      "labels": [],
+      "dependsOn": ["Phase 1 — Blueprint view shell and Infrastructure view"],
+      "featureSlug": "diagnostics-graph-migration",
+      "bodySections": {
+        "intent": "Re-implement the Diagnostics view (Security Matrix, Route Canvas, Findings) as projections of the Software Graph so the legacy report fields become optional.",
+        "userJourney": "The Diagnostics tab looks and behaves exactly like v1, but under the hood it derives routes, security states, and findings from graph nodes/edges/evidence.",
+        "problem": "v1 report fields are hand-scaffolded separately from the graph. Keeping them in sync creates duplication and blocks graph-derived legacy retirement.",
+        "solution": "Extend the Software Graph builder with findings and security-state evidence. Add helpers in software-graph-projections.ts that derive SecurityMatrixRow[], RouteBlueprint[], and BlueprintFinding[] from the graph. Update DiagnosticsView to consume these projections while preserving rendering. Add parity tests comparing legacy output to graph-derived output.",
+        "edgeCases": "Graph-only documents produce the same Diagnostics UI as legacy documents. Documents with both fields prefer the graph. Missing evidence defaults to unknown states, not false positives.",
+        "acceptance": [
+          "Security Matrix, Route Canvas, and Findings can be derived from SoftwareGraph.",
+          "DiagnosticsView uses graph projections by default.",
+          "Parity tests pass for representative legacy and graph-only blueprint documents.",
+          "normalizeBlueprintData synthesizes legacy fields from graph when missing.",
+          "npm run checks green."
+        ],
+        "runtime": "local: yes; github: yes."
+      }
+    },
+    {
+      "title": "Phase 3 — Architecture view: domains, layers, modules",
+      "priority": "P1",
+      "labels": [],
+      "dependsOn": ["Phase 2 — Diagnostics migration to graph-derived projections"],
+      "featureSlug": "architecture-view",
+      "bodySections": {
+        "intent": "Show the structural decomposition of the analyzed project as a hierarchical graph of domains, layers, modules, routes, services, repositories, and tables.",
+        "userJourney": "The user selects Architecture and sees a tree-like graph. Collapsing a domain hides its districts; selecting a module highlights its files and symbols. Path-based grouping is visible immediately; AI enrichment is a future layer.",
+        "problem": "There is no view that answers “How is my system organized?” The Diagnostics view is route-centric, not structure-centric.",
+        "solution": "Implement ArchitectureView with a hierarchical Cytoscape layout (dagre/klay). Add domain/layer/module grouping heuristics to the graph builder based on folder structure and framework hints. Node kinds: domain, layer, module, route, service, repository, table. Edges: contains, implements, references. Add layout preset per view and node filter controls.",
+        "edgeCases": "Projects without clear folder conventions still group by top-level directories. Circular references do not crash the hierarchical layout. Empty projects show an onboarding empty state.",
+        "acceptance": [
+          "ArchitectureView renders grouped nodes from SoftwareGraph.",
+          "Hierarchical layout shows containment relationships clearly.",
+          "Users can collapse/expand domains and modules.",
+          "Graph builder classifies files/routes into domain/layer/module groups.",
+          "Component and projection unit tests pass.",
+          "npm run checks green."
+        ],
+        "runtime": "local: yes; github: yes."
+      }
+    },
+    {
+      "title": "Phase 4 — Dependencies view: imports, calls, API, events, data",
+      "priority": "P1",
+      "labels": [],
+      "dependsOn": ["Phase 3 — Architecture view: domains, layers, modules"],
+      "featureSlug": "dependencies-view",
+      "bodySections": {
+        "intent": "Visualize how project parts depend on each other through imports, function calls, API calls, events, and data relationships.",
+        "userJourney": "The user opens Dependencies, selects edge filters, and sees a force-directed graph. Clicking an edge reveals its evidence (import statement, call site, API endpoint).",
+        "problem": "There is no interactive map of dependencies. Route Canvas shows linear pipelines, but not cross-module coupling.",
+        "solution": "Extend the graph builder with import, call, api, event, and data edges. Build DependenciesView with a force-directed / dagre Cytoscape layout and edge-type filter chips. Use GraphCanvas wrapper. Add edge evidence inspector panel.",
+        "edgeCases": "Self-referencing modules are shown with a clear loop indicator. Edges with mixed evidence types are labeled by primary type. Filtering all edge types shows an empty state.",
+        "acceptance": [
+          "DependenciesView renders nodes and edges from SoftwareGraph.",
+          "Edge filters for import, call, api, event, data work independently.",
+          "Clicking an edge shows evidence in an inspector panel.",
+          "Graph builder classifies edges with correct kinds and evidence.",
+          "Component and unit tests pass.",
+          "npm run checks green."
+        ],
+        "runtime": "local: yes; github: yes."
+      }
+    },
+    {
+      "title": "Phase 5 — Execution view: route pipelines and data flow",
+      "priority": "P1",
+      "labels": [],
+      "dependsOn": ["Phase 4 — Dependencies view: imports, calls, API, events, data"],
+      "featureSlug": "execution-view",
+      "bodySections": {
+        "intent": "Render the execution sequence for a selected route or use case as a linear/sugiyama pipeline: middleware, handler, service, repository, database.",
+        "userJourney": "The user selects Execution, picks a route, and sees a horizontal pipeline diagram. Each step can be inspected for auth, validation, and data access evidence.",
+        "problem": "Route Canvas shows a static pipeline but does not let users pick a route and see its dynamic execution graph.",
+        "solution": "Build ExecutionView with a horizontal Cytoscape layout (dagre LR). Add execution-path extraction in the graph builder: for a given route node, follow call edges to middleware, handler, service, repository, and external nodes. Show step evidence and status chips.",
+        "edgeCases": "Routes with no downstream calls show a single-node path. Loops in the execution path are truncated with a cycle indicator. Multiple paths per route are selectable.",
+        "acceptance": [
+          "ExecutionView lists routes/use cases and renders the selected pipeline.",
+          "Pipeline layout is left-to-right with clear step nodes.",
+          "Each step shows relevant evidence (auth, validation, DB access).",
+          "Graph builder produces execution subgraphs from route nodes.",
+          "Component and unit tests pass.",
+          "npm run checks green."
+        ],
+        "runtime": "local: yes; github: yes."
+      }
+    },
+    {
+      "title": "Phase 6 — Evolution view: working tree, commit diff, branch compare, timeline",
+      "priority": "P2",
+      "labels": [],
+      "dependsOn": ["Phase 5 — Execution view: route pipelines and data flow"],
+      "featureSlug": "evolution-view",
+      "bodySections": {
+        "intent": "Show how the software architecture changes over time by overlaying git state (working tree, commits, branches) onto the Software Graph.",
+        "userJourney": "The user opens Evolution, selects two commits or branches, and the graph highlights added, changed, and removed nodes. A timeline shows scan snapshots.",
+        "problem": "Blueprint only shows the current state. Teams cannot see which parts of the architecture are changing or compare branches before merge.",
+        "solution": "Add snapshots and diff support to SoftwareGraph. Expose a Runner API git summary endpoint (file status, hashes, commit list) for the local engine. Build EvolutionView with commit/branch selectors, a diff legend, and graph highlighting. Mock git state for tests.",
+        "edgeCases": "Uninitialized or shallow repos show a helpful empty state. Comparing identical commits shows no diff. Large diffs use condensation hints.",
+        "acceptance": [
+          "SoftwareGraph supports snapshots and diff metadata.",
+          "Runner API provides git summary for local analysis.",
+          "EvolutionView lets users select two commits/branches.",
+          "Graph highlights added/changed/removed nodes.",
+          "Timeline shows available snapshots.",
+          "Component and unit tests with mock git state pass.",
+          "npm run checks green."
+        ],
+        "runtime": "local: yes; github: partial (git summary via Edge later)."
+      }
+    },
+    {
+      "title": "Phase 7 — Atlas view: 2D system map, 3D city optional",
+      "priority": "P2",
+      "labels": [],
+      "dependsOn": [
+        "Phase 6 — Evolution view: working tree, commit diff, branch compare, timeline"
+      ],
+      "featureSlug": "atlas-view",
+      "bodySections": {
+        "intent": "Provide a high-level Atlas overview of the whole system as a 2D clustered/density map, with an optional 3D city layer if 2D proves insufficient.",
+        "userJourney": "The user opens Atlas and immediately grasps system size, clusters, and hot spots. A toggle switches to 3D city mode only when enabled and performant.",
+        "problem": "There is no birds-eye view of the entire codebase. The city metaphor is attractive but 3D adds bundle weight and accessibility cost.",
+        "solution": "Build AtlasView as a 2D density/clustered Cytoscape map first. Group nodes into world/region/city/district/building/floor hierarchy. Add zoom, search, and performance budget (node limit with condensation). If 2D is insufficient after user feedback, add a React Three Fiber 3D city toggle behind a lazy import/code-split boundary.",
+        "edgeCases": "Repos exceeding the soft node limit show a condensation message instead of freezing. 3D mode is disabled on low-power devices. Keyboard users can navigate clusters in 2D.",
+        "acceptance": [
+          "AtlasView renders a 2D clustered map of the whole SoftwareGraph.",
+          "Zoom and search work without crashing on large graphs.",
+          "Soft node limit and condensation are applied.",
+          "3D city mode is either absent or code-split and behind a toggle.",
+          "Visual/component tests pass.",
+          "npm run checks green."
+        ],
+        "runtime": "local: yes; github: yes."
+      }
+    },
+    {
+      "title": "Phase 8 — Graph-derived legacy retirement",
+      "priority": "P2",
+      "labels": [],
+      "dependsOn": ["Phase 7 — Atlas view: 2D system map, 3D city optional"],
+      "featureSlug": "legacy-retirement",
+      "bodySections": {
+        "intent": "Make SoftwareGraph the single source of truth and retire legacy report fields to deprecated backward-compatibility shims.",
+        "userJourney": "Persisted blueprint documents contain only a SoftwareGraph plus minimal metadata. All views derive their data from the graph. Legacy integrations still receive synthesized legacy fields.",
+        "problem": "Legacy fields (routes[], securityMatrix[], findings[]) still duplicate graph information, increasing storage size and drift risk.",
+        "solution": "Mark legacy fields as deprecated in BlueprintDocument. Update blueprint-enrichment.service.ts to produce graph-first documents. Ensure normalizeBlueprintData synthesizes all legacy fields from graph when they are absent. Remove internal code paths that write legacy fields directly. Keep deprecated fields for one major version.",
+        "edgeCases": "Old persisted documents with legacy-only data are loaded via synthesis. Mixed documents prefer graph. External consumers expecting legacy shapes still work.",
+        "acceptance": [
+          "Legacy fields are marked @deprecated in TypeScript types.",
+          "Enrichment writes graph-first documents.",
+          "normalizeBlueprintData synthesizes legacy fields from graph when missing.",
+          "All views still work with graph-only documents.",
+          "Parity tests compare legacy and graph-only outputs.",
+          "npm run checks green."
+        ],
+        "runtime": "local: yes; github: yes."
+      }
+    }
+  ]
+}
