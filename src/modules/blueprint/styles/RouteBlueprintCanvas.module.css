@@ -4,11 +4,15 @@
   background-color: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 14rem;
   padding: 1rem;
 }
 
 .header {
-  margin-bottom: 1rem;
+  flex: 0 0 auto;
 }
 
 .title {
@@ -24,58 +28,22 @@
 }
 
 .pipeline {
+  align-content: center;
   align-items: center;
   display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   gap: 0.25rem;
+  justify-content: flex-start;
+  min-height: 8rem;
+  overflow-x: auto;
+  padding: 0.5rem 0;
 }
 
 .pipelineItem {
   align-items: center;
   display: flex;
-}
-
-.edge {
-  background-color: var(--color-primary);
-  height: 2px;
-  margin: 0 0.375rem;
-  opacity: 0.5;
-  width: 1.5rem;
-}
-
-.node {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  min-width: 5.5rem;
-  padding: 0.5rem 0.625rem;
-}
-
-.nodeLabel {
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.nodeState {
-  font-size: 0.6875rem;
-}
-
-.nodeConfirmed {
-  border-color: var(--color-success);
-}
-
-.nodeMissing {
-  border-color: var(--color-danger);
-}
-
-.nodePartial {
-  border-color: var(--color-warning);
-}
-
-.nodeUnknown {
-  border-color: var(--color-border);
+  flex: 0 0 auto;
 }
 
 .empty {

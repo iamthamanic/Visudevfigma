@@ -1,4 +1,5 @@
 ---
+
 issue: #47
 title: Per-project blueprint provider selection + API
 started: 2026-07-12T18:46:25Z

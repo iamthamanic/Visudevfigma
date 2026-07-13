@@ -1,0 +1,139 @@
+/** PipelineNodeCard — individual Blueprint pipeline node. */
+
+.node {
+  align-items: flex-start;
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-left-width: 3px;
+  border-radius: var(--radius-md);
+  color: var(--color-foreground);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 5.5rem;
+  padding: 0.5rem 0.625rem;
+  position: relative;
+  text-align: left;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.node:hover {
+  background-color: var(--color-hover);
+  border-color: var(--color-border-hover);
+}
+
+.node:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.state {
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  line-height: 1.2;
+}
+
+.badge {
+  background-color: var(--color-danger);
+  border-radius: 9999px;
+  color: var(--color-foreground);
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.125rem 0.375rem;
+  position: absolute;
+  right: -0.25rem;
+  top: -0.25rem;
+}
+
+/* State colors */
+
+.stateConfirmed {
+  border-color: var(--color-success);
+}
+
+.stateConfirmed .state {
+  color: var(--color-success);
+}
+
+.statePartial {
+  border-color: var(--color-warning);
+}
+
+.statePartial .state {
+  color: var(--color-warning);
+}
+
+.stateMissing {
+  border-color: var(--color-danger);
+}
+
+.stateMissing .state {
+  color: var(--color-danger);
+}
+
+.stateUnknown {
+  border-color: var(--color-subtle);
+}
+
+.stateUnknown .state {
+  color: var(--color-muted-foreground);
+}
+
+/* Type accents (left border) */
+
+.typeDataFlow {
+  border-left-color: var(--color-info);
+}
+
+.typeExternal {
+  border-left-color: var(--color-flow-external);
+}
+
+.typeNormal {
+  border-left-color: var(--color-border);
+}
+
+/* Placeholder / missing gate */
+
+.placeholder,
+.stateUnknown.placeholder,
+.stateMissing.placeholder {
+  border: 1px dashed var(--color-danger);
+  background-color: var(--color-danger-soft);
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 6px,
+    var(--color-danger-soft) 6px,
+    var(--color-danger-soft) 12px
+  );
+}
+
+.placeholder .state {
+  color: var(--color-danger);
+}
+
+.placeholder .label {
+  color: var(--color-danger);
+}
+
+/* Related findings */
+
+.hasFindings {
+  box-shadow: 0 0 0 1px var(--color-danger);
+}
+
+.selected {
+  box-shadow: 0 0 0 2px var(--color-primary);
+}

@@ -65,8 +65,10 @@
   --color-flow-api: var(--color-info);
   --color-flow-db: #af52de;
   --color-flow-function: #8b5cf6;
+  --color-flow-external: #af52de;
   --color-flow-default: var(--color-muted-foreground);
   --color-flow-function-soft: rgba(139, 92, 246, 0.15);
+  --color-flow-external-soft: rgba(175, 82, 222, 0.15);
 
   --color-overlay: rgba(0, 0, 0, 0.8);
   --color-overlay-muted: rgba(0, 0, 0, 0.6);

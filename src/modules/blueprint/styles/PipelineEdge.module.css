@@ -1,0 +1,16 @@
+/** PipelineEdge — connector between Blueprint pipeline nodes. */
+
+.edge {
+  background-color: var(--color-border-hover);
+  height: 2px;
+  margin: 0 0.375rem;
+  width: 1.5rem;
+}
+
+.dashed {
+  background-color: transparent;
+  background-image: linear-gradient(to right, var(--color-danger) 50%, transparent 50%);
+  background-position: top;
+  background-repeat: repeat-x;
+  background-size: 8px 2px;
+}

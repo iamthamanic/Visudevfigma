@@ -1,16 +1,27 @@
 /**
- * RouteBlueprintCanvas — lineare Pipeline pro Route (Request → Gates → DB).
+ * RouteBlueprintCanvas — linear pipeline per Route (Request → Gates → DB → Audit → External).
  * Location: src/modules/blueprint/components/RouteBlueprintCanvas.tsx
  */
 
-import type { ConceptState, PipelineNode, RouteBlueprint } from "../types";
+import type { BlueprintFinding, RouteBlueprint } from "../types";
+import { buildLinearPipeline } from "../services/blueprint-pipeline";
+import { PipelineNodeCard } from "./PipelineNodeCard";
+import { PipelineEdge } from "./PipelineEdge";
 import styles from "../styles/RouteBlueprintCanvas.module.css";
 
 interface RouteBlueprintCanvasProps {
   route: RouteBlueprint | null;
+  findings: BlueprintFinding[];
+  selectedFindingId: string | null;
+  onSelectFinding: (id: string | null) => void;
 }
 
-export function RouteBlueprintCanvas({ route }: RouteBlueprintCanvasProps) {
+export function RouteBlueprintCanvas({
+  route,
+  findings,
+  selectedFindingId,
+  onSelectFinding,
+}: RouteBlueprintCanvasProps) {
   if (!route) {
     return (
       <div className={styles.empty}>
@@ -19,6 +30,8 @@ export function RouteBlueprintCanvas({ route }: RouteBlueprintCanvasProps) {
       </div>
     );
   }
+
+  const pipeline = buildLinearPipeline(route);
 
   return (
     <section className={styles.root} aria-labelledby="route-blueprint-title">
@@ -31,41 +44,18 @@ export function RouteBlueprintCanvas({ route }: RouteBlueprintCanvasProps) {
         </p>
       </header>
       <div className={styles.pipeline} role="list">
-        {route.pipeline.map((node, index) => (
+        {pipeline.map((node, index) => (
           <div key={node.id} className={styles.pipelineItem} role="listitem">
-            {index > 0 && <div className={styles.edge} aria-hidden="true" />}
-            <NodeCard node={node} />
+            {index > 0 && <PipelineEdge dashed={node.state === "missing"} />}
+            <PipelineNodeCard
+              node={node}
+              findings={findings}
+              selectedFindingId={selectedFindingId}
+              onSelectFinding={onSelectFinding}
+            />
           </div>
         ))}
       </div>
     </section>
   );
-}
-
-function NodeCard({ node }: { node: PipelineNode }) {
-  return (
-    <div className={`${styles.node} ${stateClass(node.state)}`}>
-      <span className={styles.nodeLabel}>{node.label}</span>
-      <span className={styles.nodeState}>{stateLabel(node.state)}</span>
-    </div>
-  );
-}
-
-function stateClass(state: ConceptState): string {
-  if (state === "confirmed") return styles.nodeConfirmed;
-  if (state === "missing" || state === "contradictory") return styles.nodeMissing;
-  if (state === "partial" || state === "weak") return styles.nodePartial;
-  return styles.nodeUnknown;
-}
-
-function stateLabel(state: ConceptState): string {
-  const map: Record<ConceptState, string> = {
-    confirmed: "Bestätigt",
-    partial: "Teilweise",
-    weak: "Schwach",
-    missing: "Fehlt",
-    unknown: "Unbekannt",
-    contradictory: "Widerspruch",
-  };
-  return map[state] ?? state;
 }

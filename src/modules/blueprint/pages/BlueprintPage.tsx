@@ -221,18 +221,25 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
         ) : (
           <div className={styles.workspace}>
             <section className={styles.mainPanel} aria-labelledby="matrix-title">
-              <h2 id="matrix-title" className={styles.panelTitle}>
-                Security Matrix
-              </h2>
-              <SecurityMatrix
-                rows={matrix}
-                selectedRouteId={selectedRouteId}
-                onSelectRoute={(id) => {
-                  setSelectedRouteId(id);
-                  setSelectedFindingId(null);
-                }}
+              <RouteBlueprintCanvas
+                route={selectedRoute}
+                findings={routeFindings}
+                selectedFindingId={selectedFindingId}
+                onSelectFinding={setSelectedFindingId}
               />
-              <RouteBlueprintCanvas route={selectedRoute} />
+              <div className={styles.matrixPanel}>
+                <h2 id="matrix-title" className={styles.panelTitle}>
+                  Security Matrix
+                </h2>
+                <SecurityMatrix
+                  rows={matrix}
+                  selectedRouteId={selectedRouteId}
+                  onSelectRoute={(id) => {
+                    setSelectedRouteId(id);
+                    setSelectedFindingId(null);
+                  }}
+                />
+              </div>
             </section>
             <FindingInspector
               findings={routeFindings}
