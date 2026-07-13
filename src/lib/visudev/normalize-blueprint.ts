@@ -53,7 +53,7 @@ export function normalizeBlueprintData(
     commitSha: typeof raw.commitSha === "string" ? raw.commitSha : undefined,
     analyzedAt: typeof raw.analyzedAt === "string" ? raw.analyzedAt : undefined,
     routes: hasGraphDiagnostics ? graphDiagnostics.routes : legacyRoutes,
-    securityMatrix: graphDiagnostics ? graphDiagnostics.securityMatrix : legacySecurityMatrix,
+    securityMatrix: hasGraphDiagnostics ? graphDiagnostics.securityMatrix : legacySecurityMatrix,
     findings: hasGraphDiagnostics ? graphDiagnostics.findings : legacyFindings,
     facts: hasGraphDiagnostics ? graphDiagnostics.facts : legacyFacts,
     frameworkHints: sanitizeStringList(raw.frameworkHints),
