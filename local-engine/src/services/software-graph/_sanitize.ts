@@ -33,11 +33,11 @@ function isUnsafeKey(key: string): boolean {
 
 function sanitizeValue(value: unknown): unknown {
   if (typeof value === "string") {
-    const masked = value;
+    let masked = value;
     for (const pattern of SECRET_PATTERNS) {
-      value = masked.replace(pattern, "***");
+      masked = masked.replace(pattern, "***");
     }
-    return (value as string).length > 200 ? `${(value as string).slice(0, 200)}…` : value;
+    return masked.length > 200 ? `${masked.slice(0, 200)}…` : masked;
   }
   if (Array.isArray(value)) {
     return value.map(sanitizeValue);

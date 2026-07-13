@@ -12,6 +12,12 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
 }
 
+const MAX_STRING_LENGTH = 1000;
+
+function isValidString(value: unknown, maxLength = MAX_STRING_LENGTH): value is string {
+  return typeof value === "string" && value.length > 0 && value.length <= maxLength;
+}
+
 export function validateScan(scan: RawBlueprintScan): string | null {
   if (!isNonEmptyString(scan.projectId)) return "scan.projectId is required";
   if (!isNonEmptyString(scan.analyzedAt)) return "scan.analyzedAt is required";
@@ -25,19 +31,18 @@ export function validateScan(scan: RawBlueprintScan): string | null {
 
 export function normalizeRoute(raw: RawBlueprintRoute): RawBlueprintRoute | null {
   if (!raw || typeof raw !== "object") return null;
-  const filePath = isNonEmptyString(raw.filePath) ? raw.filePath : "unknown";
-  const path = isNonEmptyString(raw.path)
-    ? raw.path.startsWith("/")
-      ? raw.path
-      : `/${raw.path}`
-    : "/";
-  const id = isNonEmptyString(raw.id) ? raw.id : `route:${filePath}:${path}`;
+  if (!isValidString(raw.filePath) || !isValidString(raw.path) || !isValidString(raw.id)) {
+    return null;
+  }
+
+  const filePath = raw.filePath;
+  const path = raw.path.startsWith("/") ? raw.path : `/${raw.path}`;
   return {
-    id,
-    method: isNonEmptyString(raw.method) ? raw.method.toUpperCase() : "GET",
+    id: raw.id,
+    method: isValidString(raw.method) ? raw.method.toUpperCase() : "GET",
     path,
     filePath,
-    line: typeof raw.line === "number" && raw.line >= 0 ? raw.line : 0,
+    line: typeof raw.line === "number" && raw.line >= 0 && Number.isFinite(raw.line) ? raw.line : 0,
     pipeline: Array.isArray(raw.pipeline) ? raw.pipeline : [],
     concepts: raw.concepts && typeof raw.concepts === "object" ? raw.concepts : {},
   };
@@ -45,16 +50,16 @@ export function normalizeRoute(raw: RawBlueprintRoute): RawBlueprintRoute | null
 
 export function normalizeFact(raw: RawBlueprintFact): RawBlueprintFact | null {
   if (!raw || typeof raw !== "object") return null;
-  const filePath = isNonEmptyString(raw.filePath) ? raw.filePath : "unknown";
-  const id = isNonEmptyString(raw.id)
-    ? raw.id
-    : `fact:${filePath}:${Math.random().toString(36).slice(2)}`;
+  if (!isValidString(raw.filePath) || !isValidString(raw.kind) || !isValidString(raw.id)) {
+    return null;
+  }
+
   return {
-    id,
-    kind: isNonEmptyString(raw.kind) ? raw.kind : "unknown",
-    filePath,
-    line: typeof raw.line === "number" && raw.line >= 0 ? raw.line : 0,
-    snippet: isNonEmptyString(raw.snippet) ? raw.snippet : "",
+    id: raw.id,
+    kind: raw.kind,
+    filePath: raw.filePath,
+    line: typeof raw.line === "number" && raw.line >= 0 && Number.isFinite(raw.line) ? raw.line : 0,
+    snippet: isValidString(raw.snippet, 5000) ? raw.snippet : "",
     metadata: raw.metadata && typeof raw.metadata === "object" ? raw.metadata : {},
   };
 }
