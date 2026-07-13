@@ -235,6 +235,11 @@ test.describe("Blueprint Engine Core UI", () => {
     await blueprintNav.click();
 
     await expect(page.getByRole("heading", { name: /^Blueprint$/i })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Infrastructure" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await page.getByRole("tab", { name: "Diagnostics" }).click();
     await expect(page.getByRole("heading", { name: /Security Matrix/i })).toBeVisible({
       timeout: 15000,
     });
@@ -279,6 +284,7 @@ test.describe("Blueprint Engine Core UI", () => {
     }
 
     await page.getByRole("button", { name: /Blueprint/i }).click();
+    await page.getByRole("tab", { name: "Diagnostics" }).click();
     await expect(page.getByText("Runtime Validation fehlt vor DB Write.")).toBeVisible({
       timeout: 15000,
     });
@@ -291,6 +297,41 @@ test.describe("Blueprint Engine Core UI", () => {
       path: `${EVIDENCE_DIR}/03-finding-inspector.png`,
       fullPage: true,
     });
+  });
+
+  test("blueprint view shell switches between Infrastructure and Diagnostics tabs", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+
+    if (
+      await page
+        .getByText(/Melde dich an/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
+      test.skip(true, "Login required");
+      return;
+    }
+
+    const projectCard = page.getByText("Blueprint E2E").first();
+    if (await projectCard.isVisible().catch(() => false)) {
+      await projectCard.click();
+    }
+
+    await page.getByRole("button", { name: /Blueprint/i }).click();
+    await expect(page.getByRole("tab", { name: "Infrastructure" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    await page.getByRole("tab", { name: "Diagnostics" }).click();
+    await expect(page.getByRole("tab", { name: "Diagnostics" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page.getByRole("heading", { name: /Security Matrix/i })).toBeVisible();
   });
 
   test("empty blueprint shows no routes message", async ({ page }) => {
@@ -354,6 +395,7 @@ test.describe("Blueprint Engine Core UI", () => {
     }
 
     await page.getByRole("button", { name: /Blueprint/i }).click();
+    await page.getByRole("tab", { name: "Diagnostics" }).click();
     await expect(page.getByText(/Keine API-Routes erkannt|Keine Blueprint-Daten/i)).toBeVisible({
       timeout: 20000,
     });

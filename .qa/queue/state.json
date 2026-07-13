@@ -1,16 +1,16 @@
 {
   "version": 2,
   "repo": "iamthamanic/visudev-app",
-  "activeIssue": null,
-  "featureSlug": null,
-  "phase": "setup",
-  "branch": null,
+  "activeIssue": 68,
+  "featureSlug": "blueprint-v2-phase-1",
+  "phase": "verify",
+  "branch": "issue/68-view-shell-infrastructure",
   "prUrl": null,
   "milestoneFilter": null,
   "paused": false,
   "runMode": "loop",
-  "queue": [67, 68, 69, 70, 71, 72, 73, 74, 75],
-  "completedIssues": [],
+  "queue": [68, 69, 70, 71, 72, 73, 74, 75],
+  "completedIssues": [67],
   "retries": {
     "implement": 0,
     "verifyTicket": 0,
@@ -24,11 +24,11 @@
     "review": 2,
     "sameRootCause": 2
   },
-  "lastError": null,
-  "lastErrorCount": 0,
+  "lastError": "AI review pre-push gate <95%",
+  "lastErrorCount": 1,
   "issuesProcessedInSession": 0,
-  "updatedAt": "2026-07-13T08:21:19.000Z",
-  "mergedIssues": [],
+  "updatedAt": "2026-07-13T17:19:00.000Z",
+  "mergedIssues": [67],
   "prUrls": {},
-  "notes": "blueprint-v2 runner loop"
+  "notes": "blueprint-v2 runner loop — shipping #68"
 }

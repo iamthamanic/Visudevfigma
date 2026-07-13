@@ -1,0 +1,80 @@
+.root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  border-radius: var(--radius-lg);
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.canvas :global(canvas) {
+  outline: none;
+}
+
+.canvasHidden {
+  visibility: hidden;
+}
+
+.emptyOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.toolbar {
+  position: absolute;
+  bottom: var(--space-md);
+  right: var(--space-md);
+  display: flex;
+  gap: var(--space-xs);
+  padding: var(--space-xs);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.emptyText {
+  color: var(--color-muted-foreground);
+}
+
+.largeGraphHint {
+  position: absolute;
+  top: var(--space-sm);
+  left: var(--space-sm);
+  right: var(--space-sm);
+  margin: 0;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.toolButton {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-foreground);
+  cursor: pointer;
+  font-size: 0.75rem;
+  line-height: 1;
+  min-width: 2rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.toolButton:hover {
+  background-color: var(--color-hover);
+}

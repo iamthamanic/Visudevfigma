@@ -4,6 +4,14 @@
  */
 
 import type { BlueprintData } from "./blueprint-types";
+import {
+  sanitizeFacts,
+  sanitizeFindings,
+  sanitizeRoutes,
+  sanitizeSecurityMatrix,
+  sanitizeStringList,
+} from "./normalize-blueprint-guards";
+import { normalizeSoftwareGraph } from "./normalize-software-graph";
 
 const EMPTY: BlueprintData = {
   version: 1,
@@ -28,16 +36,17 @@ export function normalizeBlueprintData(
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : undefined,
     commitSha: typeof raw.commitSha === "string" ? raw.commitSha : undefined,
     analyzedAt: typeof raw.analyzedAt === "string" ? raw.analyzedAt : undefined,
-    routes: Array.isArray(raw.routes) ? raw.routes : [],
-    securityMatrix: Array.isArray(raw.securityMatrix) ? raw.securityMatrix : [],
-    findings: Array.isArray(raw.findings) ? raw.findings : [],
-    facts: Array.isArray(raw.facts) ? raw.facts : [],
-    frameworkHints: Array.isArray(raw.frameworkHints) ? raw.frameworkHints : [],
+    routes: sanitizeRoutes(raw.routes),
+    securityMatrix: sanitizeSecurityMatrix(raw.securityMatrix),
+    findings: sanitizeFindings(raw.findings),
+    facts: sanitizeFacts(raw.facts),
+    frameworkHints: sanitizeStringList(raw.frameworkHints),
     filesAnalyzed:
       typeof raw.filesAnalyzed === "number" && Number.isFinite(raw.filesAnalyzed)
         ? raw.filesAnalyzed
         : 0,
     violations: Array.isArray(raw.violations) ? raw.violations : undefined,
     cycles: Array.isArray(raw.cycles) ? raw.cycles : undefined,
+    graph: normalizeSoftwareGraph(raw.graph),
   };
 }

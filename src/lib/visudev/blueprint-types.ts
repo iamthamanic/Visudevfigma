@@ -1,5 +1,7 @@
 /** Blueprint Engine types — shared lib layer for UI and normalization. */
 
+import type { SoftwareGraph } from "./software-graph-types";
+
 export type ConceptState =
   | "confirmed"
   | "partial"
@@ -98,6 +100,7 @@ export interface BlueprintData extends Record<string, unknown> {
   frameworkHints?: string[];
   violations?: RuleViolation[];
   cycles?: BlueprintCycle[];
+  graph?: SoftwareGraph;
 }
 
 export type BlueprintUpdateInput = Record<string, unknown>;

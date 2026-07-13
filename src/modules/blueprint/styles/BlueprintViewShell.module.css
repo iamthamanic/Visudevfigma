@@ -1,0 +1,59 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.tabBar {
+  display: flex;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-card);
+  overflow-x: auto;
+}
+
+.tabBar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tabBar::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-hover);
+  border-radius: var(--radius-sm);
+}
+
+.tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  padding: var(--space-sm) var(--space-md);
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.tab:hover {
+  color: var(--color-foreground);
+}
+
+.tabActive {
+  border-bottom-color: var(--color-primary);
+  color: var(--color-foreground);
+  font-weight: 600;
+}
+
+.panel {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.panelContent {
+  height: 100%;
+  min-height: 0;
+}
