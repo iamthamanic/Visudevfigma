@@ -1,0 +1,103 @@
+/**
+ * Neutral Software Graph IR for Blueprint v2.
+ * Phase 0 scope: nodes, edges, evidence, groups, metrics only.
+ * Snapshots, layouts, findings are reserved for later phases.
+ */
+
+export type SoftwareGraphScopeLevel =
+  | "organization"
+  | "application"
+  | "domain"
+  | "module"
+  | "file"
+  | "symbol";
+
+export interface SoftwareGraphScope {
+  level: SoftwareGraphScopeLevel;
+  id: string;
+  label: string;
+  parentId?: string;
+}
+
+export type SoftwareGraphNodeKind =
+  | "organization"
+  | "application"
+  | "domain"
+  | "module"
+  | "route"
+  | "service"
+  | "table"
+  | "external"
+  | "file"
+  | "symbol"
+  | "runtime";
+
+export type SoftwareGraphEdgeKind =
+  | "contains"
+  | "references"
+  | "imports"
+  | "calls"
+  | "api"
+  | "event"
+  | "data"
+  | "external-dependency"
+  | "validates"
+  | "authenticates";
+
+export interface SoftwareGraphNode {
+  id: string;
+  kind: SoftwareGraphNodeKind;
+  label: string;
+  scopeId?: string;
+  filePath?: string;
+  line?: number;
+  /** Public metadata only; raw snippets are stored in evidence. */
+  metadata: Record<string, unknown>;
+}
+
+export interface SoftwareGraphEdge {
+  id: string;
+  kind: SoftwareGraphEdgeKind;
+  sourceId: string;
+  targetId: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface SoftwareGraphEvidence {
+  id: string;
+  factId: string;
+  kind: string;
+  filePath: string;
+  line: number;
+  /** Sanitized excerpt; never raw metadata or full source lines. */
+  excerpt: string;
+  nodeId?: string;
+  edgeId?: string;
+}
+
+export interface SoftwareGraphGroup {
+  id: string;
+  kind: SoftwareGraphNodeKind;
+  label: string;
+  nodeIds: string[];
+}
+
+export interface SoftwareGraphMetric {
+  id: string;
+  name: string;
+  value: number;
+}
+
+export interface SoftwareGraph {
+  version: 1;
+  projectId: string;
+  analyzedAt: string;
+  scopes: SoftwareGraphScope[];
+  nodes: SoftwareGraphNode[];
+  edges: SoftwareGraphEdge[];
+  evidence: SoftwareGraphEvidence[];
+  groups: SoftwareGraphGroup[];
+  metrics: SoftwareGraphMetric[];
+  condensed: boolean;
+  limits: { maxNodes: number; maxEdges: number };
+}

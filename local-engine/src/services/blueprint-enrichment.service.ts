@@ -10,6 +10,7 @@ import type {
   RawBlueprintRoute,
   RawBlueprintScan,
 } from "../types/api.types.js";
+import { buildSoftwareGraph } from "./software-graph-builder.service.js";
 
 export type ProjectProfile = {
   appType: string;
@@ -224,6 +225,7 @@ export function enrichBlueprint(scan: RawBlueprintScan): BlueprintDocument {
   const matrix = buildSecurityMatrix(routes);
   const findings = buildFindings(routes, facts);
   const securityMatrix = updateMatrixWithFindings(matrix, findings);
+  const graph = buildSoftwareGraph(scan);
 
   return {
     version: 1,
@@ -241,5 +243,6 @@ export function enrichBlueprint(scan: RawBlueprintScan): BlueprintDocument {
     filesAnalyzed: scan.filesAnalyzed,
     frameworkHints: [scan.providerId],
     providerMetadata: scan.providerMetadata,
+    graph,
   };
 }
