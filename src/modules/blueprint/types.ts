@@ -14,3 +14,5 @@ export {
   type SecurityMatrixCell,
   type SecurityMatrixRow,
 } from "../../lib/visudev/blueprint-types";
+export type { GraphCanvasEdge, GraphCanvasNode } from "../../../shared/graph-canvas.types";
+export type { SoftwareGraph, SoftwareGraphNode } from "../../lib/visudev/software-graph-types";

@@ -1,0 +1,34 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 320px;
+  padding: 1rem;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 320px;
+  gap: 0.5rem;
+}
+
+.emptyTitle {
+  color: var(--color-foreground);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.emptyHint {
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+}
+
+.loading {
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+  padding: 1rem;
+}

@@ -1,15 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, Download, Loader2, RefreshCw } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
 import { getVisuDevClient, isLocalVisuDevMode } from "../../../lib/visudev-api";
 import { blueprintAPI } from "../../../utils/api";
-import { FindingInspector } from "../components/FindingInspector";
-import { RouteBlueprintCanvas } from "../components/RouteBlueprintCanvas";
-import { SecurityMatrix } from "../components/SecurityMatrix";
-import { findingsForRoute } from "../services/blueprint-helpers";
+import { BlueprintViewShell } from "../components/BlueprintViewShell";
 import { normalizeBlueprintData } from "../../../lib/visudev/normalize-blueprint";
 import { getProjectSourceMode } from "../../../lib/visudev/project-source";
-import type { BlueprintData, BlueprintFinding, RouteBlueprint } from "../types";
+import type { BlueprintData } from "../types";
 import styles from "../styles/BlueprintPage.module.css";
 
 function downloadFile(content: string, filename: string, mimeType: string) {
@@ -30,8 +27,6 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
   const [isRescan, setIsRescan] = useState(false);
   const [blueprint, setBlueprint] = useState<BlueprintData | null>(null);
   const [blueprintLoadError, setBlueprintLoadError] = useState<string | null>(null);
-  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
-  const [selectedFindingId, setSelectedFindingId] = useState<string | null>(null);
 
   const loadBlueprint = useCallback(async () => {
     if (!projectId) return;
@@ -80,45 +75,18 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
     }
   }, [projectId, scanStatuses.blueprint.status, isRescan, loadBlueprint]);
 
-  const routes = useMemo(
-    () => (Array.isArray(blueprint?.routes) ? blueprint.routes : []),
-    [blueprint?.routes],
-  );
-  const matrix = useMemo(
-    () => (Array.isArray(blueprint?.securityMatrix) ? blueprint.securityMatrix : []),
-    [blueprint?.securityMatrix],
-  );
-  const allFindings = useMemo(
-    () => (Array.isArray(blueprint?.findings) ? blueprint.findings : []),
-    [blueprint?.findings],
-  );
-  const facts = useMemo(
-    () => (Array.isArray(blueprint?.facts) ? blueprint.facts : []),
-    [blueprint?.facts],
-  );
-
-  useEffect(() => {
-    if (routes.length > 0 && !selectedRouteId) {
-      setSelectedRouteId(routes[0].id);
-    }
-  }, [routes, selectedRouteId]);
-
-  const selectedRoute: RouteBlueprint | null = useMemo(
-    () => routes.find((r) => r.id === selectedRouteId) ?? null,
-    [routes, selectedRouteId],
-  );
-
-  const routeFindings: BlueprintFinding[] = useMemo(
-    () => (selectedRouteId ? findingsForRoute(allFindings, selectedRouteId) : allFindings),
-    [allFindings, selectedRouteId],
-  );
-
   const isScanning = scanStatuses.blueprint.status === "running" || isRescan;
   const hasError = scanStatuses.blueprint.status === "failed";
   const scanError = scanStatuses.blueprint.error;
   const isLocalProject = activeProject ? getProjectSourceMode(activeProject) === "local" : false;
   const scanCompleted = scanStatuses.blueprint.status === "completed";
-  const hasData = scanCompleted || routes.length > 0 || allFindings.length > 0;
+  const hasContent =
+    (blueprint?.graph != null &&
+      (blueprint.graph.nodes.length > 0 || blueprint.graph.edges.length > 0)) ||
+    (Array.isArray(blueprint?.routes) && blueprint.routes.length > 0) ||
+    (Array.isArray(blueprint?.findings) && blueprint.findings.length > 0) ||
+    (Array.isArray(blueprint?.facts) && blueprint.facts.length > 0);
+  const hasData = blueprint != null && (scanCompleted || hasContent);
 
   const handleExportJson = useCallback(() => {
     const data = blueprint ?? {};
@@ -218,30 +186,9 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
               </p>
             </div>
           </div>
-        ) : (
-          <div className={styles.workspace}>
-            <section className={styles.mainPanel} aria-labelledby="matrix-title">
-              <h2 id="matrix-title" className={styles.panelTitle}>
-                Security Matrix
-              </h2>
-              <SecurityMatrix
-                rows={matrix}
-                selectedRouteId={selectedRouteId}
-                onSelectRoute={(id) => {
-                  setSelectedRouteId(id);
-                  setSelectedFindingId(null);
-                }}
-              />
-              <RouteBlueprintCanvas route={selectedRoute} />
-            </section>
-            <FindingInspector
-              findings={routeFindings}
-              facts={facts}
-              selectedFindingId={selectedFindingId}
-              onSelectFinding={setSelectedFindingId}
-            />
-          </div>
-        )}
+        ) : blueprint ? (
+          <BlueprintViewShell blueprint={blueprint} />
+        ) : null}
       </div>
     </div>
   );

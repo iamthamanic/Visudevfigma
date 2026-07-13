@@ -63,10 +63,26 @@
 
   --color-flow-ui: var(--color-primary);
   --color-flow-api: var(--color-info);
-  --color-flow-db: #af52de;
-  --color-flow-function: #8b5cf6;
+  --color-flow-db: var(--color-info-soft);
+  --color-flow-function: var(--color-primary-soft);
   --color-flow-default: var(--color-muted-foreground);
   --color-flow-function-soft: rgba(139, 92, 246, 0.15);
+
+  --color-graph-runtime: #8b5cf6;
+  --color-graph-service: var(--color-primary);
+  --color-graph-database: #af52de;
+  --color-graph-external: var(--color-muted-foreground);
+  --color-graph-file: var(--color-info);
+  --color-graph-route: var(--color-warning);
+  --color-graph-domain: #e5e5e5;
+  --color-graph-module: #cccccc;
+  --color-graph-symbol: #ffffff;
+  --color-graph-edge: var(--color-border-hover);
+  --color-graph-label: var(--color-muted-foreground);
+  --color-graph-runtime-browser: var(--color-primary);
+  --color-graph-runtime-server: var(--color-info);
+  --color-graph-runtime-edge: #8b5cf6;
+  --color-graph-runtime-shared: var(--color-muted-foreground);
 
   --color-overlay: rgba(0, 0, 0, 0.8);
   --color-overlay-muted: rgba(0, 0, 0, 0.6);
