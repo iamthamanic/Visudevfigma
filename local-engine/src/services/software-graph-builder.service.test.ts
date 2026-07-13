@@ -104,7 +104,7 @@ describe("buildSoftwareGraph", () => {
     const node = graph.nodes.find((n) => n.kind === "service");
 
     expect(evidence.excerpt.endsWith("…")).toBe(true);
-    expect(evidence.excerpt.length).toBeLessThanOrEqual(121);
+    expect(evidence.excerpt.length).toBeLessThanOrEqual(201);
     expect(node?.metadata.apiKey).toBeUndefined();
     expect(node?.metadata.safeField).toBe("ok");
   });

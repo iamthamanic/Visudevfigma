@@ -17,10 +17,17 @@ function suffix(id: string, counter: number): string {
 
 export function stableUniqueId(
   registry: IdRegistry,
-  kind: "node" | "edge" | "scope",
+  kind: "node" | "edge" | "scope" | "evidence",
   id: string,
 ): string {
-  const set = kind === "node" ? registry.nodes : kind === "edge" ? registry.edges : registry.scopes;
+  const set =
+    kind === "node"
+      ? registry.nodes
+      : kind === "edge"
+        ? registry.edges
+        : kind === "scope"
+          ? registry.scopes
+          : registry.evidence;
   if (!set.has(id)) {
     set.add(id);
     return id;

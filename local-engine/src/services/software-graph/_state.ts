@@ -4,17 +4,17 @@
 
 import type {
   SoftwareGraphEdge,
-  SoftwareGraphEvidence,
   SoftwareGraphNode,
   SoftwareGraphScope,
 } from "../../types/api.types.js";
+import { stableUniqueId } from "./_ids.js";
 import type { IdRegistry } from "./_types.js";
 
 export interface GraphBuilderState {
   scopes: Map<string, SoftwareGraphScope>;
   nodes: Map<string, SoftwareGraphNode>;
   edges: Map<string, SoftwareGraphEdge>;
-  evidence: SoftwareGraphEvidence[];
+  evidence: import("../../types/api.types.js").SoftwareGraphEvidence[];
   registry: IdRegistry;
   nodeCount: number;
   edgeCount: number;
@@ -31,7 +31,7 @@ export function createBuilderState(): GraphBuilderState {
     nodes: new Map(),
     edges: new Map(),
     evidence: [],
-    registry: { nodes: new Set(), edges: new Set(), scopes: new Set() },
+    registry: { nodes: new Set(), edges: new Set(), scopes: new Set(), evidence: new Set() },
     nodeCount: 0,
     edgeCount: 0,
     attemptedNodes: 0,
@@ -76,4 +76,9 @@ export function addScope(state: GraphBuilderState, scope: SoftwareGraphScope): v
   if (!state.scopes.has(scope.id)) {
     state.scopes.set(scope.id, scope);
   }
+}
+
+export function registerRootScope(state: GraphBuilderState, scope: SoftwareGraphScope): void {
+  stableUniqueId(state.registry, "scope", scope.id);
+  addScope(state, scope);
 }

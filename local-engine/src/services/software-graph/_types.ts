@@ -2,15 +2,14 @@
  * Internal types for the Software Graph builder.
  */
 
-import type { SoftwareGraphEdgeKind, SoftwareGraphNodeKind } from "../../types/api.types.js";
-
 export interface Classification {
-  nodeKind?: SoftwareGraphNodeKind;
-  edgeKind?: SoftwareGraphEdgeKind;
+  nodeKind?: import("../../types/api.types.js").SoftwareGraphNodeKind;
+  edgeKind?: import("../../types/api.types.js").SoftwareGraphEdgeKind;
 }
 
 export interface IdRegistry {
   nodes: Set<string>;
   edges: Set<string>;
   scopes: Set<string>;
+  evidence: Set<string>;
 }

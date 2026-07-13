@@ -14,7 +14,8 @@ export function detectDomain(filePath: string): string {
 
 export function detectModule(filePath: string, domain: string): string {
   const normalized = normalizePath(filePath);
-  const rest = normalized.replace(new RegExp(`^(src/)?${domain}/?`), "");
+  const prefix = domain === "src" ? "src/" : `src/${domain}/`;
+  const rest = normalized.startsWith(prefix) ? normalized.slice(prefix.length) : normalized;
   const parts = rest.split("/").filter(Boolean);
   if (parts.length === 0) return domain;
   if (parts.length === 1) {

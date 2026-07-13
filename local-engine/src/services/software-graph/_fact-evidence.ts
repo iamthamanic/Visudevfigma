@@ -13,7 +13,7 @@ export function addFactEvidence(
   fileId: string,
   state: GraphBuilderState,
 ): void {
-  const evId = stableUniqueId(state.registry, "node", createId("ev", fact.id));
+  const evId = stableUniqueId(state.registry, "evidence", createId("ev", fact.id));
   state.evidence.push({
     id: evId,
     factId: fact.id,

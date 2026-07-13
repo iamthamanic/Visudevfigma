@@ -21,9 +21,9 @@ import { createApplicationScope, createOrganizationScope } from "./software-grap
 import {
   addEdge,
   addNode,
-  addScope,
   createBuilderState,
   DEFAULT_LIMITS,
+  registerRootScope,
 } from "./software-graph/_state.js";
 import { normalizeFact, normalizeRoute, validateScan } from "./software-graph/_validation.js";
 
@@ -38,8 +38,8 @@ export function buildSoftwareGraph(scan: RawBlueprintScan): SoftwareGraph {
   const projectOrgScope = createOrganizationScope(projectId);
   const state = createBuilderState();
 
-  addScope(state, projectOrgScope);
-  addScope(state, projectAppScope);
+  registerRootScope(state, projectOrgScope);
+  registerRootScope(state, projectAppScope);
   addNode(state, { id: projectOrgScope.id, kind: "organization", label: projectId, metadata: {} });
   addNode(state, {
     id: projectAppScope.id,
