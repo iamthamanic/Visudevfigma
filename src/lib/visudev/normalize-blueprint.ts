@@ -12,6 +12,7 @@ import {
   sanitizeStringList,
 } from "./normalize-blueprint-guards";
 import { normalizeSoftwareGraph } from "./normalize-software-graph";
+import { deriveDiagnosticsFromGraph } from "./software-graph-projections";
 
 const EMPTY: BlueprintData = {
   version: 1,
@@ -30,16 +31,21 @@ export function normalizeBlueprintData(
     return { ...EMPTY };
   }
 
+  const graph = normalizeSoftwareGraph(raw.graph);
+  const graphDiagnostics = graph ? deriveDiagnosticsFromGraph(graph) : null;
+
   return {
     version: raw.version === 1 ? 1 : 1,
     projectId: typeof raw.projectId === "string" ? raw.projectId : undefined,
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : undefined,
     commitSha: typeof raw.commitSha === "string" ? raw.commitSha : undefined,
     analyzedAt: typeof raw.analyzedAt === "string" ? raw.analyzedAt : undefined,
-    routes: sanitizeRoutes(raw.routes),
-    securityMatrix: sanitizeSecurityMatrix(raw.securityMatrix),
-    findings: sanitizeFindings(raw.findings),
-    facts: sanitizeFacts(raw.facts),
+    routes: graphDiagnostics ? graphDiagnostics.routes : sanitizeRoutes(raw.routes),
+    securityMatrix: graphDiagnostics
+      ? graphDiagnostics.securityMatrix
+      : sanitizeSecurityMatrix(raw.securityMatrix),
+    findings: graphDiagnostics ? graphDiagnostics.findings : sanitizeFindings(raw.findings),
+    facts: graphDiagnostics ? graphDiagnostics.facts : sanitizeFacts(raw.facts),
     frameworkHints: sanitizeStringList(raw.frameworkHints),
     filesAnalyzed:
       typeof raw.filesAnalyzed === "number" && Number.isFinite(raw.filesAnalyzed)
@@ -47,6 +53,6 @@ export function normalizeBlueprintData(
         : 0,
     violations: Array.isArray(raw.violations) ? raw.violations : undefined,
     cycles: Array.isArray(raw.cycles) ? raw.cycles : undefined,
-    graph: normalizeSoftwareGraph(raw.graph),
+    graph,
   };
 }

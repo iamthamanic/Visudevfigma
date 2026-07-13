@@ -22,6 +22,7 @@ export function addRouteNodes(
     filePath: route.filePath,
     line: route.line,
     metadata: {
+      routeId: route.id,
       method: route.method,
       path: route.path,
       pipelineCount: route.pipeline?.length ?? 0,
