@@ -1,19 +1,20 @@
 {
   "version": 2,
   "repo": "iamthamanic/visudev-app",
-  "activeIssue": 69,
-  "featureSlug": "diagnostics-graph-migration",
+  "activeIssue": 70,
+  "featureSlug": "blueprint-v2-phase-3",
   "phase": "implement",
-  "branch": "issue/69-diagnostics-graph-migration",
+  "branch": "issue/70-architecture-view",
   "prUrl": null,
   "milestoneFilter": null,
   "paused": false,
   "runMode": "loop",
-  "queue": [69, 70, 71, 72, 73, 74, 75],
-  "completedIssues": [67, 68],
-  "mergedIssues": [67, 68],
+  "queue": [70, 71, 72, 73, 74, 75],
+  "completedIssues": [67, 68, 69],
+  "mergedIssues": [67, 68, 69],
   "prUrls": {
-    "68": "https://github.com/iamthamanic/visudev-app/pull/77"
+    "68": "https://github.com/iamthamanic/visudev-app/pull/77",
+    "69": "https://github.com/iamthamanic/visudev-app/pull/78"
   },
   "retries": {
     "implement": 0,
@@ -30,7 +31,7 @@
   },
   "lastError": null,
   "lastErrorCount": 0,
-  "issuesProcessedInSession": 1,
-  "updatedAt": "2026-07-13T20:45:00.000Z",
-  "notes": "Phase 2 #69 branch created; graph projections not yet implemented"
+  "issuesProcessedInSession": 2,
+  "updatedAt": "2026-07-13T22:18:30.000Z",
+  "notes": "Phase 2 merged; starting #70"
 }

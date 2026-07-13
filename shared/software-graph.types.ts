@@ -8,6 +8,7 @@ export type SoftwareGraphScopeLevel =
   | "organization"
   | "application"
   | "domain"
+  | "layer"
   | "module"
   | "file"
   | "symbol";
@@ -23,9 +24,11 @@ export type SoftwareGraphNodeKind =
   | "organization"
   | "application"
   | "domain"
+  | "layer"
   | "module"
   | "route"
   | "service"
+  | "repository"
   | "table"
   | "external"
   | "file"
@@ -35,6 +38,7 @@ export type SoftwareGraphNodeKind =
 export type SoftwareGraphEdgeKind =
   | "contains"
   | "references"
+  | "implements"
   | "imports"
   | "calls"
   | "api"

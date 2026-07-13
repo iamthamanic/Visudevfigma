@@ -3,15 +3,22 @@ import type cytoscape from "cytoscape";
 import { mountCytoscapeGraph } from "./_mount.js";
 import { releaseCytoscapeMount } from "./_release.js";
 import { syncGraphElements } from "./_sync.js";
+import type { LayoutPreset } from "./_layout.js";
 import type { ValidatedGraphCanvasInput } from "./_validate.js";
 
-export function useCytoscapeGraphMount(validated: ValidatedGraphCanvasInput) {
+export function useCytoscapeGraphMount(
+  validated: ValidatedGraphCanvasInput,
+  layoutPreset: LayoutPreset = "default",
+) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
   const graphRef = useRef<cytoscape.Core | null>(null);
   const elementsRef = useRef({ nodes: validated.nodes, edges: validated.edges });
+  const layoutPresetRef = useRef(layoutPreset);
   const mountGenerationRef = useRef(0);
   const hasGraph = validated.hasRenderableNodes;
+
+  layoutPresetRef.current = layoutPreset;
 
   useEffect(() => {
     elementsRef.current = { nodes: validated.nodes, edges: validated.edges };
@@ -34,6 +41,7 @@ export function useCytoscapeGraphMount(validated: ValidatedGraphCanvasInput) {
     let disposeMount: (() => void) | null = null;
     setInitError(null);
     const latestElements = elementsRef.current;
+    const mountPreset = layoutPresetRef.current;
 
     void (async () => {
       try {
@@ -43,6 +51,7 @@ export function useCytoscapeGraphMount(validated: ValidatedGraphCanvasInput) {
           latestElements.nodes,
           latestElements.edges,
           isStale,
+          mountPreset,
         );
         if (!mounted || isStale()) {
           mounted?.cleanup();
@@ -59,7 +68,12 @@ export function useCytoscapeGraphMount(validated: ValidatedGraphCanvasInput) {
         graphRef.current = mountedGraph;
 
         try {
-          syncGraphElements(mountedGraph, elementsRef.current.nodes, elementsRef.current.edges);
+          syncGraphElements(
+            mountedGraph,
+            elementsRef.current.nodes,
+            elementsRef.current.edges,
+            mountPreset,
+          );
         } catch (error) {
           if (isStale()) return;
           releaseCytoscapeMount(graphRef, disposeMount);

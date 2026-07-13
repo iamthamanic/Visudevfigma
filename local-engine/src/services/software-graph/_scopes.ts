@@ -22,12 +22,25 @@ export function createDomainScope(domain: string, projectId: string): SoftwareGr
   return { level: "domain", id: `domain:${domain}`, label: domain, parentId: `app:${projectId}` };
 }
 
-export function createModuleScope(moduleName: string, domain: string): SoftwareGraphScope {
+export function createLayerScope(layerName: string, domain: string): SoftwareGraphScope {
+  return {
+    level: "layer",
+    id: `layer:${domain}:${layerName}`,
+    label: layerName,
+    parentId: `domain:${domain}`,
+  };
+}
+
+export function createModuleScope(
+  moduleName: string,
+  domain: string,
+  layerName: string,
+): SoftwareGraphScope {
   return {
     level: "module",
-    id: `module:${domain}:${moduleName}`,
+    id: `module:${domain}:${layerName}:${moduleName}`,
     label: moduleName,
-    parentId: `domain:${domain}`,
+    parentId: `layer:${domain}:${layerName}`,
   };
 }
 

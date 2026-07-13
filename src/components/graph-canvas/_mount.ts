@@ -1,6 +1,7 @@
 import type cytoscape from "cytoscape";
 import type { GraphCanvasEdge, GraphCanvasNode } from "./types.js";
 import { syncGraphElements } from "./_sync.js";
+import type { LayoutPreset } from "./_layout.js";
 
 export interface MountedCytoscapeGraph {
   graph: cytoscape.Core;
@@ -12,6 +13,7 @@ export async function mountCytoscapeGraph(
   nodes: GraphCanvasNode[],
   edges: GraphCanvasEdge[],
   isStale: () => boolean = () => false,
+  layoutPreset: LayoutPreset = "default",
 ): Promise<MountedCytoscapeGraph | null> {
   let graph: cytoscape.Core | null = null;
 
@@ -19,13 +21,13 @@ export async function mountCytoscapeGraph(
     const { createCytoscapeInstance } = await import("./_lifecycle.js");
     if (isStale()) return null;
 
-    graph = await createCytoscapeInstance(container, nodes, edges);
+    graph = await createCytoscapeInstance(container, nodes, edges, layoutPreset);
     if (isStale()) {
       graph.destroy();
       return null;
     }
 
-    syncGraphElements(graph, nodes, edges);
+    syncGraphElements(graph, nodes, edges, layoutPreset);
 
     const mountedGraph = graph;
     return {

@@ -1,4 +1,4 @@
-export type BlueprintShellViewId = "infrastructure" | "diagnostics";
+export type BlueprintShellViewId = "infrastructure" | "architecture" | "diagnostics";
 
 export function getDefaultBlueprintView(): BlueprintShellViewId {
   return "infrastructure";

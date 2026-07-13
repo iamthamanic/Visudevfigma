@@ -34,7 +34,7 @@ describe("buildSoftwareGraph", () => {
     expect(graph.nodes.some((n) => n.kind === "runtime")).toBe(true);
   });
 
-  it("creates domain/module/file hierarchy from route paths", () => {
+  it("creates domain/layer/module/file hierarchy from route paths", () => {
     const scan = makeScan({
       filesAnalyzed: 2,
       routes: [
@@ -51,9 +51,12 @@ describe("buildSoftwareGraph", () => {
     const graph = buildSoftwareGraph(scan);
 
     expect(graph.nodes.some((n) => n.kind === "domain" && n.id === "domain:routes")).toBe(true);
-    expect(graph.nodes.some((n) => n.kind === "module" && n.id === "module:routes:routes")).toBe(
-      true,
-    );
+    expect(
+      graph.nodes.some((n) => n.kind === "layer" && n.id === "layer:routes:presentation"),
+    ).toBe(true);
+    expect(
+      graph.nodes.some((n) => n.kind === "module" && n.id === "module:routes:presentation:routes"),
+    ).toBe(true);
     expect(graph.nodes.some((n) => n.kind === "file" && n.id === "file:src/routes/users.ts")).toBe(
       true,
     );

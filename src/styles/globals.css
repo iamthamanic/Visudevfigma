@@ -76,6 +76,10 @@
   --color-graph-route: var(--color-warning);
   --color-graph-domain: #e5e5e5;
   --color-graph-module: #cccccc;
+  --color-graph-arch-domain: #6366f1;
+  --color-graph-arch-layer: #8b5cf6;
+  --color-graph-arch-module: #a78bfa;
+  --color-graph-repository: #14b8a6;
   --color-graph-symbol: #ffffff;
   --color-graph-edge: var(--color-border-hover);
   --color-graph-label: var(--color-muted-foreground);
