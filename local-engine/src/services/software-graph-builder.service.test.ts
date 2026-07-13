@@ -94,7 +94,13 @@ describe("buildSoftwareGraph", () => {
           filePath: "src/routes/auth.ts",
           line: 1,
           snippet: "// " + "x ".repeat(200),
-          metadata: { apiKey: "super-secret", safeField: "ok" },
+          metadata: {
+            apiKey: "super-secret",
+            safeField: "ok",
+            headers: [
+              "Authorization: Bearer sk-12345678901234567890123456789012345678901234567890",
+            ],
+          },
         },
       ],
     });
@@ -107,6 +113,8 @@ describe("buildSoftwareGraph", () => {
     expect(evidence.excerpt.length).toBeLessThanOrEqual(201);
     expect(node?.metadata.apiKey).toBeUndefined();
     expect(node?.metadata.safeField).toBe("ok");
+    expect((node?.metadata.headers as string[])[0]).not.toContain("sk-");
+    expect((node?.metadata.headers as string[])[0]).toContain("***");
   });
 
   it("rejects invalid scan input", () => {

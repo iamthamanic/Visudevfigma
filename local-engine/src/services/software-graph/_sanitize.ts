@@ -24,17 +24,24 @@ export function sanitizeExcerpt(snippet: string | undefined): SoftwareGraphEvide
   return excerpt;
 }
 
+function sanitizeValue(value: unknown): unknown {
+  if (typeof value === "string") {
+    return value.replace(HIGH_ENTROPY_RE, "***").replace(EMAIL_RE, "[EMAIL]");
+  }
+  if (Array.isArray(value)) {
+    return value.map(sanitizeValue);
+  }
+  if (value && typeof value === "object") {
+    return sanitizeMetadata(value as Record<string, unknown>);
+  }
+  return value;
+}
+
 export function sanitizeMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(metadata)) {
     if (SENSITIVE_KEY_RE.test(key)) continue;
-    if (typeof value === "string") {
-      out[key] = value.replace(HIGH_ENTROPY_RE, "***").replace(EMAIL_RE, "[EMAIL]");
-    } else if (value && typeof value === "object" && !Array.isArray(value)) {
-      out[key] = sanitizeMetadata(value as Record<string, unknown>);
-    } else {
-      out[key] = value;
-    }
+    out[key] = sanitizeValue(value);
   }
   return out;
 }
