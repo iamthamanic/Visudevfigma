@@ -236,7 +236,7 @@ test.describe("Blueprint Engine Core UI", () => {
 
     await expect(page.getByRole("heading", { name: /^Blueprint$/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Diagnosen" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /Security Matrix/i })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /Sicherheits-Matrix/i })).toBeVisible({
       timeout: 15000,
     });
 
@@ -324,7 +324,7 @@ test.describe("Blueprint Engine Core UI", () => {
 
     await page.getByRole("button", { name: "Diagnosen", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Diagnosen" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /Security Matrix/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Sicherheits-Matrix/i })).toBeVisible();
   });
 
   test("empty blueprint shows no routes message", async ({ page }) => {
