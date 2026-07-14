@@ -14,6 +14,7 @@ import {
   buildTopologyNodes,
   type TopologyEnvFilter,
   type TopologyRegionFilter,
+  type TopologyViewFilter,
 } from "./infrastructure/build-topology.js";
 import { projectInfrastructureGraph } from "./infrastructure/_projection.js";
 import styles from "../styles/InfrastructureView.module.css";
@@ -25,8 +26,10 @@ interface InfrastructureViewProps {
 export function InfrastructureView({ blueprint }: InfrastructureViewProps) {
   const graph = blueprint.graph;
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [activeEnv, setActiveEnv] = useState<TopologyEnvFilter | null>(null);
-  const [activeRegion, setActiveRegion] = useState<TopologyRegionFilter | null>(null);
+  const [activeEnv, setActiveEnv] = useState<TopologyEnvFilter | null>("Produktion");
+  const [activeRegion, setActiveRegion] = useState<TopologyRegionFilter | null>("eu-central-1");
+  const [activeView, setActiveView] = useState<TopologyViewFilter | null>("Logische Topologie");
+  const [refreshTick, setRefreshTick] = useState(0);
 
   const { nodes, edges } = useMemo(() => {
     if (!graph) return { nodes: [], edges: [] };
@@ -39,8 +42,6 @@ export function InfrastructureView({ blueprint }: InfrastructureViewProps) {
     () => nodes.find((node) => node.id === selectedNodeId) ?? null,
     [nodes, selectedNodeId],
   );
-
-  const filtersActive = Boolean(activeEnv || activeRegion);
 
   if (!graph || nodes.length === 0) {
     return (
@@ -63,19 +64,16 @@ export function InfrastructureView({ blueprint }: InfrastructureViewProps) {
         />
       }
       canvas={
-        <div className={styles.canvasWrap}>
+        <div className={styles.canvasWrap} key={refreshTick}>
           <InfrastructureTopologyFilters
             activeEnv={activeEnv}
             activeRegion={activeRegion}
+            activeView={activeView}
             onSelectEnv={setActiveEnv}
             onSelectRegion={setActiveRegion}
+            onSelectView={setActiveView}
+            onRefresh={() => setRefreshTick((tick) => tick + 1)}
           />
-          {filtersActive ? (
-            <p className={styles.filterHint}>
-              Umgebungs- und Regionsfilter sind UI-Platzhalter — Graph-Metadaten folgen in einer
-              späteren Phase.
-            </p>
-          ) : null}
           <InfrastructureTopologyDiagram
             nodes={topologyNodes}
             selectedNodeId={selectedNodeId}
@@ -87,7 +85,7 @@ export function InfrastructureView({ blueprint }: InfrastructureViewProps) {
           ) : null}
         </div>
       }
-      inspector={<InfrastructureInspector node={selectedNode} />}
+      inspector={<InfrastructureInspector node={selectedNode} edges={edges} nodes={nodes} />}
     />
   );
 }

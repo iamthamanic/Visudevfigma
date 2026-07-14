@@ -168,6 +168,35 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 45%, transparent);
 }
 
+.filterStatusDot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-right: 0.35rem;
+  border-radius: 9999px;
+  background: var(--color-success);
+}
+
+.filterChipHint {
+  margin-left: 0.35rem;
+  font-size: 0.6875rem;
+  color: var(--color-muted-foreground);
+}
+
+.refreshButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  color: var(--color-foreground);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
 .filterHint {
   margin: 0;
   padding: 0.35rem 1rem;
@@ -250,6 +279,16 @@
   border-left: 3px solid var(--color-graph-runtime);
 }
 
+.topologyNode[data-kind="external"] {
+  border-left: 3px solid var(--color-graph-external);
+}
+
+.topologyNodeLb {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--color-graph-runtime) 55%, var(--color-border));
+  background: color-mix(in srgb, var(--color-graph-runtime) 12%, var(--color-card));
+}
+
 .topologyNodeSelected {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 45%, transparent);
@@ -320,6 +359,79 @@
 .legendDb {
   background: var(--color-bp-rel-data);
   height: 0.28rem;
+}
+
+.legendJobs {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-bp-rel-event) 0 3px,
+    transparent 3px 6px
+  );
+}
+
+.legendExternal {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-graph-external) 0 5px,
+    transparent 5px 8px
+  );
+}
+
+.overviewList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.overviewRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.overviewRow dt {
+  margin: 0;
+  color: var(--color-muted-foreground);
+}
+
+.overviewRow dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.connectionGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.connectionHeading {
+  margin: 0 0 0.35rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted-foreground);
+}
+
+.connectionList {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8125rem;
+}
+
+.logsButton {
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  color: var(--color-foreground);
+  font-size: 0.8125rem;
+  cursor: pointer;
 }
 
 .topologyMeta {

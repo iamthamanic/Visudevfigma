@@ -5,7 +5,8 @@
 import type { ResourceMeterValues } from "./InfrastructureResourceMeters.js";
 
 export const STATIC_PLACEHOLDER_METERS: ResourceMeterValues = {
-  cpu: 0,
-  ram: 0,
-  network: 0,
+  cpu: 42,
+  ram: 68,
+  networkIn: 31,
+  networkOut: 24,
 };

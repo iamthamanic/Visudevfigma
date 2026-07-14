@@ -7,7 +7,9 @@ import styles from "../../styles/InfrastructureView.module.css";
 const LEGEND_ITEMS = [
   { id: "http", label: "HTTP", className: styles.legendHttp },
   { id: "grpc", label: "gRPC", className: styles.legendGrpc },
-  { id: "db", label: "DB", className: styles.legendDb },
+  { id: "jobs", label: "Jobs", className: styles.legendJobs },
+  { id: "data", label: "Datenzugriff", className: styles.legendDb },
+  { id: "external", label: "Externe Verbindung", className: styles.legendExternal },
 ] as const;
 
 export function InfrastructureConnectionLegend(): JSX.Element {

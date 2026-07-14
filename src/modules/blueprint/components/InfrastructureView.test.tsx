@@ -19,7 +19,25 @@ const graphBlueprint: BlueprintData = {
     scopes: [],
     nodes: [
       {
-        id: "svc:api",
+        id: "runtime:internet",
+        kind: "runtime",
+        label: "Internet",
+        metadata: {},
+      },
+      {
+        id: "runtime:lb",
+        kind: "runtime",
+        label: "LOAD BALANCER / GATEWAY",
+        metadata: {},
+      },
+      {
+        id: "service:web",
+        kind: "service",
+        label: "Web App",
+        metadata: {},
+      },
+      {
+        id: "service:api",
         kind: "service",
         label: "API Service",
         metadata: {},
@@ -30,12 +48,24 @@ const graphBlueprint: BlueprintData = {
         label: "PostgreSQL",
         metadata: {},
       },
+      {
+        id: "external:stripe",
+        kind: "external",
+        label: "Payment API (Stripe)",
+        metadata: {},
+      },
+      {
+        id: "external:monitor",
+        kind: "external",
+        label: "Prometheus",
+        metadata: {},
+      },
     ],
     edges: [
       {
         id: "e-data",
         kind: "data",
-        sourceId: "svc:api",
+        sourceId: "service:api",
         targetId: "tbl:users",
         metadata: {},
       },
@@ -70,18 +100,24 @@ describe("InfrastructureView", () => {
     const topology = screen.getByLabelText("Infrastruktur-Topologie");
     expect(topology).toBeInTheDocument();
     expect(topology).toHaveTextContent("Internet");
+    expect(screen.getByTestId("infra-external-apis")).toBeInTheDocument();
+    expect(screen.getByTestId("infra-monitoring-tier")).toBeInTheDocument();
     expect(screen.getByLabelText("Verbindungs-Legende")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "prod" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "eu-west" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Produktion/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /eu-central-1/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Logische Topologie/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Aktualisieren/i })).toBeInTheDocument();
   });
 
   it("opens inspector with resource meters on selection", () => {
     render(<InfrastructureView blueprint={graphBlueprint} />);
-    fireEvent.click(screen.getAllByRole("button", { name: /API Service/i })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /Web App/i })[0]);
+    expect(screen.getByText("Übersicht")).toBeInTheDocument();
     expect(screen.getByText("Ressourcen")).toBeInTheDocument();
-    expect(screen.getByText("CPU")).toBeInTheDocument();
-    expect(screen.getByText("RAM")).toBeInTheDocument();
-    expect(screen.getByText("Netzwerk")).toBeInTheDocument();
-    expect(screen.getByText("Verantwortlichkeiten")).toBeInTheDocument();
+    expect(screen.getByTestId("infra-resource-cpu")).toBeInTheDocument();
+    expect(screen.getByText("Verbindungen")).toBeInTheDocument();
+    expect(screen.getAllByText(/eingehend/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/ausgehend/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /Logs anzeigen/i })).toBeInTheDocument();
   });
 });
