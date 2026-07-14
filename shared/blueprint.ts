@@ -1,5 +1,5 @@
 /**
- * Re-exports graph-derived legacy Blueprint projections for the frontend.
+ * Stable shared export surface for blueprint graph projections.
  */
 
 export {
@@ -8,4 +8,4 @@ export {
   deriveFindingsFromGraph,
   deriveRoutesFromGraph,
   deriveSecurityMatrixFromGraph,
-} from "../../../shared/blueprint.js";
+} from "./blueprint-graph-projections.js";

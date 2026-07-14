@@ -12,6 +12,7 @@ export type ConceptState =
 
 export type FindingSeverity = "info" | "low" | "medium" | "high" | "critical";
 
+/** @deprecated Synthesized from `graph`; kept for one major version. */
 export interface BlueprintFinding {
   id: string;
   ruleId: string;
@@ -26,6 +27,7 @@ export interface BlueprintFinding {
   remediation?: string;
 }
 
+/** @deprecated Synthesized from `graph`; kept for one major version. */
 export interface CodeFact {
   id: string;
   kind: string;
@@ -44,6 +46,7 @@ export interface PipelineNode {
   line?: number;
 }
 
+/** @deprecated Synthesized from `graph`; kept for one major version. */
 export interface RouteBlueprint {
   id: string;
   method: string;
@@ -54,10 +57,12 @@ export interface RouteBlueprint {
   concepts: Record<string, ConceptState>;
 }
 
+/** @deprecated Prefer `graph` + `deriveDiagnosticsFromGraph`; kept for one major version. */
 export interface SecurityMatrixCell {
   state: ConceptState | "n/a";
 }
 
+/** @deprecated Prefer `graph` + `deriveDiagnosticsFromGraph`; kept for one major version. */
 export interface SecurityMatrixRow {
   routeId: string;
   method: string;
@@ -92,9 +97,13 @@ export interface BlueprintData extends Record<string, unknown> {
   updatedAt?: string;
   commitSha?: string;
   analyzedAt?: string;
+  /** @deprecated Synthesized from `graph` when absent. */
   routes?: RouteBlueprint[];
+  /** @deprecated Synthesized from `graph` when absent. */
   securityMatrix?: SecurityMatrixRow[];
+  /** @deprecated Synthesized from `graph` when absent. */
   findings?: BlueprintFinding[];
+  /** @deprecated Synthesized from `graph` when absent. */
   facts?: CodeFact[];
   filesAnalyzed?: number;
   frameworkHints?: string[];

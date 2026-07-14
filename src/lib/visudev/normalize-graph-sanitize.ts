@@ -3,7 +3,15 @@ import { boundedString, exactString, MAX_STRING_LEN } from "./normalize-graph-gu
 
 const MAX_METADATA_KEYS_SCAN = 64;
 const MAX_METADATA_KEYS_KEEP = 32;
-const ALLOWED_METADATA_KEYS = new Set(["runtime", "framework", "language"]);
+const ALLOWED_METADATA_KEYS = new Set([
+  "runtime",
+  "framework",
+  "language",
+  "routeId",
+  "method",
+  "path",
+  "pipelineCount",
+]);
 
 function positiveLine(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 1;
