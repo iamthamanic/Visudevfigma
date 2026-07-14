@@ -1,20 +1,21 @@
 {
   "version": 2,
   "repo": "iamthamanic/visudev-app",
-  "activeIssue": 70,
-  "featureSlug": "blueprint-v2-phase-3",
-  "phase": "implement",
-  "branch": "issue/70-architecture-view",
+  "activeIssue": 71,
+  "featureSlug": "dependencies-view",
+  "phase": "commit-pr",
+  "branch": "issue/71-dependencies-view",
   "prUrl": null,
   "milestoneFilter": null,
   "paused": false,
   "runMode": "loop",
-  "queue": [70, 71, 72, 73, 74, 75],
-  "completedIssues": [67, 68, 69],
-  "mergedIssues": [67, 68, 69],
+  "queue": [71, 72, 73, 74, 75],
+  "completedIssues": [67, 68, 69, 70],
+  "mergedIssues": [67, 68, 69, 70],
   "prUrls": {
     "68": "https://github.com/iamthamanic/visudev-app/pull/77",
-    "69": "https://github.com/iamthamanic/visudev-app/pull/78"
+    "69": "https://github.com/iamthamanic/visudev-app/pull/78",
+    "70": "https://github.com/iamthamanic/visudev-app/pull/79"
   },
   "retries": {
     "implement": 0,
@@ -31,7 +32,7 @@
   },
   "lastError": null,
   "lastErrorCount": 0,
-  "issuesProcessedInSession": 2,
-  "updatedAt": "2026-07-13T22:18:30.000Z",
-  "notes": "Phase 2 merged; starting #70"
+  "issuesProcessedInSession": 3,
+  "updatedAt": "2026-07-13T23:35:00.000Z",
+  "notes": "Phase 3 #70 merged; starting #71"
 }

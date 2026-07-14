@@ -13,6 +13,7 @@ import type {
   SoftwareGraph,
 } from "../types/api.types.js";
 import { addFactEvidence } from "./software-graph/_fact-evidence.js";
+import { addDependencyFactEdge } from "./software-graph/_dependency-edges.js";
 import { ensureFileContext } from "./software-graph/_file-context.js";
 import { createId, stableUniqueId } from "./software-graph/_ids.js";
 import { addRouteNodes } from "./software-graph/_route-nodes.js";
@@ -71,6 +72,7 @@ export function buildSoftwareGraph(scan: RawBlueprintScan): SoftwareGraph {
   for (const fact of facts) {
     const { fileId } = ensureFileContext(fact.filePath, projectId, state);
     addFactEvidence(fact, fileId, state);
+    addDependencyFactEdge(fact, fileId, projectId, state);
   }
 
   const runtimeNodeId = stableUniqueId(state.registry, "node", `runtime:${projectId}`);

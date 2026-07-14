@@ -21,6 +21,7 @@ describe("BlueprintViewShell", () => {
     render(<BlueprintViewShell blueprint={emptyBlueprint} />);
     expect(screen.getByRole("tab", { name: "Infrastructure" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Architecture" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Dependencies" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Diagnostics" })).toBeInTheDocument();
   });
 
@@ -63,6 +64,15 @@ describe("BlueprintViewShell", () => {
     render(<BlueprintViewShell blueprint={emptyBlueprint} />);
     fireEvent.click(screen.getByRole("tab", { name: "Architecture" }));
     expect(screen.getByRole("tab", { name: "Architecture" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("switches to Dependencies tab on click", () => {
+    render(<BlueprintViewShell blueprint={emptyBlueprint} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Dependencies" }));
+    expect(screen.getByRole("tab", { name: "Dependencies" })).toHaveAttribute(
       "aria-selected",
       "true",
     );

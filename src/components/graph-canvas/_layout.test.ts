@@ -12,6 +12,11 @@ describe("buildLayoutOptions", () => {
     expect((options as { rankDir?: string }).rankDir).toBe("TB");
   });
 
+  it("uses cose force preset when requested", () => {
+    const options = buildLayoutOptions(10, true, "force");
+    expect(options.name).toBe("cose");
+  });
+
   it("uses grid layout for large graphs", () => {
     expect(buildLayoutOptions(MAX_DAGRE_NODES + 1).name).toBe("grid");
   });
