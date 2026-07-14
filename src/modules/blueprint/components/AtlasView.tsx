@@ -5,8 +5,11 @@
 import { lazy, Suspense } from "react";
 import type { BlueprintData } from "../types";
 import { BlueprintViewLayout } from "./ui/BlueprintViewLayout.js";
+import { AtlasClusterLabels } from "./atlas/AtlasClusterLabels.js";
 import { AtlasControls } from "./atlas/AtlasControls.js";
 import { AtlasInspector } from "./atlas/AtlasInspector.js";
+import { AtlasLegend } from "./atlas/AtlasLegend.js";
+import { AtlasStatsBar } from "./atlas/AtlasStatsBar.js";
 import { useAtlasViewState } from "./atlas/useAtlasViewState.js";
 import styles from "../styles/AtlasView.module.css";
 
@@ -82,7 +85,18 @@ export function AtlasView({ blueprint }: AtlasViewProps) {
           onSelectViewMode={state.handleSelectViewMode}
         />
       }
-      canvas={<div className={styles.canvasWrap}>{canvasContent}</div>}
+      canvas={
+        <div className={styles.canvasWrap}>
+          <AtlasStatsBar
+            clusterCount={state.visibleGroups.length}
+            nodeCount={state.projection.visibleNodes}
+            edgeCount={state.projection.edges.length}
+          />
+          <AtlasLegend />
+          <div className={styles.canvasMain}>{canvasContent}</div>
+          <AtlasClusterLabels groups={state.visibleGroups} />
+        </div>
+      }
       inspector={
         <AtlasInspector graph={graph} node={state.selectedNode} cluster={state.selectedCluster} />
       }

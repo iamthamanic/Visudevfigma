@@ -253,9 +253,84 @@
 }
 
 .canvasWrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 320px;
   overflow: hidden;
+}
+
+.statsBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.statsDivider {
+  color: var(--color-muted-foreground);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.legendItem {
+  font-size: 0.6875rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-muted);
+}
+
+.legendItem[data-kind="module"] {
+  border-color: color-mix(in srgb, var(--color-graph-module) 40%, var(--color-border));
+}
+
+.legendItem[data-kind="service"] {
+  border-color: color-mix(in srgb, var(--color-graph-service) 40%, var(--color-border));
+}
+
+.legendItem[data-kind="table"] {
+  border-color: color-mix(in srgb, var(--color-graph-database) 40%, var(--color-border));
+}
+
+.legendItem[data-kind="external"] {
+  border-color: color-mix(in srgb, var(--color-graph-external) 40%, var(--color-border));
+}
+
+.clusterLabels {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  max-width: 60%;
+  pointer-events: none;
+}
+
+.clusterLabel {
+  padding: 0.2rem 0.45rem;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--color-background) 88%, transparent);
+  border: 1px solid var(--color-border);
+  font-size: 0.625rem;
+  color: var(--color-foreground);
+}
+
+.canvasMain {
+  position: relative;
+  flex: 1;
+  min-height: 240px;
 }
 
 .inspectorTabs {
