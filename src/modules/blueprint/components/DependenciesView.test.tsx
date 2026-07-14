@@ -90,11 +90,10 @@ describe("DependenciesView", () => {
     expect(within(controls).getAllByText("1").length).toBeGreaterThanOrEqual(2);
   });
 
-  it("shows inspector empty message when no edge selected", () => {
+  it("shows inspector placeholder when no edge selected", () => {
     render(<DependenciesView blueprint={graphBlueprint} />);
-    expect(
-      screen.getByText(/Wähle eine Kante im Graph, um Details und Evidence zu sehen/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Keine Auswahl")).toBeInTheDocument();
+    expect(screen.getAllByText("Top Abhängigkeiten").length).toBeGreaterThan(0);
   });
 
   it("shows empty canvas message when all relationship chips are off", () => {
@@ -107,5 +106,26 @@ describe("DependenciesView", () => {
       }
     }
     expect(screen.getByText(/Passe die Beziehungstypen an/i)).toBeInTheDocument();
+  });
+
+  it("renders graph search, footer stats, and minimap", () => {
+    render(<DependenciesView blueprint={graphBlueprint} />);
+    expect(screen.getByPlaceholderText(/Label oder Modul/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Graph-Statistik")).toBeInTheDocument();
+    expect(screen.getByLabelText("Graph-Minimap")).toBeInTheDocument();
+    expect(screen.getByText(/2\/2 Knoten sichtbar/i)).toBeInTheDocument();
+  });
+
+  it("shows top dependencies in inspector when no edge selected", () => {
+    render(<DependenciesView blueprint={graphBlueprint} />);
+    expect(screen.getAllByText("Top Abhängigkeiten").length).toBeGreaterThan(0);
+  });
+
+  it("filters graph via search input", () => {
+    render(<DependenciesView blueprint={graphBlueprint} />);
+    fireEvent.change(screen.getByPlaceholderText(/Label oder Modul/i), {
+      target: { value: "b.ts" },
+    });
+    expect(screen.getByText(/2\/2 Knoten sichtbar/i)).toBeInTheDocument();
   });
 });

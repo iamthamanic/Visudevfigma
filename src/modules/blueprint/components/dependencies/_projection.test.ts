@@ -4,7 +4,11 @@
 
 import { describe, expect, it } from "vitest";
 import type { SoftwareGraph } from "../../types";
-import { findEdgeEvidence, projectDependenciesGraph } from "./_projection.js";
+import {
+  filterDependenciesProjection,
+  findEdgeEvidence,
+  projectDependenciesGraph,
+} from "./_projection.js";
 
 function makeGraph(overrides: Partial<SoftwareGraph> = {}): SoftwareGraph {
   return {
@@ -42,6 +46,8 @@ describe("projectDependenciesGraph", () => {
 
     expect(projected.edges.map((edge) => edge.id).sort()).toEqual(["e-api", "e-import"]);
     expect(projected.nodes.map((node) => node.id).sort()).toEqual(["file:a", "file:b", "svc:x"]);
+    expect(projected.nodes[0].label).toContain("\n");
+    expect(projected.edges[0].label).toBe("Imports");
   });
 
   it("filters edges by visible kinds independently", () => {
@@ -65,6 +71,50 @@ describe("projectDependenciesGraph", () => {
     const none = projectDependenciesGraph(graph, { visibleEdgeKinds: new Set() });
     expect(none.edges).toHaveLength(0);
     expect(none.nodes).toHaveLength(0);
+  });
+});
+
+describe("filterDependenciesProjection", () => {
+  it("filters nodes and connected edges by search query", () => {
+    const projection = {
+      nodes: [
+        { id: "file:a", label: "a.ts\nDatei", kind: "file" },
+        { id: "file:b", label: "b.ts\nDatei", kind: "file" },
+      ],
+      edges: [{ id: "e1", source: "file:a", target: "file:b", kind: "imports", label: "Imports" }],
+    };
+
+    const filtered = filterDependenciesProjection(
+      projection,
+      "b.ts",
+      makeGraph({
+        nodes: [
+          { id: "file:a", kind: "file", label: "a.ts", metadata: {} },
+          { id: "file:b", kind: "file", label: "b.ts", metadata: {} },
+        ],
+      }),
+    );
+    expect(filtered.nodes).toHaveLength(2);
+    expect(filtered.edges).toHaveLength(1);
+
+    const empty = filterDependenciesProjection(
+      projection,
+      "missing-module",
+      makeGraph({
+        nodes: [
+          { id: "file:a", kind: "file", label: "a.ts", metadata: {} },
+          { id: "file:b", kind: "file", label: "b.ts", metadata: {} },
+        ],
+      }),
+    );
+    expect(empty.nodes).toHaveLength(0);
+
+    const isolated = filterDependenciesProjection(
+      { nodes: [{ id: "file:z", label: "z.ts\nDatei", kind: "file" }], edges: [] },
+      "z.ts",
+      makeGraph({ nodes: [{ id: "file:z", kind: "file", label: "z.ts", metadata: {} }] }),
+    );
+    expect(isolated.nodes).toHaveLength(1);
   });
 });
 
