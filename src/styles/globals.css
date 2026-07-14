@@ -88,6 +88,30 @@
   --color-graph-runtime-edge: #8b5cf6;
   --color-graph-runtime-shared: var(--color-muted-foreground);
 
+  --color-bp-rel-imports: #3b82f6;
+  --color-bp-rel-calls: #22c55e;
+  --color-bp-rel-api: #06b6d4;
+  --color-bp-rel-data: #a855f7;
+  --color-bp-rel-event: #ec4899;
+  --color-bp-rel-auth: #f97316;
+  --color-bp-rel-validation: #84cc16;
+  --color-bp-rel-external: #38bdf8;
+
+  --color-bp-rel-imports-soft: rgba(59, 130, 246, 0.12);
+  --color-bp-rel-calls-soft: rgba(34, 197, 94, 0.12);
+  --color-bp-rel-api-soft: rgba(6, 182, 212, 0.12);
+  --color-bp-rel-data-soft: rgba(168, 85, 247, 0.12);
+  --color-bp-rel-event-soft: rgba(236, 72, 153, 0.12);
+  --color-bp-rel-auth-soft: rgba(249, 115, 22, 0.12);
+  --color-bp-rel-validation-soft: rgba(132, 204, 22, 0.12);
+  --color-bp-rel-external-soft: rgba(56, 189, 248, 0.12);
+
+  --color-bp-severity-critical: #ef4444;
+  --color-bp-severity-high: #f97316;
+  --color-bp-severity-medium: #eab308;
+  --color-bp-severity-medium-soft: rgba(234, 179, 8, 0.12);
+  --color-bp-severity-critical-soft: rgba(239, 68, 68, 0.12);
+
   --color-overlay: rgba(0, 0, 0, 0.8);
   --color-overlay-muted: rgba(0, 0, 0, 0.6);
 

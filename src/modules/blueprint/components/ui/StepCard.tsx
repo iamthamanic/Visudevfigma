@@ -1,0 +1,57 @@
+/**
+ * Execution pipeline step card for Blueprint Ausführung view.
+ * Location: src/modules/blueprint/components/ui/
+ */
+
+import type { StatusBadgeVariant } from "./StatusBadge.js";
+import { StatusBadge } from "./StatusBadge.js";
+import styles from "./StepCard.module.css";
+
+interface StepCardProps {
+  stepNumber: number;
+  title: string;
+  subtitle?: string;
+  durationMs?: number;
+  status?: StatusBadgeVariant;
+  selected?: boolean;
+  onSelect?: () => void;
+}
+
+export function StepCard({
+  stepNumber,
+  title,
+  subtitle,
+  durationMs,
+  status = "confirmed",
+  selected = false,
+  onSelect,
+}: StepCardProps): JSX.Element {
+  const statusLabel =
+    status === "confirmed"
+      ? "OK"
+      : status === "missing"
+        ? "Fehlt"
+        : status === "unknown"
+          ? "Unbekannt"
+          : status;
+
+  return (
+    <button
+      type="button"
+      className={styles.root}
+      data-selected={selected ? "true" : "false"}
+      onClick={onSelect}
+      aria-pressed={selected}
+    >
+      <span className={styles.number}>{stepNumber}</span>
+      <span className={styles.content}>
+        <span className={styles.title}>{title}</span>
+        {subtitle ? <span className={styles.subtitle}>{subtitle}</span> : null}
+      </span>
+      <span className={styles.meta}>
+        {durationMs != null ? <span className={styles.duration}>{durationMs}ms</span> : null}
+        <StatusBadge variant={status} label={statusLabel} />
+      </span>
+    </button>
+  );
+}

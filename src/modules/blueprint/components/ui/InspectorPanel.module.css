@@ -1,0 +1,82 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  min-width: 280px;
+  max-width: 360px;
+  height: 100%;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-card);
+}
+
+.header {
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.title {
+  margin: var(--space-xs) 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+}
+
+.subtitle {
+  margin: var(--space-xs) 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-muted-foreground);
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+}
+
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.empty {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-muted-foreground);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted-foreground);
+}
+
+.sectionContent {
+  font-size: 0.8125rem;
+  color: var(--color-foreground);
+}
+
+.codeBlock {
+  margin: 0;
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
+  background: var(--color-terminal-bg);
+  border: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--color-terminal-text);
+}
