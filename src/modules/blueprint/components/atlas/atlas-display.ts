@@ -87,9 +87,21 @@ export function listDeploymentHints(graph: SoftwareGraph, node: SoftwareGraphNod
 
   const nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
   const edges = Array.isArray(graph.edges) ? graph.edges : [];
-  const runtimeNodes = nodes.filter((entry) => entry.kind === "runtime");
+  const linkedNodeIds = new Set<string>();
+  for (const edge of edges) {
+    if (edge.sourceId === node.id) {
+      linkedNodeIds.add(edge.targetId);
+    }
+    if (edge.targetId === node.id) {
+      linkedNodeIds.add(edge.sourceId);
+    }
+  }
 
-  for (const runtimeNode of runtimeNodes) {
+  for (const runtimeNode of nodes) {
+    if (runtimeNode.kind !== "runtime") continue;
+    if (!linkedNodeIds.has(runtimeNode.id)) continue;
+
+    hints.add(runtimeNode.label);
     const runtimes = runtimeNode.metadata.runtimes;
     if (Array.isArray(runtimes)) {
       for (const runtime of runtimes) {
@@ -98,16 +110,18 @@ export function listDeploymentHints(graph: SoftwareGraph, node: SoftwareGraphNod
         }
       }
     }
-
-    const linked = edges.some(
-      (edge) =>
-        (edge.sourceId === node.id && edge.targetId === runtimeNode.id) ||
-        (edge.targetId === node.id && edge.sourceId === runtimeNode.id),
-    );
-    if (linked) {
-      hints.add(runtimeNode.label);
-    }
   }
 
   return [...hints];
+}
+
+export function resolveNodeLabels(
+  graph: SoftwareGraph,
+  nodeIds: string[],
+  limit = 24,
+): { labels: string[]; omittedCount: number } {
+  const nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
+  const nodeById = new Map(nodes.map((entry) => [entry.id, entry]));
+  const labels = nodeIds.map((nodeId) => nodeById.get(nodeId)?.label ?? nodeId).slice(0, limit);
+  return { labels, omittedCount: Math.max(0, nodeIds.length - limit) };
 }

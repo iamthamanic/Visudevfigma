@@ -81,4 +81,14 @@ describe("AtlasView", () => {
     expect(within(inspector).getByText("auth")).toBeInTheDocument();
     expect(within(inspector).getByText("billing")).toBeInTheDocument();
   });
+
+  it("clears node selection when search filters it out", () => {
+    render(<AtlasView blueprint={graphBlueprint} />);
+    fireEvent.click(screen.getByRole("button", { name: /auth/i }));
+    expect(screen.getByRole("heading", { name: "auth" })).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("Label durchsuchen…"), {
+      target: { value: "bill" },
+    });
+    expect(screen.getByRole("heading", { name: "Keine Auswahl" })).toBeInTheDocument();
+  });
 });

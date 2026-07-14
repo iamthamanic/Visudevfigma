@@ -2,7 +2,7 @@
  * AtlasView — birds-eye 2D clustered map of the whole SoftwareGraph.
  */
 
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import type { BlueprintData } from "../types";
 import { BlueprintViewLayout } from "./ui/BlueprintViewLayout.js";
 import { AtlasControls } from "./atlas/AtlasControls.js";
@@ -57,6 +57,16 @@ export function AtlasView({ blueprint }: AtlasViewProps) {
     setSelectedGroupId(groupId);
     setSelectedNodeId(null);
   };
+
+  useEffect(() => {
+    const visibleIds = new Set(projection.nodes.map((node) => node.id));
+    if (selectedNodeId && !visibleIds.has(selectedNodeId)) {
+      setSelectedNodeId(null);
+    }
+    if (selectedGroupId && !visibleGroups.some((group) => group.id === selectedGroupId)) {
+      setSelectedGroupId(null);
+    }
+  }, [projection.nodes, selectedGroupId, selectedNodeId, visibleGroups]);
 
   if (!graph) {
     return (
