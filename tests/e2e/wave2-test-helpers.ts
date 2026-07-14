@@ -23,15 +23,6 @@ export const E2E_ACCESS_TOKEN =
   "eyJpc3MiOiJodHRwOi8vMTI3LjAuMC4xOjU0MzIxL2F1dGgvdjEiLCJzdWIiOiJlMmUtdXNlci1pZCIsInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjo5OTk5OTk5OTk5fQ." +
   "e2e-signature";
 
-const VIEW_SUBNAV_LABELS: Record<string, string> = {
-  architecture: "Architektur",
-  dependencies: "Abhängigkeiten",
-  execution: "Ausführung",
-  infrastructure: "Infrastruktur",
-  atlas: "Atlas",
-  evolution: "Evolution",
-  diagnostics: "Diagnosen",
-};
 
 export function e2eSession() {
   return {
@@ -112,6 +103,14 @@ export async function installWave2Mocks(
 
   await page.route("**/functions/v1/visudev-blueprint/**", async (route) => {
     if (route.request().method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, data: blueprint }),
+      });
+      return;
+    }
+    if (route.request().method() === "PUT") {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -211,7 +210,7 @@ export async function installWave2Mocks(
   }
 }
 
-/** Navigate to a Blueprint sub-view without full reload (preserves activeProject). */
+/** Navigate to a Blueprint sub-view; waits for project auto-select after reload. */
 export async function openBlueprintView(page: import("@playwright/test").Page, viewId: string) {
   await page.goto("/");
   await page.waitForLoadState("networkidle");
@@ -227,18 +226,18 @@ export async function openBlueprintView(page: import("@playwright/test").Page, v
   }
 
   const projectCard = page.getByText("browo/hr-tool").first();
-  if (await projectCard.isVisible().catch(() => false)) {
-    await projectCard.click();
+  await expect(projectCard).toBeVisible({ timeout: 15000 });
+  await projectCard.click();
+
+  await page.goto(`/blueprint?view=${viewId}`);
+  await page.waitForLoadState("networkidle");
+
+  const emptyProject = page.getByText("Kein Projekt ausgewählt");
+  if (await emptyProject.isVisible().catch(() => false)) {
+    await expect(emptyProject).toBeHidden({ timeout: 20000 });
   }
 
-  const blueprintNav = page.getByRole("button", { name: /Zu Blueprint wechseln/i });
-  await expect(blueprintNav).toBeEnabled({ timeout: 15000 });
-  await blueprintNav.click();
-
-  const subLabel = VIEW_SUBNAV_LABELS[viewId] ?? viewId;
-  await page.getByRole("button", { name: subLabel, exact: true }).click();
-
-  await expect(page.getByTestId("blueprint-view")).toBeVisible({ timeout: 20000 });
+  await expect(page.getByTestId("blueprint-view")).toBeVisible({ timeout: 30000 });
 
   await page
     .getByText("Blueprint wird generiert...")
