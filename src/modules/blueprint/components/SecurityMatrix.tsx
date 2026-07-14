@@ -19,7 +19,7 @@ export function SecurityMatrix({ rows, selectedRouteId, onSelectRoute }: Securit
   }
 
   return (
-    <div className={styles.wrap}>
+    <div className={styles.wrap} data-testid="security-matrix">
       <table className={styles.table}>
         <thead>
           <tr>

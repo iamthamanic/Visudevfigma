@@ -8,6 +8,7 @@ import { StatusBadge } from "../ui/StatusBadge.js";
 import { ViewSectionTitle } from "../ui/ViewSectionTitle.js";
 import { SEVERITY_LABELS, severityBadgeVariant } from "./diagnostics-severity.js";
 import { findingLocationLabel } from "./diagnostics-finding-location.js";
+import type { FindingResolutionStatus } from "./finding-resolution.js";
 import styles from "../../styles/DiagnosticsView.module.css";
 
 const PAGE_SIZE = 10;
@@ -18,6 +19,7 @@ interface DiagnosticsFindingsTableProps {
   routes: RouteBlueprint[];
   selectedFindingId: string | null;
   onSelectFinding: (id: string | null) => void;
+  resolutionByFindingId?: Record<string, FindingResolutionStatus>;
 }
 
 export function DiagnosticsFindingsTable({
@@ -26,6 +28,7 @@ export function DiagnosticsFindingsTable({
   routes,
   selectedFindingId,
   onSelectFinding,
+  resolutionByFindingId = {},
 }: DiagnosticsFindingsTableProps): JSX.Element {
   const [page, setPage] = useState(0);
   const routeMap = useMemo(() => new Map(routes.map((route) => [route.id, route])), [routes]);
@@ -47,19 +50,20 @@ export function DiagnosticsFindingsTable({
   }, [findings, page]);
 
   return (
-    <aside className={styles.controls} aria-label="Findings">
+    <section className={styles.findingsSectionInner} aria-label="Findings">
       <ViewSectionTitle>Findings</ViewSectionTitle>
       {findings.length === 0 ? (
         <p className={styles.emptyControls}>Keine Findings für diese Auswahl.</p>
       ) : (
         <>
           <div className={styles.findingsTableWrap}>
-            <table className={styles.findingsTable}>
+            <table className={styles.findingsTable} data-testid="findings-table">
               <thead>
                 <tr>
                   <th>Schwere</th>
                   <th>Regel</th>
                   <th>Ort</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -112,13 +116,25 @@ export function DiagnosticsFindingsTable({
                           <span className={styles.findingsLocation}>{location}</span>
                         </button>
                       </td>
+                      <td>
+                        <span
+                          className={styles.findingsStatus}
+                          data-testid={`finding-status-${finding.id}`}
+                        >
+                          {resolutionByFindingId[finding.id] === "resolved" ? "Erledigt" : "Offen"}
+                        </span>
+                      </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-          <div className={styles.findingsPagination} aria-label="Findings-Seiten">
+          <div
+            className={styles.findingsPagination}
+            aria-label="Findings-Seiten"
+            data-testid="findings-pagination"
+          >
             <span className={styles.findingsPageLabel}>
               Seite {page + 1} von {pageCount}
             </span>
@@ -143,6 +159,6 @@ export function DiagnosticsFindingsTable({
           </div>
         </>
       )}
-    </aside>
+    </section>
   );
 }

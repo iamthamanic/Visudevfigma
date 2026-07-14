@@ -12,6 +12,7 @@ import {
   matrixLocationLabel,
   primaryEvidenceFact,
 } from "./diagnostics-finding-location.js";
+import type { FindingResolutionStatus } from "./finding-resolution.js";
 import styles from "../../styles/DiagnosticsView.module.css";
 
 interface DiagnosticsProblemInspectorProps {
@@ -19,6 +20,8 @@ interface DiagnosticsProblemInspectorProps {
   facts: CodeFact[];
   route: RouteBlueprint | null;
   matrixRow: SecurityMatrixRow | null;
+  resolutionStatus?: FindingResolutionStatus;
+  onToggleResolved?: () => void;
 }
 
 export function DiagnosticsProblemInspector({
@@ -26,6 +29,8 @@ export function DiagnosticsProblemInspector({
   facts,
   route,
   matrixRow,
+  resolutionStatus = "open",
+  onToggleResolved,
 }: DiagnosticsProblemInspectorProps): JSX.Element {
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -151,7 +156,7 @@ export function DiagnosticsProblemInspector({
             evidenceFacts.length === 0 ? (
               <p className={styles.emptyControls}>Keine Evidence verknüpft.</p>
             ) : (
-              <div className={styles.evidenceStack}>
+              <div className={styles.evidenceStack} data-testid="problem-inspector-evidence">
                 {evidenceFacts.map((fact) => (
                   <div key={fact.id} className={styles.evidenceItem}>
                     <p className={styles.evidenceMeta}>
@@ -177,6 +182,14 @@ export function DiagnosticsProblemInspector({
               <button
                 type="button"
                 className="btn btn-sm btn-primary"
+                disabled={!onToggleResolved}
+                onClick={onToggleResolved}
+              >
+                {resolutionStatus === "resolved" ? "Als offen markieren" : "Als erledigt markieren"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost"
                 disabled={!evidenceText}
                 onClick={() => void handleCopyEvidence()}
               >
@@ -192,15 +205,7 @@ export function DiagnosticsProblemInspector({
                 disabled
                 title="Folgt in einer späteren Phase"
               >
-                Als gelöst markieren
-              </button>
-              <button
-                type="button"
-                className="btn btn-sm btn-ghost"
-                disabled
-                title="Folgt in einer späteren Phase"
-              >
-                Ausnahme verwalten
+                Ausnahmen verwalten
               </button>
             </div>
           ),
