@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, Download, Loader2, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
 import { getVisuDevClient, isLocalVisuDevMode } from "../../../lib/visudev-api";
 import { blueprintAPI } from "../../../utils/api";
+import { BlueprintShellHeader } from "../components/BlueprintShellHeader";
 import { BlueprintViewShell } from "../components/BlueprintViewShell";
 import type { BlueprintShellViewId } from "../blueprint-view-config";
 import { normalizeBlueprintData } from "../../../lib/visudev/normalize-blueprint";
@@ -95,55 +96,30 @@ export function BlueprintPage({ projectId, activeView }: BlueprintPageProps) {
     downloadFile(JSON.stringify(data, null, 2), `blueprint-${projectId}.json`, "application/json");
   }, [blueprint, projectId]);
 
+  const notificationCount = useMemo(() => {
+    if (!blueprint?.findings?.length) return 0;
+    return blueprint.findings.filter(
+      (finding) => finding.severity === "high" || finding.severity === "critical",
+    ).length;
+  }, [blueprint?.findings]);
+
+  const branchLabel = activeProject?.github_branch ?? "main";
+
   return (
     <div className={styles.root}>
-      <div className={styles.header}>
-        <div className={styles.headerRow}>
-          <div>
-            <h1 className={styles.title}>Blueprint</h1>
-            <p className={styles.subtitle}>
-              Technische Diagnose · {activeProject?.name}
-              {isLocalProject && activeProject?.local_path && <> · {activeProject.local_path}</>}
-              {!isLocalProject && blueprint?.commitSha && (
-                <> · {String(blueprint.commitSha).slice(0, 8)}</>
-              )}
-            </p>
-          </div>
-          <div className={styles.headerActions}>
-            <button
-              type="button"
-              onClick={handleExportJson}
-              className={styles.secondaryButton}
-              aria-label="Blueprint als JSON exportieren"
-            >
-              <Download className={styles.inlineIcon} aria-hidden="true" />
-              Export JSON
-            </button>
-            <button
-              type="button"
-              onClick={handleRescan}
-              disabled={isScanning}
-              className={styles.primaryButton}
-            >
-              {isScanning ? (
-                <>
-                  <Loader2
-                    className={`${styles.inlineIcon} ${styles.spinner}`}
-                    aria-hidden="true"
-                  />
-                  Analysiere...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className={styles.inlineIcon} aria-hidden="true" />
-                  Neu analysieren
-                </>
-              )}
-            </button>
-          </div>
-        </div>
+      <BlueprintShellHeader
+        projectName={activeProject?.name}
+        branchLabel={branchLabel}
+        scanStatus={scanStatuses.blueprint.status}
+        isRescanning={isRescan}
+        notificationCount={notificationCount}
+        onRescan={handleRescan}
+        onExportJson={handleExportJson}
+        rescanDisabled={isScanning}
+      />
 
-        {isScanning && (
+      {isScanning ? (
+        <div className={styles.scanProgress}>
           <div className={`${styles.statusBar} ${styles.statusInfo}`} role="status">
             <Loader2 className={`${styles.inlineIcon} ${styles.spinner}`} aria-hidden="true" />
             <div>
@@ -151,12 +127,12 @@ export function BlueprintPage({ projectId, activeView }: BlueprintPageProps) {
               <p className={styles.statusMeta}>
                 {isLocalProject
                   ? `Lokal: ${activeProject?.local_path ?? "—"}`
-                  : `Repo: ${activeProject?.github_repo ?? "—"} @ ${activeProject?.github_branch ?? "main"}`}
+                  : `Repo: ${activeProject?.github_repo ?? "—"} @ ${branchLabel}`}
               </p>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      ) : null}
 
       <div className={styles.content}>
         {isScanning ? (
