@@ -33,4 +33,22 @@ describe("buildArchitectureStackCards", () => {
     expect(layers).toHaveLength(1);
     expect(layers[0].services).toEqual(["M1"]);
   });
+
+  it("orders canonical wave-2 layer labels experience through platform", () => {
+    const hrGraph: SoftwareGraph = {
+      ...graph,
+      nodes: [
+        { id: "layer:platform", kind: "layer", label: "Platform Layer", metadata: {} },
+        { id: "layer:experience", kind: "layer", label: "Experience Layer", metadata: {} },
+        { id: "layer:domain", kind: "layer", label: "Domain Layer", metadata: {} },
+      ],
+      edges: [],
+    };
+    const layers = buildArchitectureStackCards(hrGraph, "layer");
+    expect(layers.map((card) => card.label)).toEqual([
+      "Experience Layer",
+      "Domain Layer",
+      "Platform Layer",
+    ]);
+  });
 });

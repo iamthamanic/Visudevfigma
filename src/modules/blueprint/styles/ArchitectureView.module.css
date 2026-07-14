@@ -69,6 +69,24 @@
   max-width: 36rem;
   margin: 0 auto;
   width: 100%;
+  position: relative;
+  padding-left: 1.25rem;
+}
+
+.stackListCanvas::before {
+  content: "";
+  position: absolute;
+  left: 0.35rem;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 2px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to bottom,
+    var(--color-arch-layer-presentation),
+    var(--color-arch-layer-config)
+  );
+  opacity: 0.55;
 }
 
 .stackCanvasWrap {
@@ -396,4 +414,45 @@
   min-height: 320px;
   color: var(--color-muted-foreground);
   font-size: 0.875rem;
+}
+
+.inspectorDescription {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-foreground);
+}
+
+.dependencyGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dependencyHeading {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.35rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted-foreground);
+}
+
+.depDotOutgoing,
+.depDotIncoming {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.depDotOutgoing {
+  background: var(--color-arch-layer-ui);
+}
+
+.depDotIncoming {
+  background: var(--color-arch-layer-data);
 }

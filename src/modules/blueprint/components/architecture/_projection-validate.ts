@@ -10,6 +10,8 @@ import type {
   SoftwareGraphNodeKind,
 } from "../../types";
 
+const DEDUPE_NODE_KINDS = new Set<SoftwareGraphNodeKind>(["domain", "module"]);
+
 const VALID_SOFTWARE_GRAPH_NODE_KINDS = new Set<SoftwareGraphNodeKind>([
   "organization",
   "application",
@@ -71,24 +73,77 @@ export function sanitizeArchitectureLabel(label: unknown): string {
   return trimmedLabel;
 }
 
+/** Collapse duplicate domain/module nodes that share the same path or semantic label. */
+export function dedupeArchitectureNodes(nodes: SoftwareGraphNode[]): {
+  nodes: SoftwareGraphNode[];
+  idRemap: Map<string, string>;
+} {
+  const seenKeys = new Map<string, string>();
+  const keptIds = new Set<string>();
+  const deduped: SoftwareGraphNode[] = [];
+  const idRemap = new Map<string, string>();
+
+  for (const node of nodes) {
+    if (!DEDUPE_NODE_KINDS.has(node.kind)) {
+      deduped.push(node);
+      keptIds.add(node.id);
+      continue;
+    }
+
+    const filePath =
+      typeof node.metadata?.filePath === "string" ? node.metadata.filePath.trim() : "";
+    const key =
+      filePath.length > 0 ? `${node.kind}:${filePath.toLowerCase()}` : `${node.kind}:${node.id}`;
+
+    const keptId = seenKeys.get(key);
+    if (keptId) {
+      idRemap.set(node.id, keptId);
+      continue;
+    }
+
+    seenKeys.set(key, node.id);
+    keptIds.add(node.id);
+    deduped.push(node);
+  }
+
+  return { nodes: deduped, idRemap };
+}
+
 export function sanitizeSoftwareGraphForArchitecture(softwareGraph: SoftwareGraph): SoftwareGraph {
-  const validNodeIds = new Set<string>();
-  const sanitizedNodes = readSoftwareGraphNodes(softwareGraph.nodes).map((softwareGraphNode) => {
-    validNodeIds.add(softwareGraphNode.id);
-    return {
+  const { nodes: dedupedNodes, idRemap } = dedupeArchitectureNodes(
+    readSoftwareGraphNodes(softwareGraph.nodes).map((softwareGraphNode) => ({
       ...softwareGraphNode,
       label: sanitizeArchitectureLabel(softwareGraphNode.label),
-    };
-  });
-
-  const sanitizedEdges = readSoftwareGraphEdges(softwareGraph.edges).filter(
-    (softwareGraphEdge) =>
-      validNodeIds.has(softwareGraphEdge.sourceId) && validNodeIds.has(softwareGraphEdge.targetId),
+    })),
   );
+
+  const validNodeIds = new Set(dedupedNodes.map((node) => node.id));
+
+  const remapId = (nodeId: string): string | null => {
+    const resolved = idRemap.get(nodeId) ?? nodeId;
+    return validNodeIds.has(resolved) ? resolved : null;
+  };
+
+  const sanitizedEdges = readSoftwareGraphEdges(softwareGraph.edges)
+    .map((edge) => {
+      const sourceId = remapId(edge.sourceId);
+      const targetId = remapId(edge.targetId);
+      if (!sourceId || !targetId || sourceId === targetId) return null;
+      return { ...edge, sourceId, targetId };
+    })
+    .filter((edge): edge is SoftwareGraphEdge => edge != null);
+
+  const edgeKeys = new Set<string>();
+  const uniqueEdges = sanitizedEdges.filter((edge) => {
+    const key = `${edge.kind}:${edge.sourceId}:${edge.targetId}`;
+    if (edgeKeys.has(key)) return false;
+    edgeKeys.add(key);
+    return true;
+  });
 
   return {
     ...softwareGraph,
-    nodes: sanitizedNodes,
-    edges: sanitizedEdges,
+    nodes: dedupedNodes,
+    edges: uniqueEdges,
   };
 }

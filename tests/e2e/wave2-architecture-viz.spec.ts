@@ -1,0 +1,49 @@
+/**
+ * Wave 2 architecture viz parity gate.
+ * Acceptance: .qa/acceptance/wave2-architecture-viz-parity.md
+ */
+
+import { test, expect } from "@playwright/test";
+import {
+  installWave2Mocks,
+  openBlueprintView,
+  seedSupabaseSession,
+} from "./wave2-test-helpers.js";
+
+const EVIDENCE_DIR = ".qa/evidence/wave2-architecture-viz";
+const PROJECT_ID = "proj-wave2-architecture";
+
+test.describe("Wave 2 architecture viz parity", () => {
+  test.beforeEach(async ({ page }) => {
+    await seedSupabaseSession(page);
+    await installWave2Mocks(page, PROJECT_ID, "wave2-architecture-1");
+  });
+
+  test("layer stack shows 7 cards and inspector on selection", async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openBlueprintView(page, "architecture");
+
+    const stack = page.getByTestId("architecture-layer-stack");
+    await expect(stack).toBeVisible({ timeout: 20000 });
+    await expect(page.getByTestId("layer-card")).toHaveCount(7);
+
+    await page.getByRole("button", { name: /Application Layer/i }).click();
+    await expect(page.getByTestId("architecture-inspector")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Enthaltene Services" })).toBeVisible();
+
+    await page.screenshot({
+      path: `${EVIDENCE_DIR}/architecture-layer-stack.png`,
+      fullPage: false,
+    });
+  });
+
+  test("domains mode has no duplicate App.tsx entries", async ({ page }) => {
+    test.setTimeout(60_000);
+    await openBlueprintView(page, "architecture");
+
+    await page.getByRole("tab", { name: "Domains" }).click();
+    const appDuplicates = page.locator('[data-testid="domain-module"][data-path*="App.tsx"]');
+    await expect(appDuplicates).toHaveCount(0);
+  });
+});

@@ -35,6 +35,7 @@ export function ArchitectureLayerStack({
     <div
       className={`${styles.stackPanel} ${isCanvas ? styles.stackPanelCanvas : ""}`}
       aria-label="Architektur-Stack"
+      data-testid="architecture-layer-stack"
     >
       {showTitle ? <ViewSectionTitle>Layer Stack</ViewSectionTitle> : null}
       {cards.length === 0 ? (
@@ -51,6 +52,8 @@ export function ArchitectureLayerStack({
                 <button
                   type="button"
                   className={`${styles.layerCard} ${isCanvas ? styles.layerCardCanvas : ""} ${isSelected ? styles.layerCardSelected : ""}`}
+                  data-testid={card.kind === "domain" ? "domain-module" : "layer-card"}
+                  data-path={card.filePath ?? undefined}
                   data-kind={card.kind}
                   data-layer-type={layerType ?? undefined}
                   style={
