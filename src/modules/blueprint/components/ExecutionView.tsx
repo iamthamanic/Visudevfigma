@@ -8,10 +8,16 @@ import { BlueprintViewLayout } from "./ui/BlueprintViewLayout.js";
 import { ViewSectionTitle } from "./ui/ViewSectionTitle.js";
 import { ExecutionDetailTabs } from "./execution/ExecutionDetailTabs.js";
 import { ExecutionInspector } from "./execution/ExecutionInspector.js";
+import { ExecutionLiveBadge } from "./execution/ExecutionLiveBadge.js";
+import { ExecutionMetricsBar } from "./execution/ExecutionMetricsBar.js";
 import { ExecutionSchritteList } from "./execution/ExecutionSchritteList.js";
 import { ExecutionStepPipeline } from "./execution/ExecutionStepPipeline.js";
+import { ExecutionTimelineRuler } from "./execution/ExecutionTimelineRuler.js";
 import {
+  computeExecutionMetrics,
+  computeStepTimings,
   findStepEvidence,
+  isExecutionLive,
   listExecutionRoutes,
   projectExecutionGraph,
 } from "./execution/_projection.js";
@@ -78,6 +84,26 @@ export function ExecutionView({ blueprint }: ExecutionViewProps) {
     [graph, selectedStepId],
   );
 
+  const activeRouteId = selectedRouteId ?? routes[0]?.routeId ?? null;
+
+  const stepTimings = useMemo(() => {
+    if (!graph || !projection) return [];
+    return computeStepTimings(graph, projection.stepNodeIds);
+  }, [graph, projection]);
+
+  const executionMetrics = useMemo(
+    () =>
+      graph
+        ? computeExecutionMetrics(projection, graph)
+        : { totalDurationMs: 0, stepCount: 0, errorCount: 0 },
+    [graph, projection],
+  );
+
+  const isLive = useMemo(() => {
+    if (!graph || !activeRouteId) return false;
+    return isExecutionLive(graph, activeRouteId);
+  }, [graph, activeRouteId]);
+
   const handleSelectRoute = (routeId: string) => {
     setSelectedRouteId(routeId);
     setSelectedStepId(null);
@@ -94,13 +120,13 @@ export function ExecutionView({ blueprint }: ExecutionViewProps) {
     );
   }
 
-  const activeRouteId = selectedRouteId ?? routes[0]?.routeId ?? null;
   const selectedStepLabel = selectedStepId ? (stepLabels.get(selectedStepId) ?? null) : null;
   const selectedStepKind = selectedStepId ? (stepKinds.get(selectedStepId) ?? null) : null;
 
   return (
     <div className={styles.root}>
       <header className={styles.header}>
+        <ExecutionLiveBadge live={isLive} />
         <ViewSectionTitle>Route</ViewSectionTitle>
         {routes.length === 0 ? (
           <p className={styles.emptyControls}>Keine Routen im Graph vorhanden.</p>
@@ -120,10 +146,14 @@ export function ExecutionView({ blueprint }: ExecutionViewProps) {
         )}
       </header>
 
+      <ExecutionTimelineRuler stepTimings={stepTimings} />
+      <ExecutionMetricsBar metrics={executionMetrics} />
+
       <ExecutionStepPipeline
         stepNodeIds={projection?.stepNodeIds ?? []}
         stepLabels={stepLabels}
         stepKinds={stepKinds}
+        stepTimings={stepTimings}
         selectedStepId={selectedStepId}
         stepHasEvidence={stepHasEvidence}
         cycleNodeId={projection?.cycleNodeId ?? null}
