@@ -20,6 +20,7 @@ export function buildElements(
         id: edge.id,
         source: edge.source,
         target: edge.target,
+        kind: edge.kind,
         label: edge.label ?? edge.kind,
       },
     })),

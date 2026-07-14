@@ -2,7 +2,7 @@
  * Tests for DependenciesView empty state and edge filters.
  */
 
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { DependenciesView } from "./DependenciesView";
 import type { BlueprintData } from "../types";
@@ -66,21 +66,46 @@ describe("DependenciesView", () => {
     expect(screen.getByText("Keine Abhängigkeits-Daten")).toBeInTheDocument();
   });
 
-  it("renders edge kind filter controls", () => {
+  it("renders Beziehungstypen relationship chips", () => {
     render(<DependenciesView blueprint={graphBlueprint} />);
-    expect(screen.getByLabelText("Import")).toBeInTheDocument();
-    expect(screen.getByLabelText("Call")).toBeInTheDocument();
-    expect(screen.getByLabelText("API")).toBeInTheDocument();
+    const controls = screen.getByLabelText("Abhängigkeiten-Steuerung");
+    expect(within(controls).getByRole("button", { name: "Imports" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(within(controls).getByRole("button", { name: "Calls" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(within(controls).getByRole("button", { name: "API Calls" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
-  it("shows empty canvas message when all edge filters are off", () => {
+  it("shows Top Abhängigkeiten counts", () => {
     render(<DependenciesView blueprint={graphBlueprint} />);
-    for (const kind of ["Import", "Call", "API", "Event", "Data"]) {
-      const checkbox = screen.getByLabelText(kind);
-      if (checkbox instanceof HTMLInputElement && checkbox.checked) {
-        fireEvent.click(checkbox);
+    const controls = screen.getByLabelText("Abhängigkeiten-Steuerung");
+    expect(within(controls).getByText("Top Abhängigkeiten")).toBeInTheDocument();
+    expect(within(controls).getAllByText("1").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("shows inspector empty message when no edge selected", () => {
+    render(<DependenciesView blueprint={graphBlueprint} />);
+    expect(
+      screen.getByText(/Wähle eine Kante im Graph, um Details und Evidence zu sehen/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows empty canvas message when all relationship chips are off", () => {
+    render(<DependenciesView blueprint={graphBlueprint} />);
+    const controls = screen.getByLabelText("Abhängigkeiten-Steuerung");
+    for (const label of ["Imports", "Calls", "API Calls", "Events", "Database"]) {
+      const chip = within(controls).getByRole("button", { name: label });
+      if (chip.getAttribute("aria-pressed") === "true") {
+        fireEvent.click(chip);
       }
     }
-    expect(screen.getByText(/Passe die Kantenfilter an/i)).toBeInTheDocument();
+    expect(screen.getByText(/Passe die Beziehungstypen an/i)).toBeInTheDocument();
   });
 });

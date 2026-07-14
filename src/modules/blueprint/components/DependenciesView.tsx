@@ -4,9 +4,12 @@
 
 import { lazy, Suspense, useMemo, useState } from "react";
 import type { BlueprintData } from "../types";
+import { BlueprintViewLayout } from "./ui/BlueprintViewLayout.js";
 import { DependenciesControls } from "./dependencies/DependenciesControls.js";
+import { DependenciesInspector } from "./dependencies/DependenciesInspector.js";
 import {
   DEFAULT_VISIBLE_DEPENDENCY_KINDS,
+  countDependencyEdgesByKind,
   findEdgeEvidence,
   projectDependenciesGraph,
   type DependencyEdgeKind,
@@ -32,6 +35,11 @@ export function DependenciesView({ blueprint }: DependenciesViewProps) {
     if (!graph) return { nodes: [], edges: [] };
     return projectDependenciesGraph(graph, { visibleEdgeKinds });
   }, [graph, visibleEdgeKinds]);
+
+  const topDependencies = useMemo(() => {
+    if (!graph) return [];
+    return countDependencyEdgesByKind(graph);
+  }, [graph]);
 
   const selection = useMemo(() => {
     if (!graph) return null;
@@ -68,31 +76,40 @@ export function DependenciesView({ blueprint }: DependenciesViewProps) {
   const hasVisibleEdges = projection.edges.length > 0;
 
   return (
-    <div className={styles.root}>
-      <DependenciesControls
-        visibleEdgeKinds={visibleEdgeKinds}
-        selectedEdge={selection?.edge ?? null}
-        selectedEvidence={selection?.evidence ?? []}
-        onToggleEdgeKind={toggleEdgeKind}
-        onResetFilters={resetFilters}
-      />
-
-      <div className={styles.canvasWrap}>
-        {hasVisibleEdges ? (
-          <Suspense fallback={<p className={styles.loading}>Graph wird geladen...</p>}>
-            <GraphCanvas
-              nodes={projection.nodes}
-              edges={projection.edges}
-              layoutPreset="force"
-              onEdgeSelect={setSelectedEdgeId}
-            />
-          </Suspense>
-        ) : (
-          <div className={styles.filteredCanvasEmpty}>
-            <p>Passe die Kantenfilter an, um Abhängigkeiten anzuzeigen.</p>
-          </div>
-        )}
-      </div>
-    </div>
+    <BlueprintViewLayout
+      controls={
+        <DependenciesControls
+          visibleEdgeKinds={visibleEdgeKinds}
+          topDependencies={topDependencies}
+          onToggleEdgeKind={toggleEdgeKind}
+          onResetFilters={resetFilters}
+        />
+      }
+      canvas={
+        <div className={styles.canvasWrap}>
+          {hasVisibleEdges ? (
+            <Suspense fallback={<p className={styles.loading}>Graph wird geladen...</p>}>
+              <GraphCanvas
+                nodes={projection.nodes}
+                edges={projection.edges}
+                layoutPreset="force"
+                onEdgeSelect={setSelectedEdgeId}
+              />
+            </Suspense>
+          ) : (
+            <div className={styles.filteredCanvasEmpty}>
+              <p>Passe die Beziehungstypen an, um Abhängigkeiten anzuzeigen.</p>
+            </div>
+          )}
+        </div>
+      }
+      inspector={
+        <DependenciesInspector
+          graph={graph}
+          selectedEdge={selection?.edge ?? null}
+          selectedEvidence={selection?.evidence ?? []}
+        />
+      }
+    />
   );
 }
