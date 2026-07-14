@@ -217,10 +217,41 @@ export function computeExecutionMetrics(
   };
 }
 
+const TERMINAL_EXECUTION_STATUSES = new Set([
+  "completed",
+  "complete",
+  "done",
+  "success",
+  "failed",
+  "cancelled",
+  "idle",
+  "stopped",
+]);
+
+function normalizedExecutionStatus(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toLowerCase();
+  return normalized.length > 0 ? normalized : null;
+}
+
 export function isExecutionLive(graph: SoftwareGraph, routeId: string): boolean {
   const routeNode = findRouteNode(graph, routeId);
-  if (routeNode?.metadata?.executionStatus === "running") return true;
-  if (routeNode?.metadata?.status === "running") return true;
+  const executionStatus = normalizedExecutionStatus(routeNode?.metadata?.executionStatus);
+  const routeStatus = normalizedExecutionStatus(routeNode?.metadata?.status);
+
+  if (executionStatus === "running" || routeStatus === "running") return true;
+  if (executionStatus && TERMINAL_EXECUTION_STATUSES.has(executionStatus)) return false;
+  if (routeStatus && TERMINAL_EXECUTION_STATUSES.has(routeStatus)) return false;
+
+  const traceId = routeNode?.metadata?.traceId;
+  if (
+    typeof traceId === "string" &&
+    traceId.trim().length > 0 &&
+    executionStatus === null &&
+    routeStatus === null
+  ) {
+    return true;
+  }
 
   const projection = projectExecutionGraph(graph, { routeId });
   if (!projection) return false;

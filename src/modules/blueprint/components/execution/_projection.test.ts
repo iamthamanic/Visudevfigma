@@ -130,4 +130,46 @@ describe("projectExecutionGraph", () => {
     });
     expect(isExecutionLive(graph, "route:a")).toBe(true);
   });
+
+  it("detects live execution from active trace id", () => {
+    const graph = makeGraph({
+      nodes: [
+        {
+          id: "route:b",
+          kind: "route",
+          label: "POST /b",
+          metadata: { routeId: "route:b", traceId: "tr-demo" },
+        },
+      ],
+    });
+    expect(isExecutionLive(graph, "route:b")).toBe(true);
+  });
+
+  it("does not treat completed trace as live", () => {
+    const graph = makeGraph({
+      nodes: [
+        {
+          id: "route:c",
+          kind: "route",
+          label: "POST /c",
+          metadata: { routeId: "route:c", traceId: "tr-done", executionStatus: "completed" },
+        },
+      ],
+    });
+    expect(isExecutionLive(graph, "route:c")).toBe(false);
+  });
+
+  it("does not treat terminal route status with trace as live", () => {
+    const graph = makeGraph({
+      nodes: [
+        {
+          id: "route:e",
+          kind: "route",
+          label: "POST /e",
+          metadata: { routeId: "route:e", traceId: "tr-done", status: "completed" },
+        },
+      ],
+    });
+    expect(isExecutionLive(graph, "route:e")).toBe(false);
+  });
 });
