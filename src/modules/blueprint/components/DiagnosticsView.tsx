@@ -8,7 +8,7 @@ import { SecurityMatrix } from "./SecurityMatrix";
 import { useDiagnosticsSelection } from "./useDiagnosticsSelection";
 import { BlueprintViewLayout } from "./ui/BlueprintViewLayout.js";
 import { ViewSectionTitle } from "./ui/ViewSectionTitle.js";
-import { DiagnosticsFindingsList } from "./diagnostics/DiagnosticsFindingsList.js";
+import { DiagnosticsFindingsTable } from "./diagnostics/DiagnosticsFindingsTable.js";
 import { DiagnosticsProblemInspector } from "./diagnostics/DiagnosticsProblemInspector.js";
 import { DiagnosticsSubTabs, type DiagnosticsTabId } from "./diagnostics/DiagnosticsSubTabs.js";
 import type { BlueprintData, BlueprintFinding } from "../types";
@@ -21,6 +21,7 @@ interface DiagnosticsViewProps {
 export function DiagnosticsView({ blueprint }: DiagnosticsViewProps) {
   const [activeTab, setActiveTab] = useState<DiagnosticsTabId>("security");
   const {
+    routes,
     matrix,
     facts,
     selectedRouteId,
@@ -36,6 +37,21 @@ export function DiagnosticsView({ blueprint }: DiagnosticsViewProps) {
     [routeFindings, selectedFindingId],
   );
 
+  const selectedMatrixRow = useMemo(
+    () => matrix.find((row) => row.routeId === selectedRouteId) ?? null,
+    [matrix, selectedRouteId],
+  );
+
+  const inspectorRoute = useMemo(() => {
+    if (!selectedFinding) return selectedRoute;
+    return routes.find((route) => route.id === selectedFinding.scopeId) ?? selectedRoute;
+  }, [routes, selectedFinding, selectedRoute]);
+
+  const inspectorMatrixRow = useMemo(() => {
+    if (!selectedFinding) return selectedMatrixRow;
+    return matrix.find((row) => row.routeId === selectedFinding.scopeId) ?? selectedMatrixRow;
+  }, [matrix, selectedFinding, selectedMatrixRow]);
+
   return (
     <div className={styles.root}>
       <DiagnosticsSubTabs activeTab={activeTab} onSelectTab={setActiveTab} />
@@ -43,8 +59,10 @@ export function DiagnosticsView({ blueprint }: DiagnosticsViewProps) {
       {activeTab === "security" ? (
         <BlueprintViewLayout
           controls={
-            <DiagnosticsFindingsList
+            <DiagnosticsFindingsTable
               findings={routeFindings}
+              facts={facts}
+              routes={routes}
               selectedFindingId={selectedFindingId}
               onSelectFinding={setSelectedFindingId}
             />
@@ -62,7 +80,14 @@ export function DiagnosticsView({ blueprint }: DiagnosticsViewProps) {
               <RouteBlueprintCanvas route={selectedRoute} />
             </div>
           }
-          inspector={<DiagnosticsProblemInspector finding={selectedFinding} facts={facts} />}
+          inspector={
+            <DiagnosticsProblemInspector
+              finding={selectedFinding}
+              facts={facts}
+              route={inspectorRoute}
+              matrixRow={inspectorMatrixRow}
+            />
+          }
         />
       ) : (
         <DiagnosticsPlaceholderTab tab={activeTab} findings={routeFindings} />
