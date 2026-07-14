@@ -1,0 +1,45 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--chip-accent) 35%, var(--color-border));
+  background: var(--color-card);
+  color: var(--chip-accent);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.root[data-active="true"] {
+  background: var(--chip-soft);
+  border-color: var(--chip-accent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--chip-accent) 25%, transparent);
+}
+
+.root:hover {
+  border-color: var(--chip-accent);
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--chip-accent);
+  flex-shrink: 0;
+}
+
+.label {
+  white-space: nowrap;
+}
+
+.check {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+}
