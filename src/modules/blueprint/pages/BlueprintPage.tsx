@@ -3,8 +3,13 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { useVisudev } from "../../../lib/visudev/store";
 import { getVisuDevClient, isLocalVisuDevMode } from "../../../lib/visudev-api";
 import { blueprintAPI } from "../../../utils/api";
+import { BlueprintFooterStatusBar } from "../components/BlueprintFooterStatusBar";
 import { BlueprintShellHeader } from "../components/BlueprintShellHeader";
 import { BlueprintViewShell } from "../components/BlueprintViewShell";
+import {
+  computeBlueprintGraphStats,
+  formatRelativeFreshness,
+} from "../components/blueprint-graph-stats";
 import type { BlueprintShellViewId } from "../blueprint-view-config";
 import { normalizeBlueprintData } from "../../../lib/visudev/normalize-blueprint";
 import { getProjectSourceMode } from "../../../lib/visudev/project-source";
@@ -105,6 +110,18 @@ export function BlueprintPage({ projectId, activeView }: BlueprintPageProps) {
 
   const branchLabel = activeProject?.github_branch ?? "main";
 
+  const graphStats = useMemo(
+    () => computeBlueprintGraphStats(blueprint?.graph),
+    [blueprint?.graph],
+  );
+
+  const freshnessLabel = useMemo(() => {
+    const updatedAt = blueprint?.updatedAt ?? blueprint?.graph?.analyzedAt;
+    if (typeof updatedAt === "string") return formatRelativeFreshness(updatedAt);
+    if (scanCompleted) return "nach letztem Scan";
+    return "—";
+  }, [blueprint?.updatedAt, blueprint?.graph?.analyzedAt, scanCompleted]);
+
   return (
     <div className={styles.root}>
       <BlueprintShellHeader
@@ -174,6 +191,15 @@ export function BlueprintPage({ projectId, activeView }: BlueprintPageProps) {
           />
         ) : null}
       </div>
+
+      {hasData ? (
+        <BlueprintFooterStatusBar
+          stats={graphStats}
+          freshnessLabel={freshnessLabel}
+          onRefresh={handleRescan}
+          refreshDisabled={isScanning}
+        />
+      ) : null}
     </div>
   );
 }
