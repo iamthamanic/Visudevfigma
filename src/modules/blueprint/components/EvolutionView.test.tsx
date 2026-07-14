@@ -1,8 +1,8 @@
 /**
- * Tests for EvolutionView empty state and snapshot selectors.
+ * Tests for EvolutionView sub-tabs, snapshot cards, and compare controls.
  */
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { EvolutionView } from "./EvolutionView";
 import type { BlueprintData } from "../types";
@@ -67,12 +67,18 @@ describe("EvolutionView", () => {
     expect(screen.getByText("Keine Evolution-Daten")).toBeInTheDocument();
   });
 
-  it("renders snapshot compare controls", () => {
+  it("renders timeline tab with snapshot cards and metrics", () => {
     render(<EvolutionView blueprint={graphWithSnapshots} />);
+    expect(screen.getByRole("tab", { name: "Timeline", selected: true })).toBeInTheDocument();
+    expect(screen.getByText("Evolutions-Metriken")).toBeInTheDocument();
     expect(screen.getByLabelText("Basis")).toBeInTheDocument();
-    expect(screen.getByLabelText("Ziel")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Timeline" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /scan-2/i })).toBeInTheDocument();
+  });
+
+  it("switches evolution sub-tab while keeping snapshot cards visible", () => {
+    render(<EvolutionView blueprint={graphWithSnapshots} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Commit Diff" }));
+    expect(screen.getByText("Evolutions-Metriken")).toBeInTheDocument();
     expect(screen.getAllByText("scan-1").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("scan-2").length).toBeGreaterThan(0);
   });
 });
