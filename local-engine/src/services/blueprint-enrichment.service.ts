@@ -16,7 +16,8 @@ const DEFAULT_PROFILE = {
 
 export function enrichBlueprint(scan: RawBlueprintScan): BlueprintDocument {
   const built = buildSoftwareGraph(scan);
-  const demoEnrichmentEnabled = process.env.VISUDEV_DEMO_ENRICHMENT !== "false";
+  // Opt-in only: avoids silently mixing demo fixtures into real thin scans.
+  const demoEnrichmentEnabled = process.env.VISUDEV_DEMO_ENRICHMENT === "true";
   const graph = demoEnrichmentEnabled ? enrichSoftwareGraphIfThin(built, scan.projectId) : built;
   const { routes, securityMatrix, findings, facts } = deriveDiagnosticsFromGraph(graph);
 
