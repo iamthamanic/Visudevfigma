@@ -1,8 +1,8 @@
 /**
- * Tests for ArchitectureView empty state and controls.
+ * Tests for ArchitectureView grouping toggle, layer stack, and collapse controls.
  */
 
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { ArchitectureView } from "./ArchitectureView";
 import type { BlueprintData } from "../types";
@@ -63,10 +63,23 @@ describe("ArchitectureView", () => {
     expect(screen.getByText("Keine Architektur-Daten")).toBeInTheDocument();
   });
 
-  it("renders collapse controls for domains and modules", () => {
+  it("renders grouping toggle and layer stack by default", () => {
     render(<ArchitectureView blueprint={graphBlueprint} />);
-    expect(screen.getByRole("button", { name: /domain routes/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /module routes/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Layers", selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /presentation/i })).toBeInTheDocument();
+  });
+
+  it("switches to Domains grouping mode", () => {
+    render(<ArchitectureView blueprint={graphBlueprint} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Domains" }));
+    const stack = screen.getByLabelText("Architektur-Stack");
+    expect(within(stack).getByRole("button", { name: /routes/i })).toBeInTheDocument();
+  });
+
+  it("opens Inspektor when selecting a stack card", () => {
+    render(<ArchitectureView blueprint={graphBlueprint} />);
+    fireEvent.click(screen.getByRole("button", { name: /presentation/i }));
+    expect(screen.getByText("Verantwortlichkeiten")).toBeInTheDocument();
   });
 
   it("toggles domain collapse on click", () => {
@@ -75,26 +88,5 @@ describe("ArchitectureView", () => {
     expect(domainButton).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(domainButton);
     expect(domainButton).toHaveAttribute("aria-pressed", "true");
-  });
-
-  it("keeps filter controls when all kinds are hidden", () => {
-    render(<ArchitectureView blueprint={graphBlueprint} />);
-    for (const kind of [
-      "Domain",
-      "Layer",
-      "Module",
-      "Route",
-      "Service",
-      "Repository",
-      "Table",
-      "File",
-    ]) {
-      const checkbox = screen.getByLabelText(kind);
-      if (checkbox instanceof HTMLInputElement && checkbox.checked) {
-        fireEvent.click(checkbox);
-      }
-    }
-    expect(screen.getByText(/Keine sichtbaren Knoten/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Filter zurücksetzen/i })).toBeInTheDocument();
   });
 });

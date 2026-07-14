@@ -38,7 +38,7 @@ export function ArchitectureControls({
   onResetFilters,
 }: ArchitectureControlsProps) {
   return (
-    <aside className={styles.sidebar} aria-label="Architektur-Steuerung">
+    <aside className={styles.controlsSection} aria-label="Architektur-Steuerung">
       <section className={styles.section}>
         <h3 className={styles.sectionTitle}>Einklappen</h3>
         {collapsible.length === 0 ? (

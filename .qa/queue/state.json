@@ -1,38 +1,26 @@
 {
   "version": 2,
   "repo": "iamthamanic/visudev-app",
-  "activeIssue": 90,
-  "featureSlug": "diagnostics-figma-ui",
+  "activeIssue": 91,
+  "featureSlug": "architecture-figma-ui",
   "phase": "pr",
-  "branch": "issue/90-diagnostics-figma-ui",
+  "branch": "issue/91-architecture-figma-ui",
   "prUrl": null,
   "milestoneFilter": null,
   "paused": false,
   "runMode": "loop",
-  "queue": [90, 91, 92, 93, 94],
-  "completedIssues": [67, 68, 69, 70, 71, 72, 73, 74, 75, 85, 86, 87, 88, 89],
-  "mergedIssues": [67, 68, 69, 70, 71, 72, 73, 74, 75, 85, 86, 87, 88, 89],
+  "queue": [91, 92, 93, 94],
+  "completedIssues": [67, 68, 69, 70, 71, 72, 73, 74, 75, 85, 86, 87, 88, 89, 90],
+  "mergedIssues": [67, 68, 69, 70, 71, 72, 73, 74, 75, 85, 86, 87, 88, 89, 90],
   "prUrls": {
-    "68": "https://github.com/iamthamanic/visudev-app/pull/77",
-    "69": "https://github.com/iamthamanic/visudev-app/pull/78",
-    "70": "https://github.com/iamthamanic/visudev-app/pull/79",
-    "71": "https://github.com/iamthamanic/visudev-app/pull/80",
-    "72": "https://github.com/iamthamanic/visudev-app/pull/81",
-    "73": "https://github.com/iamthamanic/visudev-app/pull/82",
-    "74": "https://github.com/iamthamanic/visudev-app/pull/83",
-    "75": "https://github.com/iamthamanic/visudev-app/pull/84",
     "85": "https://github.com/iamthamanic/visudev-app/pull/95",
     "86": "https://github.com/iamthamanic/visudev-app/pull/96",
     "87": "https://github.com/iamthamanic/visudev-app/pull/97",
     "88": "https://github.com/iamthamanic/visudev-app/pull/98",
-    "89": "https://github.com/iamthamanic/visudev-app/pull/99"
+    "89": "https://github.com/iamthamanic/visudev-app/pull/99",
+    "90": "https://github.com/iamthamanic/visudev-app/pull/100"
   },
-  "retries": {
-    "implement": 0,
-    "verifyTicket": 0,
-    "verifyUi": 0,
-    "review": 0
-  },
+  "retries": { "implement": 0, "verifyTicket": 0, "verifyUi": 0, "review": 0 },
   "maxRetries": {
     "implement": 3,
     "verifyTicket": 2,
@@ -42,7 +30,7 @@
   },
   "lastError": null,
   "lastErrorCount": 0,
-  "issuesProcessedInSession": 15,
-  "updatedAt": "2026-07-14T13:12:00.000Z",
-  "notes": "Implementing #90 Diagnostics Figma UI"
+  "issuesProcessedInSession": 17,
+  "updatedAt": "2026-07-14T13:22:00.000Z",
+  "notes": "Implementing #91 Architecture Figma UI"
 }
