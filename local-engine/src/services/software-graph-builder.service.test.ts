@@ -141,4 +141,62 @@ describe("buildSoftwareGraph", () => {
     expect(graph.edges.length).toBeLessThanOrEqual(5000);
     expect(graph.metrics.find((m) => m.name === "nodeCount")?.value).toBeGreaterThan(2500);
   });
+
+  it("creates import and call edges from AST facts", () => {
+    const scan = makeScan({
+      filesAnalyzed: 2,
+      facts: [
+        {
+          id: "fact:import",
+          kind: "ast-import",
+          filePath: "src/a.ts",
+          line: 1,
+          snippet: "import { x } from './b'",
+          metadata: { resolvedPath: "src/b.ts" },
+        },
+        {
+          id: "fact:call",
+          kind: "ast-call",
+          filePath: "src/a.ts",
+          line: 5,
+          snippet: "doWork()",
+          metadata: { targetFile: "src/b.ts" },
+        },
+      ],
+    });
+
+    const graph = buildSoftwareGraph(scan);
+
+    expect(graph.edges.some((e) => e.kind === "imports")).toBe(true);
+    expect(graph.edges.some((e) => e.kind === "calls")).toBe(true);
+    const importEdge = graph.edges.find((e) => e.kind === "imports");
+    expect(importEdge?.metadata.evidenceFactId).toBe("fact:import");
+  });
+
+  it("classifies api and event edges from facts", () => {
+    const scan = makeScan({
+      filesAnalyzed: 1,
+      facts: [
+        {
+          id: "fact:api",
+          kind: "autoguide:external-api",
+          filePath: "src/client.ts",
+          line: 2,
+          snippet: "fetch('/api')",
+        },
+        {
+          id: "fact:event",
+          kind: "autoguide:event-emit",
+          filePath: "src/events.ts",
+          line: 4,
+          snippet: "emitter.emit('done')",
+        },
+      ],
+    });
+
+    const graph = buildSoftwareGraph(scan);
+
+    expect(graph.edges.some((e) => e.kind === "api")).toBe(true);
+    expect(graph.edges.some((e) => e.kind === "event")).toBe(true);
+  });
 });

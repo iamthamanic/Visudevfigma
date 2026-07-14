@@ -17,13 +17,20 @@ export interface GraphCanvasProps {
   nodes: GraphCanvasNode[];
   edges: GraphCanvasEdge[];
   layoutPreset?: LayoutPreset;
+  onEdgeSelect?: (edgeId: string | null) => void;
 }
 
-export function GraphCanvas({ nodes, edges, layoutPreset = "default" }: GraphCanvasProps) {
+export function GraphCanvas({
+  nodes,
+  edges,
+  layoutPreset = "default",
+  onEdgeSelect,
+}: GraphCanvasProps) {
   const validated = useValidatedGraphElements(nodes, edges);
   const { setContainerRef, hasGraph, initError, graphRef } = useCytoscapeGraphLifecycle(
     validated,
     layoutPreset,
+    onEdgeSelect,
   );
   const { handleFit, handleZoomIn, handleZoomOut } = useGraphCanvasToolbar(graphRef);
 
