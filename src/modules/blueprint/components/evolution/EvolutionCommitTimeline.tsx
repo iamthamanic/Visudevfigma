@@ -19,14 +19,22 @@ export function EvolutionCommitTimeline({
 }: EvolutionCommitTimelineProps): JSX.Element {
   if (commits.length === 0) {
     return (
-      <div className={styles.commitTimeline} aria-label="Commit-Timeline">
+      <div
+        className={styles.commitTimeline}
+        aria-label="Commit-Timeline"
+        data-testid="evolution-timeline"
+      >
         <p className={styles.emptyControls}>Keine Commits in der Git-Zusammenfassung.</p>
       </div>
     );
   }
 
   return (
-    <div className={styles.commitTimeline} aria-label="Commit-Timeline">
+    <div
+      className={styles.commitTimeline}
+      aria-label="Commit-Timeline"
+      data-testid="evolution-timeline"
+    >
       <ul className={styles.commitTimelineList}>
         {commits.map((commit, index) => {
           const isSelected = commit.sha === selectedCommitSha;
@@ -40,6 +48,7 @@ export function EvolutionCommitTimeline({
                 className={`${styles.commitTimelineButton} ${isSelected ? styles.commitTimelineButtonActive : ""}`}
                 aria-pressed={isSelected}
                 title={displayText(commit.subject)}
+                data-testid="evolution-commit-dot"
                 onClick={() => onSelectCommit(commit.sha)}
               >
                 <span className={styles.commitTimelineDot} aria-hidden="true" />

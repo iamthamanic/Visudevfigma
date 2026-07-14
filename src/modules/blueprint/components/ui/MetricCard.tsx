@@ -12,6 +12,7 @@ interface MetricCardProps {
   delta?: string;
   accent?: "green" | "orange" | "purple" | "blue" | "teal" | "amber";
   sparklineValues?: number[];
+  testId?: string;
 }
 
 export function MetricCard({
@@ -20,9 +21,10 @@ export function MetricCard({
   delta,
   accent = "blue",
   sparklineValues,
+  testId,
 }: MetricCardProps): JSX.Element {
   return (
-    <article className={styles.root} data-accent={accent}>
+    <article className={styles.root} data-accent={accent} data-testid={testId}>
       <p className={styles.label}>{label}</p>
       <p className={styles.value}>{value}</p>
       {delta ? <p className={styles.delta}>{delta}</p> : null}
