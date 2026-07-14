@@ -234,7 +234,7 @@ test.describe("Blueprint Engine Core UI", () => {
     await expect(blueprintNav).toBeVisible({ timeout: 10000 });
     await blueprintNav.click();
 
-    await expect(page.locator("header").getByText("Blueprint", { exact: true })).toBeVisible();
+    await expect(page.locator("header").getByText("Blueprint", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "Diagnosen" })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Sicherheits-Matrix/i })).toBeVisible({
       timeout: 15000,
