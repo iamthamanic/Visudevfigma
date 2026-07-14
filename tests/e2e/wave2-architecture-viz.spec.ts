@@ -140,27 +140,91 @@ async function installMocks(page: import("@playwright/test").Page) {
     await route.continue();
   });
 
-  for (const host of ENGINE_HOSTS) {
-    await page.route(`${host}/**`, async (route) => {
-      const url = route.request().url();
-      if (url.includes("/blueprint/latest")) {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            ok: true,
-            data: { blueprint, analysisId: "wave2-architecture-1" },
-          }),
-        });
-        return;
-      }
+  const localHandler = async (route: import("@playwright/test").Route) => {
+    const url = route.request().url();
+    const method = route.request().method();
+
+    if (url.includes("/health")) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ ok: true, data: {} }),
+        body: JSON.stringify({ ok: true, data: { status: "ok", mode: "local" } }),
       });
+      return;
+    }
+
+    if (url.endsWith("/api/projects") && method === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, data: [MOCK_PROJECT] }),
+      });
+      return;
+    }
+
+    if (
+      url.includes(`/api/projects/${PROJECT_ID}`) &&
+      method === "GET" &&
+      !url.includes("blueprint")
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, data: MOCK_PROJECT }),
+      });
+      return;
+    }
+
+    if (url.includes("/blueprint/latest")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          data: { blueprint, analysisId: "wave2-architecture-1" },
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, data: {} }),
     });
+  };
+
+  for (const host of ENGINE_HOSTS) {
+    await page.route(`${host}/**`, localHandler);
   }
+}
+
+async function openBlueprintView(page: import("@playwright/test").Page, viewId: string) {
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
+
+  if (
+    await page
+      .getByText(/Melde dich an/i)
+      .isVisible()
+      .catch(() => false)
+  ) {
+    test.skip(true, "Auth mock insufficient — login screen still shown");
+    return;
+  }
+
+  const projectCard = page.getByText("browo/hr-tool").first();
+  if (await projectCard.isVisible().catch(() => false)) {
+    await projectCard.click();
+  }
+
+  await page.goto(`/blueprint?view=${viewId}`);
+  await page.waitForLoadState("networkidle");
+
+  await page
+    .getByText("Blueprint wird generiert...")
+    .waitFor({ state: "hidden", timeout: 45000 })
+    .catch(() => {});
 }
 
 test.describe("Wave 2 architecture viz parity", () => {
@@ -172,26 +236,7 @@ test.describe("Wave 2 architecture viz parity", () => {
   test("layer stack shows 7 cards and inspector on selection", async ({ page }) => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width: 1440, height: 900 });
-
-    await page.goto("/");
-    await page.waitForLoadState("networkidle");
-
-    if (
-      await page
-        .getByText(/Melde dich an/i)
-        .isVisible()
-        .catch(() => false)
-    ) {
-      test.skip(true, "Auth mock insufficient");
-      return;
-    }
-
-    await page.goto("/blueprint?view=architecture");
-    await page.waitForLoadState("networkidle");
-    await page
-      .getByText("Blueprint wird generiert...")
-      .waitFor({ state: "hidden", timeout: 45000 })
-      .catch(() => {});
+    await openBlueprintView(page, "architecture");
 
     const stack = page.getByTestId("architecture-layer-stack");
     await expect(stack).toBeVisible({ timeout: 20000 });
@@ -199,7 +244,7 @@ test.describe("Wave 2 architecture viz parity", () => {
 
     await page.getByRole("button", { name: /Application Layer/i }).click();
     await expect(page.getByTestId("architecture-inspector")).toBeVisible();
-    await expect(page.getByText("Enthaltene Services")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Enthaltene Services" })).toBeVisible();
 
     await page.screenshot({
       path: `${EVIDENCE_DIR}/architecture-layer-stack.png`,
@@ -209,12 +254,7 @@ test.describe("Wave 2 architecture viz parity", () => {
 
   test("domains mode has no duplicate App.tsx entries", async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto("/blueprint?view=architecture");
-    await page.waitForLoadState("networkidle");
-    await page
-      .getByText("Blueprint wird generiert...")
-      .waitFor({ state: "hidden", timeout: 45000 })
-      .catch(() => {});
+    await openBlueprintView(page, "architecture");
 
     await page.getByRole("tab", { name: "Domains" }).click();
     const appDuplicates = page.locator('[data-testid="domain-module"][data-path*="App.tsx"]');
