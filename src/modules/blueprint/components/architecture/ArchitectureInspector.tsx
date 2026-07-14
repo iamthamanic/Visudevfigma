@@ -91,6 +91,7 @@ function listContainedServices(graph: SoftwareGraph, nodeId: string): ServiceRow
   const nodeById = new Map(nodes.map((entry) => [entry.id, entry]));
 
   const rows: ServiceRow[] = [];
+  const seenChildIds = new Set<string>();
   const countByLabel = new Map<string, number>();
 
   for (const edge of edges) {
@@ -99,7 +100,8 @@ function listContainedServices(graph: SoftwareGraph, nodeId: string): ServiceRow
     if (!child) continue;
     const labelKey = child.label.trim().toLowerCase();
     countByLabel.set(labelKey, (countByLabel.get(labelKey) ?? 0) + 1);
-    if (rows.some((row) => row.id === child.id)) continue;
+    if (seenChildIds.has(child.id)) continue;
+    seenChildIds.add(child.id);
     rows.push({
       id: child.id,
       label: child.label,
