@@ -2,23 +2,22 @@
  * DependenciesView — cross-module imports, calls, API, events, and data edges.
  */
 
-import { lazy, Suspense, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { BlueprintData } from "../types";
 import { BlueprintViewLayout } from "./ui/BlueprintViewLayout.js";
 import { DependenciesControls } from "./dependencies/DependenciesControls.js";
+import { DependenciesGraphCanvas } from "./dependencies/DependenciesGraphCanvas.js";
 import { DependenciesInspector } from "./dependencies/DependenciesInspector.js";
 import {
   DEFAULT_VISIBLE_DEPENDENCY_KINDS,
   countDependencyEdgesByKind,
+  filterDependenciesProjection,
   findEdgeEvidence,
   projectDependenciesGraph,
   type DependencyEdgeKind,
 } from "./dependencies/_projection.js";
+import { useDependenciesSearch } from "./dependencies/useDependenciesSearch.js";
 import styles from "../styles/DependenciesView.module.css";
-
-const GraphCanvas = lazy(() =>
-  import("../../../components/GraphCanvas").then((module) => ({ default: module.GraphCanvas })),
-);
 
 interface DependenciesViewProps {
   blueprint: BlueprintData;
@@ -26,15 +25,22 @@ interface DependenciesViewProps {
 
 export function DependenciesView({ blueprint }: DependenciesViewProps) {
   const graph = blueprint.graph;
+  const { searchQuery, searchInputRef, setSearchQuery, resetSearch } = useDependenciesSearch();
   const [visibleEdgeKinds, setVisibleEdgeKinds] = useState<Set<DependencyEdgeKind>>(
     () => new Set(DEFAULT_VISIBLE_DEPENDENCY_KINDS),
   );
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
-  const projection = useMemo(() => {
+  const baseProjection = useMemo(() => {
     if (!graph) return { nodes: [], edges: [] };
     return projectDependenciesGraph(graph, { visibleEdgeKinds });
   }, [graph, visibleEdgeKinds]);
+
+  const projection = useMemo(
+    () =>
+      graph ? filterDependenciesProjection(baseProjection, searchQuery, graph) : baseProjection,
+    [baseProjection, searchQuery, graph],
+  );
 
   const topDependencies = useMemo(() => {
     if (!graph) return [];
@@ -59,6 +65,7 @@ export function DependenciesView({ blueprint }: DependenciesViewProps) {
   const resetFilters = () => {
     setVisibleEdgeKinds(new Set(DEFAULT_VISIBLE_DEPENDENCY_KINDS));
     setSelectedEdgeId(null);
+    resetSearch();
   };
 
   if (!graph) {
@@ -73,7 +80,14 @@ export function DependenciesView({ blueprint }: DependenciesViewProps) {
     );
   }
 
-  const hasVisibleEdges = projection.edges.length > 0;
+  const hasVisibleGraph = projection.nodes.length > 0;
+
+  const handleMinimapSelect = (nodeId: string) => {
+    const graphNode = graph.nodes.find((candidate) => candidate.id === nodeId);
+    if (!graphNode) return;
+    setSearchQuery(graphNode.label);
+    searchInputRef.current?.focus();
+  };
 
   return (
     <BlueprintViewLayout
@@ -87,18 +101,26 @@ export function DependenciesView({ blueprint }: DependenciesViewProps) {
       }
       canvas={
         <div className={styles.canvasWrap}>
-          {hasVisibleEdges ? (
-            <Suspense fallback={<p className={styles.loading}>Graph wird geladen...</p>}>
-              <GraphCanvas
-                nodes={projection.nodes}
-                edges={projection.edges}
-                layoutPreset="force"
-                onEdgeSelect={setSelectedEdgeId}
-              />
-            </Suspense>
+          {hasVisibleGraph ? (
+            <DependenciesGraphCanvas
+              nodes={projection.nodes}
+              edges={projection.edges}
+              totalNodes={baseProjection.nodes.length}
+              totalEdges={baseProjection.edges.length}
+              searchQuery={searchQuery}
+              searchInputRef={searchInputRef}
+              onSearchChange={setSearchQuery}
+              onResetSearch={resetSearch}
+              onEdgeSelect={setSelectedEdgeId}
+              onMinimapSelect={handleMinimapSelect}
+            />
           ) : (
             <div className={styles.filteredCanvasEmpty}>
-              <p>Passe die Beziehungstypen an, um Abhängigkeiten anzuzeigen.</p>
+              <p>
+                {searchQuery
+                  ? "Keine Module für die aktuelle Suche. Passe den Suchbegriff an."
+                  : "Passe die Beziehungstypen an, um Abhängigkeiten anzuzeigen."}
+              </p>
             </div>
           )}
         </div>
@@ -106,6 +128,7 @@ export function DependenciesView({ blueprint }: DependenciesViewProps) {
       inspector={
         <DependenciesInspector
           graph={graph}
+          topDependencies={topDependencies}
           selectedEdge={selection?.edge ?? null}
           selectedEvidence={selection?.evidence ?? []}
         />
