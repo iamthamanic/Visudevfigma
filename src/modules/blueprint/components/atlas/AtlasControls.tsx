@@ -1,7 +1,11 @@
 /**
- * Sidebar controls for AtlasView — search and condensation status.
+ * Sidebar controls for AtlasView — search, condensed banner, clusters, node cards.
  */
 
+import type { SoftwareGraphGroup } from "../../types";
+import { AtlasClusterChips } from "./AtlasClusterChips.js";
+import { AtlasNodeList } from "./AtlasNodeList.js";
+import type { GraphCanvasNode } from "../../types";
 import styles from "../../styles/AtlasView.module.css";
 
 export interface AtlasControlsProps {
@@ -9,8 +13,14 @@ export interface AtlasControlsProps {
   totalNodes: number;
   visibleNodes: number;
   condensed: boolean;
+  nodes: GraphCanvasNode[];
+  groups: SoftwareGraphGroup[];
+  selectedNodeId: string | null;
+  selectedGroupId: string | null;
   onSearchChange: (value: string) => void;
   onResetSearch: () => void;
+  onSelectNode: (nodeId: string) => void;
+  onSelectGroup: (groupId: string) => void;
 }
 
 export function AtlasControls({
@@ -18,27 +28,20 @@ export function AtlasControls({
   totalNodes,
   visibleNodes,
   condensed,
+  nodes,
+  groups,
+  selectedNodeId,
+  selectedGroupId,
   onSearchChange,
   onResetSearch,
-}: AtlasControlsProps) {
+  onSelectNode,
+  onSelectGroup,
+}: AtlasControlsProps): JSX.Element {
   return (
-    <aside className={styles.sidebar} aria-label="Atlas-Steuerung">
-      <section className={styles.section}>
-        <h3 className={styles.sectionTitle}>Übersicht</h3>
-        <p className={styles.stat}>
-          {visibleNodes} von {totalNodes} Knoten sichtbar
-        </p>
-        {condensed ? (
-          <p className={styles.hint}>
-            Große Codebasis — Atlas zeigt eine verdichtete 2D-Karte (Module, Domains, Services).
-          </p>
-        ) : null}
-      </section>
-
-      <section className={styles.section}>
-        <h3 className={styles.sectionTitle}>Suche</h3>
-        <label className={styles.fieldLabel}>
-          Knoten filtern
+    <aside className={styles.controls} aria-label="Atlas-Steuerung">
+      <div className={styles.searchBar}>
+        <label className={styles.searchLabel}>
+          <span className={styles.searchLabelText}>Atlas durchsuchen</span>
           <input
             className={styles.searchInput}
             type="search"
@@ -49,14 +52,34 @@ export function AtlasControls({
         </label>
         {searchQuery ? (
           <button type="button" className={styles.resetButton} onClick={onResetSearch}>
-            Suche zurücksetzen
+            Zurücksetzen
           </button>
         ) : null}
-      </section>
+      </div>
 
-      <section className={styles.section}>
-        <p className={styles.hint}>2D-Dichtekarte. 3D-Stadtmodus ist deaktiviert (Performance).</p>
-      </section>
+      {condensed ? (
+        <div className={styles.condensedBanner} role="status">
+          <p className={styles.condensedBannerTitle}>Verdichtete Karte</p>
+          <p className={styles.condensedBannerText}>
+            Große Codebasis — Atlas zeigt Module, Domains und Services (Soft-Limit {visibleNodes}{" "}
+            sichtbar).
+          </p>
+        </div>
+      ) : null}
+
+      <p className={styles.stat}>
+        {visibleNodes} von {totalNodes} Knoten sichtbar
+      </p>
+
+      <AtlasClusterChips
+        groups={groups}
+        selectedGroupId={selectedGroupId}
+        onSelectGroup={onSelectGroup}
+      />
+
+      <AtlasNodeList nodes={nodes} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
+
+      <p className={styles.modeHint}>2D-Dichtekarte — 3D-Stadtmodus folgt separat (#94).</p>
     </aside>
   );
 }
