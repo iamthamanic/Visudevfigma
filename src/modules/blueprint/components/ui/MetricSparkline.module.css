@@ -1,0 +1,13 @@
+.root {
+  display: block;
+  width: 100%;
+  height: 24px;
+}
+
+.line {
+  fill: none;
+  stroke: var(--metric-accent, var(--color-info));
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

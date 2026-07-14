@@ -73,6 +73,8 @@ describe("EvolutionView", () => {
     expect(screen.getByText("Evolutions-Metriken")).toBeInTheDocument();
     expect(screen.getByLabelText("Basis")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /scan-2/i })).toBeInTheDocument();
+    expect(screen.getByLabelText("Commit-Timeline")).toBeInTheDocument();
+    expect(screen.getByLabelText("Änderungsübersicht")).toBeInTheDocument();
   });
 
   it("switches evolution sub-tab while keeping snapshot cards visible", () => {
