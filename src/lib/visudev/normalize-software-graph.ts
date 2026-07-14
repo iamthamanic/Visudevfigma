@@ -6,6 +6,7 @@ import type {
   SoftwareGraph,
   SoftwareGraphEdge,
   SoftwareGraphEvidence,
+  SoftwareGraphGroup,
   SoftwareGraphNode,
 } from "./software-graph-types";
 import {
@@ -13,6 +14,7 @@ import {
   boundedString,
   isIsoTimestamp,
   isRecord,
+  isSoftwareGraphNodeKind,
   isSoftwareGraphEdge,
   isSoftwareGraphNode,
   MAX_EDGES,
@@ -55,6 +57,33 @@ function isBoundedEvidence(value: unknown): value is SoftwareGraphEvidence {
 
 function positiveLine(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 1;
+}
+
+function sanitizeGroups(raw: unknown, nodeIds: Set<string>): SoftwareGraphGroup[] {
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .filter((item) => isRecord(item))
+    .slice(0, 100)
+    .map((item) => {
+      const id = boundedString(item.id, 128);
+      const kind = boundedString(item.kind, 64);
+      const label = boundedString(item.label);
+      if (!id || !kind || !label || !isSoftwareGraphNodeKind(kind)) return null;
+
+      const groupNodeIds = boundedArray(item.nodeIds, MAX_NODES, isBoundedNodeId).filter((nodeId) =>
+        nodeIds.has(nodeId),
+      );
+      if (groupNodeIds.length === 0) return null;
+
+      return {
+        id,
+        kind,
+        label,
+        nodeIds: groupNodeIds,
+      };
+    })
+    .filter((group): group is SoftwareGraphGroup => group != null);
 }
 
 export function normalizeSoftwareGraph(raw: unknown): SoftwareGraph | undefined {
@@ -117,15 +146,22 @@ export function normalizeSoftwareGraph(raw: unknown): SoftwareGraph | undefined 
     : undefined;
 
   const evidence = Array.isArray(raw.evidence)
-    ? boundedArray(raw.evidence, 10_000, isBoundedEvidence).map((item) => ({
-        id: boundedString(item.id, 128) ?? "",
-        factId: boundedString(item.factId, 128) ?? "",
-        kind: boundedString(item.kind, 64) ?? "",
-        filePath: boundedString(item.filePath, 512) ?? "",
-        line: item.line,
-        excerpt: boundedString(item.excerpt, 512) ?? "",
-      }))
+    ? boundedArray(raw.evidence, 10_000, isBoundedEvidence).map((item) => {
+        const nodeIdRaw = boundedString(item.nodeId, 128);
+        const nodeId = nodeIdRaw && nodeIds.has(nodeIdRaw) ? nodeIdRaw : undefined;
+        return {
+          id: boundedString(item.id, 128) ?? "",
+          factId: boundedString(item.factId, 128) ?? "",
+          kind: boundedString(item.kind, 64) ?? "",
+          filePath: boundedString(item.filePath, 512) ?? "",
+          line: item.line,
+          excerpt: boundedString(item.excerpt, 512) ?? "",
+          nodeId,
+        };
+      })
     : [];
+
+  const groups = sanitizeGroups(raw.groups, nodeIds);
 
   return {
     version: 1,
@@ -135,7 +171,7 @@ export function normalizeSoftwareGraph(raw: unknown): SoftwareGraph | undefined 
     nodes,
     edges,
     evidence,
-    groups: [],
+    groups,
     metrics: [],
     condensed: false,
     limits: {

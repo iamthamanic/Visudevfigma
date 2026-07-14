@@ -280,6 +280,36 @@ describe("isIsoTimestamp", () => {
     expect(isIsoTimestamp("2026-01-01T12:00:00.123Z")).toBe(true);
   });
 
+  it("preserves execution and atlas groups from raw graph payloads", () => {
+    const graph = normalizeSoftwareGraph({
+      version: 1,
+      projectId: "p1",
+      analyzedAt: "2026-01-01T00:00:00.000Z",
+      nodes: [
+        { id: "route:leave", kind: "route", label: "POST /api/leave", metadata: {} },
+        { id: "file:uc", kind: "file", label: "Use Case", metadata: {} },
+      ],
+      edges: [],
+      groups: [
+        {
+          id: "execution:leave:0",
+          kind: "route",
+          label: "Leave trace",
+          nodeIds: ["route:leave", "file:uc", "missing-node"],
+        },
+      ],
+    });
+
+    expect(graph?.groups).toEqual([
+      {
+        id: "execution:leave:0",
+        kind: "route",
+        label: "Leave trace",
+        nodeIds: ["route:leave", "file:uc"],
+      },
+    ]);
+  });
+
   it("rejects impossible calendar dates", () => {
     expect(isIsoTimestamp("2026-02-30T00:00:00Z")).toBe(false);
     expect(isIsoTimestamp("not-a-date")).toBe(false);

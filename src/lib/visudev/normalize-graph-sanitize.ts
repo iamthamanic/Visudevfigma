@@ -11,6 +11,19 @@ const ALLOWED_METADATA_KEYS = new Set([
   "method",
   "path",
   "pipelineCount",
+  "executionStatus",
+  "status",
+  "traceId",
+  "durationMs",
+  "port",
+  "tier",
+  "env",
+  "region",
+  "instances",
+  "type",
+  "technology",
+  "version",
+  "kind",
 ]);
 
 function positiveLine(value: unknown): value is number {

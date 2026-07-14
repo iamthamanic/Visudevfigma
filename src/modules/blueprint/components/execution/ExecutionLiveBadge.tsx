@@ -9,15 +9,17 @@ export interface ExecutionLiveBadgeProps {
   live: boolean;
 }
 
-export function ExecutionLiveBadge({ live }: ExecutionLiveBadgeProps): JSX.Element | null {
-  if (!live) return null;
-
+export function ExecutionLiveBadge({ live }: ExecutionLiveBadgeProps): JSX.Element {
   return (
-    <span className={styles.liveBadgeWrap} data-testid="execution-live-badge">
-      <span className={styles.liveSignal} aria-hidden="true">
-        ●
-      </span>
-      <StatusBadge variant="running" label="Live (Streaming)" />
+    <span className={styles.liveBadgeWrap} data-testid="execution-live-badge" data-live={live}>
+      {live ? (
+        <>
+          <span className={styles.liveSignal} aria-hidden="true">
+            ●
+          </span>
+          <StatusBadge variant="running" label="Live (Streaming)" />
+        </>
+      ) : null}
     </span>
   );
 }
