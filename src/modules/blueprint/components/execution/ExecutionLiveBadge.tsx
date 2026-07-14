@@ -13,8 +13,11 @@ export function ExecutionLiveBadge({ live }: ExecutionLiveBadgeProps): JSX.Eleme
   if (!live) return null;
 
   return (
-    <span className={styles.liveBadgeWrap}>
-      <StatusBadge variant="running" label="LIVE" />
+    <span className={styles.liveBadgeWrap} data-testid="execution-live-badge">
+      <span className={styles.liveSignal} aria-hidden="true">
+        ●
+      </span>
+      <StatusBadge variant="running" label="Live (Streaming)" />
     </span>
   );
 }

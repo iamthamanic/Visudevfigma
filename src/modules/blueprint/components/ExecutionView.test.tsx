@@ -103,7 +103,7 @@ describe("ExecutionView", () => {
     render(<ExecutionView blueprint={graphBlueprint} />);
     expect(screen.getByLabelText("Zeitachse")).toBeInTheDocument();
     expect(screen.getByLabelText("Ausführungs-Metriken")).toBeInTheDocument();
-    expect(screen.getByText(/2 Schritte/i)).toBeInTheDocument();
+    expect(screen.getByText(/Schritte: 2/i)).toBeInTheDocument();
   });
 
   it("shows LIVE badge when route is running", () => {
@@ -119,6 +119,6 @@ describe("ExecutionView", () => {
       },
     };
     render(<ExecutionView blueprint={liveBlueprint} />);
-    expect(screen.getByText("LIVE")).toBeInTheDocument();
+    expect(screen.getByText("Live (Streaming)")).toBeInTheDocument();
   });
 });

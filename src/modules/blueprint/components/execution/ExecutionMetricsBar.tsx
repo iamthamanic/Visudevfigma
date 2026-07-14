@@ -10,23 +10,43 @@ export interface ExecutionMetricsBarProps {
 }
 
 export function ExecutionMetricsBar({ metrics }: ExecutionMetricsBarProps): JSX.Element {
-  const errorLabel = metrics.errorCount === 1 ? "Fehler" : "Fehler";
-
   return (
-    <div className={styles.metricsBar} aria-label="Ausführungs-Metriken">
-      <span>{metrics.totalDurationMs}ms</span>
+    <div
+      className={styles.metricsBar}
+      aria-label="Ausführungs-Metriken"
+      data-testid="execution-metrics-bar"
+    >
+      <span>Gesamtdauer: {metrics.totalDurationMs}ms</span>
       <span className={styles.metricsDivider} aria-hidden="true">
         ·
       </span>
-      <span>
-        {metrics.stepCount} {metrics.stepCount === 1 ? "Schritt" : "Schritte"}
-      </span>
+      <span>Schritte: {metrics.stepCount}</span>
       <span className={styles.metricsDivider} aria-hidden="true">
         ·
       </span>
       <span className={metrics.errorCount > 0 ? styles.metricsError : undefined}>
-        {metrics.errorCount} {errorLabel}
+        Fehler: {metrics.errorCount}
       </span>
+      <span className={styles.metricsDivider} aria-hidden="true">
+        ·
+      </span>
+      <span>Warnungen: {metrics.warningCount}</span>
+      <span className={styles.metricsDivider} aria-hidden="true">
+        ·
+      </span>
+      <span>Services: {metrics.serviceCount}</span>
+      <span className={styles.metricsDivider} aria-hidden="true">
+        ·
+      </span>
+      <span>DB: {metrics.dbCount}</span>
+      <span className={styles.metricsDivider} aria-hidden="true">
+        ·
+      </span>
+      <span>Events: {metrics.eventCount}</span>
+      <span className={styles.metricsDivider} aria-hidden="true">
+        ·
+      </span>
+      <span>Payload: {metrics.payloadCount}</span>
     </div>
   );
 }

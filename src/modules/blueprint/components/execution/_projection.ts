@@ -134,6 +134,11 @@ export interface ExecutionMetrics {
   totalDurationMs: number;
   stepCount: number;
   errorCount: number;
+  warningCount: number;
+  serviceCount: number;
+  dbCount: number;
+  eventCount: number;
+  payloadCount: number;
 }
 
 export function resolveStepDurationMs(node: SoftwareGraphNode | undefined, index: number): number {
@@ -160,13 +165,28 @@ export function computeExecutionMetrics(
   projection: ExecutionProjection | null,
   graph: SoftwareGraph,
 ): ExecutionMetrics {
+  const empty: ExecutionMetrics = {
+    totalDurationMs: 0,
+    stepCount: 0,
+    errorCount: 0,
+    warningCount: 0,
+    serviceCount: 0,
+    dbCount: 0,
+    eventCount: 0,
+    payloadCount: 0,
+  };
+
   if (!projection || projection.stepNodeIds.length === 0) {
-    return { totalDurationMs: 0, stepCount: 0, errorCount: 0 };
+    return empty;
   }
 
   const timings = computeStepTimings(graph, projection.stepNodeIds);
   const totalDurationMs = timings.at(-1)?.endMs ?? 0;
   let errorCount = projection.cycleNodeId != null ? 1 : 0;
+  let warningCount = 0;
+  let serviceCount = 0;
+  let dbCount = 0;
+  let eventCount = 0;
 
   const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
   for (const nodeId of projection.stepNodeIds) {
@@ -176,12 +196,24 @@ export function computeExecutionMetrics(
     if (status === "error" || status === "failed" || node.metadata?.error === true) {
       errorCount += 1;
     }
+    if (status === "warning") warningCount += 1;
+    if (node.kind === "service") serviceCount += 1;
+    if (node.kind === "table") dbCount += 1;
+    if (node.kind === "external" || node.metadata?.type === "Worker") eventCount += 1;
   }
+
+  const evidence = Array.isArray(graph.evidence) ? graph.evidence : [];
+  const payloadCount = evidence.filter((item) => /payload/i.test(item.kind)).length;
 
   return {
     totalDurationMs,
     stepCount: projection.stepNodeIds.length,
     errorCount,
+    warningCount,
+    serviceCount,
+    dbCount,
+    eventCount,
+    payloadCount,
   };
 }
 

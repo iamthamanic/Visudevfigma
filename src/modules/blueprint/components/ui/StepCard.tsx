@@ -15,6 +15,7 @@ interface StepCardProps {
   status?: StatusBadgeVariant;
   selected?: boolean;
   onSelect?: () => void;
+  testId?: string;
 }
 
 export function StepCard({
@@ -25,6 +26,7 @@ export function StepCard({
   status = "confirmed",
   selected = false,
   onSelect,
+  testId,
 }: StepCardProps): JSX.Element {
   const statusLabel =
     status === "confirmed"
@@ -40,6 +42,7 @@ export function StepCard({
       type="button"
       className={styles.root}
       data-selected={selected ? "true" : "false"}
+      data-testid={testId}
       onClick={onSelect}
       aria-pressed={selected}
     >

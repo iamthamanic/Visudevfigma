@@ -62,10 +62,17 @@ export function buildHrToolDemoGraph(projectId: string): SoftwareGraph {
     }),
     node("module:leave-repo", "module", "LeaveRepository", {
       filePath: "src/domain/leave-repository.ts",
+      metadata: { durationMs: 55 },
     }),
     node("route:leave", "route", "POST /api/leave-requests", {
       filePath: "src/routes/leave.ts",
       line: 12,
+      metadata: {
+        routeId: "leave",
+        executionStatus: "running",
+        traceId: "tr-7f3a2b1c",
+        durationMs: 35,
+      },
     }),
     node("file:form", "file", "LeaveRequestForm", {
       filePath: "src/ui/LeaveRequestForm.tsx",
@@ -73,19 +80,25 @@ export function buildHrToolDemoGraph(projectId: string): SoftwareGraph {
     }),
     node("file:uc", "file", "CreateLeaveRequest", {
       filePath: "src/application/create-leave-request.ts",
-      metadata: { runtime: "server", type: "Use Case" },
+      metadata: { runtime: "server", type: "Use Case", durationMs: 68 },
     }),
     node("file:controller", "file", "LeaveController", {
       filePath: "src/api/leave-controller.ts",
-      metadata: { type: "Controller" },
+      metadata: { type: "Controller", durationMs: 42 },
     }),
-    node("service:auth", "service", "AuthService", { metadata: { type: "Service" } }),
+    node("service:auth", "service", "AuthService", {
+      metadata: { type: "Service", durationMs: 31 },
+    }),
     node("service:validation", "service", "ValidationService", {
-      metadata: { type: "Service" },
+      metadata: { type: "Service", durationMs: 24 },
     }),
-    node("service:policy", "service", "LeavePolicy", { metadata: { type: "Policy" } }),
+    node("service:policy", "service", "LeavePolicy", {
+      metadata: { type: "Policy", durationMs: 18 },
+    }),
     node("service:email", "external", "EmailService", { metadata: { type: "Externer Service" } }),
-    node("service:worker", "service", "NotificationWorker", { metadata: { type: "Worker" } }),
+    node("service:worker", "service", "NotificationWorker", {
+      metadata: { type: "Worker", durationMs: 22 },
+    }),
     node("service:web", "service", "Web App", {
       metadata: { framework: "Next.js 14", port: 3000, tier: "web" },
     }),
@@ -103,7 +116,7 @@ export function buildHrToolDemoGraph(projectId: string): SoftwareGraph {
     }),
     node("runtime:internet", "runtime", "Internet", { metadata: { tier: "edge" } }),
     node("table:pg", "table", "PostgreSQL", {
-      metadata: { version: "15", port: 5432 },
+      metadata: { version: "15", port: 5432, durationMs: 89 },
     }),
     node("table:redis", "table", "Redis", { metadata: { version: "7", port: 6379 } }),
     node("table:storage", "table", "STORAGE", { metadata: { kind: "S3 Compatible" } }),
@@ -166,7 +179,7 @@ export function buildHrToolDemoGraph(projectId: string): SoftwareGraph {
         filePath: "src/ui/LeaveRequestForm.tsx",
         line: 87,
         excerpt: '{"employeeId":"usr_67890","type":"ANNUAL","startDate":"2026-08-01"}',
-        nodeId: "file:form",
+        nodeId: "file:uc",
       },
     ],
     groups: [
@@ -183,10 +196,19 @@ export function buildHrToolDemoGraph(projectId: string): SoftwareGraph {
         nodeIds: ["service:api", "file:uc", "file:controller"],
       },
       {
-        id: "exec:leave",
+        id: "execution:leave:0",
         kind: "route",
-        label: "POST /api/leave-requests · path 1",
-        nodeIds: ["route:leave", "file:form", "file:uc", "module:leave-repo", "table:pg"],
+        label: "LeaveRequest · Echtzeit-Trace",
+        nodeIds: [
+          "route:leave",
+          "file:controller",
+          "file:uc",
+          "service:auth",
+          "service:validation",
+          "module:leave-repo",
+          "table:pg",
+          "service:worker",
+        ],
       },
     ],
     metrics: [
