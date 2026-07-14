@@ -1,0 +1,118 @@
+/**
+ * Maps visible Atlas nodes into 3D city blocks (district grid layout).
+ */
+
+import type { GraphCanvasNode } from "../../types";
+import type { SoftwareGraphGroup } from "../../types";
+
+export interface CityBlock {
+  id: string;
+  label: string;
+  kind: string;
+  districtLabel: string;
+  x: number;
+  z: number;
+  width: number;
+  depth: number;
+  height: number;
+  color?: string;
+}
+
+const KIND_HEIGHT: Record<string, number> = {
+  organization: 5,
+  application: 4.5,
+  domain: 4,
+  module: 3,
+  service: 3.5,
+  route: 2.5,
+  table: 2,
+  external: 2.2,
+  file: 1.8,
+  runtime: 1.5,
+};
+
+const BLOCK_SIZE = 1.4;
+const DISTRICT_GAP = 8;
+const GRID_GAP = 0.35;
+
+function heightForKind(kind: string): number {
+  return KIND_HEIGHT[kind] ?? 2;
+}
+
+function layoutDistrict(
+  nodes: GraphCanvasNode[],
+  districtLabel: string,
+  originX: number,
+  originZ: number,
+): CityBlock[] {
+  if (nodes.length === 0) return [];
+  const columns = Math.max(1, Math.ceil(Math.sqrt(nodes.length)));
+  return nodes.map((node, index) => {
+    const row = Math.floor(index / columns);
+    const column = index % columns;
+    return {
+      id: node.id,
+      label: node.label,
+      kind: node.kind,
+      districtLabel,
+      x: originX + column * (BLOCK_SIZE + GRID_GAP),
+      z: originZ + row * (BLOCK_SIZE + GRID_GAP),
+      width: BLOCK_SIZE,
+      depth: BLOCK_SIZE,
+      height: heightForKind(node.kind),
+      color: node.color,
+    };
+  });
+}
+
+function groupNodesByDistrict(
+  nodes: GraphCanvasNode[],
+  groups: SoftwareGraphGroup[],
+): { label: string; nodes: GraphCanvasNode[] }[] {
+  if (groups.length === 0) {
+    return [{ label: "System", nodes }];
+  }
+
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const assigned = new Set<string>();
+  const districts: { label: string; nodes: GraphCanvasNode[] }[] = [];
+
+  for (const group of groups) {
+    const districtNodes = group.nodeIds
+      .map((nodeId) => nodeById.get(nodeId))
+      .filter((node): node is GraphCanvasNode => Boolean(node));
+    if (districtNodes.length === 0) continue;
+    districtNodes.forEach((node) => assigned.add(node.id));
+    districts.push({ label: group.label, nodes: districtNodes });
+  }
+
+  const ungrouped = nodes.filter((node) => !assigned.has(node.id));
+  if (ungrouped.length > 0) {
+    districts.push({ label: "Sonstige", nodes: ungrouped });
+  }
+
+  return districts.length > 0 ? districts : [{ label: "System", nodes }];
+}
+
+export function buildCityBlocks(
+  nodes: GraphCanvasNode[],
+  groups: SoftwareGraphGroup[],
+): CityBlock[] {
+  const districts = groupNodesByDistrict(nodes, groups);
+  const blocks: CityBlock[] = [];
+
+  districts.forEach((district, districtIndex) => {
+    const originX = districtIndex * DISTRICT_GAP;
+    blocks.push(...layoutDistrict(district.nodes, district.label, originX, 0));
+  });
+
+  if (blocks.length === 0) return blocks;
+
+  const avgX = blocks.reduce((sum, block) => sum + block.x, 0) / blocks.length;
+  const avgZ = blocks.reduce((sum, block) => sum + block.z, 0) / blocks.length;
+  return blocks.map((block) => ({
+    ...block,
+    x: block.x - avgX,
+    z: block.z - avgZ,
+  }));
+}
