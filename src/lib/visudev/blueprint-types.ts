@@ -1,6 +1,7 @@
 /** Blueprint Engine types — shared lib layer for UI and normalization. */
 
 import type { SoftwareGraph } from "./software-graph-types";
+import type { AccessControlFinding, AccessControlMatrixRow } from "./access-control-types";
 
 export type ConceptState =
   | "confirmed"
@@ -101,6 +102,10 @@ export interface BlueprintData extends Record<string, unknown> {
   routes?: RouteBlueprint[];
   /** @deprecated Synthesized from `graph` when absent. */
   securityMatrix?: SecurityMatrixRow[];
+  /** Stack-agnostic access control assessments (Diagnostics v3+). */
+  accessControlFindings?: AccessControlFinding[];
+  /** Route matrix derived from `accessControlFindings`. */
+  accessControlMatrix?: AccessControlMatrixRow[];
   /** @deprecated Synthesized from `graph` when absent. */
   findings?: BlueprintFinding[];
   /** @deprecated Synthesized from `graph` when absent. */

@@ -103,7 +103,10 @@ export function ExecutionDetailTabs({
         ) : null}
 
         {activeTab !== "overview" && tabEvidence.length > 0 ? (
-          <ul className={styles.evidenceList}>
+          <ul
+            className={styles.evidenceList}
+            data-testid={activeTab === "payload" ? "execution-detail-tab-payload" : undefined}
+          >
             {tabEvidence.map((evidence) => (
               <li key={evidence.id} className={styles.evidenceItem}>
                 <p className={styles.evidenceMeta}>

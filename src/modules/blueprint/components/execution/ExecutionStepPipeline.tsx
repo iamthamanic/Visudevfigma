@@ -68,6 +68,7 @@ export function ExecutionStepPipeline({
               durationMs={durationMs}
               status={resolveStatus(hasEvidence, isCycle)}
               selected={selectedStepId === nodeId}
+              testId="execution-step-card"
               onSelect={() => onSelectStep(nodeId)}
             />
           </div>

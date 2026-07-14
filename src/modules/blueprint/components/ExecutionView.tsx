@@ -95,7 +95,16 @@ export function ExecutionView({ blueprint }: ExecutionViewProps) {
     () =>
       graph
         ? computeExecutionMetrics(projection, graph)
-        : { totalDurationMs: 0, stepCount: 0, errorCount: 0 },
+        : {
+            totalDurationMs: 0,
+            stepCount: 0,
+            errorCount: 0,
+            warningCount: 0,
+            serviceCount: 0,
+            dbCount: 0,
+            eventCount: 0,
+            payloadCount: 0,
+          },
     [graph, projection],
   );
 
@@ -146,9 +155,6 @@ export function ExecutionView({ blueprint }: ExecutionViewProps) {
         )}
       </header>
 
-      <ExecutionTimelineRuler stepTimings={stepTimings} />
-      <ExecutionMetricsBar metrics={executionMetrics} />
-
       <ExecutionStepPipeline
         stepNodeIds={projection?.stepNodeIds ?? []}
         stepLabels={stepLabels}
@@ -159,6 +165,9 @@ export function ExecutionView({ blueprint }: ExecutionViewProps) {
         cycleNodeId={projection?.cycleNodeId ?? null}
         onSelectStep={setSelectedStepId}
       />
+
+      <ExecutionTimelineRuler stepTimings={stepTimings} />
+      <ExecutionMetricsBar metrics={executionMetrics} />
 
       <BlueprintViewLayout
         controls={

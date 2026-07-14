@@ -105,7 +105,16 @@ describe("projectExecutionGraph", () => {
     ]);
 
     const metrics = computeExecutionMetrics(projected, graph);
-    expect(metrics).toEqual({ totalDurationMs: 50, stepCount: 2, errorCount: 0 });
+    expect(metrics).toEqual({
+      totalDurationMs: 50,
+      stepCount: 2,
+      errorCount: 0,
+      warningCount: 0,
+      serviceCount: 0,
+      dbCount: 0,
+      eventCount: 0,
+      payloadCount: 0,
+    });
   });
 
   it("detects live execution from route metadata", () => {

@@ -113,7 +113,14 @@
 
 .liveBadgeWrap {
   display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   animation: executionLivePulse 1.6s ease-in-out infinite;
+}
+
+.liveSignal {
+  color: var(--color-primary);
+  font-size: 0.65rem;
 }
 
 @keyframes executionLivePulse {

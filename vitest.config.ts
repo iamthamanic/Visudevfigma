@@ -7,7 +7,11 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
-    include: ["src/**/*.{test,spec}.{ts,tsx}", "local-engine/**/*.{test,spec}.ts"],
+    include: [
+      "src/**/*.{test,spec}.{ts,tsx}",
+      "local-engine/**/*.{test,spec}.ts",
+      "shared/**/*.{test,spec}.ts",
+    ],
     environmentMatchGlobs: [["local-engine/**", "node"]],
     exclude: ["src/supabase/functions/**"],
     passWithNoTests: true,
