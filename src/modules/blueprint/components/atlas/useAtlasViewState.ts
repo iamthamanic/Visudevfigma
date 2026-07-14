@@ -1,0 +1,117 @@
+/**
+ * Atlas view state — search, selection, projection, view mode, reduced-motion policy.
+ */
+
+import { useEffect, useMemo, useState } from "react";
+import type { BlueprintData, SoftwareGraphGroup, SoftwareGraphNode } from "../../types";
+import { buildCityBlocks } from "./build-city-blocks.js";
+import type { CityBlock } from "./build-city-blocks.js";
+import { findGraphNode, listVisibleGroups } from "./atlas-display.js";
+import { projectAtlasGraph } from "./_projection.js";
+import type { AtlasProjection } from "./_projection.js";
+import type { AtlasViewMode } from "./atlas-view-mode.js";
+import { usePrefersReducedMotion } from "./usePrefersReducedMotion.js";
+
+export interface AtlasViewState {
+  searchQuery: string;
+  viewMode: AtlasViewMode;
+  threeDisabled: boolean;
+  projection: AtlasProjection;
+  visibleGroups: SoftwareGraphGroup[];
+  cityBlocks: CityBlock[];
+  selectedNodeId: string | null;
+  selectedGroupId: string | null;
+  selectedNode: SoftwareGraphNode | null;
+  selectedCluster: SoftwareGraphGroup | null;
+  setSearchQuery: (value: string) => void;
+  handleSelectNode: (nodeId: string) => void;
+  handleSelectGroup: (groupId: string) => void;
+  handleSelectViewMode: (mode: AtlasViewMode) => void;
+  resetSearch: () => void;
+}
+
+export function useAtlasViewState(graph: BlueprintData["graph"]): AtlasViewState {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<AtlasViewMode>("2d");
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const threeDisabled = prefersReducedMotion;
+
+  const projection = useMemo(() => {
+    if (!graph) {
+      return { nodes: [], edges: [], condensed: false, totalNodes: 0, visibleNodes: 0 };
+    }
+    return projectAtlasGraph(graph, { searchQuery });
+  }, [graph, searchQuery]);
+
+  const visibleGroups = useMemo(() => {
+    if (!graph) return [];
+    const visibleIds = new Set(projection.nodes.map((node) => node.id));
+    return listVisibleGroups(graph, visibleIds);
+  }, [graph, projection.nodes]);
+
+  const cityBlocks = useMemo(
+    () => buildCityBlocks(projection.nodes, visibleGroups),
+    [projection.nodes, visibleGroups],
+  );
+
+  const selectedNode = useMemo(() => {
+    if (!graph || !selectedNodeId) return null;
+    return findGraphNode(graph, selectedNodeId);
+  }, [graph, selectedNodeId]);
+
+  const selectedCluster = useMemo(() => {
+    if (!selectedGroupId) return null;
+    return visibleGroups.find((group) => group.id === selectedGroupId) ?? null;
+  }, [selectedGroupId, visibleGroups]);
+
+  const handleSelectNode = (nodeId: string) => {
+    setSelectedNodeId(nodeId);
+    setSelectedGroupId(null);
+  };
+
+  const handleSelectGroup = (groupId: string) => {
+    setSelectedGroupId(groupId);
+    setSelectedNodeId(null);
+  };
+
+  const handleSelectViewMode = (mode: AtlasViewMode) => {
+    if (mode === "3d" && threeDisabled) return;
+    setViewMode(mode);
+  };
+
+  useEffect(() => {
+    if (threeDisabled && viewMode === "3d") {
+      setViewMode("2d");
+    }
+  }, [threeDisabled, viewMode]);
+
+  useEffect(() => {
+    const visibleIds = new Set(projection.nodes.map((node) => node.id));
+    if (selectedNodeId && !visibleIds.has(selectedNodeId)) {
+      setSelectedNodeId(null);
+    }
+    if (selectedGroupId && !visibleGroups.some((group) => group.id === selectedGroupId)) {
+      setSelectedGroupId(null);
+    }
+  }, [projection.nodes, selectedGroupId, selectedNodeId, visibleGroups]);
+
+  return {
+    searchQuery,
+    viewMode,
+    threeDisabled,
+    projection,
+    visibleGroups,
+    cityBlocks,
+    selectedNodeId,
+    selectedGroupId,
+    selectedNode,
+    selectedCluster,
+    setSearchQuery,
+    handleSelectNode,
+    handleSelectGroup,
+    handleSelectViewMode,
+    resetSearch: () => setSearchQuery(""),
+  };
+}

@@ -49,6 +49,12 @@ describe("AtlasView", () => {
     expect(screen.getByText("Keine Atlas-Daten")).toBeInTheDocument();
   });
 
+  it("renders 2D | 3D view mode toggle defaulting to 2D", () => {
+    render(<AtlasView blueprint={graphBlueprint} />);
+    expect(screen.getByRole("group", { name: "Atlas-Ansicht" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "2D" })).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("renders search, node cards, and overview stats", () => {
     render(<AtlasView blueprint={graphBlueprint} />);
     const controls = screen.getByLabelText("Atlas-Steuerung");

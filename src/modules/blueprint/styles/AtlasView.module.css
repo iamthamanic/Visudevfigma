@@ -1,3 +1,56 @@
+.viewModeToggle {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+}
+
+.viewModeButton {
+  flex: 1;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: transparent;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.viewModeButtonActive {
+  border-color: var(--color-border);
+  background: var(--color-muted);
+  color: var(--color-foreground);
+}
+
+.viewModeButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cityCanvasWrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 320px;
+}
+
+.cityCanvas {
+  flex: 1;
+  min-height: 280px;
+}
+
+.cityHint {
+  margin: 0;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-card);
+}
+
 .controls {
   display: flex;
   flex-direction: column;

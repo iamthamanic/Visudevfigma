@@ -5,6 +5,8 @@
 import type { SoftwareGraphGroup } from "../../types";
 import { AtlasClusterChips } from "./AtlasClusterChips.js";
 import { AtlasNodeList } from "./AtlasNodeList.js";
+import { AtlasViewModeToggle } from "./AtlasViewModeToggle.js";
+import type { AtlasViewMode } from "./atlas-view-mode.js";
 import type { GraphCanvasNode } from "../../types";
 import styles from "../../styles/AtlasView.module.css";
 
@@ -13,6 +15,8 @@ export interface AtlasControlsProps {
   totalNodes: number;
   visibleNodes: number;
   condensed: boolean;
+  viewMode: AtlasViewMode;
+  threeDisabled: boolean;
   nodes: GraphCanvasNode[];
   groups: SoftwareGraphGroup[];
   selectedNodeId: string | null;
@@ -21,6 +25,7 @@ export interface AtlasControlsProps {
   onResetSearch: () => void;
   onSelectNode: (nodeId: string) => void;
   onSelectGroup: (groupId: string) => void;
+  onSelectViewMode: (mode: AtlasViewMode) => void;
 }
 
 export function AtlasControls({
@@ -28,6 +33,8 @@ export function AtlasControls({
   totalNodes,
   visibleNodes,
   condensed,
+  viewMode,
+  threeDisabled,
   nodes,
   groups,
   selectedNodeId,
@@ -36,9 +43,16 @@ export function AtlasControls({
   onResetSearch,
   onSelectNode,
   onSelectGroup,
+  onSelectViewMode,
 }: AtlasControlsProps): JSX.Element {
   return (
     <aside className={styles.controls} aria-label="Atlas-Steuerung">
+      <AtlasViewModeToggle
+        mode={viewMode}
+        threeDisabled={threeDisabled}
+        onSelectMode={onSelectViewMode}
+      />
+
       <div className={styles.searchBar}>
         <label className={styles.searchLabel}>
           <span className={styles.searchLabelText}>Atlas durchsuchen</span>
@@ -79,7 +93,15 @@ export function AtlasControls({
 
       <AtlasNodeList nodes={nodes} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
 
-      <p className={styles.modeHint}>2D-Dichtekarte — 3D-Stadtmodus folgt separat (#94).</p>
+      {threeDisabled ? (
+        <p className={styles.modeHint}>
+          3D-Stadtmodus ist bei „Bewegung reduzieren“ deaktiviert — 2D bleibt voll nutzbar.
+        </p>
+      ) : (
+        <p className={styles.modeHint}>
+          Wechsle zwischen 2D-Karte und 3D-Stadt. Tastatur: 2D-Button fokussieren und Enter.
+        </p>
+      )}
     </aside>
   );
 }
