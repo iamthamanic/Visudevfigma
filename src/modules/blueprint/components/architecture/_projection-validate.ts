@@ -73,13 +73,6 @@ export function sanitizeArchitectureLabel(label: unknown): string {
   return trimmedLabel;
 }
 
-function readNodeSemanticKey(node: SoftwareGraphNode): string {
-  const filePath =
-    typeof node.metadata?.filePath === "string" ? node.metadata.filePath.trim().toLowerCase() : "";
-  if (filePath.length > 0) return `${node.kind}:${filePath}`;
-  return `${node.kind}:${node.id}`;
-}
-
 /** Collapse duplicate domain/module nodes that share the same path or semantic label. */
 export function dedupeArchitectureNodes(nodes: SoftwareGraphNode[]): {
   nodes: SoftwareGraphNode[];
@@ -100,9 +93,7 @@ export function dedupeArchitectureNodes(nodes: SoftwareGraphNode[]): {
     const filePath =
       typeof node.metadata?.filePath === "string" ? node.metadata.filePath.trim() : "";
     const key =
-      filePath.length > 0
-        ? `${node.kind}:${filePath.toLowerCase()}`
-        : `${node.kind}:${node.id}`;
+      filePath.length > 0 ? `${node.kind}:${filePath.toLowerCase()}` : `${node.kind}:${node.id}`;
 
     const keptId = seenKeys.get(key);
     if (keptId) {
