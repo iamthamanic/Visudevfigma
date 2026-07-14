@@ -1,11 +1,12 @@
 /**
- * Inspektor for InfrastructureView. Responsibilities are kind-based Figma placeholders;
- * resource meters render only when graph.metrics supplies values (not yet in MVP graph).
+ * Inspektor for InfrastructureView with resource meters and responsibilities.
  */
 
 import type { GraphCanvasNode } from "../../types";
 import { InspectorPanel } from "../ui/InspectorPanel.js";
 import { StatusBadge } from "../ui/StatusBadge.js";
+import { InfrastructureResourceMeters } from "./InfrastructureResourceMeters.js";
+import { STATIC_PLACEHOLDER_METERS } from "./infrastructure-resource-meters.js";
 import styles from "../../styles/InfrastructureView.module.css";
 
 const KIND_LABELS: Record<string, string> = {
@@ -53,10 +54,12 @@ export function InfrastructureInspector({ node }: InfrastructureInspectorProps):
           id: "resources",
           title: "Ressourcen",
           content: (
-            <p className={styles.emptyControls}>
-              Keine Ressourcen-Metriken im Software Graph. Telemetrie-Integration folgt in einer
-              späteren Phase.
-            </p>
+            <>
+              <InfrastructureResourceMeters values={STATIC_PLACEHOLDER_METERS} />
+              <p className={styles.emptyControls}>
+                Platzhalter-Werte — Telemetrie-Integration folgt in einer späteren Phase.
+              </p>
+            </>
           ),
         },
         {

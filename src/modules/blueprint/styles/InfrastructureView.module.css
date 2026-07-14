@@ -72,6 +72,8 @@
 }
 
 .canvasWrap {
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 320px;
   overflow: hidden;
@@ -120,4 +122,265 @@
   color: var(--color-muted-foreground);
   font-size: 0.875rem;
   padding: 1rem;
+}
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.filterLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted-foreground);
+}
+
+.filterChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.filterChip {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.filterChipActive {
+  border-color: var(--color-primary);
+  color: var(--color-foreground);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 45%, transparent);
+}
+
+.filterHint {
+  margin: 0;
+  padding: 0.35rem 1rem;
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+
+.topology {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.topologyFlow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 200px;
+}
+
+.topologyTier {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 7rem;
+}
+
+.topologyTierLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted-foreground);
+}
+
+.topologyTierNodes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.topologyStaticNode {
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.topologyNode {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  color: var(--color-foreground);
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.topologyNode[data-kind="service"] {
+  border-left: 3px solid var(--color-graph-service);
+}
+
+.topologyNode[data-kind="table"] {
+  border-left: 3px solid var(--color-graph-database);
+}
+
+.topologyNode[data-kind="file"] {
+  border-left: 3px solid var(--color-graph-file);
+}
+
+.topologyNode[data-kind="runtime"] {
+  border-left: 3px solid var(--color-graph-runtime);
+}
+
+.topologyNodeSelected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 45%, transparent);
+}
+
+.topologyNodeDimmed {
+  opacity: 0.45;
+}
+
+.topologyArrow {
+  color: var(--color-muted-foreground);
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.legendTitle {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted-foreground);
+}
+
+.legendList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+
+.legendSwatch {
+  display: inline-block;
+  width: 1.5rem;
+  height: 0.2rem;
+  border-radius: 9999px;
+}
+
+.legendHttp {
+  background: var(--color-bp-rel-api);
+}
+
+.legendGrpc {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-bp-rel-event) 0 4px,
+    transparent 4px 7px
+  );
+}
+
+.legendDb {
+  background: var(--color-bp-rel-data);
+  height: 0.28rem;
+}
+
+.topologyMeta {
+  margin: 0;
+  padding: 0 1rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+
+.meterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.meterRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.meterHeader {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+
+.meterValue {
+  font-variant-numeric: tabular-nums;
+}
+
+.meterTrack {
+  width: 100%;
+  height: 0.4rem;
+  border: none;
+  border-radius: 9999px;
+  background: var(--color-muted);
+  overflow: hidden;
+  appearance: none;
+}
+
+.meterTrack::-webkit-progress-bar {
+  background: var(--color-muted);
+  border-radius: 9999px;
+}
+
+.meterTrack::-webkit-progress-value {
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    var(--color-primary),
+    color-mix(in srgb, var(--color-info) 70%, var(--color-primary))
+  );
+}
+
+.meterTrack::-moz-progress-bar {
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    var(--color-primary),
+    color-mix(in srgb, var(--color-info) 70%, var(--color-primary))
+  );
 }
