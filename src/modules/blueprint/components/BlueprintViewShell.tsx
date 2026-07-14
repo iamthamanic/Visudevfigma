@@ -30,7 +30,7 @@ export function BlueprintViewShell({
   branchLabel,
 }: BlueprintViewShellProps): JSX.Element {
   return (
-    <div className={styles.root}>
+    <div className={styles.root} data-testid="blueprint-view">
       <BlueprintViewHeader
         activeView={activeView}
         projectName={projectName}
@@ -38,7 +38,12 @@ export function BlueprintViewShell({
       />
 
       <div className={styles.panel}>
-        <div className={styles.panelContent} role="region" aria-label={activeView}>
+        <div
+          className={styles.panelContent}
+          role="region"
+          aria-label={activeView}
+          data-testid="blueprint-main-content"
+        >
           {activeView === "infrastructure" ? (
             <InfrastructureView blueprint={blueprint} />
           ) : activeView === "architecture" ? (

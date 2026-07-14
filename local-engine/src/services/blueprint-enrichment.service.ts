@@ -4,6 +4,7 @@
 
 import type { BlueprintDocument, RawBlueprintScan } from "../types/api.types.js";
 import { deriveDiagnosticsFromGraph } from "../../../shared/blueprint.js";
+import { enrichSoftwareGraphIfThin } from "../../../shared/demo-graph-thin.js";
 import { buildSoftwareGraph } from "./software-graph-builder.service.js";
 
 const DEFAULT_PROFILE = {
@@ -14,7 +15,9 @@ const DEFAULT_PROFILE = {
 };
 
 export function enrichBlueprint(scan: RawBlueprintScan): BlueprintDocument {
-  const graph = buildSoftwareGraph(scan);
+  const built = buildSoftwareGraph(scan);
+  const demoEnrichmentEnabled = process.env.VISUDEV_DEMO_ENRICHMENT !== "false";
+  const graph = demoEnrichmentEnabled ? enrichSoftwareGraphIfThin(built, scan.projectId) : built;
   const { routes, securityMatrix, findings, facts } = deriveDiagnosticsFromGraph(graph);
 
   return {

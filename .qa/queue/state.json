@@ -1,30 +1,21 @@
 {
   "version": 2,
   "repo": "iamthamanic/visudev-app",
-  "activeIssue": null,
-  "featureSlug": "blueprint-v3-figma-gaps",
-  "phase": "done",
+  "activeIssue": 123,
+  "featureSlug": "blueprint-wave-2-viz-parity",
+  "phase": "implement",
   "branch": null,
   "prUrl": null,
-  "milestoneFilter": null,
+  "milestoneFilter": "blueprint-wave-2-viz-parity",
   "paused": false,
   "runMode": "loop",
-  "queue": [],
+  "queue": [123, 124, 125, 126, 127, 128, 129, 130],
   "completedIssues": [
-    67, 68, 69, 70, 71, 72, 73, 74, 75, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 105, 106, 107, 108, 109, 110, 111, 112, 113
+    67, 68, 69, 70, 71, 72, 73, 74, 75, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 105, 106, 107, 108,
+    109, 110, 111, 112, 113
   ],
   "mergedIssues": [105, 106, 107, 108, 109, 110, 111, 112, 113],
-  "prUrls": {
-    "105": "https://github.com/iamthamanic/visudev-app/pull/114",
-    "106": "https://github.com/iamthamanic/visudev-app/pull/115",
-    "107": "https://github.com/iamthamanic/visudev-app/pull/116",
-    "108": "https://github.com/iamthamanic/visudev-app/pull/117",
-    "109": "https://github.com/iamthamanic/visudev-app/pull/118",
-    "110": "https://github.com/iamthamanic/visudev-app/pull/119",
-    "111": "https://github.com/iamthamanic/visudev-app/pull/120",
-    "112": "https://github.com/iamthamanic/visudev-app/pull/121",
-    "113": "https://github.com/iamthamanic/visudev-app/pull/122"
-  },
+  "prUrls": {},
   "retries": {
     "implement": 0,
     "verifyTicket": 0,
@@ -40,7 +31,7 @@
   },
   "lastError": null,
   "lastErrorCount": 0,
-  "issuesProcessedInSession": 6,
-  "updatedAt": "2026-07-14T17:40:00.000Z",
-  "notes": "#109-#113 merged; blueprint-v3-figma-gaps queue complete"
+  "issuesProcessedInSession": 0,
+  "updatedAt": "2026-07-14T18:20:00.000Z",
+  "notes": "Wave 2 viz parity queue #123-#130; starting with cross-cutting enrichment"
 }
