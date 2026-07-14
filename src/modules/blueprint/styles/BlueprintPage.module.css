@@ -89,6 +89,10 @@
   animation: spin 1s linear infinite;
 }
 
+.scanProgress {
+  padding: 0 1.5rem;
+}
+
 .statusBar {
   align-items: center;
   border-radius: var(--radius-md);
