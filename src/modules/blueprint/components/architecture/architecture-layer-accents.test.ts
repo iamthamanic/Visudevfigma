@@ -17,6 +17,8 @@ describe("architecture-layer-accents", () => {
   it("resolves known layer labels", () => {
     expect(resolveLayerType("presentation")).toBe("presentation");
     expect(resolveLayerType("UI")).toBe("ui");
+    expect(resolveLayerType("Experience Layer")).toBe("presentation");
+    expect(resolveLayerType("Domain Layer")).toBe("application");
   });
 
   it("returns unknown for non-layer labels", () => {

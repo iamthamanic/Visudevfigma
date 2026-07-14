@@ -10,6 +10,8 @@ import type {
   SoftwareGraphNodeKind,
 } from "../../types";
 
+const DEDUPE_NODE_KINDS = new Set<SoftwareGraphNodeKind>(["domain", "module"]);
+
 const VALID_SOFTWARE_GRAPH_NODE_KINDS = new Set<SoftwareGraphNodeKind>([
   "organization",
   "application",
@@ -71,15 +73,49 @@ export function sanitizeArchitectureLabel(label: unknown): string {
   return trimmedLabel;
 }
 
+function readNodeSemanticKey(node: SoftwareGraphNode): string {
+  const filePath =
+    typeof node.metadata?.filePath === "string" ? node.metadata.filePath.trim().toLowerCase() : "";
+  if (filePath.length > 0) return `${node.kind}:${filePath}`;
+  return `${node.kind}:${node.label.trim().toLowerCase()}`;
+}
+
+/** Collapse duplicate domain/module nodes that share the same path or semantic label. */
+export function dedupeArchitectureNodes(nodes: SoftwareGraphNode[]): SoftwareGraphNode[] {
+  const seenKeys = new Set<string>();
+  const keptIds = new Set<string>();
+  const deduped: SoftwareGraphNode[] = [];
+
+  for (const node of nodes) {
+    if (!DEDUPE_NODE_KINDS.has(node.kind)) {
+      deduped.push(node);
+      keptIds.add(node.id);
+      continue;
+    }
+
+    const key = readNodeSemanticKey(node);
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    keptIds.add(node.id);
+    deduped.push(node);
+  }
+
+  return deduped;
+}
+
 export function sanitizeSoftwareGraphForArchitecture(softwareGraph: SoftwareGraph): SoftwareGraph {
   const validNodeIds = new Set<string>();
-  const sanitizedNodes = readSoftwareGraphNodes(softwareGraph.nodes).map((softwareGraphNode) => {
-    validNodeIds.add(softwareGraphNode.id);
-    return {
-      ...softwareGraphNode,
-      label: sanitizeArchitectureLabel(softwareGraphNode.label),
-    };
-  });
+  const sanitizedNodes = dedupeArchitectureNodes(
+    readSoftwareGraphNodes(softwareGraph.nodes).map((softwareGraphNode) => {
+      validNodeIds.add(softwareGraphNode.id);
+      return {
+        ...softwareGraphNode,
+        label: sanitizeArchitectureLabel(softwareGraphNode.label),
+      };
+    }),
+  );
+  validNodeIds.clear();
+  for (const node of sanitizedNodes) validNodeIds.add(node.id);
 
   const sanitizedEdges = readSoftwareGraphEdges(softwareGraph.edges).filter(
     (softwareGraphEdge) =>

@@ -12,6 +12,23 @@ export interface ArchitectureStackCard {
   layerType: ArchitectureLayerType | "unknown";
   domainTag: string | null;
   services: string[];
+  filePath: string | null;
+}
+
+const CANONICAL_LAYER_ORDER = [
+  "experience layer",
+  "application layer",
+  "domain layer",
+  "integration layer",
+  "persistence layer",
+  "processing layer",
+  "platform layer",
+];
+
+function layerSortIndex(label: string): number {
+  const normalized = label.trim().toLowerCase();
+  const index = CANONICAL_LAYER_ORDER.indexOf(normalized);
+  return index >= 0 ? index : CANONICAL_LAYER_ORDER.length;
 }
 
 export function buildArchitectureStackCards(
@@ -45,6 +62,7 @@ export function buildArchitectureStackCards(
       const parent = parentId ? nodeById.get(parentId) : undefined;
       const domainTag =
         parent?.kind === "domain" ? parent.label : parent?.kind === "layer" ? parent.label : null;
+      const filePath = typeof node.metadata?.filePath === "string" ? node.metadata.filePath : null;
 
       return {
         id: node.id,
@@ -53,6 +71,14 @@ export function buildArchitectureStackCards(
         layerType: node.kind === "layer" ? resolveLayerType(node.label) : "unknown",
         domainTag,
         services,
+        filePath,
       };
+    })
+    .sort((left, right) => {
+      if (stackKind === "layer") {
+        const byLayer = layerSortIndex(left.label) - layerSortIndex(right.label);
+        if (byLayer !== 0) return byLayer;
+      }
+      return left.label.localeCompare(right.label);
     });
 }

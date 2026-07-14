@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SoftwareGraph } from "../../types";
 import {
+  dedupeArchitectureNodes,
   sanitizeArchitectureLabel,
   sanitizeSoftwareGraphForArchitecture,
 } from "./_projection-validate";
@@ -75,5 +76,25 @@ describe("sanitizeSoftwareGraphForArchitecture", () => {
   it("normalizes empty labels", () => {
     expect(sanitizeArchitectureLabel("   ")).toBe("(unbenannt)");
     expect(sanitizeArchitectureLabel(42)).toBe("(unbenannt)");
+  });
+
+  it("dedupes domain nodes with the same file path", () => {
+    const deduped = dedupeArchitectureNodes([
+      {
+        id: "domain:1",
+        kind: "domain",
+        label: "App.tsx",
+        metadata: { filePath: "src/App.tsx" },
+      },
+      {
+        id: "domain:2",
+        kind: "domain",
+        label: "App.tsx",
+        metadata: { filePath: "src/App.tsx" },
+      },
+    ]);
+
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0].id).toBe("domain:1");
   });
 });
