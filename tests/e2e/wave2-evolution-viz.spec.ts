@@ -30,7 +30,7 @@ test.describe("Wave 2 evolution viz parity", () => {
 
     await page.getByTestId("evolution-commit-dot").nth(1).click();
     await expect(page.getByTestId("evolution-inspector")).toBeVisible();
-    await expect(page.getByText("Payroll Integration")).toBeVisible();
+    await expect(page.getByTestId("evolution-inspector").getByText("Payroll Integration")).toBeVisible();
 
     await page.screenshot({
       path: `${EVIDENCE_DIR}/evolution-timeline-inspector.png`,
