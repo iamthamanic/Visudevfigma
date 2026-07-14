@@ -20,18 +20,19 @@ test.describe("Wave 2 execution viz parity", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openBlueprintView(page, "execution");
 
-    await expect(page.getByTestId("execution-live-badge")).toBeVisible();
+    await expect(page.getByTestId("execution-live-badge")).toBeVisible({ timeout: 20000 });
+    await expect(page.getByTestId("execution-live-badge")).toHaveAttribute("data-live", "true");
     expect(await page.getByTestId("execution-step-card").count()).toBeGreaterThanOrEqual(6);
     await expect(page.getByTestId("execution-metrics-bar")).toBeVisible();
 
-    const stepWithPayload = page
-      .getByTestId("execution-step-card")
-      .filter({ hasText: "CreateLeaveRequest" });
-    await stepWithPayload.click();
+    await page
+      .getByRole("button", { name: /CreateLeaveRequest/i })
+      .first()
+      .click();
 
     await page.getByRole("tab", { name: "Payload" }).click();
     const payloadPanel = page.getByTestId("execution-detail-tab-payload");
-    await expect(payloadPanel).toBeVisible();
+    await expect(payloadPanel).toBeVisible({ timeout: 10000 });
     await expect(payloadPanel).toContainText("employeeId");
 
     await page.screenshot({

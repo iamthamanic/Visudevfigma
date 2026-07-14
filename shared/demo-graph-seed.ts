@@ -100,16 +100,40 @@ export function buildHrToolDemoGraph(projectId: string): SoftwareGraph {
       metadata: { type: "Worker", durationMs: 22 },
     }),
     node("service:web", "service", "Web App", {
-      metadata: { framework: "Next.js 14", port: 3000, tier: "web" },
+      metadata: {
+        framework: "Next.js 14",
+        port: 3000,
+        tier: "web",
+        env: "prod",
+        region: "eu-central-1",
+      },
     }),
     node("service:api", "service", "API Service", {
-      metadata: { framework: "Node.js 20", port: 4000, tier: "api" },
+      metadata: {
+        framework: "Node.js 20",
+        port: 4000,
+        tier: "api",
+        env: "prod",
+        region: "eu-central-1",
+      },
     }),
     node("service:worker-infra", "service", "Worker", {
-      metadata: { framework: "BullMQ", port: 4001, tier: "worker" },
+      metadata: {
+        framework: "BullMQ",
+        port: 4001,
+        tier: "worker",
+        env: "prod",
+        region: "eu-central-1",
+      },
     }),
     node("service:auth-infra", "service", "Auth Service", {
-      metadata: { framework: "Node.js 20", port: 4002, tier: "auth" },
+      metadata: {
+        framework: "Node.js 20",
+        port: 4002,
+        tier: "auth",
+        env: "prod",
+        region: "eu-central-1",
+      },
     }),
     node("runtime:lb", "runtime", "LOAD BALANCER / GATEWAY", {
       metadata: { technology: "NGINX" },
@@ -122,7 +146,11 @@ export function buildHrToolDemoGraph(projectId: string): SoftwareGraph {
     node("table:storage", "table", "STORAGE", { metadata: { kind: "S3 Compatible" } }),
     node("external:stripe", "external", "Payment API (Stripe)", {}),
     node("external:sso", "external", "SSO (OIDC)", {}),
+    node("external:hr-data", "external", "HR Datenanbieter", {}),
     node("external:monitor", "external", "Prometheus", { metadata: { tier: "monitoring" } }),
+    node("external:grafana", "external", "Grafana", { metadata: { tier: "monitoring" } }),
+    node("external:loki", "external", "Loki", { metadata: { tier: "monitoring" } }),
+    node("external:alertmanager", "external", "Alertmanager", { metadata: { tier: "monitoring" } }),
     node("runtime:main", "runtime", "runtime", { metadata: { runtimes: ["server", "browser"] } }),
   ];
 

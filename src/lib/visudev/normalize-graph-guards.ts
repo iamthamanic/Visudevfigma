@@ -43,6 +43,10 @@ function isNodeKind(value: string): value is SoftwareGraphNodeKind {
   return NODE_KINDS.has(value as SoftwareGraphNodeKind);
 }
 
+export function isSoftwareGraphNodeKind(value: string): value is SoftwareGraphNodeKind {
+  return isNodeKind(value);
+}
+
 function isEdgeKind(value: string): value is SoftwareGraphEdgeKind {
   return EDGE_KINDS.has(value as SoftwareGraphEdgeKind);
 }

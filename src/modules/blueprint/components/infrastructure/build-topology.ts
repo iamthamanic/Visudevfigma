@@ -2,9 +2,15 @@
  * Groups projected infrastructure nodes into topology tiers for the diagram.
  */
 
-import type { GraphCanvasNode } from "../../types";
+import type { GraphCanvasNode, SoftwareGraph } from "../../types";
 
-export type TopologyTier = "internet" | "loadBalancer" | "service" | "database";
+export type TopologyTier =
+  | "internet"
+  | "loadBalancer"
+  | "service"
+  | "database"
+  | "externalApi"
+  | "monitoring";
 
 export interface TopologyNodeRef {
   id: string;
@@ -13,12 +19,12 @@ export interface TopologyNodeRef {
   tier: TopologyTier;
 }
 
-const DATABASE_KINDS = new Set(["table"]);
-const SERVICE_KINDS = new Set(["service", "file", "route", "runtime", "external"]);
 const MAX_LABEL_LENGTH = 80;
 const MAX_ID_LENGTH = 200;
 
 export const MAX_TOPOLOGY_NODES_PER_TIER = 12;
+
+const MONITORING_LABELS = new Set(["prometheus", "grafana", "loki", "alertmanager"]);
 
 function sanitizeLabel(label: string): string {
   const trimmed = label.trim();
@@ -32,30 +38,112 @@ function sanitizeNodeId(id: string): string | null {
   return trimmed;
 }
 
-export function classifyTopologyTier(kind: string): TopologyTier | null {
-  if (DATABASE_KINDS.has(kind)) return "database";
-  if (SERVICE_KINDS.has(kind)) return "service";
+function normalizeLabel(label: string): string {
+  return label.trim().toLowerCase();
+}
+
+function isInternetNode(graphNode: GraphCanvasNode): boolean {
+  return graphNode.kind === "runtime" && normalizeLabel(graphNode.label) === "internet";
+}
+
+function isLoadBalancerNode(graphNode: GraphCanvasNode): boolean {
+  if (graphNode.kind !== "runtime") return false;
+  const label = graphNode.label.toUpperCase();
+  return label.includes("LOAD BALANCER") || label.includes("GATEWAY");
+}
+
+function isMonitoringNode(graphNode: GraphCanvasNode): boolean {
+  if (graphNode.kind !== "external") return false;
+  return MONITORING_LABELS.has(normalizeLabel(graphNode.label));
+}
+
+function isExternalApiNode(graphNode: GraphCanvasNode): boolean {
+  if (graphNode.kind === "external") return !isMonitoringNode(graphNode);
+  return graphNode.kind === "service" && normalizeLabel(graphNode.label).includes("email");
+}
+
+function isInfraServiceNode(graphNode: GraphCanvasNode): boolean {
+  if (graphNode.kind !== "service") return false;
+  const label = normalizeLabel(graphNode.label);
+  return (
+    label === "web app" || label === "api service" || label === "worker" || label === "auth service"
+  );
+}
+
+/** Maps one projected graph node to a topology tier, or null when it is not shown in the diagram. */
+export function classifyGraphNodeTopologyTier(graphNode: GraphCanvasNode): TopologyTier | null {
+  if (isInternetNode(graphNode)) return "internet";
+  if (isLoadBalancerNode(graphNode)) return "loadBalancer";
+  if (isMonitoringNode(graphNode)) return "monitoring";
+  if (isExternalApiNode(graphNode)) return "externalApi";
+  if (graphNode.kind === "table") return "database";
+  if (isInfraServiceNode(graphNode)) return "service";
   return null;
 }
 
-export function buildTopologyNodes(nodes: GraphCanvasNode[]): TopologyNodeRef[] {
-  return nodes
-    .map((node) => {
-      const id = sanitizeNodeId(node.id);
-      const tier = classifyTopologyTier(node.kind);
-      if (!id || !tier) return null;
+/** @deprecated Use classifyGraphNodeTopologyTier */
+export const classifyTopologyTier = classifyGraphNodeTopologyTier;
+
+/** Projects classified graph nodes into topology diagram refs (no synthetic/demo nodes). */
+export function projectGraphNodesToTopologyRefs(
+  projectedGraphNodes: GraphCanvasNode[],
+): TopologyNodeRef[] {
+  return projectedGraphNodes
+    .map((projectedGraphNode) => {
+      const nodeId = sanitizeNodeId(projectedGraphNode.id);
+      const topologyTier = classifyGraphNodeTopologyTier(projectedGraphNode);
+      if (!nodeId || !topologyTier) return null;
       return {
-        id,
-        label: sanitizeLabel(node.label),
-        kind: node.kind,
-        tier,
+        id: nodeId,
+        label: sanitizeLabel(projectedGraphNode.label),
+        kind: projectedGraphNode.kind,
+        tier: topologyTier,
       };
     })
-    .filter((entry): entry is TopologyNodeRef => entry != null);
+    .filter((topologyRef): topologyRef is TopologyNodeRef => topologyRef != null);
 }
 
-export const TOPOLOGY_ENV_FILTERS = ["prod", "staging"] as const;
-export const TOPOLOGY_REGION_FILTERS = ["eu-west", "us-east"] as const;
+export function buildTopologyNodes(projectedGraphNodes: GraphCanvasNode[]): TopologyNodeRef[] {
+  return projectGraphNodesToTopologyRefs(projectedGraphNodes);
+}
+
+const ENV_FILTER_VALUES: Record<TopologyEnvFilter, string> = {
+  Produktion: "prod",
+  Staging: "staging",
+};
+
+/** Applies env/region filters using graph node metadata; nodes without metadata stay visible. */
+export function filterProjectedNodesByDeployment(
+  projectedGraphNodes: GraphCanvasNode[],
+  softwareGraph: SoftwareGraph,
+  activeEnv: TopologyEnvFilter | null,
+  activeRegion: TopologyRegionFilter | null,
+): GraphCanvasNode[] {
+  if (!activeEnv && !activeRegion) return projectedGraphNodes;
+
+  const graphNodeById = new Map(softwareGraph.nodes.map((graphNode) => [graphNode.id, graphNode]));
+
+  return projectedGraphNodes.filter((projectedGraphNode) => {
+    const sourceGraphNode = graphNodeById.get(projectedGraphNode.id);
+    if (!sourceGraphNode?.metadata) return true;
+
+    const nodeEnv = sourceGraphNode.metadata.env;
+    const nodeRegion = sourceGraphNode.metadata.region;
+
+    if (activeEnv && typeof nodeEnv === "string" && nodeEnv !== ENV_FILTER_VALUES[activeEnv]) {
+      return false;
+    }
+    if (activeRegion && typeof nodeRegion === "string" && nodeRegion !== activeRegion) {
+      return false;
+    }
+    return true;
+  });
+}
+
+export const TOPOLOGY_ENV_FILTERS = ["Produktion", "Staging"] as const;
+export const TOPOLOGY_REGION_FILTERS = ["eu-central-1", "us-east-1"] as const;
+export const TOPOLOGY_VIEW_FILTERS = ["Logische Topologie", "Physische Topologie"] as const;
 
 export type TopologyEnvFilter = (typeof TOPOLOGY_ENV_FILTERS)[number];
 export type TopologyRegionFilter = (typeof TOPOLOGY_REGION_FILTERS)[number];
+export type TopologyViewFilter = (typeof TOPOLOGY_VIEW_FILTERS)[number];
