@@ -34,6 +34,7 @@ export function EvolutionChangesGrid({ diff, gitSummary }: EvolutionChangesGridP
             key={changeMetric.id}
             className={styles.changesColumn}
             data-kind={changeMetric.id}
+            data-testid="evolution-changes-column"
           >
             <p className={styles.changesColumnLabel}>{changeMetric.label}</p>
             <p className={styles.changesColumnValue}>{changeMetric.value}</p>

@@ -38,6 +38,7 @@ export function EvolutionSnapshotCards({
                   type="button"
                   className={`${styles.snapshotCard} ${isTarget ? styles.snapshotCardSelected : ""}`}
                   aria-pressed={isTarget}
+                  data-testid="evolution-snapshot-card"
                   onClick={() => onSelectTarget(snapshot.id)}
                 >
                   <span className={styles.snapshotThumbnail} aria-hidden="true">

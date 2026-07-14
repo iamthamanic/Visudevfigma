@@ -4,6 +4,7 @@
  */
 
 import { expect, test } from "@playwright/test";
+import { buildDemoGitSummary } from "../../shared/demo-git-summary.js";
 import { buildHrToolDemoGraph } from "../../shared/demo-graph-seed.js";
 
 export const ENGINE_HOSTS = ["http://127.0.0.1:4317", "http://localhost:4317"];
@@ -62,6 +63,10 @@ export function buildMockBlueprint(projectId: string) {
   };
 }
 
+export function buildMockGitSummary() {
+  return buildDemoGitSummary();
+}
+
 export async function seedSupabaseSession(page: import("@playwright/test").Page) {
   await page.addInitScript(
     ({ storageKey, session }) => {
@@ -75,9 +80,10 @@ export async function installWave2Mocks(
   page: import("@playwright/test").Page,
   projectId: string,
   analysisId: string,
+  blueprintOverride?: ReturnType<typeof buildMockBlueprint>,
 ) {
   const MOCK_PROJECT = buildMockProject(projectId);
-  const blueprint = buildMockBlueprint(projectId);
+  const blueprint = blueprintOverride ?? buildMockBlueprint(projectId);
 
   await page.route("**/functions/v1/visudev-projects**", async (route) => {
     const url = route.request().url();
@@ -193,6 +199,15 @@ export async function installWave2Mocks(
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({ ok: true, data: { blueprint, analysisId } }),
+      });
+      return;
+    }
+
+    if (url.includes("/git/summary")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, data: buildMockGitSummary() }),
       });
       return;
     }

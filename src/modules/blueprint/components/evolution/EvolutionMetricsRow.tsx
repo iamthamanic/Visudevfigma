@@ -54,6 +54,7 @@ export function EvolutionMetricsRow({
             value={String(metric.value)}
             accent={metric.accent}
             sparklineValues={sparkline.length > 0 ? sparkline : [metric.value]}
+            testId="evolution-metric-card"
           />
         ))}
       </div>

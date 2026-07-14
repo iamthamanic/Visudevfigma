@@ -7,7 +7,7 @@ import { normalizeGitSummary } from "../../../lib/visudev/normalize-git-summary"
 import type { GitSummary } from "../types";
 
 export function isEvolutionGitAvailable(): boolean {
-  return isLocalVisuDevMode();
+  return isLocalVisuDevMode() || import.meta.env.VITE_BLUEPRINT_DEMO_ENRICHMENT === "true";
 }
 
 export async function loadEvolutionGitSummary(projectId: string): Promise<GitSummary> {

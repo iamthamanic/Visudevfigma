@@ -27,63 +27,67 @@ export function EvolutionInspector({
 }: EvolutionInspectorProps): JSX.Element {
   if (!targetSnapshot) {
     return (
-      <InspectorPanel
-        title="Keine Auswahl"
-        emptyMessage="Wähle einen Ziel-Snapshot für Diff-Details."
-      />
+      <div data-testid="evolution-inspector">
+        <InspectorPanel
+          title="Keine Auswahl"
+          emptyMessage="Wähle einen Ziel-Snapshot für Diff-Details."
+        />
+      </div>
     );
   }
 
   const latestCommit = selectedCommit ?? gitSummary?.commits[0] ?? null;
 
   return (
-    <InspectorPanel
-      title={displayText(targetSnapshot.label)}
-      subtitle={formatSnapshotDate(targetSnapshot.capturedAt)}
-      sections={[
-        {
-          id: "diff",
-          title: "Diff-Statistik",
-          content: (
-            <dl className={styles.detailList}>
-              <div className={styles.detailRow}>
-                <dt>Neu</dt>
-                <dd>{diff?.addedNodeIds.length ?? 0}</dd>
-              </div>
-              <div className={styles.detailRow}>
-                <dt>Geändert</dt>
-                <dd>{diff?.changedNodeIds.length ?? 0}</dd>
-              </div>
-              <div className={styles.detailRow}>
-                <dt>Entfernt</dt>
-                <dd>{diff?.removedNodeIds.length ?? 0}</dd>
-              </div>
-            </dl>
-          ),
-        },
-        {
-          id: "commit",
-          title: "Commit",
-          content: latestCommit ? (
-            <dl className={styles.detailList}>
-              <div className={styles.detailRow}>
-                <dt>SHA</dt>
-                <dd>{formatCommitSha(latestCommit.sha)}</dd>
-              </div>
-              <div className={styles.detailRow}>
-                <dt>Betreff</dt>
-                <dd>{displayText(latestCommit.subject)}</dd>
-              </div>
-              <div className={styles.detailRow}>
-                <dt>Datum</dt>
-                <dd>{latestCommit.committedAt}</dd>
-              </div>
-            </dl>
-          ) : (
-            <p className={styles.emptyControls}>Keine Git-Commits geladen.</p>
-          ),
-        },
-      ]}
-    />
+    <div data-testid="evolution-inspector">
+      <InspectorPanel
+        title={displayText(targetSnapshot.label)}
+        subtitle={formatSnapshotDate(targetSnapshot.capturedAt)}
+        sections={[
+          {
+            id: "diff",
+            title: "Diff-Statistik",
+            content: (
+              <dl className={styles.detailList}>
+                <div className={styles.detailRow}>
+                  <dt>Neu</dt>
+                  <dd>{diff?.addedNodeIds.length ?? 0}</dd>
+                </div>
+                <div className={styles.detailRow}>
+                  <dt>Geändert</dt>
+                  <dd>{diff?.changedNodeIds.length ?? 0}</dd>
+                </div>
+                <div className={styles.detailRow}>
+                  <dt>Entfernt</dt>
+                  <dd>{diff?.removedNodeIds.length ?? 0}</dd>
+                </div>
+              </dl>
+            ),
+          },
+          {
+            id: "commit",
+            title: "Commit",
+            content: latestCommit ? (
+              <dl className={styles.detailList}>
+                <div className={styles.detailRow}>
+                  <dt>SHA</dt>
+                  <dd>{formatCommitSha(latestCommit.sha)}</dd>
+                </div>
+                <div className={styles.detailRow}>
+                  <dt>Betreff</dt>
+                  <dd>{displayText(latestCommit.subject)}</dd>
+                </div>
+                <div className={styles.detailRow}>
+                  <dt>Datum</dt>
+                  <dd>{latestCommit.committedAt}</dd>
+                </div>
+              </dl>
+            ) : (
+              <p className={styles.emptyControls}>Keine Git-Commits geladen.</p>
+            ),
+          },
+        ]}
+      />
+    </div>
   );
 }
