@@ -3,6 +3,7 @@ export type BlueprintShellViewId =
   | "architecture"
   | "dependencies"
   | "execution"
+  | "evolution"
   | "diagnostics";
 
 export function getDefaultBlueprintView(): BlueprintShellViewId {

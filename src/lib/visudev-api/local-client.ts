@@ -24,6 +24,7 @@ import type {
   PreviewStartResult,
   PreviewStatusResult,
   PreviewStopResult,
+  GitSummary,
   StartAnalysisResponse,
   StartPreviewInput,
   UpdateProjectInput,
@@ -198,6 +199,10 @@ export class LocalVisuDevClient implements VisuDevApiClient {
     return request<LocalDataLatest | null>(
       `/api/projects/${encodeURIComponent(projectId)}/data/latest`,
     );
+  }
+
+  async getGitSummary(projectId: string): Promise<GitSummary> {
+    return request<GitSummary>(`/api/projects/${encodeURIComponent(projectId)}/git/summary`);
   }
 
   async startPreview(

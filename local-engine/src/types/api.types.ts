@@ -67,4 +67,12 @@ export type {
   SoftwareGraphEvidence,
   SoftwareGraphGroup,
   SoftwareGraphMetric,
+  SoftwareGraphSnapshot,
 } from "../../../shared/software-graph.types.js";
+
+export type {
+  GitSummary,
+  GitSummaryBranch,
+  GitSummaryCommit,
+  GitWorkingTreeStatus,
+} from "../../../shared/visudev-api.types.js";

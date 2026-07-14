@@ -187,7 +187,7 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
             </div>
           </div>
         ) : blueprint ? (
-          <BlueprintViewShell blueprint={blueprint} />
+          <BlueprintViewShell blueprint={blueprint} projectId={projectId} />
         ) : null}
       </div>
     </div>

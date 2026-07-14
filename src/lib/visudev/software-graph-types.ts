@@ -14,4 +14,6 @@ export type {
   SoftwareGraphEvidence,
   SoftwareGraphGroup,
   SoftwareGraphMetric,
+  SoftwareGraphSnapshot,
+  SoftwareGraphDiffMetadata,
 } from "../../../shared/software-graph.types";

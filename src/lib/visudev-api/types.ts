@@ -34,6 +34,10 @@ export type {
   VisuDevCapabilities,
   VisuDevHealth,
   VisuDevMode,
+  GitSummary,
+  GitSummaryBranch,
+  GitSummaryCommit,
+  GitWorkingTreeStatus,
 } from "../../../shared/visudev-api.types";
 
 import type { Project } from "../visudev/types";
