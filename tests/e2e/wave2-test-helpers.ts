@@ -67,6 +67,73 @@ export function buildMockGitSummary() {
   return buildDemoGitSummary();
 }
 
+/** Legacy diagnostics fixture without graph so normalize keeps explicit findings/evidence. */
+export function buildDiagnosticsMockBlueprint(projectId: string) {
+  const routeId = "GET /api/employees";
+  return {
+    version: 1,
+    projectId,
+    commitSha: "e9b3c42a",
+    analyzedAt: new Date().toISOString(),
+    routes: [
+      {
+        id: routeId,
+        method: "GET",
+        path: "/api/employees",
+        filePath: "src/routes/employees.ts",
+        line: 8,
+        pipeline: [
+          { id: "r1", type: "request", label: "EmployeesList", state: "confirmed" },
+          { id: "r2", type: "auth-gate", label: "Auth", state: "confirmed" },
+          { id: "r3", type: "handler", label: "ListEmployees", state: "confirmed" },
+        ],
+        concepts: { "auth-gate": "confirmed", "validation-gate": "confirmed" },
+      },
+    ],
+    securityMatrix: [
+      {
+        routeId,
+        method: "GET",
+        path: "/api/employees",
+        auth: { state: "confirmed" },
+        role: { state: "partial" },
+        validation: { state: "confirmed" },
+        rateLimit: { state: "unknown" },
+        db: { state: "confirmed" },
+        rls: { state: "missing" },
+        audit: { state: "partial" },
+        findingCount: 1,
+      },
+    ],
+    findings: [
+      {
+        id: "SEC-001",
+        ruleId: "db.rls-missing",
+        category: "security",
+        severity: "critical",
+        scopeId: routeId,
+        message: "RLS nicht aktiviert – Mitarbeiterdaten für alle sichtbar",
+        expectedState: "RLS aktiv",
+        actualState: "RLS fehlt",
+        evidenceFactIds: ["fact-rls"],
+        confidence: 92,
+        remediation: "Row Level Security auf employees aktivieren.",
+      },
+    ],
+    facts: [
+      {
+        id: "fact-rls",
+        kind: "db-query",
+        filePath: "db/policy.sql",
+        line: 4,
+        snippet: "ALTER TABLE employees ENABLE ROW LEVEL SECURITY;",
+        metadata: { table: "employees" },
+      },
+    ],
+    filesAnalyzed: 1872,
+  };
+}
+
 export async function seedSupabaseSession(page: import("@playwright/test").Page) {
   await page.addInitScript(
     ({ storageKey, session }) => {

@@ -228,6 +228,23 @@
   overflow-y: auto;
 }
 
+.findingsSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.findingsSectionInner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.findingsStatus {
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+
 .detailList {
   margin: 0;
   display: flex;

@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { RouteBlueprintCanvas } from "./RouteBlueprintCanvas";
 import { SecurityMatrix } from "./SecurityMatrix";
 import { useDiagnosticsSelection } from "./useDiagnosticsSelection";
+import { useDiagnosticsFindingResolution } from "./useDiagnosticsFindingResolution";
 import { BlueprintViewLayout } from "./ui/BlueprintViewLayout.js";
 import { ViewSectionTitle } from "./ui/ViewSectionTitle.js";
 import { DiagnosticsFindingsTable } from "./diagnostics/DiagnosticsFindingsTable.js";
@@ -37,6 +38,9 @@ export function DiagnosticsView({ blueprint }: DiagnosticsViewProps) {
     [routeFindings, selectedFindingId],
   );
 
+  const { resolutionByFindingId, selectedResolutionStatus, toggleSelectedFindingResolved } =
+    useDiagnosticsFindingResolution(blueprint, selectedFinding);
+
   const selectedMatrixRow = useMemo(
     () => matrix.find((row) => row.routeId === selectedRouteId) ?? null,
     [matrix, selectedRouteId],
@@ -58,15 +62,6 @@ export function DiagnosticsView({ blueprint }: DiagnosticsViewProps) {
 
       {activeTab === "security" ? (
         <BlueprintViewLayout
-          controls={
-            <DiagnosticsFindingsTable
-              findings={routeFindings}
-              facts={facts}
-              routes={routes}
-              selectedFindingId={selectedFindingId}
-              onSelectFinding={setSelectedFindingId}
-            />
-          }
           canvas={
             <div className={styles.securityCanvas}>
               <section aria-labelledby="matrix-title">
@@ -75,6 +70,16 @@ export function DiagnosticsView({ blueprint }: DiagnosticsViewProps) {
                   rows={matrix}
                   selectedRouteId={selectedRouteId}
                   onSelectRoute={selectRoute}
+                />
+              </section>
+              <section aria-label="Findings" className={styles.findingsSection}>
+                <DiagnosticsFindingsTable
+                  findings={routeFindings}
+                  facts={facts}
+                  routes={routes}
+                  selectedFindingId={selectedFindingId}
+                  onSelectFinding={setSelectedFindingId}
+                  resolutionByFindingId={resolutionByFindingId}
                 />
               </section>
               <RouteBlueprintCanvas route={selectedRoute} />
@@ -86,6 +91,8 @@ export function DiagnosticsView({ blueprint }: DiagnosticsViewProps) {
               facts={facts}
               route={inspectorRoute}
               matrixRow={inspectorMatrixRow}
+              resolutionStatus={selectedResolutionStatus}
+              onToggleResolved={toggleSelectedFindingResolved}
             />
           }
         />

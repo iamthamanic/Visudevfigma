@@ -145,6 +145,13 @@ describe("DiagnosticsView", () => {
     expect(screen.getByText("Seite 2 von 2")).toBeInTheDocument();
   });
 
+  it("marks finding as resolved from Problem-Inspektor", () => {
+    render(<DiagnosticsView blueprint={blueprint} />);
+    fireEvent.click(screen.getByRole("button", { name: /auth\.missing/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Als erledigt markieren" }));
+    expect(screen.getByTestId("finding-status-finding-1")).toHaveTextContent("Erledigt");
+  });
+
   it("switches to placeholder tab", () => {
     render(<DiagnosticsView blueprint={blueprint} />);
     fireEvent.click(screen.getByRole("tab", { name: "Architecture" }));
