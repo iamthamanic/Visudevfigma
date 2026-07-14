@@ -1,4 +1,4 @@
-/** Vitest smoke for card selection → Inspektor sections (no Cytoscape mount). */
+/** Vitest smoke for topology diagram, filters, legend, and inspector meters. */
 
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
@@ -65,11 +65,23 @@ describe("InfrastructureView", () => {
     expect(screen.getByText("Keine Infrastruktur-Daten")).toBeInTheDocument();
   });
 
-  it("lists services and opens inspector on selection", () => {
+  it("renders topology diagram with filters and legend", () => {
     render(<InfrastructureView blueprint={graphBlueprint} />);
-    fireEvent.click(screen.getByRole("button", { name: /API Service/i }));
+    const topology = screen.getByLabelText("Infrastruktur-Topologie");
+    expect(topology).toBeInTheDocument();
+    expect(topology).toHaveTextContent("Internet");
+    expect(screen.getByLabelText("Verbindungs-Legende")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "prod" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "eu-west" })).toBeInTheDocument();
+  });
+
+  it("opens inspector with resource meters on selection", () => {
+    render(<InfrastructureView blueprint={graphBlueprint} />);
+    fireEvent.click(screen.getAllByRole("button", { name: /API Service/i })[0]);
     expect(screen.getByText("Ressourcen")).toBeInTheDocument();
-    expect(screen.getByText(/Keine Ressourcen-Metriken/i)).toBeInTheDocument();
+    expect(screen.getByText("CPU")).toBeInTheDocument();
+    expect(screen.getByText("RAM")).toBeInTheDocument();
+    expect(screen.getByText("Netzwerk")).toBeInTheDocument();
     expect(screen.getByText("Verantwortlichkeiten")).toBeInTheDocument();
   });
 });
