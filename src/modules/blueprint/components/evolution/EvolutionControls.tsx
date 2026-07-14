@@ -3,6 +3,7 @@
  */
 
 import type { GitSummary, SoftwareGraphSnapshot } from "../../types";
+import { displayText, formatCommitSha } from "./evolution-display.js";
 import styles from "../../styles/EvolutionView.module.css";
 
 export interface EvolutionControlsProps {
@@ -31,7 +32,7 @@ export function EvolutionControls({
   const gitUnavailable = gitSummary != null && !gitSummary.initialized;
 
   return (
-    <aside className={styles.sidebar} aria-label="Evolution-Steuerung">
+    <aside className={styles.controlsSection} aria-label="Evolution-Steuerung">
       <section className={styles.section}>
         <h3 className={styles.sectionTitle}>Vergleich</h3>
         {snapshots.length < 2 ? (
@@ -81,29 +82,19 @@ export function EvolutionControls({
       </section>
 
       <section className={styles.section}>
-        <h3 className={styles.sectionTitle}>Timeline</h3>
-        {snapshots.length === 0 ? (
-          <p className={styles.emptyControls}>Keine Snapshots vorhanden.</p>
+        <h3 className={styles.sectionTitle}>Commits</h3>
+        {!gitSummary?.commits.length ? (
+          <p className={styles.emptyControls}>Keine Git-Commits geladen.</p>
         ) : (
           <ul className={styles.timeline}>
-            {snapshots.map((snapshot) => (
-              <li key={snapshot.id} className={styles.timelineItem}>
-                <span className={styles.timelineLabel}>{snapshot.label}</span>
-                <span className={styles.timelineMeta}>{snapshot.capturedAt.slice(0, 10)}</span>
+            {gitSummary.commits.slice(0, 8).map((commit) => (
+              <li key={commit.sha} className={styles.timelineItem}>
+                <span className={styles.timelineLabel}>{displayText(commit.subject)}</span>
+                <span className={styles.timelineMeta}>{formatCommitSha(commit.sha)}</span>
               </li>
             ))}
           </ul>
         )}
-        {gitSummary?.commits.length ? (
-          <ul className={styles.timeline}>
-            {gitSummary.commits.slice(0, 8).map((commit) => (
-              <li key={commit.sha} className={styles.timelineItem}>
-                <span className={styles.timelineLabel}>{commit.subject}</span>
-                <span className={styles.timelineMeta}>{commit.sha.slice(0, 8)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : null}
       </section>
 
       <section className={styles.section}>
