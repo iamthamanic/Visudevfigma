@@ -2,9 +2,11 @@
  * EvolutionView — compare SoftwareGraph snapshots with git timeline and diff highlighting.
  */
 
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import type { BlueprintData } from "../types";
 import { BlueprintViewLayout } from "./ui/BlueprintViewLayout.js";
+import { EvolutionChangesGrid } from "./evolution/EvolutionChangesGrid.js";
+import { EvolutionCommitTimeline } from "./evolution/EvolutionCommitTimeline.js";
 import { EvolutionControls } from "./evolution/EvolutionControls.js";
 import { EvolutionInspector } from "./evolution/EvolutionInspector.js";
 import { EvolutionMetricsRow } from "./evolution/EvolutionMetricsRow.js";
@@ -26,6 +28,7 @@ interface EvolutionViewProps {
 
 export function EvolutionView({ blueprint, projectId }: EvolutionViewProps) {
   const [activeTab, setActiveTab] = useState<EvolutionTabId>("timeline");
+  const [selectedCommitSha, setSelectedCommitSha] = useState<string | null>(null);
   const {
     graph,
     snapshots,
@@ -40,10 +43,23 @@ export function EvolutionView({ blueprint, projectId }: EvolutionViewProps) {
     hasDiffNodes,
   } = useEvolutionViewState(blueprint, projectId);
 
+  useEffect(() => {
+    if (!gitSummary || !selectedCommitSha) return;
+    const stillExists = gitSummary.commits.some((commit) => commit.sha === selectedCommitSha);
+    if (!stillExists) setSelectedCommitSha(null);
+  }, [gitSummary, selectedCommitSha]);
+
   const targetSnapshot = useMemo(() => {
     if (!graph || !targetSnapshotId) return null;
     return findSnapshot(graph, targetSnapshotId) ?? null;
   }, [graph, targetSnapshotId]);
+
+  const selectedCommit = useMemo(() => {
+    if (!gitSummary) return null;
+    const sha = selectedCommitSha ?? gitSummary.commits[0]?.sha ?? null;
+    if (!sha) return null;
+    return gitSummary.commits.find((commit) => commit.sha === sha) ?? null;
+  }, [gitSummary, selectedCommitSha]);
 
   if (!graph) {
     return (
@@ -60,6 +76,14 @@ export function EvolutionView({ blueprint, projectId }: EvolutionViewProps) {
     <div className={styles.root}>
       <EvolutionSubTabs activeTab={activeTab} onSelectTab={setActiveTab} />
 
+      <section className={styles.commitTimelineSection}>
+        <EvolutionCommitTimeline
+          commits={gitSummary?.commits ?? []}
+          selectedCommitSha={selectedCommitSha ?? gitSummary?.commits[0]?.sha ?? null}
+          onSelectCommit={setSelectedCommitSha}
+        />
+      </section>
+
       <EvolutionSnapshotCards
         snapshots={snapshots}
         baseSnapshotId={baseSnapshotId}
@@ -67,7 +91,8 @@ export function EvolutionView({ blueprint, projectId }: EvolutionViewProps) {
         onSelectBase={setBaseSnapshotId}
         onSelectTarget={setTargetSnapshotId}
       />
-      <EvolutionMetricsRow diff={diff} />
+      <EvolutionMetricsRow diff={diff} gitSummary={gitSummary} snapshots={snapshots} />
+      <EvolutionChangesGrid diff={diff} gitSummary={gitSummary} />
 
       <BlueprintViewLayout
         controls={
@@ -105,7 +130,12 @@ export function EvolutionView({ blueprint, projectId }: EvolutionViewProps) {
           </div>
         }
         inspector={
-          <EvolutionInspector targetSnapshot={targetSnapshot} diff={diff} gitSummary={gitSummary} />
+          <EvolutionInspector
+            targetSnapshot={targetSnapshot}
+            diff={diff}
+            gitSummary={gitSummary}
+            selectedCommit={selectedCommit}
+          />
         }
       />
     </div>

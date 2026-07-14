@@ -2,7 +2,12 @@
  * Commit / snapshot Inspektor for EvolutionView diff summary.
  */
 
-import type { GitSummary, SoftwareGraphDiffMetadata, SoftwareGraphSnapshot } from "../../types";
+import type {
+  GitSummaryCommit,
+  GitSummary,
+  SoftwareGraphDiffMetadata,
+  SoftwareGraphSnapshot,
+} from "../../types";
 import { InspectorPanel } from "../ui/InspectorPanel.js";
 import { displayText, formatCommitSha, formatSnapshotDate } from "./evolution-display.js";
 import styles from "../../styles/EvolutionView.module.css";
@@ -11,12 +16,14 @@ interface EvolutionInspectorProps {
   targetSnapshot: SoftwareGraphSnapshot | null;
   diff: SoftwareGraphDiffMetadata | null;
   gitSummary: GitSummary | null;
+  selectedCommit: GitSummaryCommit | null;
 }
 
 export function EvolutionInspector({
   targetSnapshot,
   diff,
   gitSummary,
+  selectedCommit,
 }: EvolutionInspectorProps): JSX.Element {
   if (!targetSnapshot) {
     return (
@@ -27,7 +34,7 @@ export function EvolutionInspector({
     );
   }
 
-  const latestCommit = gitSummary?.commits[0];
+  const latestCommit = selectedCommit ?? gitSummary?.commits[0] ?? null;
 
   return (
     <InspectorPanel
@@ -66,6 +73,10 @@ export function EvolutionInspector({
               <div className={styles.detailRow}>
                 <dt>Betreff</dt>
                 <dd>{displayText(latestCommit.subject)}</dd>
+              </div>
+              <div className={styles.detailRow}>
+                <dt>Datum</dt>
+                <dd>{latestCommit.committedAt}</dd>
               </div>
             </dl>
           ) : (

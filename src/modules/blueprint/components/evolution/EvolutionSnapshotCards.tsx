@@ -40,6 +40,9 @@ export function EvolutionSnapshotCards({
                   aria-pressed={isTarget}
                   onClick={() => onSelectTarget(snapshot.id)}
                 >
+                  <span className={styles.snapshotThumbnail} aria-hidden="true">
+                    Atlas
+                  </span>
                   <span className={styles.snapshotCardHeader}>
                     <span className={styles.snapshotLabel}>{displayText(snapshot.label)}</span>
                     {isTarget ? (
