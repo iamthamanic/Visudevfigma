@@ -2,7 +2,7 @@
  * Tests for ExecutionView route selection and step list.
  */
 
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { ExecutionView } from "./ExecutionView";
 import type { BlueprintData } from "../types";
@@ -80,10 +80,22 @@ describe("ExecutionView", () => {
     expect(screen.getByText("Keine Execution-Daten")).toBeInTheDocument();
   });
 
-  it("lists pipeline steps for selected route", () => {
+  it("renders step pipeline cards and Schritte list", () => {
     render(<ExecutionView blueprint={graphBlueprint} />);
-    expect(screen.getByRole("button", { name: /Route GET \/users/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Handler users\.ts/i }));
-    expect(screen.getByText(/requireAuth/i)).toBeInTheDocument();
+    const pipeline = screen.getByLabelText("Ausführungs-Pipeline");
+    const schritte = screen.getByLabelText("Schritte");
+    expect(within(pipeline).getByRole("button", { name: /GET \/users/i })).toBeInTheDocument();
+    expect(
+      within(schritte).getByRole("button", { name: /Handler users\.ts/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("selects a step and shows evidence in inspector and Headers tab", () => {
+    render(<ExecutionView blueprint={graphBlueprint} />);
+    const schritte = screen.getByLabelText("Schritte");
+    fireEvent.click(within(schritte).getByRole("button", { name: /Handler users\.ts/i }));
+    expect(screen.getAllByText(/requireAuth/i).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("tab", { name: "Headers" }));
+    expect(screen.getAllByText(/requireAuth/i).length).toBeGreaterThan(0);
   });
 });

@@ -2,19 +2,20 @@
  * ExecutionView — horizontal route execution pipelines from SoftwareGraph paths.
  */
 
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { BlueprintData, SoftwareGraphNodeKind } from "../types";
-import { ExecutionControls } from "./execution/ExecutionControls.js";
+import { BlueprintViewLayout } from "./ui/BlueprintViewLayout.js";
+import { ViewSectionTitle } from "./ui/ViewSectionTitle.js";
+import { ExecutionDetailTabs } from "./execution/ExecutionDetailTabs.js";
+import { ExecutionInspector } from "./execution/ExecutionInspector.js";
+import { ExecutionSchritteList } from "./execution/ExecutionSchritteList.js";
+import { ExecutionStepPipeline } from "./execution/ExecutionStepPipeline.js";
 import {
   findStepEvidence,
   listExecutionRoutes,
   projectExecutionGraph,
 } from "./execution/_projection.js";
 import styles from "../styles/ExecutionView.module.css";
-
-const GraphCanvas = lazy(() =>
-  import("../../../components/GraphCanvas").then((module) => ({ default: module.GraphCanvas })),
-);
 
 interface ExecutionViewProps {
   blueprint: BlueprintData;
@@ -63,6 +64,15 @@ export function ExecutionView({ blueprint }: ExecutionViewProps) {
     return kinds;
   }, [graph, projection]);
 
+  const stepHasEvidence = useMemo(() => {
+    const map = new Map<string, boolean>();
+    if (!graph || !projection) return map;
+    for (const nodeId of projection.stepNodeIds) {
+      map.set(nodeId, findStepEvidence(graph, nodeId).length > 0);
+    }
+    return map;
+  }, [graph, projection]);
+
   const selectedEvidence = useMemo(
     () => (graph ? findStepEvidence(graph, selectedStepId) : []),
     [graph, selectedStepId],
@@ -85,37 +95,67 @@ export function ExecutionView({ blueprint }: ExecutionViewProps) {
   }
 
   const activeRouteId = selectedRouteId ?? routes[0]?.routeId ?? null;
+  const selectedStepLabel = selectedStepId ? (stepLabels.get(selectedStepId) ?? null) : null;
+  const selectedStepKind = selectedStepId ? (stepKinds.get(selectedStepId) ?? null) : null;
 
   return (
     <div className={styles.root}>
-      <ExecutionControls
-        routes={routes}
-        selectedRouteId={activeRouteId}
+      <header className={styles.header}>
+        <ViewSectionTitle>Route</ViewSectionTitle>
+        {routes.length === 0 ? (
+          <p className={styles.emptyControls}>Keine Routen im Graph vorhanden.</p>
+        ) : (
+          <select
+            className={styles.select}
+            value={activeRouteId ?? ""}
+            onChange={(event) => handleSelectRoute(event.target.value)}
+            aria-label="Route auswählen"
+          >
+            {routes.map((route) => (
+              <option key={route.routeId} value={route.routeId}>
+                {route.label}
+              </option>
+            ))}
+          </select>
+        )}
+      </header>
+
+      <ExecutionStepPipeline
         stepNodeIds={projection?.stepNodeIds ?? []}
         stepLabels={stepLabels}
         stepKinds={stepKinds}
         selectedStepId={selectedStepId}
-        selectedEvidence={selectedEvidence}
+        stepHasEvidence={stepHasEvidence}
         cycleNodeId={projection?.cycleNodeId ?? null}
-        onSelectRoute={handleSelectRoute}
         onSelectStep={setSelectedStepId}
       />
 
-      <div className={styles.canvasWrap}>
-        {projection && projection.nodes.length > 0 ? (
-          <Suspense fallback={<p className={styles.loading}>Graph wird geladen...</p>}>
-            <GraphCanvas
-              nodes={projection.nodes}
-              edges={projection.edges}
-              layoutPreset="pipeline"
-            />
-          </Suspense>
-        ) : (
-          <div className={styles.empty}>
-            <p className={styles.emptyHint}>Wähle eine Route mit Ausführungsschritten.</p>
-          </div>
-        )}
-      </div>
+      <BlueprintViewLayout
+        controls={
+          <ExecutionSchritteList
+            stepNodeIds={projection?.stepNodeIds ?? []}
+            stepLabels={stepLabels}
+            stepKinds={stepKinds}
+            selectedStepId={selectedStepId}
+            cycleNodeId={projection?.cycleNodeId ?? null}
+            onSelectStep={setSelectedStepId}
+          />
+        }
+        canvas={
+          <ExecutionDetailTabs
+            stepLabel={selectedStepLabel}
+            stepKind={selectedStepKind}
+            selectedEvidence={selectedEvidence}
+          />
+        }
+        inspector={
+          <ExecutionInspector
+            stepLabel={selectedStepLabel}
+            stepKind={selectedStepKind}
+            selectedEvidence={selectedEvidence}
+          />
+        }
+      />
     </div>
   );
 }
