@@ -6,6 +6,7 @@ import { useAuth } from "../../../contexts/useAuth";
 import { AuthDialog } from "../../../components/AuthDialog";
 import svgPaths from "../../../imports/svg-mni0z0xtlg";
 import logoImage from "../../../assets/visudev-logo.png";
+import { BLUEPRINT_VIEWS, type BlueprintShellViewId } from "../../blueprint";
 import type { ShellScreen } from "../types";
 import styles from "../styles/Sidebar.module.css";
 
@@ -20,6 +21,8 @@ interface SidebarProps {
   activeScreen: ShellScreen;
   onNavigate: (screen: ShellScreen) => void;
   onNewProject: () => void;
+  blueprintActiveView?: BlueprintShellViewId;
+  onBlueprintViewSelect?: (view: BlueprintShellViewId) => void;
   /** When in iframe: report nav item rects for exact App Flow edge start positions. */
   onDomReport?: (navItems: NavItemRect[]) => void;
 }
@@ -70,7 +73,14 @@ function navKeyToPath(key: ShellScreen): string {
   return key === "projects" ? "/" : `/${key}`;
 }
 
-export function Sidebar({ activeScreen, onNavigate, onNewProject, onDomReport }: SidebarProps) {
+export function Sidebar({
+  activeScreen,
+  onNavigate,
+  onNewProject,
+  blueprintActiveView,
+  onBlueprintViewSelect,
+  onDomReport,
+}: SidebarProps) {
   const navRef = useRef<HTMLElement | null>(null);
   const { activeProject, scanStatuses } = useVisudev();
   const { user, loading: authLoading, signOut } = useAuth();
@@ -105,7 +115,12 @@ export function Sidebar({ activeScreen, onNavigate, onNewProject, onDomReport }:
     const ro = new ResizeObserver(send);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [onDomReport, activeScreen]);
+  }, [onDomReport, activeScreen, blueprintActiveView]);
+
+  const handleBlueprintSubview = (viewId: BlueprintShellViewId) => {
+    onNavigate("blueprint");
+    onBlueprintViewSelect?.(viewId);
+  };
 
   const renderScanIndicator = (scanType: ScanType) => {
     const status = scanStatuses[scanType];
@@ -162,6 +177,30 @@ export function Sidebar({ activeScreen, onNavigate, onNewProject, onDomReport }:
               {item.key === "projects" && activeProject ? (
                 <div className={styles.activeProject}>
                   <span className={styles.activeProjectName}>{activeProject.name}</span>
+                </div>
+              ) : null}
+
+              {item.key === "blueprint" && activeProject && !isDisabled ? (
+                <div className={styles.subNav} role="group" aria-label="Blueprint-Ansichten">
+                  {BLUEPRINT_VIEWS.map((view) => {
+                    const isSubActive =
+                      activeScreen === "blueprint" && blueprintActiveView === view.id;
+                    return (
+                      <button
+                        key={view.id}
+                        type="button"
+                        data-nav-path={`/blueprint?view=${view.id}`}
+                        className={clsx(
+                          styles.subNavButton,
+                          isSubActive && styles.subNavButtonActive,
+                        )}
+                        aria-current={isSubActive ? "page" : undefined}
+                        onClick={() => handleBlueprintSubview(view.id)}
+                      >
+                        {view.label}
+                      </button>
+                    );
+                  })}
                 </div>
               ) : null}
             </Fragment>

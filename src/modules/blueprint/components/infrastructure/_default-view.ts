@@ -1,12 +1,10 @@
-export type BlueprintShellViewId =
-  | "infrastructure"
-  | "architecture"
-  | "dependencies"
-  | "execution"
-  | "evolution"
-  | "atlas"
-  | "diagnostics";
-
-export function getDefaultBlueprintView(): BlueprintShellViewId {
-  return "infrastructure";
-}
+export {
+  BLUEPRINT_VIEWS,
+  blueprintViewSearchParam,
+  getBlueprintViewLabel,
+  getDefaultBlueprintView,
+  isBlueprintShellViewId,
+  parseBlueprintViewParam,
+  type BlueprintShellViewId,
+  type BlueprintViewDefinition,
+} from "../../blueprint-view-config.js";

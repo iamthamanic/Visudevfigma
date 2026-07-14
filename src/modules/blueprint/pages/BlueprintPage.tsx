@@ -4,6 +4,7 @@ import { useVisudev } from "../../../lib/visudev/store";
 import { getVisuDevClient, isLocalVisuDevMode } from "../../../lib/visudev-api";
 import { blueprintAPI } from "../../../utils/api";
 import { BlueprintViewShell } from "../components/BlueprintViewShell";
+import type { BlueprintShellViewId } from "../blueprint-view-config";
 import { normalizeBlueprintData } from "../../../lib/visudev/normalize-blueprint";
 import { getProjectSourceMode } from "../../../lib/visudev/project-source";
 import type { BlueprintData } from "../types";
@@ -20,9 +21,10 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 
 interface BlueprintPageProps {
   projectId: string;
+  activeView: BlueprintShellViewId;
 }
 
-export function BlueprintPage({ projectId }: BlueprintPageProps) {
+export function BlueprintPage({ projectId, activeView }: BlueprintPageProps) {
   const { activeProject, scanStatuses, startScan } = useVisudev();
   const [isRescan, setIsRescan] = useState(false);
   const [blueprint, setBlueprint] = useState<BlueprintData | null>(null);
@@ -187,7 +189,13 @@ export function BlueprintPage({ projectId }: BlueprintPageProps) {
             </div>
           </div>
         ) : blueprint ? (
-          <BlueprintViewShell blueprint={blueprint} projectId={projectId} />
+          <BlueprintViewShell
+            blueprint={blueprint}
+            projectId={projectId}
+            activeView={activeView}
+            projectName={activeProject?.name}
+            branchLabel={activeProject?.github_branch ?? "main"}
+          />
         ) : null}
       </div>
     </div>

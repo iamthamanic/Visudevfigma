@@ -1,8 +1,8 @@
 /**
- * Tests for BlueprintViewShell tab navigation.
+ * Tests for BlueprintViewShell controlled view rendering (#86).
  */
 
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { BlueprintViewShell } from "./BlueprintViewShell";
 import type { BlueprintData } from "../types";
@@ -17,80 +17,31 @@ const emptyBlueprint: BlueprintData = {
 };
 
 describe("BlueprintViewShell", () => {
-  it("renders Phase 1 view tabs", () => {
-    render(<BlueprintViewShell blueprint={emptyBlueprint} />);
-    expect(screen.getByRole("tab", { name: "Infrastructure" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Architecture" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Dependencies" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Execution" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Evolution" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Atlas" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Diagnostics" })).toBeInTheDocument();
-  });
-
-  it("defaults to Infrastructure per Phase 1 acceptance", () => {
-    render(<BlueprintViewShell blueprint={emptyBlueprint} />);
-    expect(screen.getByRole("tab", { name: "Infrastructure" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-  });
-
-  it("defaults to Infrastructure when graph data exists", () => {
+  it("renders German view header for diagnostics", () => {
     render(
       <BlueprintViewShell
-        blueprint={{
-          ...emptyBlueprint,
-          graph: {
-            version: 1,
-            projectId: "p1",
-            analyzedAt: "2026-01-01T00:00:00.000Z",
-            scopes: [],
-            nodes: [{ id: "n1", kind: "service", label: "API", metadata: {} }],
-            edges: [],
-            evidence: [],
-            groups: [],
-            metrics: [],
-            condensed: false,
-            limits: { maxNodes: 2500, maxEdges: 5000 },
-          },
-        }}
+        blueprint={emptyBlueprint}
+        activeView="diagnostics"
+        projectName="Demo"
+        branchLabel="main"
       />,
     );
-    expect(screen.getByRole("tab", { name: "Infrastructure" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    expect(screen.getByRole("heading", { name: "Diagnosen" })).toBeInTheDocument();
+    expect(screen.getByText("Demo › main")).toBeInTheDocument();
   });
 
-  it("switches to Architecture tab on click", () => {
-    render(<BlueprintViewShell blueprint={emptyBlueprint} />);
-    fireEvent.click(screen.getByRole("tab", { name: "Architecture" }));
-    expect(screen.getByRole("tab", { name: "Architecture" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+  it("renders infrastructure view when activeView is infrastructure", () => {
+    render(<BlueprintViewShell blueprint={emptyBlueprint} activeView="infrastructure" />);
+    expect(screen.getByText("Keine Infrastruktur-Daten")).toBeInTheDocument();
   });
 
-  it("switches to Dependencies tab on click", () => {
-    render(<BlueprintViewShell blueprint={emptyBlueprint} />);
-    fireEvent.click(screen.getByRole("tab", { name: "Dependencies" }));
-    expect(screen.getByRole("tab", { name: "Dependencies" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+  it("renders dependencies view when activeView is dependencies", () => {
+    render(<BlueprintViewShell blueprint={emptyBlueprint} activeView="dependencies" />);
+    expect(screen.getByText("Keine Abhängigkeits-Daten")).toBeInTheDocument();
   });
 
-  it("switches to Diagnostics tab on click", () => {
-    render(<BlueprintViewShell blueprint={emptyBlueprint} />);
-    fireEvent.click(screen.getByRole("tab", { name: "Diagnostics" }));
-    expect(screen.getByRole("tab", { name: "Diagnostics" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    expect(screen.getByRole("tab", { name: "Infrastructure" })).toHaveAttribute(
-      "aria-selected",
-      "false",
-    );
+  it("does not render horizontal tab bar", () => {
+    render(<BlueprintViewShell blueprint={emptyBlueprint} activeView="atlas" />);
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
   });
 });
