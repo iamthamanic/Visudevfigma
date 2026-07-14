@@ -1,9 +1,10 @@
 /**
- * Blueprint view shell — Infrastructure, Architecture, Dependencies, Execution, Evolution, and Diagnostics tabs.
+ * Blueprint view shell — Infrastructure, Architecture, Dependencies, Execution, Evolution, Atlas, and Diagnostics tabs.
  */
 
 import { useEffect, useRef, useState } from "react";
 import { ArchitectureView } from "./ArchitectureView";
+import { AtlasView } from "./AtlasView";
 import { DependenciesView } from "./DependenciesView";
 import { DiagnosticsView } from "./DiagnosticsView";
 import { EvolutionView } from "./EvolutionView";
@@ -22,6 +23,7 @@ const VIEWS = [
   { id: "dependencies", label: "Dependencies" },
   { id: "execution", label: "Execution" },
   { id: "evolution", label: "Evolution" },
+  { id: "atlas", label: "Atlas" },
   { id: "diagnostics", label: "Diagnostics" },
 ] as const;
 
@@ -109,6 +111,15 @@ export function BlueprintViewShell({ blueprint, projectId }: BlueprintViewShellP
             className={styles.panelContent}
           >
             <EvolutionView blueprint={blueprint} projectId={projectId} />
+          </div>
+        ) : activeView === "atlas" ? (
+          <div
+            role="tabpanel"
+            id="blueprint-panel-atlas"
+            aria-labelledby="blueprint-tab-atlas"
+            className={styles.panelContent}
+          >
+            <AtlasView blueprint={blueprint} />
           </div>
         ) : (
           <div

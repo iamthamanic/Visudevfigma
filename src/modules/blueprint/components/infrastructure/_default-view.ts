@@ -4,6 +4,7 @@ export type BlueprintShellViewId =
   | "dependencies"
   | "execution"
   | "evolution"
+  | "atlas"
   | "diagnostics";
 
 export function getDefaultBlueprintView(): BlueprintShellViewId {

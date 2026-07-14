@@ -24,6 +24,7 @@ describe("BlueprintViewShell", () => {
     expect(screen.getByRole("tab", { name: "Dependencies" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Execution" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Evolution" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Atlas" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Diagnostics" })).toBeInTheDocument();
   });
 
