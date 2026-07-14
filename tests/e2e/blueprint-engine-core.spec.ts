@@ -290,9 +290,7 @@ test.describe("Blueprint Engine Core UI", () => {
     await page.getByRole("button", { name: /Runtime Validation fehlt vor DB Write/i }).click();
     const inspector = page.getByLabel("Inspektor");
     await expect(inspector.getByText("web-api.validation-before-db-write")).toBeVisible();
-    await expect(
-      inspector.getByRole("link", { name: "src/routes/employees.ts:18" }),
-    ).toBeVisible();
+    await expect(inspector.getByRole("link", { name: "src/routes/employees.ts:18" })).toBeVisible();
 
     await page.screenshot({
       path: `${EVIDENCE_DIR}/03-finding-inspector.png`,

@@ -18,6 +18,9 @@ const env = {
   VITE_VISUDEV_ENGINE_URL: "http://localhost:4317",
   VISUDEV_ENGINE_PORT: "4317",
   VISUDEV_PREVIEW_RUNNER_URL: "http://localhost:4000",
+  // Local dev only: merge HR demo seed when scans are thin (never default in engine).
+  VISUDEV_DEMO_ENRICHMENT: "true",
+  VITE_BLUEPRINT_DEMO_ENRICHMENT: "true",
   PORT: "4000",
 };
 

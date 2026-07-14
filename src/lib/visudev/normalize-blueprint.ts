@@ -11,6 +11,7 @@ import {
   sanitizeSecurityMatrix,
   sanitizeStringList,
 } from "./normalize-blueprint-guards";
+import { enrichSoftwareGraphIfThin } from "../../../shared/demo-graph-thin.js";
 import { normalizeSoftwareGraph } from "./normalize-software-graph";
 import { deriveDiagnosticsFromGraph } from "./software-graph-projections";
 
@@ -31,7 +32,13 @@ export function normalizeBlueprintData(
     return { ...EMPTY };
   }
 
-  const graph = normalizeSoftwareGraph(raw.graph);
+  const projectId = typeof raw.projectId === "string" ? raw.projectId : "demo-project";
+  const normalizedGraph = normalizeSoftwareGraph(raw.graph);
+  const shouldEnrichDemo = import.meta.env.VITE_BLUEPRINT_DEMO_ENRICHMENT === "true";
+  const graph =
+    normalizedGraph && shouldEnrichDemo
+      ? enrichSoftwareGraphIfThin(normalizedGraph, projectId)
+      : normalizedGraph;
   const graphDiagnostics = graph ? deriveDiagnosticsFromGraph(graph) : null;
 
   const legacyRoutes = sanitizeRoutes(raw.routes);
