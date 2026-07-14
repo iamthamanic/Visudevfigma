@@ -21,6 +21,7 @@ export {
   DEFAULT_VISIBLE_DEPENDENCY_KINDS,
   DEPENDENCY_EDGE_KINDS,
   DEPENDENCY_EDGE_LABELS,
+  RELATIONSHIP_LABELS,
   type DependencyEdgeKind,
 } from "./_projection.constants.js";
 
@@ -124,4 +125,29 @@ export function findEdgeEvidence(
   );
 
   return { edge, evidence: linkedEvidence };
+}
+
+export interface DependencyKindCount {
+  kind: DependencyEdgeKind;
+  count: number;
+}
+
+export function countDependencyEdgesByKind(graph: SoftwareGraph): DependencyKindCount[] {
+  const graphEdges = Array.isArray(graph.edges) ? graph.edges : [];
+  const counts = new Map<DependencyEdgeKind, number>();
+
+  for (const kind of DEPENDENCY_EDGE_KINDS) {
+    counts.set(kind, 0);
+  }
+
+  for (const edge of graphEdges) {
+    if (isDependencyEdgeKind(edge.kind)) {
+      counts.set(edge.kind, (counts.get(edge.kind) ?? 0) + 1);
+    }
+  }
+
+  return DEPENDENCY_EDGE_KINDS.map((kind) => ({
+    kind,
+    count: counts.get(kind) ?? 0,
+  })).filter(({ count }) => count > 0);
 }

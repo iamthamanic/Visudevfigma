@@ -17,6 +17,14 @@ const kindVariables: Record<string, string> = {
   symbol: "--color-graph-symbol",
 };
 
+const dependencyEdgeVariables: Record<string, string> = {
+  imports: "--color-bp-rel-imports",
+  calls: "--color-bp-rel-calls",
+  api: "--color-bp-rel-api",
+  event: "--color-bp-rel-event",
+  data: "--color-bp-rel-data",
+};
+
 export function getCssVariable(name: string): string {
   if (typeof window === "undefined") return "";
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -28,6 +36,32 @@ export function buildStylesheet(): cytoscape.StylesheetStyle[] {
   const labelColor = getCssVariable("--color-graph-label");
   const labelBg = getCssVariable("--color-background");
   const foreground = getCssVariable("--color-foreground");
+
+  const edgeStyles: cytoscape.StylesheetStyle[] = [
+    {
+      selector: "edge",
+      style: {
+        width: 2,
+        "line-color": edgeColor,
+        "target-arrow-color": edgeColor,
+        "target-arrow-shape": "triangle",
+        "curve-style": "bezier",
+        label: "data(label)",
+        color: labelColor,
+        "font-size": "10px",
+        "text-background-color": labelBg,
+        "text-background-opacity": 0.8,
+        "text-background-padding": "2px",
+      },
+    },
+    ...Object.entries(dependencyEdgeVariables).map(([kind, cssVar]) => ({
+      selector: `edge[kind = "${kind}"]`,
+      style: {
+        "line-color": getCssVariable(cssVar) || edgeColor,
+        "target-arrow-color": getCssVariable(cssVar) || edgeColor,
+      },
+    })),
+  ];
 
   return [
     {
@@ -47,21 +81,6 @@ export function buildStylesheet(): cytoscape.StylesheetStyle[] {
         "text-max-width": "120px",
       },
     },
-    {
-      selector: "edge",
-      style: {
-        width: 2,
-        "line-color": edgeColor,
-        "target-arrow-color": edgeColor,
-        "target-arrow-shape": "triangle",
-        "curve-style": "bezier",
-        label: "data(label)",
-        color: labelColor,
-        "font-size": "10px",
-        "text-background-color": labelBg,
-        "text-background-opacity": 0.8,
-        "text-background-padding": "2px",
-      },
-    },
+    ...edgeStyles,
   ];
 }

@@ -1,17 +1,17 @@
 {
   "version": 2,
   "repo": "iamthamanic/visudev-app",
-  "activeIssue": 85,
-  "featureSlug": "blueprint-ui-primitives",
-  "phase": "commit-pr",
-  "branch": "issue/85-blueprint-ui-primitives",
+  "activeIssue": 87,
+  "featureSlug": "dependencies-figma-ui",
+  "phase": "pr",
+  "branch": "issue/87-dependencies-figma-ui",
   "prUrl": null,
   "milestoneFilter": null,
   "paused": false,
   "runMode": "loop",
-  "queue": [85, 86, 87, 88, 89, 90, 91, 92, 93, 94],
-  "completedIssues": [67, 68, 69, 70, 71, 72, 73, 74, 75],
-  "mergedIssues": [67, 68, 69, 70, 71, 72, 73, 74, 75],
+  "queue": [87, 88, 89, 90, 91, 92, 93, 94],
+  "completedIssues": [67, 68, 69, 70, 71, 72, 73, 74, 75, 85, 86],
+  "mergedIssues": [67, 68, 69, 70, 71, 72, 73, 74, 75, 85, 86],
   "prUrls": {
     "68": "https://github.com/iamthamanic/visudev-app/pull/77",
     "69": "https://github.com/iamthamanic/visudev-app/pull/78",
@@ -20,7 +20,9 @@
     "72": "https://github.com/iamthamanic/visudev-app/pull/81",
     "73": "https://github.com/iamthamanic/visudev-app/pull/82",
     "74": "https://github.com/iamthamanic/visudev-app/pull/83",
-    "75": "https://github.com/iamthamanic/visudev-app/pull/84"
+    "75": "https://github.com/iamthamanic/visudev-app/pull/84",
+    "85": "https://github.com/iamthamanic/visudev-app/pull/95",
+    "86": "https://github.com/iamthamanic/visudev-app/pull/96"
   },
   "retries": {
     "implement": 0,
@@ -37,7 +39,7 @@
   },
   "lastError": null,
   "lastErrorCount": 0,
-  "issuesProcessedInSession": 9,
-  "updatedAt": "2026-07-14T12:15:00.000Z",
-  "notes": "UI phase started: #85 blueprint-ui-primitives in progress"
+  "issuesProcessedInSession": 11,
+  "updatedAt": "2026-07-14T12:40:00.000Z",
+  "notes": "#86 merged; next #87 Dependencies Figma UI"
 }

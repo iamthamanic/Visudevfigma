@@ -19,3 +19,12 @@ export const DEPENDENCY_EDGE_LABELS: Record<DependencyEdgeKind, string> = {
   event: "Event",
   data: "Data",
 };
+
+/** Labels aligned with shared RelationshipChip tokens (Figma Beziehungstypen). */
+export const RELATIONSHIP_LABELS: Record<DependencyEdgeKind, string> = {
+  imports: "Imports",
+  calls: "Calls",
+  api: "API Calls",
+  event: "Events",
+  data: "Database",
+};
