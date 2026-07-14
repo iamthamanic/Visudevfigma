@@ -1,5 +1,5 @@
 /**
- * Inspektor for selected architecture node — responsibilities, services, dependencies.
+ * Inspektor for selected architecture node — responsibilities, services table, dependencies.
  */
 
 import type { SoftwareGraph, SoftwareGraphNode } from "../../types";
@@ -27,6 +27,12 @@ interface ArchitectureInspectorProps {
   node: SoftwareGraphNode | null;
 }
 
+interface ServiceRow {
+  id: string;
+  label: string;
+  kind: string;
+}
+
 function listDependencies(graph: SoftwareGraph, nodeId: string): string[] {
   const edges = Array.isArray(graph.edges) ? graph.edges : [];
   const nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
@@ -42,15 +48,20 @@ function listDependencies(graph: SoftwareGraph, nodeId: string): string[] {
     });
 }
 
-function listContainedServices(graph: SoftwareGraph, nodeId: string): string[] {
+function listContainedServices(graph: SoftwareGraph, nodeId: string): ServiceRow[] {
   const edges = Array.isArray(graph.edges) ? graph.edges : [];
   const nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
   const nodeById = new Map(nodes.map((entry) => [entry.id, entry]));
 
   return edges
     .filter((edge) => edge.kind === "contains" && edge.sourceId === nodeId)
-    .map((edge) => nodeById.get(edge.targetId)?.label)
-    .filter((label): label is string => Boolean(label));
+    .map((edge) => nodeById.get(edge.targetId))
+    .filter((entry): entry is SoftwareGraphNode => entry != null)
+    .map((entry) => ({
+      id: entry.id,
+      label: entry.label,
+      kind: KIND_LABELS[entry.kind] ?? entry.kind,
+    }));
 }
 
 export function ArchitectureInspector({ graph, node }: ArchitectureInspectorProps): JSX.Element {
@@ -90,11 +101,22 @@ export function ArchitectureInspector({ graph, node }: ArchitectureInspectorProp
             services.length === 0 ? (
               <p className={styles.emptyControls}>Keine enthaltenen Services.</p>
             ) : (
-              <ul className={styles.checklist}>
-                {services.map((service) => (
-                  <li key={service}>{service}</li>
-                ))}
-              </ul>
+              <table className={styles.servicesTable}>
+                <thead>
+                  <tr>
+                    <th scope="col">Service</th>
+                    <th scope="col">Typ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {services.map((service) => (
+                    <tr key={service.id}>
+                      <td>{service.label}</td>
+                      <td>{service.kind}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             ),
         },
         {

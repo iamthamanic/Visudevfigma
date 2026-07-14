@@ -3,11 +3,14 @@
  */
 
 import type { SoftwareGraph, SoftwareGraphNode, SoftwareGraphNodeKind } from "../../types";
+import { resolveLayerType, type ArchitectureLayerType } from "./architecture-layer-accents.js";
 
 export interface ArchitectureStackCard {
   id: string;
   label: string;
   kind: SoftwareGraphNodeKind;
+  layerType: ArchitectureLayerType | "unknown";
+  domainTag: string | null;
   services: string[];
 }
 
@@ -20,11 +23,13 @@ export function buildArchitectureStackCards(
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
 
   const childrenByParentId = new Map<string, string[]>();
+  const parentByChildId = new Map<string, string>();
   for (const edge of edges) {
     if (edge.kind !== "contains") continue;
     const siblings = childrenByParentId.get(edge.sourceId);
     if (siblings) siblings.push(edge.targetId);
     else childrenByParentId.set(edge.sourceId, [edge.targetId]);
+    parentByChildId.set(edge.targetId, edge.sourceId);
   }
 
   return nodes
@@ -36,10 +41,17 @@ export function buildArchitectureStackCards(
         .filter((child): child is SoftwareGraphNode => child != null)
         .map((child) => child.label);
 
+      const parentId = parentByChildId.get(node.id);
+      const parent = parentId ? nodeById.get(parentId) : undefined;
+      const domainTag =
+        parent?.kind === "domain" ? parent.label : parent?.kind === "layer" ? parent.label : null;
+
       return {
         id: node.id,
         label: node.label,
         kind: node.kind,
+        layerType: node.kind === "layer" ? resolveLayerType(node.label) : "unknown",
+        domainTag,
         services,
       };
     });

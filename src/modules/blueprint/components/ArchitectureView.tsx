@@ -93,47 +93,64 @@ export function ArchitectureView({ blueprint }: ArchitectureViewProps) {
   }
 
   const hasVisibleNodes = architectureProjection.nodes.length > 0;
+  const showStackInCanvas = groupingMode !== "modules";
+
+  const controls = (
+    <div className={styles.controlsColumn}>
+      {!showStackInCanvas ? (
+        <ArchitectureLayerStack
+          cards={stackCards}
+          selectedNodeId={selectedNodeId}
+          onSelectNode={setSelectedNodeId}
+        />
+      ) : null}
+      <ArchitectureControls
+        collapsible={architectureProjection.collapsible}
+        collapsedIds={collapsedIds}
+        visibleKinds={visibleKinds}
+        hasVisibleNodes={hasVisibleNodes}
+        onToggleCollapse={toggleCollapse}
+        onToggleKind={toggleKind}
+        onResetFilters={resetFilters}
+      />
+    </div>
+  );
+
+  const canvas = showStackInCanvas ? (
+    <div className={styles.stackCanvasWrap}>
+      <ArchitectureLayerStack
+        cards={stackCards}
+        selectedNodeId={selectedNodeId}
+        onSelectNode={setSelectedNodeId}
+        variant="canvas"
+        showTitle={false}
+      />
+    </div>
+  ) : (
+    <div className={styles.canvasWrap}>
+      {hasVisibleNodes ? (
+        <Suspense fallback={<p className={styles.loading}>Graph wird geladen...</p>}>
+          <GraphCanvas
+            nodes={architectureProjection.nodes}
+            edges={architectureProjection.edges}
+            layoutPreset="hierarchical"
+          />
+        </Suspense>
+      ) : (
+        <div className={styles.filteredCanvasEmpty}>
+          <p>Passe Filter oder Einklapp-Zustand an, um Knoten anzuzeigen.</p>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className={styles.root}>
       <ArchitectureGroupingToggle mode={groupingMode} onSelectMode={setGroupingMode} />
 
       <BlueprintViewLayout
-        controls={
-          <div className={styles.controlsColumn}>
-            <ArchitectureLayerStack
-              cards={stackCards}
-              selectedNodeId={selectedNodeId}
-              onSelectNode={setSelectedNodeId}
-            />
-            <ArchitectureControls
-              collapsible={architectureProjection.collapsible}
-              collapsedIds={collapsedIds}
-              visibleKinds={visibleKinds}
-              hasVisibleNodes={hasVisibleNodes}
-              onToggleCollapse={toggleCollapse}
-              onToggleKind={toggleKind}
-              onResetFilters={resetFilters}
-            />
-          </div>
-        }
-        canvas={
-          <div className={styles.canvasWrap}>
-            {hasVisibleNodes ? (
-              <Suspense fallback={<p className={styles.loading}>Graph wird geladen...</p>}>
-                <GraphCanvas
-                  nodes={architectureProjection.nodes}
-                  edges={architectureProjection.edges}
-                  layoutPreset="hierarchical"
-                />
-              </Suspense>
-            ) : (
-              <div className={styles.filteredCanvasEmpty}>
-                <p>Passe Filter oder Einklapp-Zustand an, um Knoten anzuzeigen.</p>
-              </div>
-            )}
-          </div>
-        }
+        controls={controls}
+        canvas={canvas}
         inspector={<ArchitectureInspector graph={graph} node={selectedNode} />}
       />
     </div>
