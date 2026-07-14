@@ -9,7 +9,9 @@ import { AtlasClusterLabels } from "./atlas/AtlasClusterLabels.js";
 import { AtlasControls } from "./atlas/AtlasControls.js";
 import { AtlasInspector } from "./atlas/AtlasInspector.js";
 import { AtlasLegend } from "./atlas/AtlasLegend.js";
+import { computeAtlasStats } from "./atlas/atlas-stats.js";
 import { AtlasStatsBar } from "./atlas/AtlasStatsBar.js";
+import { AtlasZoomControls } from "./atlas/AtlasZoomControls.js";
 import { useAtlasViewState } from "./atlas/useAtlasViewState.js";
 import styles from "../styles/AtlasView.module.css";
 
@@ -41,6 +43,7 @@ export function AtlasView({ blueprint }: AtlasViewProps) {
   }
 
   const hasVisibleNodes = state.projection.nodes.length > 0;
+  const atlasStats = computeAtlasStats(graph, blueprint.filesAnalyzed ?? 0);
 
   const canvasContent = !hasVisibleNodes ? (
     <div className={styles.filteredCanvasEmpty}>
@@ -87,14 +90,15 @@ export function AtlasView({ blueprint }: AtlasViewProps) {
       }
       canvas={
         <div className={styles.canvasWrap}>
-          <AtlasStatsBar
-            clusterCount={state.visibleGroups.length}
-            nodeCount={state.projection.visibleNodes}
-            edgeCount={state.projection.edges.length}
+          <AtlasStatsBar stats={atlasStats} />
+          <div className={styles.canvasMain}>{canvasContent}</div>
+          <AtlasClusterLabels
+            groups={state.visibleGroups}
+            selectedGroupId={state.selectedGroupId}
+            onSelectGroup={state.handleSelectGroup}
           />
           <AtlasLegend />
-          <div className={styles.canvasMain}>{canvasContent}</div>
-          <AtlasClusterLabels groups={state.visibleGroups} />
+          <AtlasZoomControls />
         </div>
       }
       inspector={
