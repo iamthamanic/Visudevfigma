@@ -12,6 +12,7 @@ import { InfrastructureTopologyDiagram } from "./infrastructure/InfrastructureTo
 import { InfrastructureTopologyFilters } from "./infrastructure/InfrastructureTopologyFilters.js";
 import {
   buildTopologyNodes,
+  filterProjectedNodesByDeployment,
   type TopologyEnvFilter,
   type TopologyRegionFilter,
   type TopologyViewFilter,
@@ -36,11 +37,21 @@ export function InfrastructureView({ blueprint }: InfrastructureViewProps) {
     return projectInfrastructureGraph(graph);
   }, [graph]);
 
-  const topologyNodes = useMemo(() => buildTopologyNodes(nodes), [nodes]);
+  const filteredNodes = useMemo(() => {
+    if (!graph) return [];
+    return filterProjectedNodesByDeployment(nodes, graph, activeEnv, activeRegion);
+  }, [nodes, graph, activeEnv, activeRegion]);
+
+  const topologyNodes = useMemo(() => buildTopologyNodes(filteredNodes), [filteredNodes]);
 
   const selectedNode = useMemo(
-    () => nodes.find((node) => node.id === selectedNodeId) ?? null,
-    [nodes, selectedNodeId],
+    () => filteredNodes.find((node) => node.id === selectedNodeId) ?? null,
+    [filteredNodes, selectedNodeId],
+  );
+
+  const selectedGraphNode = useMemo(
+    () => graph?.nodes.find((node) => node.id === selectedNodeId) ?? null,
+    [graph, selectedNodeId],
   );
 
   if (!graph || nodes.length === 0) {
@@ -58,7 +69,7 @@ export function InfrastructureView({ blueprint }: InfrastructureViewProps) {
     <BlueprintViewLayout
       controls={
         <InfrastructureServiceList
-          nodes={nodes}
+          nodes={filteredNodes}
           selectedNodeId={selectedNodeId}
           onSelectNode={setSelectedNodeId}
         />
@@ -85,7 +96,14 @@ export function InfrastructureView({ blueprint }: InfrastructureViewProps) {
           ) : null}
         </div>
       }
-      inspector={<InfrastructureInspector node={selectedNode} edges={edges} nodes={nodes} />}
+      inspector={
+        <InfrastructureInspector
+          node={selectedNode}
+          graphNode={selectedGraphNode}
+          edges={edges}
+          nodes={filteredNodes}
+        />
+      }
     />
   );
 }

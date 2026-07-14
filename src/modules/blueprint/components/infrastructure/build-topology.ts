@@ -2,7 +2,7 @@
  * Groups projected infrastructure nodes into topology tiers for the diagram.
  */
 
-import type { GraphCanvasNode } from "../../types";
+import type { GraphCanvasNode, SoftwareGraph } from "../../types";
 
 export type TopologyTier =
   | "internet"
@@ -26,16 +26,6 @@ export const MAX_TOPOLOGY_NODES_PER_TIER = 12;
 
 const MONITORING_LABELS = new Set(["prometheus", "grafana", "loki", "alertmanager"]);
 
-const MONITORING_SYNTHETIC: TopologyNodeRef[] = [
-  { id: "infra:monitor:grafana", label: "Grafana", kind: "external", tier: "monitoring" },
-  { id: "infra:monitor:loki", label: "Loki", kind: "external", tier: "monitoring" },
-  { id: "infra:monitor:alertmanager", label: "Alertmanager", kind: "external", tier: "monitoring" },
-];
-
-const EXTERNAL_API_SYNTHETIC: TopologyNodeRef[] = [
-  { id: "infra:ext:hr-data", label: "HR Datenanbieter", kind: "external", tier: "externalApi" },
-];
-
 function sanitizeLabel(label: string): string {
   const trimmed = label.trim();
   if (!trimmed) return "Unbenannt";
@@ -52,80 +42,102 @@ function normalizeLabel(label: string): string {
   return label.trim().toLowerCase();
 }
 
-function isInternetNode(node: GraphCanvasNode): boolean {
-  return node.kind === "runtime" && normalizeLabel(node.label) === "internet";
+function isInternetNode(graphNode: GraphCanvasNode): boolean {
+  return graphNode.kind === "runtime" && normalizeLabel(graphNode.label) === "internet";
 }
 
-function isLoadBalancerNode(node: GraphCanvasNode): boolean {
-  if (node.kind !== "runtime") return false;
-  const label = node.label.toUpperCase();
+function isLoadBalancerNode(graphNode: GraphCanvasNode): boolean {
+  if (graphNode.kind !== "runtime") return false;
+  const label = graphNode.label.toUpperCase();
   return label.includes("LOAD BALANCER") || label.includes("GATEWAY");
 }
 
-function isMonitoringNode(node: GraphCanvasNode): boolean {
-  if (node.kind !== "external") return false;
-  return MONITORING_LABELS.has(normalizeLabel(node.label));
+function isMonitoringNode(graphNode: GraphCanvasNode): boolean {
+  if (graphNode.kind !== "external") return false;
+  return MONITORING_LABELS.has(normalizeLabel(graphNode.label));
 }
 
-function isExternalApiNode(node: GraphCanvasNode): boolean {
-  if (node.kind === "external") return !isMonitoringNode(node);
-  return node.kind === "service" && normalizeLabel(node.label).includes("email");
+function isExternalApiNode(graphNode: GraphCanvasNode): boolean {
+  if (graphNode.kind === "external") return !isMonitoringNode(graphNode);
+  return graphNode.kind === "service" && normalizeLabel(graphNode.label).includes("email");
 }
 
-function isInfraServiceNode(node: GraphCanvasNode): boolean {
-  if (node.kind !== "service") return false;
-  const label = normalizeLabel(node.label);
+function isInfraServiceNode(graphNode: GraphCanvasNode): boolean {
+  if (graphNode.kind !== "service") return false;
+  const label = normalizeLabel(graphNode.label);
   return (
     label === "web app" || label === "api service" || label === "worker" || label === "auth service"
   );
 }
 
-export function classifyTopologyTier(node: GraphCanvasNode): TopologyTier | null {
-  if (isInternetNode(node)) return "internet";
-  if (isLoadBalancerNode(node)) return "loadBalancer";
-  if (isMonitoringNode(node)) return "monitoring";
-  if (isExternalApiNode(node)) return "externalApi";
-  if (node.kind === "table") return "database";
-  if (isInfraServiceNode(node)) return "service";
+/** Maps one projected graph node to a topology tier, or null when it is not shown in the diagram. */
+export function classifyGraphNodeTopologyTier(graphNode: GraphCanvasNode): TopologyTier | null {
+  if (isInternetNode(graphNode)) return "internet";
+  if (isLoadBalancerNode(graphNode)) return "loadBalancer";
+  if (isMonitoringNode(graphNode)) return "monitoring";
+  if (isExternalApiNode(graphNode)) return "externalApi";
+  if (graphNode.kind === "table") return "database";
+  if (isInfraServiceNode(graphNode)) return "service";
   return null;
 }
 
-function mergeSyntheticNodes(
-  nodes: TopologyNodeRef[],
-  synthetic: TopologyNodeRef[],
-  matchTier: TopologyTier,
+/** @deprecated Use classifyGraphNodeTopologyTier */
+export const classifyTopologyTier = classifyGraphNodeTopologyTier;
+
+/** Projects classified graph nodes into topology diagram refs (no synthetic/demo nodes). */
+export function projectGraphNodesToTopologyRefs(
+  projectedGraphNodes: GraphCanvasNode[],
 ): TopologyNodeRef[] {
-  const existingIds = new Set(nodes.map((node) => node.id));
-  const existingLabels = new Set(
-    nodes.filter((node) => node.tier === matchTier).map((node) => normalizeLabel(node.label)),
-  );
-
-  const additions = synthetic.filter((node) => {
-    if (existingIds.has(node.id)) return false;
-    if (existingLabels.has(normalizeLabel(node.label))) return false;
-    return true;
-  });
-
-  return additions.length > 0 ? [...nodes, ...additions] : nodes;
-}
-
-export function buildTopologyNodes(nodes: GraphCanvasNode[]): TopologyNodeRef[] {
-  const built = nodes
-    .map((node) => {
-      const id = sanitizeNodeId(node.id);
-      const tier = classifyTopologyTier(node);
-      if (!id || !tier) return null;
+  return projectedGraphNodes
+    .map((projectedGraphNode) => {
+      const nodeId = sanitizeNodeId(projectedGraphNode.id);
+      const topologyTier = classifyGraphNodeTopologyTier(projectedGraphNode);
+      if (!nodeId || !topologyTier) return null;
       return {
-        id,
-        label: sanitizeLabel(node.label),
-        kind: node.kind,
-        tier,
+        id: nodeId,
+        label: sanitizeLabel(projectedGraphNode.label),
+        kind: projectedGraphNode.kind,
+        tier: topologyTier,
       };
     })
-    .filter((entry): entry is TopologyNodeRef => entry != null);
+    .filter((topologyRef): topologyRef is TopologyNodeRef => topologyRef != null);
+}
 
-  const withMonitoring = mergeSyntheticNodes(built, MONITORING_SYNTHETIC, "monitoring");
-  return mergeSyntheticNodes(withMonitoring, EXTERNAL_API_SYNTHETIC, "externalApi");
+export function buildTopologyNodes(projectedGraphNodes: GraphCanvasNode[]): TopologyNodeRef[] {
+  return projectGraphNodesToTopologyRefs(projectedGraphNodes);
+}
+
+const ENV_FILTER_VALUES: Record<TopologyEnvFilter, string> = {
+  Produktion: "prod",
+  Staging: "staging",
+};
+
+/** Applies env/region filters using graph node metadata; nodes without metadata stay visible. */
+export function filterProjectedNodesByDeployment(
+  projectedGraphNodes: GraphCanvasNode[],
+  softwareGraph: SoftwareGraph,
+  activeEnv: TopologyEnvFilter | null,
+  activeRegion: TopologyRegionFilter | null,
+): GraphCanvasNode[] {
+  if (!activeEnv && !activeRegion) return projectedGraphNodes;
+
+  const graphNodeById = new Map(softwareGraph.nodes.map((graphNode) => [graphNode.id, graphNode]));
+
+  return projectedGraphNodes.filter((projectedGraphNode) => {
+    const sourceGraphNode = graphNodeById.get(projectedGraphNode.id);
+    if (!sourceGraphNode?.metadata) return true;
+
+    const nodeEnv = sourceGraphNode.metadata.env;
+    const nodeRegion = sourceGraphNode.metadata.region;
+
+    if (activeEnv && typeof nodeEnv === "string" && nodeEnv !== ENV_FILTER_VALUES[activeEnv]) {
+      return false;
+    }
+    if (activeRegion && typeof nodeRegion === "string" && nodeRegion !== activeRegion) {
+      return false;
+    }
+    return true;
+  });
 }
 
 export const TOPOLOGY_ENV_FILTERS = ["Produktion", "Staging"] as const;
