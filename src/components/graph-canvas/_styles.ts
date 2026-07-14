@@ -23,6 +23,9 @@ const dependencyEdgeVariables: Record<string, string> = {
   api: "--color-bp-rel-api",
   event: "--color-bp-rel-event",
   data: "--color-bp-rel-data",
+  auth: "--color-bp-rel-auth",
+  validation: "--color-bp-rel-validation",
+  external: "--color-bp-rel-external",
 };
 
 export function getCssVariable(name: string): string {
@@ -46,6 +49,8 @@ export function buildStylesheet(): cytoscape.StylesheetStyle[] {
         "target-arrow-color": edgeColor,
         "target-arrow-shape": "triangle",
         "curve-style": "bezier",
+        "line-style": "dashed",
+        "line-dash-pattern": [6, 4],
         label: "data(label)",
         color: labelColor,
         "font-size": "10px",
@@ -79,6 +84,14 @@ export function buildStylesheet(): cytoscape.StylesheetStyle[] {
         padding: "12px",
         "text-wrap": "wrap",
         "text-max-width": "120px",
+      },
+    },
+    {
+      selector: "node.selected",
+      style: {
+        "border-width": 3,
+        "border-color": getCssVariable("--color-primary"),
+        "border-opacity": 1,
       },
     },
     ...edgeStyles,

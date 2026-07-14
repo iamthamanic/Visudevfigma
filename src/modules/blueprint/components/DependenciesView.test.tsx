@@ -90,16 +90,24 @@ describe("DependenciesView", () => {
     expect(within(controls).getAllByText("1").length).toBeGreaterThanOrEqual(2);
   });
 
-  it("shows inspector placeholder when no edge selected", () => {
+  it("shows inspector with node details when graph has use-case hub", () => {
     render(<DependenciesView blueprint={graphBlueprint} />);
-    expect(screen.getByText("Keine Auswahl")).toBeInTheDocument();
-    expect(screen.getAllByText("Top Abhängigkeiten").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("dependency-inspector")).toBeInTheDocument();
   });
 
   it("shows empty canvas message when all relationship chips are off", () => {
     render(<DependenciesView blueprint={graphBlueprint} />);
     const controls = screen.getByLabelText("Abhängigkeiten-Steuerung");
-    for (const label of ["Imports", "Calls", "API Calls", "Events", "Database"]) {
+    for (const label of [
+      "Imports",
+      "Calls",
+      "API Calls",
+      "Events",
+      "Database",
+      "Auth",
+      "Validation",
+      "External Services",
+    ]) {
       const chip = within(controls).getByRole("button", { name: label });
       if (chip.getAttribute("aria-pressed") === "true") {
         fireEvent.click(chip);

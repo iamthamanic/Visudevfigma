@@ -1,6 +1,5 @@
 /**
- * Maps SoftwareGraph dependency edges (imports, calls, api, event, data)
- * into DependenciesView canvas nodes and edges.
+ * Maps SoftwareGraph dependency edges into DependenciesView canvas nodes and edges.
  */
 
 import type {
@@ -8,7 +7,7 @@ import type {
   GraphCanvasNode,
   SoftwareGraph,
   SoftwareGraphEdge,
-  SoftwareGraphEdgeKind,
+  SoftwareGraphEvidence,
   SoftwareGraphNode,
 } from "../../types";
 import {
@@ -16,6 +15,7 @@ import {
   DEPENDENCY_EDGE_KINDS,
   DEPENDENCY_EDGE_LABELS,
   RELATIONSHIP_LABELS,
+  resolveDependencyKindFromGraphEdge,
   type DependencyEdgeKind,
 } from "./_projection.constants.js";
 
@@ -36,25 +36,39 @@ const NODE_KIND_LABELS: Partial<Record<SoftwareGraphNode["kind"], string>> = {
   route: "Route",
   domain: "Domain",
   symbol: "Symbol",
+  repository: "Repository",
+  external: "Externer Service",
 };
+
+function readNodeTypeBadge(node: SoftwareGraphNode): string {
+  const fromMetadata = node.metadata?.type;
+  if (typeof fromMetadata === "string" && fromMetadata.trim().length > 0) {
+    return fromMetadata.trim();
+  }
+  return NODE_KIND_LABELS[node.kind] ?? node.kind;
+}
 
 function formatNodeCardLabel(node: SoftwareGraphNode): string {
   const title = truncateLabel(node.label);
-  const kindLabel = NODE_KIND_LABELS[node.kind] ?? node.kind;
-  return `${title}\n${kindLabel}`;
+  const typeBadge = readNodeTypeBadge(node);
+  const filePath =
+    typeof node.filePath === "string"
+      ? node.filePath
+      : typeof node.metadata?.filePath === "string"
+        ? node.metadata.filePath
+        : null;
+  const lines = [title, typeBadge];
+  if (filePath) lines.push(truncateLabel(filePath));
+  return lines.join("\n");
 }
 
 export interface DependenciesProjectionOptions {
-  visibleEdgeKinds?: Set<SoftwareGraphEdgeKind>;
+  visibleEdgeKinds?: Set<DependencyEdgeKind>;
 }
 
 export interface DependenciesProjection {
   nodes: GraphCanvasNode[];
   edges: GraphCanvasEdge[];
-}
-
-function isDependencyEdgeKind(kind: string): kind is DependencyEdgeKind {
-  return (DEPENDENCY_EDGE_KINDS as readonly string[]).includes(kind);
 }
 
 function truncateLabel(label: string): string {
@@ -72,33 +86,28 @@ function toCanvasNode(node: SoftwareGraphNode): GraphCanvasNode {
 }
 
 function toCanvasEdge(edge: SoftwareGraphEdge): GraphCanvasEdge {
-  const kind = edge.kind;
-  const edgeLabel =
-    kind in RELATIONSHIP_LABELS
-      ? RELATIONSHIP_LABELS[kind as DependencyEdgeKind]
-      : kind in DEPENDENCY_EDGE_LABELS
-        ? DEPENDENCY_EDGE_LABELS[kind as DependencyEdgeKind]
-        : kind;
+  const dependencyKind = resolveDependencyKindFromGraphEdge(edge.kind);
+  const edgeLabel = dependencyKind
+    ? RELATIONSHIP_LABELS[dependencyKind]
+    : edge.kind in DEPENDENCY_EDGE_LABELS
+      ? DEPENDENCY_EDGE_LABELS[edge.kind as DependencyEdgeKind]
+      : edge.kind;
   return {
     id: edge.id,
     source: edge.sourceId,
     target: edge.targetId,
-    kind: edge.kind,
+    kind: dependencyKind ?? edge.kind,
     label: edgeLabel,
   };
 }
 
 function resolveVisibleEdgeKinds(
-  visibleEdgeKinds: Set<SoftwareGraphEdgeKind> | undefined,
+  visibleEdgeKinds: Set<DependencyEdgeKind> | undefined,
 ): Set<DependencyEdgeKind> {
   if (visibleEdgeKinds === undefined) {
     return new Set(DEFAULT_VISIBLE_DEPENDENCY_KINDS);
   }
-  const resolved = new Set<DependencyEdgeKind>();
-  for (const kind of visibleEdgeKinds) {
-    if (isDependencyEdgeKind(kind)) resolved.add(kind);
-  }
-  return resolved;
+  return new Set(visibleEdgeKinds);
 }
 
 export function projectDependenciesGraph(
@@ -110,9 +119,10 @@ export function projectDependenciesGraph(
   const nodeById = new Map(graphNodes.map((node) => [node.id, node]));
   const visibleKinds = resolveVisibleEdgeKinds(options.visibleEdgeKinds);
 
-  const dependencyEdges = graphEdges.filter(
-    (edge) => isDependencyEdgeKind(edge.kind) && visibleKinds.has(edge.kind),
-  );
+  const dependencyEdges = graphEdges.filter((edge) => {
+    const mapped = resolveDependencyKindFromGraphEdge(edge.kind);
+    return mapped != null && visibleKinds.has(mapped);
+  });
 
   const visibleNodeIds = new Set<string>();
   for (const edge of dependencyEdges) {
@@ -133,22 +143,186 @@ export function projectDependenciesGraph(
   return { nodes, edges };
 }
 
+export function findCentralDependencyNodeId(
+  graph: SoftwareGraph,
+  options: DependenciesProjectionOptions = {},
+): string | null {
+  const projected = projectDependenciesGraph(graph, options);
+  if (projected.nodes.length === 0) return null;
+
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const degree = new Map<string, number>();
+  for (const edge of projected.edges) {
+    degree.set(edge.source, (degree.get(edge.source) ?? 0) + 1);
+    degree.set(edge.target, (degree.get(edge.target) ?? 0) + 1);
+  }
+
+  let bestId = projected.nodes[0].id;
+  let bestScore = -1;
+  for (const node of projected.nodes) {
+    const score = degree.get(node.id) ?? 0;
+    const isUseCase = nodeById.get(node.id)?.metadata?.type === "Use Case";
+    const adjusted = score + (isUseCase ? 100 : 0);
+    if (adjusted > bestScore) {
+      bestScore = adjusted;
+      bestId = node.id;
+    }
+  }
+  return bestId;
+}
+
+export interface NodeDependencyCounts {
+  incoming: number;
+  outgoing: number;
+}
+
+export interface TopNodeDependency {
+  edgeId: string;
+  label: string;
+  kind: DependencyEdgeKind;
+  direction: "incoming" | "outgoing";
+}
+
+export interface NodeDependencySummary extends NodeDependencyCounts {
+  neighbors: TopNodeDependency[];
+}
+
+export interface DependenciesGraphIndex {
+  nodeById: Map<string, SoftwareGraphNode>;
+  edgeById: Map<string, SoftwareGraphEdge>;
+  evidenceByEdgeId: Map<string, SoftwareGraphEvidence[]>;
+  summariesByNodeId: Map<string, NodeDependencySummary>;
+}
+
+const EMPTY_NODE_SUMMARY: NodeDependencySummary = { incoming: 0, outgoing: 0, neighbors: [] };
+
+function addEvidenceToBucket(
+  buckets: Map<string, SoftwareGraphEvidence[]>,
+  seenIds: Map<string, Set<string>>,
+  bucketKey: string,
+  item: SoftwareGraphEvidence,
+): void {
+  let ids = seenIds.get(bucketKey);
+  if (!ids) {
+    ids = new Set();
+    seenIds.set(bucketKey, ids);
+    buckets.set(bucketKey, []);
+  }
+  if (ids.has(item.id)) return;
+  ids.add(item.id);
+  buckets.get(bucketKey)!.push(item);
+}
+
+function mergeEvidenceBuckets(
+  buckets: Map<string, SoftwareGraphEvidence[]>,
+  seenIds: Map<string, Set<string>>,
+  targetKey: string,
+  sourceItems: SoftwareGraphEvidence[],
+): void {
+  for (const item of sourceItems) {
+    addEvidenceToBucket(buckets, seenIds, targetKey, item);
+  }
+}
+
+export function buildDependenciesGraphIndex(
+  graph: SoftwareGraph,
+  neighborLimit = 5,
+): DependenciesGraphIndex {
+  const nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
+  const graphEdges = Array.isArray(graph.edges) ? graph.edges : [];
+  const graphEvidence = Array.isArray(graph.evidence) ? graph.evidence : [];
+
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const edgeById = new Map(graphEdges.map((edge) => [edge.id, edge]));
+  const evidenceByEdgeId = new Map<string, SoftwareGraphEvidence[]>();
+  const evidenceByFactId = new Map<string, SoftwareGraphEvidence[]>();
+  const edgeEvidenceSeenIds = new Map<string, Set<string>>();
+  const factEvidenceSeenIds = new Map<string, Set<string>>();
+
+  for (const item of graphEvidence) {
+    if (item.edgeId) {
+      addEvidenceToBucket(evidenceByEdgeId, edgeEvidenceSeenIds, item.edgeId, item);
+    }
+    if (item.factId) {
+      addEvidenceToBucket(evidenceByFactId, factEvidenceSeenIds, item.factId, item);
+    }
+  }
+
+  for (const edge of graphEdges) {
+    const factId = edge.metadata?.evidenceFactId;
+    if (typeof factId !== "string") continue;
+    const linked = evidenceByFactId.get(factId);
+    if (!linked) continue;
+    mergeEvidenceBuckets(evidenceByEdgeId, edgeEvidenceSeenIds, edge.id, linked);
+  }
+
+  const summariesByNodeId = new Map<string, NodeDependencySummary>();
+  for (const node of nodes) {
+    summariesByNodeId.set(node.id, { incoming: 0, outgoing: 0, neighbors: [] });
+  }
+
+  for (const edge of graphEdges) {
+    const dependencyKind = resolveDependencyKindFromGraphEdge(edge.kind);
+    if (!dependencyKind) continue;
+
+    if (nodeById.has(edge.sourceId) && nodeById.has(edge.targetId)) {
+      const sourceSummary = summariesByNodeId.get(edge.sourceId);
+      if (sourceSummary) {
+        sourceSummary.outgoing += 1;
+        if (sourceSummary.neighbors.length < neighborLimit) {
+          const target = nodeById.get(edge.targetId);
+          sourceSummary.neighbors.push({
+            edgeId: edge.id,
+            label: target?.label ?? edge.targetId,
+            kind: dependencyKind,
+            direction: "outgoing",
+          });
+        }
+      }
+    }
+
+    if (nodeById.has(edge.targetId) && nodeById.has(edge.sourceId)) {
+      const targetSummary = summariesByNodeId.get(edge.targetId);
+      if (targetSummary) {
+        targetSummary.incoming += 1;
+        if (targetSummary.neighbors.length < neighborLimit) {
+          const source = nodeById.get(edge.sourceId);
+          targetSummary.neighbors.push({
+            edgeId: edge.id,
+            label: source?.label ?? edge.sourceId,
+            kind: dependencyKind,
+            direction: "incoming",
+          });
+        }
+      }
+    }
+  }
+
+  return { nodeById, edgeById, evidenceByEdgeId, summariesByNodeId };
+}
+
+export function getNodeDependencySummaryFromIndex(
+  index: DependenciesGraphIndex,
+  nodeId: string,
+): NodeDependencySummary {
+  return index.summariesByNodeId.get(nodeId) ?? EMPTY_NODE_SUMMARY;
+}
+
+export function getEdgeEvidenceFromIndex(
+  index: DependenciesGraphIndex,
+  edgeId: string | null,
+): { edge: SoftwareGraphEdge; evidence: SoftwareGraphEvidence[] } | null {
+  if (!edgeId) return null;
+  const edge = index.edgeById.get(edgeId);
+  if (!edge) return null;
+  return { edge, evidence: index.evidenceByEdgeId.get(edgeId) ?? [] };
+}
+
 export function findEdgeEvidence(
   graph: SoftwareGraph,
   edgeId: string | null,
 ): { edge: SoftwareGraphEdge; evidence: SoftwareGraph["evidence"] } | null {
-  if (!edgeId) return null;
-  const graphEdges = Array.isArray(graph.edges) ? graph.edges : [];
-  const edge = graphEdges.find((candidate) => candidate.id === edgeId);
-  if (!edge) return null;
-
-  const factId = edge.metadata?.evidenceFactId;
-  const graphEvidence = Array.isArray(graph.evidence) ? graph.evidence : [];
-  const linkedEvidence = graphEvidence.filter(
-    (item) => item.edgeId === edgeId || (typeof factId === "string" && item.factId === factId),
-  );
-
-  return { edge, evidence: linkedEvidence };
+  return getEdgeEvidenceFromIndex(buildDependenciesGraphIndex(graph), edgeId);
 }
 
 export interface DependencyKindCount {
@@ -165,8 +339,9 @@ export function countDependencyEdgesByKind(graph: SoftwareGraph): DependencyKind
   }
 
   for (const edge of graphEdges) {
-    if (isDependencyEdgeKind(edge.kind)) {
-      counts.set(edge.kind, (counts.get(edge.kind) ?? 0) + 1);
+    const mapped = resolveDependencyKindFromGraphEdge(edge.kind);
+    if (mapped) {
+      counts.set(mapped, (counts.get(mapped) ?? 0) + 1);
     }
   }
 

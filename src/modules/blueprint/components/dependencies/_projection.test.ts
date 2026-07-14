@@ -5,8 +5,11 @@
 import { describe, expect, it } from "vitest";
 import type { SoftwareGraph } from "../../types";
 import {
+  buildDependenciesGraphIndex,
   filterDependenciesProjection,
   findEdgeEvidence,
+  getEdgeEvidenceFromIndex,
+  getNodeDependencySummaryFromIndex,
   projectDependenciesGraph,
 } from "./_projection.js";
 
@@ -152,5 +155,45 @@ describe("findEdgeEvidence", () => {
     const graph = makeGraph();
     expect(findEdgeEvidence(graph, null)).toBeNull();
     expect(findEdgeEvidence(graph, "missing")).toBeNull();
+  });
+});
+
+describe("buildDependenciesGraphIndex", () => {
+  it("indexes node summaries and edge evidence in one pass", () => {
+    const graph = makeGraph({
+      nodes: [
+        { id: "file:a", kind: "file", label: "a.ts", metadata: {} },
+        { id: "file:b", kind: "file", label: "b.ts", metadata: {} },
+      ],
+      edges: [
+        {
+          id: "e1",
+          kind: "imports",
+          sourceId: "file:a",
+          targetId: "file:b",
+          metadata: { evidenceFactId: "fact-1" },
+        },
+        { id: "e2", kind: "calls", sourceId: "file:b", targetId: "file:a", metadata: {} },
+      ],
+      evidence: [
+        {
+          id: "ev-1",
+          factId: "fact-1",
+          kind: "ast-import",
+          filePath: "src/a.ts",
+          line: 1,
+          excerpt: "import './b'",
+        },
+      ],
+    });
+
+    const index = buildDependenciesGraphIndex(graph);
+    const summaryA = getNodeDependencySummaryFromIndex(index, "file:a");
+    expect(summaryA.outgoing).toBe(1);
+    expect(summaryA.incoming).toBe(1);
+
+    const evidence = getEdgeEvidenceFromIndex(index, "e1");
+    expect(evidence?.evidence).toHaveLength(1);
+    expect(index.nodeById.get("file:b")?.label).toBe("b.ts");
   });
 });

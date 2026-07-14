@@ -27,6 +27,8 @@ export function RelationshipChip({ kind, active, onToggle }: RelationshipChipPro
     <button
       type="button"
       className={styles.root}
+      data-testid="relationship-chip"
+      data-relationship-kind={kind}
       data-active={active ? "true" : "false"}
       style={
         {
