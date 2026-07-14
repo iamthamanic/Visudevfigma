@@ -1,9 +1,93 @@
-.root {
+.controls {
   display: flex;
   flex-direction: column;
+  gap: 0.625rem;
+  height: 100%;
+}
+
+.serviceList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.serviceCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  color: var(--color-foreground);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.serviceCard[data-selected="true"] {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 45%, transparent);
+}
+
+.serviceCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.serviceCardTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.serviceCardMeta {
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+
+.serviceCard[data-kind="runtime"] {
+  border-left: 3px solid var(--color-graph-runtime);
+}
+
+.serviceCard[data-kind="service"] {
+  border-left: 3px solid var(--color-graph-service);
+}
+
+.serviceCard[data-kind="table"] {
+  border-left: 3px solid var(--color-graph-database);
+}
+
+.serviceCard[data-kind="external"] {
+  border-left: 3px solid var(--color-graph-external);
+}
+
+.serviceCard[data-kind="file"] {
+  border-left: 3px solid var(--color-graph-file);
+}
+
+.canvasWrap {
   height: 100%;
   min-height: 320px;
-  padding: 1rem;
+  overflow: hidden;
+}
+
+.responsibilityList {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8125rem;
+  color: var(--color-foreground);
+}
+
+.emptyControls {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-muted-foreground);
 }
 
 .empty {
@@ -14,17 +98,22 @@
   height: 100%;
   min-height: 320px;
   gap: 0.5rem;
+  padding: 2rem;
+  text-align: center;
 }
 
 .emptyTitle {
   color: var(--color-foreground);
   font-size: 1rem;
   font-weight: 600;
+  margin: 0;
 }
 
 .emptyHint {
   color: var(--color-muted-foreground);
   font-size: 0.875rem;
+  margin: 0;
+  max-width: 28rem;
 }
 
 .loading {
