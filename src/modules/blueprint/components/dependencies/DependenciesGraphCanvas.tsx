@@ -19,10 +19,12 @@ export interface DependenciesGraphCanvasProps {
   edges: GraphCanvasEdge[];
   totalNodes: number;
   totalEdges: number;
+  selectedNodeId: string | null;
   searchQuery: string;
   searchInputRef: RefObject<HTMLInputElement>;
   onSearchChange: (value: string) => void;
   onResetSearch: () => void;
+  onNodeSelect: (nodeId: string | null) => void;
   onEdgeSelect: (edgeId: string | null) => void;
   onMinimapSelect: (nodeId: string) => void;
 }
@@ -32,10 +34,12 @@ export function DependenciesGraphCanvas({
   edges,
   totalNodes,
   totalEdges,
+  selectedNodeId,
   searchQuery,
   searchInputRef,
   onSearchChange,
   onResetSearch,
+  onNodeSelect,
   onEdgeSelect,
   onMinimapSelect,
 }: DependenciesGraphCanvasProps): JSX.Element {
@@ -62,9 +66,18 @@ export function DependenciesGraphCanvas({
             nodes={nodes}
             edges={edges}
             layoutPreset="force"
+            selectedNodeId={selectedNodeId}
+            onNodeSelect={onNodeSelect}
             onEdgeSelect={onEdgeSelect}
           />
         </Suspense>
+        <ul className={styles.edgeLabels} aria-label="Kantenbeschriftungen">
+          {edges.slice(0, 24).map((edge) => (
+            <li key={edge.id} data-testid="edge-label">
+              {edge.label ?? edge.kind}
+            </li>
+          ))}
+        </ul>
         <DependenciesMinimap nodes={nodes} onSelectNode={onMinimapSelect} />
       </div>
 

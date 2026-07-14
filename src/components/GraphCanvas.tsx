@@ -18,6 +18,8 @@ export interface GraphCanvasProps {
   edges: GraphCanvasEdge[];
   layoutPreset?: LayoutPreset;
   onEdgeSelect?: (edgeId: string | null) => void;
+  onNodeSelect?: (nodeId: string | null) => void;
+  selectedNodeId?: string | null;
 }
 
 export function GraphCanvas({
@@ -25,12 +27,16 @@ export function GraphCanvas({
   edges,
   layoutPreset = "default",
   onEdgeSelect,
+  onNodeSelect,
+  selectedNodeId,
 }: GraphCanvasProps) {
   const validated = useValidatedGraphElements(nodes, edges);
   const { setContainerRef, hasGraph, initError, graphRef } = useCytoscapeGraphLifecycle(
     validated,
     layoutPreset,
     onEdgeSelect,
+    onNodeSelect,
+    selectedNodeId,
   );
   const { handleFit, handleZoomIn, handleZoomOut } = useGraphCanvasToolbar(graphRef);
 

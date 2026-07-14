@@ -2,7 +2,7 @@
  * DependenciesView — cross-module imports, calls, API, events, and data edges.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { BlueprintData } from "../types";
 import { BlueprintViewLayout } from "./ui/BlueprintViewLayout.js";
 import { DependenciesControls } from "./dependencies/DependenciesControls.js";
@@ -10,9 +10,12 @@ import { DependenciesGraphCanvas } from "./dependencies/DependenciesGraphCanvas.
 import { DependenciesInspector } from "./dependencies/DependenciesInspector.js";
 import {
   DEFAULT_VISIBLE_DEPENDENCY_KINDS,
+  buildDependenciesGraphIndex,
   countDependencyEdgesByKind,
   filterDependenciesProjection,
-  findEdgeEvidence,
+  findCentralDependencyNodeId,
+  getEdgeEvidenceFromIndex,
+  getNodeDependencySummaryFromIndex,
   projectDependenciesGraph,
   type DependencyEdgeKind,
 } from "./dependencies/_projection.js";
@@ -29,6 +32,7 @@ export function DependenciesView({ blueprint }: DependenciesViewProps) {
   const [visibleEdgeKinds, setVisibleEdgeKinds] = useState<Set<DependencyEdgeKind>>(
     () => new Set(DEFAULT_VISIBLE_DEPENDENCY_KINDS),
   );
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
   const baseProjection = useMemo(() => {
@@ -42,15 +46,57 @@ export function DependenciesView({ blueprint }: DependenciesViewProps) {
     [baseProjection, searchQuery, graph],
   );
 
+  const graphIndex = useMemo(() => {
+    if (!graph) return null;
+    return buildDependenciesGraphIndex(graph);
+  }, [graph]);
+
   const topDependencies = useMemo(() => {
     if (!graph) return [];
     return countDependencyEdgesByKind(graph);
   }, [graph]);
 
+  const selectedNode = useMemo(() => {
+    if (!selectedNodeId || !graphIndex) return null;
+    return graphIndex.nodeById.get(selectedNodeId) ?? null;
+  }, [graphIndex, selectedNodeId]);
+
   const selection = useMemo(() => {
-    if (!graph) return null;
-    return findEdgeEvidence(graph, selectedEdgeId);
-  }, [graph, selectedEdgeId]);
+    if (!graphIndex) return null;
+    return getEdgeEvidenceFromIndex(graphIndex, selectedEdgeId);
+  }, [graphIndex, selectedEdgeId]);
+
+  const nodeSummary = useMemo(() => {
+    if (!selectedNodeId || !graphIndex) return null;
+    return getNodeDependencySummaryFromIndex(graphIndex, selectedNodeId);
+  }, [graphIndex, selectedNodeId]);
+
+  useEffect(() => {
+    if (!graph) return;
+
+    const visibleNodeIds = new Set(projection.nodes.map((node) => node.id));
+
+    if (selectedNodeId) {
+      if (!visibleNodeIds.has(selectedNodeId)) {
+        setSelectedNodeId(null);
+      }
+      return;
+    }
+
+    if (visibleNodeIds.size === 0) return;
+
+    const centralId = findCentralDependencyNodeId(graph, { visibleEdgeKinds });
+    if (!centralId || !visibleNodeIds.has(centralId)) return;
+    setSelectedNodeId(centralId);
+  }, [graph, projection.nodes, selectedNodeId, visibleEdgeKinds]);
+
+  useEffect(() => {
+    if (!selectedEdgeId) return;
+    const visibleEdgeIds = new Set(projection.edges.map((edge) => edge.id));
+    if (!visibleEdgeIds.has(selectedEdgeId)) {
+      setSelectedEdgeId(null);
+    }
+  }, [projection.edges, selectedEdgeId]);
 
   const toggleEdgeKind = (kind: DependencyEdgeKind) => {
     setVisibleEdgeKinds((current) => {
@@ -83,10 +129,22 @@ export function DependenciesView({ blueprint }: DependenciesViewProps) {
   const hasVisibleGraph = projection.nodes.length > 0;
 
   const handleMinimapSelect = (nodeId: string) => {
+    setSelectedNodeId(nodeId);
+    setSelectedEdgeId(null);
     const graphNode = graph.nodes.find((candidate) => candidate.id === nodeId);
     if (!graphNode) return;
     setSearchQuery(graphNode.label);
     searchInputRef.current?.focus();
+  };
+
+  const handleNodeSelect = (nodeId: string | null) => {
+    setSelectedNodeId(nodeId);
+    if (nodeId) setSelectedEdgeId(null);
+  };
+
+  const handleEdgeSelect = (edgeId: string | null) => {
+    setSelectedEdgeId(edgeId);
+    if (edgeId) setSelectedNodeId(null);
   };
 
   return (
@@ -107,11 +165,13 @@ export function DependenciesView({ blueprint }: DependenciesViewProps) {
               edges={projection.edges}
               totalNodes={baseProjection.nodes.length}
               totalEdges={baseProjection.edges.length}
+              selectedNodeId={selectedNodeId}
               searchQuery={searchQuery}
               searchInputRef={searchInputRef}
               onSearchChange={setSearchQuery}
               onResetSearch={resetSearch}
-              onEdgeSelect={setSelectedEdgeId}
+              onNodeSelect={handleNodeSelect}
+              onEdgeSelect={handleEdgeSelect}
               onMinimapSelect={handleMinimapSelect}
             />
           ) : (
@@ -128,9 +188,14 @@ export function DependenciesView({ blueprint }: DependenciesViewProps) {
       inspector={
         <DependenciesInspector
           graph={graph}
+          nodeById={graphIndex?.nodeById ?? new Map()}
           topDependencies={topDependencies}
+          selectedNode={selectedNode}
           selectedEdge={selection?.edge ?? null}
           selectedEvidence={selection?.evidence ?? []}
+          incomingCount={nodeSummary?.incoming ?? 0}
+          outgoingCount={nodeSummary?.outgoing ?? 0}
+          topNodeDependencies={nodeSummary?.neighbors ?? []}
         />
       }
     />

@@ -4,11 +4,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import {
-  installWave2Mocks,
-  openBlueprintView,
-  seedSupabaseSession,
-} from "./wave2-test-helpers.js";
+import { installWave2Mocks, openBlueprintView, seedSupabaseSession } from "./wave2-test-helpers.js";
 
 const EVIDENCE_DIR = ".qa/evidence/wave2-architecture-viz";
 const PROJECT_ID = "proj-wave2-architecture";

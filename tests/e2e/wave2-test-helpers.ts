@@ -23,7 +23,6 @@ export const E2E_ACCESS_TOKEN =
   "eyJpc3MiOiJodHRwOi8vMTI3LjAuMC4xOjU0MzIxL2F1dGgvdjEiLCJzdWIiOiJlMmUtdXNlci1pZCIsInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjo5OTk5OTk5OTk5fQ." +
   "e2e-signature";
 
-
 export function e2eSession() {
   return {
     access_token: E2E_ACCESS_TOKEN,

@@ -1,122 +1,66 @@
 /**
- * Right-hand Inspektor for DependenciesView — selected edge details and evidence.
+ * DependenciesInspector — routes to node, edge, or empty inspector panels.
  */
 
-import type { SoftwareGraph, SoftwareGraphEdge, SoftwareGraphEvidence } from "../../types";
-import { InspectorPanel } from "../ui/InspectorPanel.js";
-import type { DependencyKindCount } from "./_projection.js";
-import { RELATIONSHIP_LABELS, type DependencyEdgeKind } from "./_projection.constants.js";
-import styles from "../../styles/DependenciesView.module.css";
+import type {
+  SoftwareGraph,
+  SoftwareGraphEdge,
+  SoftwareGraphEvidence,
+  SoftwareGraphNode,
+} from "../../types";
+import type { DependencyKindCount, TopNodeDependency } from "./_projection.js";
+import { DependenciesEdgeInspector } from "./DependenciesEdgeInspector.js";
+import { DependenciesEmptyInspector } from "./DependenciesEmptyInspector.js";
+import { DependenciesNodeInspector } from "./DependenciesNodeInspector.js";
 
 export interface DependenciesInspectorProps {
   graph: SoftwareGraph;
+  nodeById: Map<string, SoftwareGraphNode>;
   topDependencies: DependencyKindCount[];
+  selectedNode: SoftwareGraphNode | null;
   selectedEdge: SoftwareGraphEdge | null;
   selectedEvidence: SoftwareGraphEvidence[];
-}
-
-function isDependencyKind(kind: string): kind is DependencyEdgeKind {
-  return kind in RELATIONSHIP_LABELS;
-}
-
-function resolveNodeLabel(graph: SoftwareGraph, nodeId: string): string {
-  const node = graph.nodes.find((candidate) => candidate.id === nodeId);
-  return node?.label ?? nodeId;
+  incomingCount: number;
+  outgoingCount: number;
+  topNodeDependencies: TopNodeDependency[];
 }
 
 export function DependenciesInspector({
   graph,
+  nodeById,
   topDependencies,
+  selectedNode,
   selectedEdge,
   selectedEvidence,
+  incomingCount,
+  outgoingCount,
+  topNodeDependencies,
 }: DependenciesInspectorProps): JSX.Element {
-  if (!selectedEdge) {
+  if (selectedNode) {
     return (
-      <InspectorPanel
-        title="Keine Auswahl"
-        emptyMessage="Wähle eine Kante im Graph, um Details und Evidence zu sehen."
-        sections={[
-          {
-            id: "top-deps",
-            title: "Top Abhängigkeiten",
-            content:
-              topDependencies.length === 0 ? (
-                <p className={styles.emptyControls}>Keine Kanten im Graph.</p>
-              ) : (
-                <ul className={styles.topDepsList}>
-                  {topDependencies.map((dependencyCount) => (
-                    <li key={dependencyCount.kind} className={styles.topDepsItem}>
-                      <span className={styles.topDepsKind} data-kind={dependencyCount.kind}>
-                        {RELATIONSHIP_LABELS[dependencyCount.kind]}
-                      </span>
-                      <span className={styles.topDepsCount}>{dependencyCount.count}</span>
-                    </li>
-                  ))}
-                </ul>
-              ),
-          },
-        ]}
+      <DependenciesNodeInspector
+        node={selectedNode}
+        analyzedAt={graph.analyzedAt}
+        incomingCount={incomingCount}
+        outgoingCount={outgoingCount}
+        neighbors={topNodeDependencies}
       />
     );
   }
 
-  const sourceLabel = resolveNodeLabel(graph, selectedEdge.sourceId);
-  const targetLabel = resolveNodeLabel(graph, selectedEdge.targetId);
-  const kind = selectedEdge.kind;
-  const showBadge = isDependencyKind(kind);
+  if (selectedEdge) {
+    const sourceLabel = nodeById.get(selectedEdge.sourceId)?.label ?? selectedEdge.sourceId;
+    const targetLabel = nodeById.get(selectedEdge.targetId)?.label ?? selectedEdge.targetId;
 
-  return (
-    <InspectorPanel
-      title={`${sourceLabel} → ${targetLabel}`}
-      subtitle={showBadge ? RELATIONSHIP_LABELS[kind] : kind}
-      badges={
-        showBadge ? (
-          <span className={styles.kindBadge} data-kind={kind}>
-            {RELATIONSHIP_LABELS[kind]}
-          </span>
-        ) : null
-      }
-      sections={[
-        {
-          id: "edge-meta",
-          title: "Kante",
-          content: (
-            <dl className={styles.metaList}>
-              <div className={styles.metaRow}>
-                <dt>Quelle</dt>
-                <dd>{sourceLabel}</dd>
-              </div>
-              <div className={styles.metaRow}>
-                <dt>Ziel</dt>
-                <dd>{targetLabel}</dd>
-              </div>
-              <div className={styles.metaRow}>
-                <dt>Typ</dt>
-                <dd>{showBadge ? RELATIONSHIP_LABELS[kind] : kind}</dd>
-              </div>
-            </dl>
-          ),
-        },
-        {
-          id: "evidence",
-          title: "Evidence",
-          content:
-            selectedEvidence.length === 0 ? (
-              <p className={styles.emptyControls}>Keine Evidence für diese Kante.</p>
-            ) : (
-              <ul className={styles.evidenceList}>
-                {selectedEvidence.map((item) => (
-                  <li key={item.id} className={styles.evidenceItem}>
-                    <p className={styles.evidenceMeta}>
-                      {item.filePath}:{item.line} · {item.kind}
-                    </p>
-                    <pre className={styles.evidenceExcerpt}>{item.excerpt}</pre>
-                  </li>
-                ))}
-              </ul>
-            ),
-        },
-      ]}
-    />
-  );
+    return (
+      <DependenciesEdgeInspector
+        sourceLabel={sourceLabel}
+        targetLabel={targetLabel}
+        edge={selectedEdge}
+        evidence={selectedEvidence}
+      />
+    );
+  }
+
+  return <DependenciesEmptyInspector topDependencies={topDependencies} />;
 }

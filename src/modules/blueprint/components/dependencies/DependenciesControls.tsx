@@ -4,12 +4,8 @@
 
 import { ViewSectionTitle } from "../ui/ViewSectionTitle.js";
 import { RelationshipChip } from "../ui/RelationshipChip.js";
-import type { RelationshipKind } from "../ui/blueprint-relationship-tokens.js";
-import {
-  DEPENDENCY_EDGE_KINDS,
-  RELATIONSHIP_LABELS,
-  type DependencyEdgeKind,
-} from "./_projection.constants.js";
+import { RELATIONSHIP_KINDS, type RelationshipKind } from "../ui/blueprint-relationship-tokens.js";
+import { RELATIONSHIP_LABELS, type DependencyEdgeKind } from "./_projection.constants.js";
 import styles from "../../styles/DependenciesView.module.css";
 
 export interface TopDependencyCount {
@@ -37,12 +33,12 @@ export function DependenciesControls({
       <section className={styles.section}>
         <ViewSectionTitle>Beziehungstypen</ViewSectionTitle>
         <div className={styles.chipGrid}>
-          {DEPENDENCY_EDGE_KINDS.map((kind) => (
+          {RELATIONSHIP_KINDS.map((kind) => (
             <RelationshipChip
               key={kind}
               kind={kind as RelationshipKind}
-              active={visibleEdgeKinds.has(kind)}
-              onToggle={() => onToggleEdgeKind(kind)}
+              active={visibleEdgeKinds.has(kind as DependencyEdgeKind)}
+              onToggle={() => onToggleEdgeKind(kind as DependencyEdgeKind)}
             />
           ))}
         </div>
