@@ -20,6 +20,7 @@ export type {
   SoftwareGraphEdge,
   SoftwareGraphEdgeKind,
   SoftwareGraphEvidence,
+  SoftwareGraphGroup,
   SoftwareGraphNode,
   SoftwareGraphNodeKind,
 } from "../../lib/visudev/software-graph-types";

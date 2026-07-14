@@ -199,4 +199,33 @@ describe("buildSoftwareGraph", () => {
     expect(graph.edges.some((e) => e.kind === "api")).toBe(true);
     expect(graph.edges.some((e) => e.kind === "event")).toBe(true);
   });
+
+  it("creates execution path groups for routes", () => {
+    const scan = makeScan({
+      filesAnalyzed: 1,
+      routes: [
+        {
+          id: "route:users:get",
+          method: "GET",
+          path: "/users",
+          filePath: "src/routes/users.ts",
+          line: 10,
+        },
+      ],
+      facts: [
+        {
+          id: "fact:db",
+          kind: "autoguide:db-read",
+          filePath: "src/routes/users.ts",
+          line: 12,
+          snippet: "from('users').select()",
+        },
+      ],
+    });
+
+    const graph = buildSoftwareGraph(scan);
+    const executionGroup = graph.groups.find((group) => group.id.startsWith("execution:"));
+    expect(executionGroup).toBeDefined();
+    expect(executionGroup?.nodeIds.length).toBeGreaterThan(0);
+  });
 });
