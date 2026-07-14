@@ -224,6 +224,36 @@ export function buildHrToolDemoGraph(projectId: string): SoftwareGraph {
         nodeIds: ["service:api", "file:uc", "file:controller"],
       },
       {
+        id: "g-atlas-worker",
+        kind: "service",
+        label: "WORKER",
+        nodeIds: ["service:worker-infra", "service:worker", "table:redis"],
+      },
+      {
+        id: "g-atlas-data",
+        kind: "table",
+        label: "DATEN",
+        nodeIds: ["table:pg"],
+      },
+      {
+        id: "g-atlas-storage",
+        kind: "table",
+        label: "SPEICHER",
+        nodeIds: ["table:storage"],
+      },
+      {
+        id: "g-atlas-external",
+        kind: "external",
+        label: "EXTERN",
+        nodeIds: ["external:stripe", "external:sso", "service:email"],
+      },
+      {
+        id: "g-atlas-security",
+        kind: "service",
+        label: "SICHERHEIT",
+        nodeIds: ["service:auth-infra", "service:auth"],
+      },
+      {
         id: "execution:leave:0",
         kind: "route",
         label: "LeaveRequest · Echtzeit-Trace",

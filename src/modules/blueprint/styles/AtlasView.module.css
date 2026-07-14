@@ -271,60 +271,150 @@
   font-variant-numeric: tabular-nums;
 }
 
+.statsItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .statsDivider {
   color: var(--color-muted-foreground);
 }
 
 .legend {
+  position: absolute;
+  left: 50%;
+  bottom: 0.75rem;
+  transform: translateX(-50%);
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.5rem;
   padding: 0.35rem 0.75rem;
-  border-bottom: 1px solid var(--color-border);
+  border: 1px solid var(--color-border);
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--color-background) 92%, transparent);
+  z-index: 2;
+  pointer-events: none;
 }
 
 .legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   font-size: 0.6875rem;
   padding: 0.15rem 0.45rem;
   border-radius: 0.25rem;
+}
+
+.legendDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--color-primary);
+}
+
+.legendItem[data-kind="module"] .legendDot,
+.legendItem[data-kind="frontend"] .legendDot {
+  background: var(--color-graph-module);
+}
+
+.legendItem[data-kind="service"] .legendDot,
+.legendItem[data-kind="backend"] .legendDot {
+  background: var(--color-graph-service);
+}
+
+.legendItem[data-kind="worker"] .legendDot {
+  background: var(--color-graph-runtime);
+}
+
+.legendItem[data-kind="table"] .legendDot,
+.legendItem[data-kind="data"] .legendDot {
+  background: var(--color-graph-database);
+}
+
+.legendItem[data-kind="storage"] .legendDot {
+  background: var(--color-graph-repository);
+}
+
+.legendItem[data-kind="external"] .legendDot {
+  background: var(--color-graph-external);
+}
+
+.legendItem[data-kind="security"] .legendDot {
+  background: var(--color-bp-rel-auth);
+}
+
+.zoomControls {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
   border: 1px solid var(--color-border);
-  background: var(--color-muted);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-background) 92%, transparent);
+  z-index: 2;
 }
 
-.legendItem[data-kind="module"] {
-  border-color: color-mix(in srgb, var(--color-graph-module) 40%, var(--color-border));
+.zoomButton {
+  min-width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-md) - 2px);
+  background: var(--color-card);
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  cursor: pointer;
 }
 
-.legendItem[data-kind="service"] {
-  border-color: color-mix(in srgb, var(--color-graph-service) 40%, var(--color-border));
-}
-
-.legendItem[data-kind="table"] {
-  border-color: color-mix(in srgb, var(--color-graph-database) 40%, var(--color-border));
-}
-
-.legendItem[data-kind="external"] {
-  border-color: color-mix(in srgb, var(--color-graph-external) 40%, var(--color-border));
+.zoomValue {
+  min-width: 2.75rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted-foreground);
 }
 
 .clusterLabels {
   position: absolute;
   left: 0.75rem;
-  bottom: 0.75rem;
+  top: 3.25rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
   max-width: 60%;
-  pointer-events: none;
+  z-index: 2;
 }
 
 .clusterLabel {
-  padding: 0.2rem 0.45rem;
-  border-radius: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.35rem;
   background: color-mix(in srgb, var(--color-background) 88%, transparent);
   border: 1px solid var(--color-border);
   font-size: 0.625rem;
   color: var(--color-foreground);
+  text-align: left;
+  cursor: pointer;
+}
+
+.clusterLabelSelected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 45%, transparent);
+}
+
+.clusterLabelTitle {
+  font-weight: 700;
+  font-size: 0.6875rem;
+}
+
+.clusterLabelMeta {
+  color: var(--color-muted-foreground);
 }
 
 .canvasMain {
