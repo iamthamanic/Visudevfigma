@@ -2,7 +2,7 @@
  * InfrastructureView — topology diagram Internet→LB→Services→DB with filters and legend.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { BlueprintData } from "../types";
 import { BlueprintViewLayout } from "./ui/BlueprintViewLayout.js";
 import { InfrastructureConnectionLegend } from "./infrastructure/InfrastructureConnectionLegend.js";
@@ -53,6 +53,14 @@ export function InfrastructureView({ blueprint }: InfrastructureViewProps) {
     () => graph?.nodes.find((node) => node.id === selectedNodeId) ?? null,
     [graph, selectedNodeId],
   );
+
+  useEffect(() => {
+    if (!selectedNodeId) return;
+    const selectionStillVisible = filteredNodes.some((node) => node.id === selectedNodeId);
+    if (!selectionStillVisible) {
+      setSelectedNodeId(null);
+    }
+  }, [filteredNodes, selectedNodeId]);
 
   if (!graph || nodes.length === 0) {
     return (
