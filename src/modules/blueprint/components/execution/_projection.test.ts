@@ -4,7 +4,13 @@
 
 import { describe, expect, it } from "vitest";
 import type { SoftwareGraph } from "../../types";
-import { listExecutionRoutes, projectExecutionGraph } from "./_projection.js";
+import {
+  listExecutionRoutes,
+  projectExecutionGraph,
+  computeStepTimings,
+  computeExecutionMetrics,
+  isExecutionLive,
+} from "./_projection.js";
 
 function makeGraph(overrides: Partial<SoftwareGraph> = {}): SoftwareGraph {
   return {
@@ -68,5 +74,51 @@ describe("projectExecutionGraph", () => {
       ],
     });
     expect(listExecutionRoutes(graph)).toEqual([{ routeId: "route:a", label: "GET /a" }]);
+  });
+
+  it("computes step timings and metrics", () => {
+    const graph = makeGraph({
+      nodes: [
+        {
+          id: "route:users:get",
+          kind: "route",
+          label: "GET /users",
+          metadata: { routeId: "route:users:get", durationMs: 20 },
+        },
+        { id: "file:handler", kind: "file", label: "users.ts", metadata: { durationMs: 30 } },
+      ],
+      groups: [
+        {
+          id: "execution:route:users:get:0",
+          kind: "route",
+          label: "GET /users · path 1",
+          nodeIds: ["route:users:get", "file:handler"],
+        },
+      ],
+    });
+
+    const projected = projectExecutionGraph(graph, { routeId: "route:users:get" });
+    const timings = computeStepTimings(graph, projected!.stepNodeIds);
+    expect(timings).toEqual([
+      { nodeId: "route:users:get", durationMs: 20, startMs: 0, endMs: 20 },
+      { nodeId: "file:handler", durationMs: 30, startMs: 20, endMs: 50 },
+    ]);
+
+    const metrics = computeExecutionMetrics(projected, graph);
+    expect(metrics).toEqual({ totalDurationMs: 50, stepCount: 2, errorCount: 0 });
+  });
+
+  it("detects live execution from route metadata", () => {
+    const graph = makeGraph({
+      nodes: [
+        {
+          id: "route:a",
+          kind: "route",
+          label: "GET /a",
+          metadata: { routeId: "route:a", executionStatus: "running" },
+        },
+      ],
+    });
+    expect(isExecutionLive(graph, "route:a")).toBe(true);
   });
 });

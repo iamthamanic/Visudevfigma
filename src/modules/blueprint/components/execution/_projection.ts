@@ -122,3 +122,80 @@ export function findStepEvidence(graph: SoftwareGraph, nodeId: string | null) {
     return item.line === node.line;
   });
 }
+
+export interface StepTiming {
+  nodeId: string;
+  durationMs: number;
+  startMs: number;
+  endMs: number;
+}
+
+export interface ExecutionMetrics {
+  totalDurationMs: number;
+  stepCount: number;
+  errorCount: number;
+}
+
+export function resolveStepDurationMs(node: SoftwareGraphNode | undefined, index: number): number {
+  const fromMeta = node?.metadata?.durationMs;
+  if (typeof fromMeta === "number" && Number.isFinite(fromMeta) && fromMeta >= 0) {
+    return Math.round(fromMeta);
+  }
+  return (index + 1) * 12;
+}
+
+export function computeStepTimings(graph: SoftwareGraph, stepNodeIds: string[]): StepTiming[] {
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  let cursorMs = 0;
+  return stepNodeIds.map((nodeId, index) => {
+    const durationMs = resolveStepDurationMs(nodeById.get(nodeId), index);
+    const startMs = cursorMs;
+    const endMs = cursorMs + durationMs;
+    cursorMs = endMs;
+    return { nodeId, durationMs, startMs, endMs };
+  });
+}
+
+export function computeExecutionMetrics(
+  projection: ExecutionProjection | null,
+  graph: SoftwareGraph,
+): ExecutionMetrics {
+  if (!projection || projection.stepNodeIds.length === 0) {
+    return { totalDurationMs: 0, stepCount: 0, errorCount: 0 };
+  }
+
+  const timings = computeStepTimings(graph, projection.stepNodeIds);
+  const totalDurationMs = timings.at(-1)?.endMs ?? 0;
+  let errorCount = projection.cycleNodeId != null ? 1 : 0;
+
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  for (const nodeId of projection.stepNodeIds) {
+    const node = nodeById.get(nodeId);
+    if (!node) continue;
+    const status = node.metadata?.status;
+    if (status === "error" || status === "failed" || node.metadata?.error === true) {
+      errorCount += 1;
+    }
+  }
+
+  return {
+    totalDurationMs,
+    stepCount: projection.stepNodeIds.length,
+    errorCount,
+  };
+}
+
+export function isExecutionLive(graph: SoftwareGraph, routeId: string): boolean {
+  const routeNode = findRouteNode(graph, routeId);
+  if (routeNode?.metadata?.executionStatus === "running") return true;
+  if (routeNode?.metadata?.status === "running") return true;
+
+  const projection = projectExecutionGraph(graph, { routeId });
+  if (!projection) return false;
+
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  return projection.stepNodeIds.some((nodeId) => {
+    const node = nodeById.get(nodeId);
+    return node?.metadata?.status === "running" || node?.metadata?.executionStatus === "running";
+  });
+}

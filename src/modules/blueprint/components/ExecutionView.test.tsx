@@ -98,4 +98,27 @@ describe("ExecutionView", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Headers" }));
     expect(screen.getAllByText(/requireAuth/i).length).toBeGreaterThan(0);
   });
+
+  it("renders timeline ruler and metrics bar", () => {
+    render(<ExecutionView blueprint={graphBlueprint} />);
+    expect(screen.getByLabelText("Zeitachse")).toBeInTheDocument();
+    expect(screen.getByLabelText("Ausführungs-Metriken")).toBeInTheDocument();
+    expect(screen.getByText(/2 Schritte/i)).toBeInTheDocument();
+  });
+
+  it("shows LIVE badge when route is running", () => {
+    const liveBlueprint: BlueprintData = {
+      ...graphBlueprint,
+      graph: {
+        ...graphBlueprint.graph!,
+        nodes: graphBlueprint.graph!.nodes.map((node) =>
+          node.id === "route:users:get"
+            ? { ...node, metadata: { ...node.metadata, executionStatus: "running" } }
+            : node,
+        ),
+      },
+    };
+    render(<ExecutionView blueprint={liveBlueprint} />);
+    expect(screen.getByText("LIVE")).toBeInTheDocument();
+  });
 });
