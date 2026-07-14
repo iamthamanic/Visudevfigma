@@ -45,4 +45,49 @@ describe("deriveDiagnosticsFromGraph", () => {
     expect(derived.securityMatrix[0]?.validation.state).toBe("missing");
     expect(derived.securityMatrix[0]?.findingCount).toBeGreaterThanOrEqual(1);
   });
+
+  it("does not assign facts from prefix-colliding directories", () => {
+    const graph: SoftwareGraph = {
+      version: 1,
+      projectId: "p1",
+      analyzedAt: "2026-01-01T00:00:00.000Z",
+      scopes: [],
+      nodes: [
+        {
+          id: "route:api",
+          kind: "route",
+          label: "POST /api/items",
+          filePath: "/api/items.ts",
+          line: 5,
+          metadata: { routeId: "api-route", method: "POST", path: "/api/items", pipelineCount: 0 },
+        },
+      ],
+      edges: [],
+      evidence: [
+        {
+          id: "ev-api2",
+          factId: "fact-api2",
+          kind: "code:snippet",
+          filePath: "/api2/guard.ts",
+          line: 1,
+          excerpt: "auth middleware protect session",
+        },
+        {
+          id: "ev-sub",
+          factId: "fact-sub",
+          kind: "code:snippet",
+          filePath: "/api/shared/guard.ts",
+          line: 1,
+          excerpt: "auth middleware protect session",
+        },
+      ],
+      groups: [],
+      metrics: [],
+      condensed: false,
+      limits: { maxNodes: 2500, maxEdges: 5000 },
+    };
+
+    const derived = deriveDiagnosticsFromGraph(graph);
+    expect(derived.securityMatrix[0]?.auth.state).toBe("confirmed");
+  });
 });

@@ -39,12 +39,8 @@ export function normalizeBlueprintData(
   const legacyFindings = sanitizeFindings(raw.findings);
   const legacyFacts = sanitizeFacts(raw.facts);
 
-  const hasGraphDiagnostics =
-    graphDiagnostics &&
-    (graphDiagnostics.routes.length > 0 ||
-      graphDiagnostics.securityMatrix.length > 0 ||
-      graphDiagnostics.findings.length > 0 ||
-      graphDiagnostics.facts.length > 0);
+  const pickFromGraph = <T>(derived: T[] | undefined, legacy: T[]): T[] =>
+    graph ? (derived ?? []) : legacy;
 
   return {
     version: raw.version === 1 ? 1 : 1,
@@ -52,10 +48,10 @@ export function normalizeBlueprintData(
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : undefined,
     commitSha: typeof raw.commitSha === "string" ? raw.commitSha : undefined,
     analyzedAt: typeof raw.analyzedAt === "string" ? raw.analyzedAt : undefined,
-    routes: hasGraphDiagnostics ? graphDiagnostics.routes : legacyRoutes,
-    securityMatrix: hasGraphDiagnostics ? graphDiagnostics.securityMatrix : legacySecurityMatrix,
-    findings: hasGraphDiagnostics ? graphDiagnostics.findings : legacyFindings,
-    facts: hasGraphDiagnostics ? graphDiagnostics.facts : legacyFacts,
+    routes: pickFromGraph(graphDiagnostics?.routes, legacyRoutes),
+    securityMatrix: pickFromGraph(graphDiagnostics?.securityMatrix, legacySecurityMatrix),
+    findings: pickFromGraph(graphDiagnostics?.findings, legacyFindings),
+    facts: pickFromGraph(graphDiagnostics?.facts, legacyFacts),
     frameworkHints: sanitizeStringList(raw.frameworkHints),
     filesAnalyzed:
       typeof raw.filesAnalyzed === "number" && Number.isFinite(raw.filesAnalyzed)

@@ -2,7 +2,12 @@
  * Orchestrates SoftwareGraph normalization from untrusted Blueprint KV payloads.
  */
 
-import type { SoftwareGraph, SoftwareGraphEdge, SoftwareGraphNode } from "./software-graph-types";
+import type {
+  SoftwareGraph,
+  SoftwareGraphEdge,
+  SoftwareGraphEvidence,
+  SoftwareGraphNode,
+} from "./software-graph-types";
 import {
   boundedArray,
   boundedString,
@@ -36,6 +41,20 @@ function boundedNodeSignatures(value: unknown): Record<string, string> | undefin
 
 function isBoundedNodeId(value: unknown): value is string {
   return typeof value === "string" && boundedString(value, 128) === value;
+}
+
+function isBoundedEvidence(value: unknown): value is SoftwareGraphEvidence {
+  if (!isRecord(value)) return false;
+  const id = boundedString(value.id, 128);
+  const factId = boundedString(value.factId, 128);
+  const kind = boundedString(value.kind, 64);
+  const filePath = boundedString(value.filePath, 512);
+  const excerpt = boundedString(value.excerpt, 512);
+  return Boolean(id && factId && kind && filePath && excerpt && positiveLine(value.line));
+}
+
+function positiveLine(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1;
 }
 
 export function normalizeSoftwareGraph(raw: unknown): SoftwareGraph | undefined {
@@ -97,6 +116,17 @@ export function normalizeSoftwareGraph(raw: unknown): SoftwareGraph | undefined 
         .filter((snapshot): snapshot is NonNullable<typeof snapshot> => snapshot != null)
     : undefined;
 
+  const evidence = Array.isArray(raw.evidence)
+    ? boundedArray(raw.evidence, 10_000, isBoundedEvidence).map((item) => ({
+        id: boundedString(item.id, 128) ?? "",
+        factId: boundedString(item.factId, 128) ?? "",
+        kind: boundedString(item.kind, 64) ?? "",
+        filePath: boundedString(item.filePath, 512) ?? "",
+        line: item.line,
+        excerpt: boundedString(item.excerpt, 512) ?? "",
+      }))
+    : [];
+
   return {
     version: 1,
     projectId,
@@ -104,7 +134,7 @@ export function normalizeSoftwareGraph(raw: unknown): SoftwareGraph | undefined 
     scopes: [],
     nodes,
     edges,
-    evidence: [],
+    evidence,
     groups: [],
     metrics: [],
     condensed: false,
