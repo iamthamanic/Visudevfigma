@@ -1,11 +1,26 @@
 /**
- * Vitest smoke for Diagnostics sub-tabs, matrix, and Problem-Inspektor selection.
+ * Vitest smoke for Diagnostics sub-tabs, paginated findings table, and Problem-Inspektor.
  */
 
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { DiagnosticsView } from "./DiagnosticsView";
-import type { BlueprintData } from "../types";
+import type { BlueprintData, BlueprintFinding } from "../types";
+
+function makeFinding(index: number): BlueprintFinding {
+  return {
+    id: `finding-${index}`,
+    scopeId: "route-1",
+    ruleId: `rule.${index}`,
+    severity: index % 2 === 0 ? "high" : "medium",
+    category: "security",
+    message: `Finding ${index}`,
+    expectedState: "required",
+    actualState: "missing",
+    confidence: 80,
+    evidenceFactIds: [`fact-${index}`],
+  };
+}
 
 const blueprint: BlueprintData = {
   version: 1,
@@ -63,18 +78,71 @@ const blueprint: BlueprintData = {
 };
 
 describe("DiagnosticsView", () => {
+  beforeEach(() => {
+    vi.stubGlobal("navigator", {
+      clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("renders Security sub-tab with matrix and findings by default", () => {
     render(<DiagnosticsView blueprint={blueprint} />);
     expect(screen.getByRole("tab", { name: "Security", selected: true })).toBeInTheDocument();
     expect(screen.getByText("Sicherheits-Matrix")).toBeInTheDocument();
     expect(screen.getByText("Auth fehlt auf Route")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Schwere" })).toBeInTheDocument();
   });
 
-  it("opens Problem-Inspektor when selecting a finding", () => {
+  it("opens Problem-Inspektor with artifacts and SQL evidence when selecting a finding", () => {
     render(<DiagnosticsView blueprint={blueprint} />);
-    fireEvent.click(screen.getByRole("button", { name: /Auth fehlt auf Route/i }));
+    fireEvent.click(screen.getByRole("button", { name: /auth\.missing/i }));
     expect(screen.getByText("Erwartet")).toBeInTheDocument();
     expect(screen.getByText(/getUsers/)).toBeInTheDocument();
+    expect(screen.getByText("Verknüpfte Artefakte")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "GET /users" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "src/routes/users.ts:10" })).toBeInTheDocument();
+  });
+
+  it("copies evidence from Problem-Inspektor actions", async () => {
+    render(<DiagnosticsView blueprint={blueprint} />);
+    fireEvent.click(screen.getByRole("button", { name: /auth\.missing/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Evidence kopieren" }));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      "export async function getUsers() {}",
+    );
+    expect(await screen.findByRole("button", { name: "Kopiert" })).toBeInTheDocument();
+  });
+
+  it("paginates findings table", () => {
+    const manyFindings = Array.from({ length: 11 }, (_, index) => makeFinding(index + 1));
+    const manyFacts = manyFindings.map((finding) => ({
+      id: finding.evidenceFactIds[0],
+      kind: "source",
+      filePath: `src/routes/file-${finding.id}.ts`,
+      line: 1,
+      snippet: `snippet ${finding.id}`,
+      metadata: {},
+    }));
+
+    render(
+      <DiagnosticsView
+        blueprint={{
+          ...blueprint,
+          findings: manyFindings,
+          facts: manyFacts,
+          securityMatrix: [{ ...blueprint.securityMatrix![0], findingCount: 11 }],
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Seite 1 von 2")).toBeInTheDocument();
+    expect(screen.queryByText("Finding 11")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Weiter" }));
+    expect(screen.getByText("Finding 11")).toBeInTheDocument();
+    expect(screen.getByText("Seite 2 von 2")).toBeInTheDocument();
   });
 
   it("switches to placeholder tab", () => {

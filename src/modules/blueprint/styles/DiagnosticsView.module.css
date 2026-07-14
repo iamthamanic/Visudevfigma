@@ -81,6 +81,143 @@
   line-height: 1.35;
 }
 
+.findingsTableWrap {
+  overflow-x: auto;
+}
+
+.findingsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.findingsTable th,
+.findingsTable td {
+  padding: 0.4rem 0.35rem;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+  text-align: left;
+}
+
+.findingsTable th {
+  color: var(--color-muted-foreground);
+  font-weight: 600;
+}
+
+.findingsRowButton {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.findingsRowActive {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+.findingsRule {
+  font-size: 0.75rem;
+}
+
+.findingsLocation {
+  font-size: 0.75rem;
+  word-break: break-all;
+  color: var(--color-muted-foreground);
+}
+
+.findingsPagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.findingsPageLabel {
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+
+.findingsPageActions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.artifactList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.artifactLabel {
+  display: block;
+  font-size: 0.6875rem;
+  color: var(--color-muted-foreground);
+  margin-bottom: 0.15rem;
+}
+
+.artifactLink {
+  font-size: 0.8125rem;
+  color: var(--color-primary);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.artifactLink:hover {
+  text-decoration: underline;
+}
+
+.artifactMeta {
+  font-size: 0.8125rem;
+  word-break: break-word;
+}
+
+.evidenceStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.evidenceSqlBlock,
+.evidenceCodeBlock {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono, monospace);
+  overflow-x: auto;
+}
+
+.evidenceSqlBlock {
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-muted));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, var(--color-border));
+  color: var(--color-foreground);
+}
+
+.evidenceCodeBlock {
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+}
+
+.inspectorActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
 .securityCanvas {
   display: flex;
   flex-direction: column;
