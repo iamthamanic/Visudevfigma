@@ -1,8 +1,8 @@
 /**
- * Tests for AtlasView empty state and search controls.
+ * Tests for AtlasView empty state, search controls, selection, and Inspektor tabs.
  */
 
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { AtlasView } from "./AtlasView";
 import type { BlueprintData } from "../types";
@@ -25,7 +25,7 @@ const graphBlueprint: BlueprintData = {
     ],
     edges: [{ id: "e1", kind: "references", sourceId: "m1", targetId: "m2", metadata: {} }],
     evidence: [],
-    groups: [],
+    groups: [{ id: "g1", kind: "module", label: "core", nodeIds: ["m1", "m2"] }],
     metrics: [],
     condensed: false,
     limits: { maxNodes: 2500, maxEdges: 5000 },
@@ -49,12 +49,36 @@ describe("AtlasView", () => {
     expect(screen.getByText("Keine Atlas-Daten")).toBeInTheDocument();
   });
 
-  it("renders search and overview stats", () => {
+  it("renders search, node cards, and overview stats", () => {
     render(<AtlasView blueprint={graphBlueprint} />);
-    expect(screen.getByText(/2 von 2 Knoten sichtbar/)).toBeInTheDocument();
+    const controls = screen.getByLabelText("Atlas-Steuerung");
+    expect(within(controls).getByText(/2 von 2 Knoten sichtbar/)).toBeInTheDocument();
+    expect(within(controls).getByText("auth")).toBeInTheDocument();
+    expect(within(controls).getByText("billing")).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText("Label durchsuchen…"), {
       target: { value: "bill" },
     });
-    expect(screen.getByText(/1 von 2 Knoten sichtbar/)).toBeInTheDocument();
+    expect(within(controls).getByText(/1 von 2 Knoten sichtbar/)).toBeInTheDocument();
+  });
+
+  it("shows Inspektor sub-tabs when a node is selected", () => {
+    render(<AtlasView blueprint={graphBlueprint} />);
+    fireEvent.click(screen.getByRole("button", { name: /auth/i }));
+    expect(screen.getByRole("tab", { name: "Übersicht" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Abhängigkeiten" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Deployments" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Abhängigkeiten" }));
+    expect(screen.getByText(/references → billing/)).toBeInTheDocument();
+  });
+
+  it("shows cluster chip and cluster overview in Inspektor", () => {
+    render(<AtlasView blueprint={graphBlueprint} />);
+    const clusterSection = screen.getByLabelText("Cluster");
+    fireEvent.click(within(clusterSection).getByText("core"));
+    expect(screen.getByRole("heading", { name: "core" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Details" }));
+    const inspector = screen.getByLabelText("Inspektor");
+    expect(within(inspector).getByText("auth")).toBeInTheDocument();
+    expect(within(inspector).getByText("billing")).toBeInTheDocument();
   });
 });

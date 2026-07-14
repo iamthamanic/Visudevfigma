@@ -1,0 +1,43 @@
+/**
+ * Tests for Atlas display helpers.
+ */
+
+import { describe, it, expect } from "vitest";
+import type { SoftwareGraph } from "../../types";
+import { listDeploymentHints, listOutgoingDependencies, listVisibleGroups } from "./atlas-display";
+
+const graph: SoftwareGraph = {
+  version: 1,
+  projectId: "p1",
+  analyzedAt: "2026-01-01T00:00:00.000Z",
+  scopes: [],
+  nodes: [
+    { id: "f1", kind: "file", label: "handler.ts", metadata: { runtime: "server" } },
+    { id: "r1", kind: "runtime", label: "runtime", metadata: { runtimes: ["server"] } },
+  ],
+  edges: [{ id: "e1", kind: "contains", sourceId: "r1", targetId: "f1", metadata: {} }],
+  evidence: [],
+  groups: [{ id: "g1", kind: "file", label: "server", nodeIds: ["f1"] }],
+  metrics: [],
+  condensed: false,
+  limits: { maxNodes: 2500, maxEdges: 5000 },
+};
+
+describe("atlas-display", () => {
+  it("lists visible groups intersecting node ids", () => {
+    const groups = listVisibleGroups(graph, new Set(["f1"]));
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.label).toBe("server");
+  });
+
+  it("collects deployment hints from metadata and runtime nodes", () => {
+    const node = graph.nodes[0]!;
+    const hints = listDeploymentHints(graph, node);
+    expect(hints).toContain("server");
+    expect(hints).toContain("runtime");
+  });
+
+  it("returns empty dependencies when none exist", () => {
+    expect(listOutgoingDependencies(graph, "f1")).toEqual([]);
+  });
+});
