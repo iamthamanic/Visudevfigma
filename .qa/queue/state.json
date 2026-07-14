@@ -1,26 +1,36 @@
 {
   "version": 2,
   "repo": "iamthamanic/visudev-app",
-  "activeIssue": 91,
-  "featureSlug": "architecture-figma-ui",
-  "phase": "pr",
-  "branch": "issue/91-architecture-figma-ui",
+  "activeIssue": null,
+  "featureSlug": "blueprint-v3-figma-gaps",
+  "phase": "done",
+  "branch": null,
   "prUrl": null,
   "milestoneFilter": null,
   "paused": false,
   "runMode": "loop",
-  "queue": [91, 92, 93, 94],
-  "completedIssues": [67, 68, 69, 70, 71, 72, 73, 74, 75, 85, 86, 87, 88, 89, 90],
-  "mergedIssues": [67, 68, 69, 70, 71, 72, 73, 74, 75, 85, 86, 87, 88, 89, 90],
+  "queue": [],
+  "completedIssues": [
+    67, 68, 69, 70, 71, 72, 73, 74, 75, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 105, 106, 107, 108, 109, 110, 111, 112, 113
+  ],
+  "mergedIssues": [105, 106, 107, 108, 109, 110, 111, 112, 113],
   "prUrls": {
-    "85": "https://github.com/iamthamanic/visudev-app/pull/95",
-    "86": "https://github.com/iamthamanic/visudev-app/pull/96",
-    "87": "https://github.com/iamthamanic/visudev-app/pull/97",
-    "88": "https://github.com/iamthamanic/visudev-app/pull/98",
-    "89": "https://github.com/iamthamanic/visudev-app/pull/99",
-    "90": "https://github.com/iamthamanic/visudev-app/pull/100"
+    "105": "https://github.com/iamthamanic/visudev-app/pull/114",
+    "106": "https://github.com/iamthamanic/visudev-app/pull/115",
+    "107": "https://github.com/iamthamanic/visudev-app/pull/116",
+    "108": "https://github.com/iamthamanic/visudev-app/pull/117",
+    "109": "https://github.com/iamthamanic/visudev-app/pull/118",
+    "110": "https://github.com/iamthamanic/visudev-app/pull/119",
+    "111": "https://github.com/iamthamanic/visudev-app/pull/120",
+    "112": "https://github.com/iamthamanic/visudev-app/pull/121",
+    "113": "https://github.com/iamthamanic/visudev-app/pull/122"
   },
-  "retries": { "implement": 0, "verifyTicket": 0, "verifyUi": 0, "review": 0 },
+  "retries": {
+    "implement": 0,
+    "verifyTicket": 0,
+    "verifyUi": 0,
+    "review": 0
+  },
   "maxRetries": {
     "implement": 3,
     "verifyTicket": 2,
@@ -30,7 +40,7 @@
   },
   "lastError": null,
   "lastErrorCount": 0,
-  "issuesProcessedInSession": 17,
-  "updatedAt": "2026-07-14T13:22:00.000Z",
-  "notes": "Implementing #91 Architecture Figma UI"
+  "issuesProcessedInSession": 6,
+  "updatedAt": "2026-07-14T17:40:00.000Z",
+  "notes": "#109-#113 merged; blueprint-v3-figma-gaps queue complete"
 }
