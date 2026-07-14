@@ -49,10 +49,11 @@ describe("AtlasView", () => {
     expect(screen.getByText("Keine Atlas-Daten")).toBeInTheDocument();
   });
 
-  it("renders 2D | 3D view mode toggle defaulting to 2D", () => {
+  it("renders stats bar, legend, and view mode toggle", () => {
     render(<AtlasView blueprint={graphBlueprint} />);
+    expect(screen.getByLabelText("Atlas-Statistik")).toBeInTheDocument();
+    expect(screen.getByLabelText("Atlas-Legende")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Atlas-Ansicht" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "2D" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("renders search, node cards, and overview stats", () => {

@@ -32,11 +32,13 @@ export interface AtlasViewState {
 
 export function useAtlasViewState(graph: BlueprintData["graph"]): AtlasViewState {
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<AtlasViewMode>("2d");
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
   const threeDisabled = prefersReducedMotion;
+  const [viewMode, setViewMode] = useState<AtlasViewMode>(() =>
+    prefersReducedMotion ? "2d" : "3d",
+  );
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
   const projection = useMemo(() => {
     if (!graph) {
@@ -82,10 +84,8 @@ export function useAtlasViewState(graph: BlueprintData["graph"]): AtlasViewState
   };
 
   useEffect(() => {
-    if (threeDisabled && viewMode === "3d") {
-      setViewMode("2d");
-    }
-  }, [threeDisabled, viewMode]);
+    setViewMode(threeDisabled ? "2d" : "3d");
+  }, [threeDisabled]);
 
   useEffect(() => {
     const visibleIds = new Set(projection.nodes.map((node) => node.id));
