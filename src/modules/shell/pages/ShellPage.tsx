@@ -2,6 +2,12 @@ import { useEffect, useState, useCallback, lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "../../../contexts/useAuth";
 import { useVisudev } from "../../../lib/visudev/store";
+import {
+  blueprintViewSearchParam,
+  getDefaultBlueprintView,
+  parseBlueprintViewParam,
+  type BlueprintShellViewId,
+} from "../../blueprint";
 import { RunnersTopBar } from "../components/RunnersTopBar";
 import { Sidebar, type NavItemRect } from "../components/Sidebar";
 import type { ShellScreen } from "../types";
@@ -60,8 +66,15 @@ function getScreenFromUrl(): ShellScreen {
   return pathnameToScreen();
 }
 
-function screenToPath(screen: ShellScreen): string {
-  return screen === "projects" ? "/" : `/${screen}`;
+function screenToPath(screen: ShellScreen, blueprintView: BlueprintShellViewId): string {
+  if (screen === "projects") return "/";
+  if (screen === "blueprint") return `/blueprint?${blueprintViewSearchParam(blueprintView)}`;
+  return `/${screen}`;
+}
+
+function readBlueprintViewFromLocation(): BlueprintShellViewId {
+  if (typeof window === "undefined") return getDefaultBlueprintView();
+  return parseBlueprintViewParam(new URLSearchParams(window.location.search).get("view"));
 }
 
 const ProjectsPage = lazy(() =>
@@ -79,6 +92,9 @@ const SettingsPage = lazy(() =>
 
 export function ShellPage() {
   const [activeScreen, setActiveScreen] = useState<ShellScreen>(getScreenFromUrl);
+  const [blueprintView, setBlueprintView] = useState<BlueprintShellViewId>(
+    readBlueprintViewFromLocation,
+  );
   const [navItemsFromSidebar, setNavItemsFromSidebar] = useState<NavItemRect[]>([]);
   const { activeProject, setPreviewAccessToken } = useVisudev();
   const { session } = useAuth();
@@ -97,7 +113,10 @@ export function ShellPage() {
   }, []);
 
   useEffect(() => {
-    const onPopState = () => setActiveScreen(getScreenFromUrl());
+    const onPopState = () => {
+      setActiveScreen(getScreenFromUrl());
+      setBlueprintView(readBlueprintViewFromLocation());
+    };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
@@ -110,25 +129,40 @@ export function ShellPage() {
 
   useEffect(() => {
     if (typeof window === "undefined" || window === window.top) return;
-    const route = screenToPath(activeScreen);
+    const route = screenToPath(activeScreen, blueprintView);
     const navItems = navItemsFromSidebar.map(({ path, label, rect }) => ({
       path,
       label,
       rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
     }));
     window.parent.postMessage({ type: "visudev-dom-report", route, navItems }, "*");
-  }, [activeScreen, navItemsFromSidebar]);
+  }, [activeScreen, blueprintView, navItemsFromSidebar]);
 
-  const handleNavigate = useCallback((screen: ShellScreen) => {
-    const path = screenToPath(screen);
+  const pushPath = useCallback((path: string) => {
     const inIframe = typeof window !== "undefined" && window !== window.top;
     if (inIframe) {
       window.parent.postMessage({ type: "visudev-navigate", path }, "*");
       return;
     }
-    setActiveScreen(screen);
     if (window.history?.pushState) window.history.pushState({}, "", path);
   }, []);
+
+  const handleNavigate = useCallback(
+    (screen: ShellScreen) => {
+      setActiveScreen(screen);
+      pushPath(screenToPath(screen, blueprintView));
+    },
+    [blueprintView, pushPath],
+  );
+
+  const handleBlueprintViewSelect = useCallback(
+    (view: BlueprintShellViewId) => {
+      setBlueprintView(view);
+      setActiveScreen("blueprint");
+      pushPath(screenToPath("blueprint", view));
+    },
+    [pushPath],
+  );
 
   const handleProjectSelect = () => {
     handleNavigate("appflow");
@@ -146,6 +180,8 @@ export function ShellPage() {
           activeScreen={activeScreen}
           onNavigate={handleNavigate}
           onNewProject={handleNewProject}
+          blueprintActiveView={blueprintView}
+          onBlueprintViewSelect={handleBlueprintViewSelect}
           onDomReport={
             typeof window !== "undefined" && window !== window.top
               ? setNavItemsFromSidebar
@@ -179,7 +215,7 @@ export function ShellPage() {
             )}
 
             {activeScreen === "blueprint" && activeProject && (
-              <BlueprintPage projectId={activeProject.id} />
+              <BlueprintPage projectId={activeProject.id} activeView={blueprintView} />
             )}
 
             {activeScreen === "data" && activeProject && <DataPage projectId={activeProject.id} />}

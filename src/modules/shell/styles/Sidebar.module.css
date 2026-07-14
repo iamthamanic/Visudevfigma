@@ -544,3 +544,43 @@
 .newProjectLabel {
   font-size: 1rem;
 }
+
+.subNav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin: 0.125rem 0 0.5rem 0.75rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid var(--color-sidebar-border);
+}
+
+.subNavButton {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-muted-foreground);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 0.875rem;
+  height: 36px;
+  padding: 0 0.75rem;
+  text-align: left;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+  width: 100%;
+}
+
+.subNavButton:hover {
+  background-color: var(--color-sidebar-accent);
+  color: var(--color-foreground);
+}
+
+.subNavButtonActive {
+  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  border-left: 2px solid var(--color-primary);
+  color: var(--color-primary);
+  padding-left: calc(0.75rem - 2px);
+}

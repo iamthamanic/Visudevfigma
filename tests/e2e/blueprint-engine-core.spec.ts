@@ -235,11 +235,7 @@ test.describe("Blueprint Engine Core UI", () => {
     await blueprintNav.click();
 
     await expect(page.getByRole("heading", { name: /^Blueprint$/i })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "Infrastructure" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    await page.getByRole("tab", { name: "Diagnostics" }).click();
+    await expect(page.getByRole("heading", { name: "Diagnosen" })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Security Matrix/i })).toBeVisible({
       timeout: 15000,
     });
@@ -284,7 +280,9 @@ test.describe("Blueprint Engine Core UI", () => {
     }
 
     await page.getByRole("button", { name: /Blueprint/i }).click();
-    await page.getByRole("tab", { name: "Diagnostics" }).click();
+    await expect(page.getByRole("heading", { name: "Diagnosen" })).toBeVisible({
+      timeout: 15000,
+    });
     await expect(page.getByText("Runtime Validation fehlt vor DB Write.")).toBeVisible({
       timeout: 15000,
     });
@@ -299,9 +297,7 @@ test.describe("Blueprint Engine Core UI", () => {
     });
   });
 
-  test("blueprint view shell switches between Infrastructure and Diagnostics tabs", async ({
-    page,
-  }) => {
+  test("blueprint sidebar switches between Infrastruktur and Diagnosen views", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
@@ -321,16 +317,13 @@ test.describe("Blueprint Engine Core UI", () => {
     }
 
     await page.getByRole("button", { name: /Blueprint/i }).click();
-    await expect(page.getByRole("tab", { name: "Infrastructure" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    await expect(page.getByRole("heading", { name: "Diagnosen" })).toBeVisible();
 
-    await page.getByRole("tab", { name: "Diagnostics" }).click();
-    await expect(page.getByRole("tab", { name: "Diagnostics" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    await page.getByRole("button", { name: "Infrastruktur", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Infrastruktur" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Diagnosen", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Diagnosen" })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Security Matrix/i })).toBeVisible();
   });
 
@@ -395,7 +388,7 @@ test.describe("Blueprint Engine Core UI", () => {
     }
 
     await page.getByRole("button", { name: /Blueprint/i }).click();
-    await page.getByRole("tab", { name: "Diagnostics" }).click();
+    await expect(page.getByRole("heading", { name: "Diagnosen" })).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/Keine API-Routes erkannt|Keine Blueprint-Daten/i)).toBeVisible({
       timeout: 20000,
     });
