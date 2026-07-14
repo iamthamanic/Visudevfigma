@@ -1,11 +1,12 @@
 /**
- * Blueprint view shell — Infrastructure, Architecture, Dependencies, and Diagnostics tabs.
+ * Blueprint view shell — Infrastructure, Architecture, Dependencies, Execution, and Diagnostics tabs.
  */
 
 import { useEffect, useRef, useState } from "react";
 import { ArchitectureView } from "./ArchitectureView";
 import { DependenciesView } from "./DependenciesView";
 import { DiagnosticsView } from "./DiagnosticsView";
+import { ExecutionView } from "./ExecutionView";
 import { InfrastructureView } from "./InfrastructureView";
 import {
   getDefaultBlueprintView,
@@ -18,6 +19,7 @@ const VIEWS = [
   { id: "infrastructure", label: "Infrastructure" },
   { id: "architecture", label: "Architecture" },
   { id: "dependencies", label: "Dependencies" },
+  { id: "execution", label: "Execution" },
   { id: "diagnostics", label: "Diagnostics" },
 ] as const;
 
@@ -86,6 +88,15 @@ export function BlueprintViewShell({ blueprint }: BlueprintViewShellProps) {
             className={styles.panelContent}
           >
             <DependenciesView blueprint={blueprint} />
+          </div>
+        ) : activeView === "execution" ? (
+          <div
+            role="tabpanel"
+            id="blueprint-panel-execution"
+            aria-labelledby="blueprint-tab-execution"
+            className={styles.panelContent}
+          >
+            <ExecutionView blueprint={blueprint} />
           </div>
         ) : (
           <div

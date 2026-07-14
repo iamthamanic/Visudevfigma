@@ -1,0 +1,124 @@
+/**
+ * Projects SoftwareGraph execution path groups into a left-to-right pipeline graph.
+ */
+
+import type {
+  GraphCanvasEdge,
+  GraphCanvasNode,
+  SoftwareGraph,
+  SoftwareGraphGroup,
+  SoftwareGraphNode,
+} from "../../types";
+
+export interface ExecutionProjectionOptions {
+  routeId: string;
+}
+
+export interface ExecutionProjection {
+  nodes: GraphCanvasNode[];
+  edges: GraphCanvasEdge[];
+  stepNodeIds: string[];
+  cycleNodeId: string | null;
+}
+
+function findExecutionGroups(graph: SoftwareGraph, routeId: string): SoftwareGraphGroup[] {
+  const groups = Array.isArray(graph.groups) ? graph.groups : [];
+  return groups
+    .filter((group) => group.id.startsWith(`execution:${routeId}:`))
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function findRouteNode(graph: SoftwareGraph, routeId: string): SoftwareGraphNode | undefined {
+  return graph.nodes.find(
+    (node) =>
+      node.kind === "route" &&
+      (node.metadata.routeId === routeId || node.id === routeId || node.id === `route:${routeId}`),
+  );
+}
+
+function toCanvasNode(node: SoftwareGraphNode, cycleNodeId: string | null): GraphCanvasNode {
+  const isCycle = cycleNodeId != null && node.id === cycleNodeId;
+  return {
+    id: node.id,
+    label: node.label,
+    kind: node.kind,
+    ...(isCycle ? { color: "var(--color-destructive)" } : {}),
+  };
+}
+
+export function listExecutionRoutes(graph: SoftwareGraph): { routeId: string; label: string }[] {
+  return graph.nodes
+    .filter((node) => node.kind === "route")
+    .map((node) => ({
+      routeId:
+        typeof node.metadata.routeId === "string" && node.metadata.routeId.length > 0
+          ? node.metadata.routeId
+          : node.id,
+      label: node.label,
+    }));
+}
+
+export function projectExecutionGraph(
+  graph: SoftwareGraph,
+  options: ExecutionProjectionOptions,
+): ExecutionProjection | null {
+  const routeNode = findRouteNode(graph, options.routeId);
+  if (!routeNode) return null;
+
+  const routeKey =
+    typeof routeNode.metadata.routeId === "string" && routeNode.metadata.routeId.length > 0
+      ? routeNode.metadata.routeId
+      : routeNode.id;
+
+  const executionGroups = findExecutionGroups(graph, routeKey);
+  const selectedGroup =
+    executionGroups[0] ??
+    ({
+      id: `execution:${routeKey}:0`,
+      kind: "route",
+      label: routeNode.label,
+      nodeIds: [routeNode.id],
+    } satisfies SoftwareGraphGroup);
+
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const cycleNodeId =
+    typeof routeNode.metadata.executionCycleNodeId === "string"
+      ? routeNode.metadata.executionCycleNodeId
+      : null;
+
+  const stepNodeIds = selectedGroup.nodeIds.filter((nodeId) => nodeById.has(nodeId));
+  const nodes = stepNodeIds
+    .map((nodeId) => nodeById.get(nodeId))
+    .filter((node): node is SoftwareGraphNode => node != null)
+    .map((node) => toCanvasNode(node, cycleNodeId));
+
+  const edges: GraphCanvasEdge[] = [];
+  for (let index = 1; index < stepNodeIds.length; index += 1) {
+    const source = stepNodeIds[index - 1];
+    const target = stepNodeIds[index];
+    edges.push({
+      id: `execution-step:${source}->${target}`,
+      source,
+      target,
+      kind: "executes",
+      label: "→",
+    });
+  }
+
+  return { nodes, edges, stepNodeIds, cycleNodeId };
+}
+
+export function findStepEvidence(graph: SoftwareGraph, nodeId: string | null) {
+  if (!nodeId) return [];
+  const node = graph.nodes.find((candidate) => candidate.id === nodeId);
+  if (!node) return [];
+
+  const filePath = node.filePath;
+  const evidence = Array.isArray(graph.evidence) ? graph.evidence : [];
+  return evidence.filter((item) => {
+    if (item.nodeId === nodeId) return true;
+    if (filePath == null || item.filePath !== filePath) return false;
+    if (node.line == null) return true;
+    return item.line === node.line;
+  });
+}

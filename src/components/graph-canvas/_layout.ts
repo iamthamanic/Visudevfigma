@@ -7,7 +7,7 @@ import type cytoscape from "cytoscape";
 
 export const MAX_DAGRE_NODES = 300;
 
-export type LayoutPreset = "default" | "hierarchical" | "force";
+export type LayoutPreset = "default" | "hierarchical" | "force" | "pipeline";
 
 export function buildLayoutOptions(
   nodeCount: number,
@@ -34,6 +34,17 @@ export function buildLayoutOptions(
       rankDir: "TB",
       nodeSep: 40,
       rankSep: 60,
+    } as cytoscape.LayoutOptions;
+  }
+  if (preset === "pipeline") {
+    return {
+      name: "dagre",
+      padding: 24,
+      animate: false,
+      fit,
+      rankDir: "LR",
+      nodeSep: 48,
+      rankSep: 72,
     } as cytoscape.LayoutOptions;
   }
   if (preset === "force") {

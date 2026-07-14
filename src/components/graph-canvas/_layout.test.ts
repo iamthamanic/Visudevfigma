@@ -17,6 +17,12 @@ describe("buildLayoutOptions", () => {
     expect(options.name).toBe("cose");
   });
 
+  it("uses pipeline dagre preset with left-to-right rank", () => {
+    const options = buildLayoutOptions(10, true, "pipeline");
+    expect(options.name).toBe("dagre");
+    expect((options as { rankDir?: string }).rankDir).toBe("LR");
+  });
+
   it("uses grid layout for large graphs", () => {
     expect(buildLayoutOptions(MAX_DAGRE_NODES + 1).name).toBe("grid");
   });

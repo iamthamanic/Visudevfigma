@@ -14,6 +14,7 @@ import type {
 } from "../types/api.types.js";
 import { addFactEvidence } from "./software-graph/_fact-evidence.js";
 import { addDependencyFactEdge } from "./software-graph/_dependency-edges.js";
+import { attachExecutionPathGroups } from "./software-graph/_execution-paths.js";
 import { ensureFileContext } from "./software-graph/_file-context.js";
 import { createId, stableUniqueId } from "./software-graph/_ids.js";
 import { addRouteNodes } from "./software-graph/_route-nodes.js";
@@ -102,7 +103,8 @@ export function buildSoftwareGraph(scan: RawBlueprintScan): SoftwareGraph {
   const nodeArray = [...state.nodes.values()];
   const nodeIds = new Set(state.nodes.keys());
   const edgeArray = dropDanglingEdges([...state.edges.values()], nodeIds);
-  const groups = buildRuntimeGroups(nodeArray);
+  const executionGroups = attachExecutionPathGroups(state);
+  const groups = [...buildRuntimeGroups(nodeArray), ...executionGroups];
 
   return {
     version: 1,
