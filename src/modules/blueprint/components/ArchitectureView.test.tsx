@@ -63,10 +63,11 @@ describe("ArchitectureView", () => {
     expect(screen.getByText("Keine Architektur-Daten")).toBeInTheDocument();
   });
 
-  it("renders grouping toggle and layer stack by default", () => {
+  it("renders grouping toggle and layer stack in canvas by default", () => {
     render(<ArchitectureView blueprint={graphBlueprint} />);
     expect(screen.getByRole("tab", { name: "Layers", selected: true })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /presentation/i })).toBeInTheDocument();
+    expect(screen.queryByText("Graph wird geladen...")).not.toBeInTheDocument();
   });
 
   it("switches to Domains grouping mode", () => {
@@ -76,10 +77,17 @@ describe("ArchitectureView", () => {
     expect(within(stack).getByRole("button", { name: /routes/i })).toBeInTheDocument();
   });
 
-  it("opens Inspektor when selecting a stack card", () => {
+  it("opens Inspektor with services table when selecting a stack card", () => {
     render(<ArchitectureView blueprint={graphBlueprint} />);
     fireEvent.click(screen.getByRole("button", { name: /presentation/i }));
     expect(screen.getByText("Verantwortlichkeiten")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Service" })).toBeInTheDocument();
+  });
+
+  it("shows GraphCanvas only in Modules grouping mode", () => {
+    render(<ArchitectureView blueprint={graphBlueprint} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Modules" }));
+    expect(screen.getByText("Graph wird geladen...")).toBeInTheDocument();
   });
 
   it("toggles domain collapse on click", () => {

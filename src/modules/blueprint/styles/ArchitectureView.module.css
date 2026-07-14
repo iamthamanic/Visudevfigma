@@ -49,6 +49,12 @@
   gap: 0.625rem;
 }
 
+.stackPanelCanvas {
+  height: 100%;
+  justify-content: center;
+  padding: var(--space-md);
+}
+
 .stackList {
   list-style: none;
   margin: 0;
@@ -56,6 +62,23 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.stackListCanvas {
+  gap: 0.75rem;
+  max-width: 36rem;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.stackCanvasWrap {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  height: 100%;
+  min-height: 320px;
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--color-card) 40%, var(--color-background));
 }
 
 .layerCard {
@@ -74,28 +97,106 @@
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease;
+  border-left: 3px solid var(--layer-accent, var(--color-border));
+}
+
+.layerCardCanvas {
+  padding: 0.875rem 1rem;
 }
 
 .layerCardSelected {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 45%, transparent);
+  border-color: var(--layer-accent, var(--color-primary));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--layer-accent, var(--color-primary)) 45%, transparent),
+    0 0 16px color-mix(in srgb, var(--layer-accent, var(--color-primary)) 35%, transparent);
+}
+
+.layerCardHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.layerCardTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.kindTag,
+.layerTypeTag,
+.domainTag {
+  padding: 0.125rem 0.45rem;
+  border-radius: 9999px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.kindTag {
+  background: color-mix(in srgb, var(--color-graph-arch-domain) 20%, transparent);
+  color: var(--color-graph-arch-domain);
+}
+
+.layerTypeTag {
+  background: color-mix(
+    in srgb,
+    var(--layer-accent, var(--color-graph-arch-layer)) 20%,
+    transparent
+  );
+  color: var(--layer-accent, var(--color-graph-arch-layer));
+}
+
+.domainTag {
+  background: var(--color-muted);
+  color: var(--color-muted-foreground);
 }
 
 .layerCard[data-kind="domain"] {
-  border-left: 3px solid var(--color-graph-arch-domain);
-}
-
-.layerCard[data-kind="layer"] {
-  border-left: 3px solid var(--color-graph-arch-layer);
+  --layer-accent: var(--color-graph-arch-domain);
 }
 
 .layerCard[data-kind="module"] {
-  border-left: 3px solid var(--color-graph-arch-module);
+  --layer-accent: var(--color-graph-arch-module);
+}
+
+.layerCard[data-layer-type="presentation"] {
+  --layer-accent: var(--color-arch-layer-presentation);
+}
+
+.layerCard[data-layer-type="ui"] {
+  --layer-accent: var(--color-arch-layer-ui);
+}
+
+.layerCard[data-layer-type="hooks"] {
+  --layer-accent: var(--color-arch-layer-hooks);
+}
+
+.layerCard[data-layer-type="application"] {
+  --layer-accent: var(--color-arch-layer-application);
+}
+
+.layerCard[data-layer-type="data"] {
+  --layer-accent: var(--color-arch-layer-data);
+}
+
+.layerCard[data-layer-type="shared"] {
+  --layer-accent: var(--color-arch-layer-shared);
+}
+
+.layerCard[data-layer-type="config"] {
+  --layer-accent: var(--color-arch-layer-config);
 }
 
 .layerCardTitle {
   font-size: 0.875rem;
   font-weight: 600;
+}
+
+.layerCardCanvas .layerCardTitle {
+  font-size: 1rem;
 }
 
 .servicePills {
@@ -110,6 +211,31 @@
   background: var(--color-muted);
   font-size: 0.6875rem;
   color: var(--color-muted-foreground);
+}
+
+.servicesTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.servicesTable th,
+.servicesTable td {
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.servicesTable th {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted-foreground);
+}
+
+.servicesTable tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .checklist {

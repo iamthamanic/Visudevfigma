@@ -79,6 +79,13 @@
   --color-graph-arch-domain: #6366f1;
   --color-graph-arch-layer: #8b5cf6;
   --color-graph-arch-module: #a78bfa;
+  --color-arch-layer-presentation: #3b82f6;
+  --color-arch-layer-ui: #06b6d4;
+  --color-arch-layer-hooks: #8b5cf6;
+  --color-arch-layer-application: #22c55e;
+  --color-arch-layer-data: #f59e0b;
+  --color-arch-layer-shared: #ec4899;
+  --color-arch-layer-config: #64748b;
   --color-graph-repository: #14b8a6;
   --color-graph-symbol: #ffffff;
   --color-graph-edge: var(--color-border-hover);
