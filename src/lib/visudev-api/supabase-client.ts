@@ -271,6 +271,17 @@ export class SupabaseVisuDevClient implements VisuDevApiClient {
     return null;
   }
 
+  async getGitSummary(projectId: string): Promise<import("./types").GitSummary> {
+    void projectId;
+    return {
+      initialized: false,
+      shallow: false,
+      commits: [],
+      branches: [],
+      workingTree: { modified: [], added: [], deleted: [] },
+    };
+  }
+
   async startPreview(
     projectId: string,
     input: StartPreviewInput = { projectId },

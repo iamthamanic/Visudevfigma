@@ -26,6 +26,7 @@ import type {
   VisuDevHealth,
   VisuDevMode,
   AnalysisRunStatus,
+  GitSummary,
 } from "./types";
 
 export interface VisuDevApiClient {
@@ -45,6 +46,7 @@ export interface VisuDevApiClient {
   getBlueprintLatest(projectId: string): Promise<LocalBlueprintLatest | null>;
   getAppflowLatest(projectId: string): Promise<LocalAppflowLatest | null>;
   getDataLatest(projectId: string): Promise<LocalDataLatest | null>;
+  getGitSummary(projectId: string): Promise<GitSummary>;
 
   startPreview(projectId: string, input?: StartPreviewInput): Promise<PreviewStartResult>;
   getPreviewStatus(projectId: string): Promise<PreviewStatusResult>;

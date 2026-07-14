@@ -23,4 +23,7 @@ export type {
   SoftwareGraphGroup,
   SoftwareGraphNode,
   SoftwareGraphNodeKind,
+  SoftwareGraphSnapshot,
+  SoftwareGraphDiffMetadata,
 } from "../../lib/visudev/software-graph-types";
+export type { GitSummary } from "../../lib/visudev-api/types";

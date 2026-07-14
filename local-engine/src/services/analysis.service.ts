@@ -16,6 +16,7 @@ import type { EngineConfig } from "../config.js";
 import { ALL_SCAN_SEQUENCE, aggregateParentStatus, isParentScanType } from "../lib/analysis-all.js";
 import type { ProjectService } from "./project.service.js";
 import { enrichBlueprint } from "./blueprint-enrichment.service.js";
+import { attachSnapshotsToGraph } from "./software-graph/_snapshots.js";
 import type {
   AnalysisChildRunStatus,
   AnalysisRunStatus,
@@ -585,6 +586,28 @@ export class AnalysisService {
       runId,
       createdAt: finishedAt,
     };
+
+    const previousLatest = await readJsonFile<LocalBlueprintLatest | null>(
+      this.blueprintCachePath(projectId),
+      null,
+    );
+    if (blueprintResult.blueprint.graph) {
+      const rawCommitSha = blueprintResult.blueprint.commitSha;
+      const commitSha = typeof rawCommitSha === "string" ? rawCommitSha : undefined;
+      blueprintResult.blueprint = {
+        ...blueprintResult.blueprint,
+        graph: attachSnapshotsToGraph(
+          blueprintResult.blueprint.graph,
+          {
+            ref: commitSha ?? finishedAt,
+            capturedAt: finishedAt,
+            commitSha,
+            label: commitSha ? commitSha.slice(0, 8) : finishedAt.slice(0, 10),
+          },
+          previousLatest?.blueprint?.graph?.snapshots,
+        ),
+      };
+    }
 
     const runnerAnalysisId =
       result.raw && typeof result.raw === "object" && "legacy" in result.raw

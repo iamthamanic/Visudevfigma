@@ -92,6 +92,28 @@ export interface SoftwareGraphMetric {
   value: number;
 }
 
+export interface SoftwareGraphSnapshot {
+  id: string;
+  label: string;
+  /** Commit SHA, branch name, or working-tree marker. */
+  ref: string;
+  capturedAt: string;
+  nodeIds: string[];
+  commitSha?: string;
+  /** kind:label signatures per node for change detection between snapshots. */
+  nodeSignatures?: Record<string, string>;
+}
+
+export interface SoftwareGraphDiffMetadata {
+  baseSnapshotId: string;
+  targetSnapshotId: string;
+  addedNodeIds: string[];
+  removedNodeIds: string[];
+  changedNodeIds: string[];
+  identical: boolean;
+  condensed: boolean;
+}
+
 export interface SoftwareGraph {
   version: 1;
   projectId: string;
@@ -104,4 +126,6 @@ export interface SoftwareGraph {
   metrics: SoftwareGraphMetric[];
   condensed: boolean;
   limits: { maxNodes: number; maxEdges: number };
+  /** Historical scan snapshots for evolution compare. */
+  snapshots?: SoftwareGraphSnapshot[];
 }

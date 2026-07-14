@@ -381,6 +381,37 @@ export type BrowseLocalPathResult =
   | { cancelled: true; path?: never; displayPath?: never }
   | { cancelled: false; path: string; displayPath: string };
 
+export interface GitSummaryCommit {
+  sha: string;
+  subject: string;
+  committedAt: string;
+}
+
+export interface GitSummaryBranch {
+  name: string;
+  headSha: string;
+}
+
+export interface GitWorkingTreeStatus {
+  modified: string[];
+  added: string[];
+  deleted: string[];
+}
+
+export interface GitSummary {
+  initialized: boolean;
+  shallow: boolean;
+  currentRef?: string;
+  currentSha?: string;
+  commits: GitSummaryCommit[];
+  branches: GitSummaryBranch[];
+  workingTree: GitWorkingTreeStatus;
+  /** Non-fatal git command failures surfaced to callers. */
+  warnings?: string[];
+  /** True when some git sections could not be read. */
+  partial?: boolean;
+}
+
 export type VisuDevHealth = {
   ok: boolean;
   service: string;

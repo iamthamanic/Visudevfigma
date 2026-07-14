@@ -15,6 +15,29 @@ import {
 } from "./normalize-graph-guards";
 import { sanitizeEdge, sanitizeNode } from "./normalize-graph-sanitize";
 
+function boundedNodeSignatures(value: unknown): Record<string, string> | undefined {
+  if (!isRecord(value)) return undefined;
+  const entries = Object.entries(value)
+    .filter(
+      (entry): entry is [string, string] =>
+        typeof entry[0] === "string" && typeof entry[1] === "string",
+    )
+    .slice(0, MAX_NODES)
+    .map(([key, signature]) => {
+      const boundedKey = boundedString(key, 128);
+      const boundedSignature = boundedString(signature, 256);
+      if (!boundedKey || !boundedSignature) return null;
+      return [boundedKey, boundedSignature] as const;
+    })
+    .filter((entry): entry is readonly [string, string] => entry != null);
+  if (entries.length === 0) return undefined;
+  return Object.fromEntries(entries);
+}
+
+function isBoundedNodeId(value: unknown): value is string {
+  return typeof value === "string" && boundedString(value, 128) === value;
+}
+
 export function normalizeSoftwareGraph(raw: unknown): SoftwareGraph | undefined {
   if (!isRecord(raw)) return undefined;
   if (raw.version != null && raw.version !== 1) return undefined;
@@ -51,6 +74,29 @@ export function normalizeSoftwareGraph(raw: unknown): SoftwareGraph | undefined 
   const analyzedAt = boundedString(raw.analyzedAt, 64);
   if (!projectId || !analyzedAt || !isIsoTimestamp(analyzedAt)) return undefined;
 
+  const snapshots = Array.isArray(raw.snapshots)
+    ? raw.snapshots
+        .filter((item) => isRecord(item))
+        .slice(0, 20)
+        .map((item) => {
+          const id = boundedString(item.id, 128);
+          if (!id) return null;
+          const capturedAtRaw = boundedString(item.capturedAt, 64);
+          const capturedAt =
+            capturedAtRaw && isIsoTimestamp(capturedAtRaw) ? capturedAtRaw : analyzedAt;
+          return {
+            id,
+            label: boundedString(item.label) ?? id,
+            ref: boundedString(item.ref) ?? id,
+            capturedAt,
+            nodeIds: boundedArray(item.nodeIds, MAX_NODES, isBoundedNodeId),
+            commitSha: boundedString(item.commitSha, 64),
+            nodeSignatures: boundedNodeSignatures(item.nodeSignatures),
+          };
+        })
+        .filter((snapshot): snapshot is NonNullable<typeof snapshot> => snapshot != null)
+    : undefined;
+
   return {
     version: 1,
     projectId,
@@ -66,5 +112,6 @@ export function normalizeSoftwareGraph(raw: unknown): SoftwareGraph | undefined 
       maxNodes: MAX_NODES,
       maxEdges: MAX_EDGES,
     },
+    snapshots,
   };
 }

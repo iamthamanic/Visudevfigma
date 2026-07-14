@@ -1,11 +1,12 @@
 /**
- * Blueprint view shell — Infrastructure, Architecture, Dependencies, Execution, and Diagnostics tabs.
+ * Blueprint view shell — Infrastructure, Architecture, Dependencies, Execution, Evolution, and Diagnostics tabs.
  */
 
 import { useEffect, useRef, useState } from "react";
 import { ArchitectureView } from "./ArchitectureView";
 import { DependenciesView } from "./DependenciesView";
 import { DiagnosticsView } from "./DiagnosticsView";
+import { EvolutionView } from "./EvolutionView";
 import { ExecutionView } from "./ExecutionView";
 import { InfrastructureView } from "./InfrastructureView";
 import {
@@ -20,14 +21,16 @@ const VIEWS = [
   { id: "architecture", label: "Architecture" },
   { id: "dependencies", label: "Dependencies" },
   { id: "execution", label: "Execution" },
+  { id: "evolution", label: "Evolution" },
   { id: "diagnostics", label: "Diagnostics" },
 ] as const;
 
 interface BlueprintViewShellProps {
   blueprint: BlueprintData;
+  projectId?: string;
 }
 
-export function BlueprintViewShell({ blueprint }: BlueprintViewShellProps) {
+export function BlueprintViewShell({ blueprint, projectId }: BlueprintViewShellProps) {
   const userSelectedViewRef = useRef(false);
   const [activeView, setActiveView] = useState<BlueprintShellViewId>(getDefaultBlueprintView);
 
@@ -97,6 +100,15 @@ export function BlueprintViewShell({ blueprint }: BlueprintViewShellProps) {
             className={styles.panelContent}
           >
             <ExecutionView blueprint={blueprint} />
+          </div>
+        ) : activeView === "evolution" ? (
+          <div
+            role="tabpanel"
+            id="blueprint-panel-evolution"
+            aria-labelledby="blueprint-tab-evolution"
+            className={styles.panelContent}
+          >
+            <EvolutionView blueprint={blueprint} projectId={projectId} />
           </div>
         ) : (
           <div
