@@ -179,7 +179,12 @@ export function RunnersTopBar() {
   };
 
   return (
-    <div className={styles.root} role="region" aria-label="Runner-Status">
+    <div
+      className={styles.root}
+      role="region"
+      aria-label="Runner-Status"
+      data-testid="runners-top-bar"
+    >
       <div className={styles.runners}>
         {/* App Flow Runner – weitere Runner als weiteres .pill hier ergänzen */}
         <div
