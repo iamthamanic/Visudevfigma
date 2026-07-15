@@ -1,5 +1,6 @@
 /**
  * Tabbed detail panel for selected execution step (Figma Ausführung detail tabs).
+ * Übersicht shows Payload REQUEST/RESPONSE when present (Wave 4 default capture path).
  */
 
 import { useState } from "react";
@@ -8,6 +9,7 @@ import { useCopyFeedback } from "../../hooks/useCopyFeedback.js";
 import styles from "../../styles/ExecutionView.module.css";
 import { ExecutionDetailEvidenceBlock } from "./ExecutionDetailEvidenceBlock.js";
 import {
+  filterExecutionEvidenceByTab,
   resolveExecutionTabContent,
   type ExecutionDetailTabId,
 } from "./executionDetailEvidence.js";
@@ -54,6 +56,7 @@ export function ExecutionDetailTabs({
   }
 
   const { tabEvidence, resolvedTabText } = resolveExecutionTabContent(activeTab, selectedEvidence);
+  const overviewPayload = filterExecutionEvidenceByTab("payload", selectedEvidence);
 
   return (
     <div className={styles.detailPanel}>
@@ -74,24 +77,36 @@ export function ExecutionDetailTabs({
 
       <div className={styles.tabPanel} role="tabpanel">
         {activeTab === "overview" ? (
-          <dl className={styles.overviewList}>
-            <div className={styles.overviewRow}>
-              <dt>Schritt</dt>
-              <dd>{stepLabel}</dd>
-            </div>
-            <div className={styles.overviewRow}>
-              <dt>Typ</dt>
-              <dd>{stepKind ? (STEP_KIND_LABELS[stepKind] ?? stepKind) : "—"}</dd>
-            </div>
-            <div className={styles.overviewRow}>
-              <dt>Status</dt>
-              <dd>Erfolgreich</dd>
-            </div>
-            <div className={styles.overviewRow}>
-              <dt>Evidence</dt>
-              <dd>{Math.max(selectedEvidence.length, resolvedTabText ? 1 : 0)}</dd>
-            </div>
-          </dl>
+          <>
+            <dl className={styles.overviewList}>
+              <div className={styles.overviewRow}>
+                <dt>Schritt</dt>
+                <dd>{stepLabel}</dd>
+              </div>
+              <div className={styles.overviewRow}>
+                <dt>Typ</dt>
+                <dd>{stepKind ? (STEP_KIND_LABELS[stepKind] ?? stepKind) : "—"}</dd>
+              </div>
+              <div className={styles.overviewRow}>
+                <dt>Status</dt>
+                <dd>Erfolgreich</dd>
+              </div>
+              <div className={styles.overviewRow}>
+                <dt>Evidence</dt>
+                <dd>{selectedEvidence.length}</dd>
+              </div>
+            </dl>
+            {overviewPayload.length > 0 ? (
+              <ExecutionDetailEvidenceBlock
+                tab="payload"
+                tabEvidence={overviewPayload}
+                copyStatus={copyStatus}
+                onCopy={() =>
+                  void copyText(overviewPayload.map((entry) => entry.excerpt).join("\n\n"))
+                }
+              />
+            ) : null}
+          </>
         ) : null}
 
         {activeTab !== "overview" && !resolvedTabText ? (
