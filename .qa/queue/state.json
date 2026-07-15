@@ -1,29 +1,29 @@
 {
   "version": 2,
   "repo": "iamthamanic/visudev-app",
-  "activeIssue": 125,
-  "featureSlug": "blueprint-wave-2-viz-parity",
-  "phase": "push",
-  "branch": "issue-125-wave2-dependencies",
+  "activeIssue": 156,
+  "featureSlug": "blueprint-wave-4-viz-parity",
+  "phase": "implement",
+  "branch": "issue-156-wave4-viz-parity",
   "prUrl": null,
-  "milestoneFilter": "blueprint-wave-2-viz-parity",
+  "milestoneFilter": "blueprint-wave-4-viz-parity",
   "paused": false,
   "runMode": "loop",
-  "queue": [123, 124, 125, 126, 127, 128, 129, 130],
+  "queue": [156, 157, 158, 159, 160],
   "completedIssues": [
     67, 68, 69, 70, 71, 72, 73, 74, 75, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 105, 106, 107, 108,
-    109, 110, 111, 112, 113, 123, 124
+    109, 110, 111, 112, 113, 123, 124, 125, 126, 127, 128, 129, 130, 149, 150, 151, 152, 153, 154
   ],
-  "mergedIssues": [105, 106, 107, 108, 109, 110, 111, 112, 113, 123, 124],
-  "prUrls": {
-    "123": "https://github.com/iamthamanic/visudev-app/pull/131",
-    "124": "https://github.com/iamthamanic/visudev-app/pull/132"
-  },
+  "mergedIssues": [
+    105, 106, 107, 108, 109, 110, 111, 112, 113, 123, 124, 125, 126, 127, 128, 129, 130, 149, 150,
+    151, 152, 153, 154
+  ],
+  "prUrls": {},
   "retries": {
     "implement": 0,
     "verifyTicket": 0,
     "verifyUi": 0,
-    "review": 3
+    "review": 0
   },
   "maxRetries": {
     "implement": 3,
@@ -32,9 +32,9 @@
     "review": 2,
     "sameRootCause": 2
   },
-  "lastError": "AI review push gate: score 70% (need 95%) on issue-125; branch not pushed",
-  "lastErrorCount": 1,
-  "issuesProcessedInSession": 2,
-  "updatedAt": "2026-07-14T19:45:00.000Z",
-  "notes": "Wave 2: #124 merged PR132; #125 implemented locally, blocked on pre-push AI review"
+  "lastError": null,
+  "lastErrorCount": 0,
+  "issuesProcessedInSession": 0,
+  "updatedAt": "2026-07-15T18:40:00.000Z",
+  "notes": "Wave 4: #156–#160 Zielbild parity residual gaps (~77% → 85–90%+)"
 }

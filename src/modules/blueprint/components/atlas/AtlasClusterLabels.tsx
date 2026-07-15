@@ -3,6 +3,7 @@
  */
 
 import type { SoftwareGraphGroup } from "../../types";
+import { resolveAtlasClusterCategory } from "./atlas-cluster-theme.js";
 import styles from "../../styles/AtlasView.module.css";
 
 export interface AtlasClusterLabelsProps {
@@ -25,6 +26,7 @@ export function AtlasClusterLabels({
     <div className={styles.clusterLabels} aria-label="Cluster-Beschriftungen">
       {preview.map((group) => {
         const isSelected = selectedGroupId === group.id;
+        const category = resolveAtlasClusterCategory(group.label, group.kind);
 
         return (
           <button
@@ -32,6 +34,7 @@ export function AtlasClusterLabels({
             type="button"
             className={`${styles.clusterLabel} ${isSelected ? styles.clusterLabelSelected : ""}`}
             data-kind={group.kind}
+            data-cluster-color={category}
             data-testid="atlas-cluster"
             data-selected={isSelected ? "true" : "false"}
             aria-pressed={isSelected}
@@ -43,6 +46,13 @@ export function AtlasClusterLabels({
             <span className={styles.clusterLabelMeta}>
               {group.nodeIds.length} Module · {Math.min(100, group.nodeIds.length * 12)}% Abdeckung
             </span>
+            {isSelected ? (
+              <span
+                className={styles.glowMarker}
+                data-testid="atlas-cluster-glow"
+                aria-hidden="true"
+              />
+            ) : null}
           </button>
         );
       })}

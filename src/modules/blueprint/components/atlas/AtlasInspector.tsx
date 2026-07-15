@@ -4,6 +4,7 @@
 
 import type { SoftwareGraph, SoftwareGraphGroup, SoftwareGraphNode } from "../../types";
 import { InspectorPanel } from "../ui/InspectorPanel.js";
+import { atlasClusterProfile } from "./atlas-cluster-profiles.js";
 import { atlasKindLabel } from "./atlas-display.js";
 import { AtlasInspectorTabs } from "./AtlasInspectorTabs.js";
 
@@ -24,7 +25,8 @@ export function AtlasInspector({ graph, node, cluster }: AtlasInspectorProps): J
   }
 
   const title = cluster?.label ?? node?.label ?? "—";
-  const subtitle = atlasKindLabel(cluster?.kind ?? node?.kind ?? "—");
+  const profile = atlasClusterProfile(title);
+  const subtitle = cluster ? profile.stack : atlasKindLabel(node?.kind ?? "—");
 
   return (
     <InspectorPanel title={title} subtitle={subtitle} testId="atlas-inspector">
