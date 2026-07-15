@@ -94,16 +94,63 @@
 
 .snapshotThumbnail {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   width: 100%;
-  min-height: 3rem;
+  min-height: 3.5rem;
+  padding: 0.35rem;
   border-radius: var(--radius-sm);
-  background: var(--color-muted);
-  color: var(--color-muted-foreground);
-  font-size: 0.6875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  background: color-mix(in srgb, var(--color-card) 70%, var(--color-background));
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.snapshotThumbGrid {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.2rem;
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+.snapshotThumbBlock {
+  flex: 1 1 0;
+  min-width: 0.35rem;
+  border-radius: 0.1rem 0.1rem 0 0;
+  background: var(--color-graph-service);
+  opacity: 0.85;
+}
+
+.snapshotThumbBlock[data-level="1"] {
+  height: 35%;
+}
+
+.snapshotThumbBlock[data-level="2"] {
+  height: 55%;
+}
+
+.snapshotThumbBlock[data-level="3"] {
+  height: 75%;
+}
+
+.snapshotThumbBlock[data-level="4"] {
+  height: 95%;
+}
+
+.snapshotThumbBlock[data-tone="0"] {
+  background: var(--color-graph-module);
+}
+
+.snapshotThumbBlock[data-tone="1"] {
+  background: var(--color-graph-service);
+}
+
+.snapshotThumbBlock[data-tone="2"] {
+  background: var(--color-graph-runtime);
+}
+
+.snapshotThumbBlock[data-tone="3"] {
+  background: var(--color-graph-database);
 }
 
 .commitTimelineSection {
@@ -153,6 +200,7 @@
   border-color: var(--color-graph-arch-layer);
   background: var(--color-muted);
   color: var(--color-foreground);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color-graph-arch-layer) 40%, transparent);
 }
 
 .commitTimelineDot {
@@ -164,6 +212,15 @@
 
 .commitTimelineSha {
   font-variant-numeric: tabular-nums;
+}
+
+.commitTimelineSubject {
+  max-width: 7.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.625rem;
+  color: var(--color-foreground);
 }
 
 .changesGridSection {
@@ -195,6 +252,23 @@
   font-size: 1.25rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+.changesItemList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.changesItem {
+  font-size: 0.6875rem;
+  color: var(--color-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .metricsSection {

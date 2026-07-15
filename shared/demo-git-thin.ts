@@ -5,7 +5,7 @@
 import { buildDemoGitSummary } from "./demo-git-summary.js";
 import type { GitSummary } from "./visudev-api.types.js";
 
-const MIN_COMMITS = 3;
+const MIN_COMMITS = 5;
 
 export function isThinGitSummary(summary: GitSummary): boolean {
   return !summary.initialized || summary.commits.length < MIN_COMMITS;
