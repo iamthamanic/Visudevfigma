@@ -174,7 +174,7 @@ export function ShellPage() {
 
   return (
     <div className={styles.root}>
-      <RunnersTopBar />
+      {activeScreen !== "blueprint" ? <RunnersTopBar /> : null}
       <div className={styles.body}>
         <Sidebar
           activeScreen={activeScreen}
