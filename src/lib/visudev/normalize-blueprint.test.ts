@@ -160,6 +160,8 @@ describe("normalizeBlueprintData", () => {
     });
 
     expect(normalized.graph?.nodes.some((node) => node.id === "route:leave")).toBe(false);
-    expect(normalized.routes).toEqual([]);
+    // Richer legacy routes are kept when graph derivation yields fewer routes (Wave 4).
+    expect(normalized.routes?.length).toBe(1);
+    expect(normalized.routes?.[0]?.id).toBe("legacy");
   });
 });

@@ -136,8 +136,15 @@ export function buildWave3DiagnosticsMock(projectId: string) {
       kind: "db-query",
       filePath: "db/policy.sql",
       line: 4,
-      snippet:
-        "-- Evidence SQL\nSELECT tablename, rowsecurity FROM pg_tables WHERE tablename = 'employees';\n-- rowsecurity = false",
+      snippet: `-- Aktueller Status
+SELECT relname, relrowsecurity
+FROM pg_class
+WHERE relname = 'employees';
+
+-- Ergebnis
+relname   | relrowsecurity
+----------+---------------
+employees | f`,
       metadata: { table: "employees" },
     },
     ...findings.slice(1).map((finding) => ({
@@ -145,10 +152,12 @@ export function buildWave3DiagnosticsMock(projectId: string) {
       kind: "code-snippet",
       filePath: `src/routes/${finding.scopeId.replace(/[/ ]/g, "-")}.ts`,
       line: 12,
-      snippet: `-- context for ${finding.id}`,
+      snippet: `-- context for ${finding.id}\nSELECT 1;`,
       metadata: {},
     })),
   ];
+
+  const graph = buildHrToolDemoGraph(projectId);
 
   return {
     version: 1,
@@ -160,6 +169,7 @@ export function buildWave3DiagnosticsMock(projectId: string) {
     findings,
     facts,
     filesAnalyzed: 1872,
+    graph,
   };
 }
 

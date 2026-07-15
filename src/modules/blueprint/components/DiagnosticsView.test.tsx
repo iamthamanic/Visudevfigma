@@ -136,12 +136,12 @@ describe("DiagnosticsView", () => {
       />,
     );
 
-    expect(screen.getByText("Seite 1 von 3")).toBeInTheDocument();
+    expect(screen.getByText("1-5 von 11 Findings")).toBeInTheDocument();
     expect(screen.queryByText("Finding 11")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Weiter" }));
     fireEvent.click(screen.getByRole("button", { name: "Weiter" }));
     expect(screen.getByText("Finding 11")).toBeInTheDocument();
-    expect(screen.getByText("Seite 3 von 3")).toBeInTheDocument();
+    expect(screen.getByText("11-11 von 11 Findings")).toBeInTheDocument();
   });
 
   it("marks finding as resolved from Problem-Inspektor", async () => {

@@ -46,8 +46,17 @@ export function normalizeBlueprintData(
   const legacyFindings = sanitizeFindings(raw.findings);
   const legacyFacts = sanitizeFacts(raw.facts);
 
-  const pickFromGraph = <T>(derived: T[] | undefined, legacy: T[]): T[] =>
-    graph ? (derived ?? []) : legacy;
+  // Prefer a coherent diagnostics package: either richer legacy demo data or
+  // graph-derived diagnostics — never mix arrays independently (scope alignment).
+  const graphRoutes = graphDiagnostics?.routes ?? [];
+  const graphMatrix = graphDiagnostics?.securityMatrix ?? [];
+  const graphFindings = graphDiagnostics?.findings ?? [];
+  const graphFacts = graphDiagnostics?.facts ?? [];
+  const legacyDiagnosticsScore =
+    legacyRoutes.length + legacySecurityMatrix.length + legacyFindings.length + legacyFacts.length;
+  const graphDiagnosticsScore =
+    graphRoutes.length + graphMatrix.length + graphFindings.length + graphFacts.length;
+  const useLegacyDiagnostics = !graph || legacyDiagnosticsScore > graphDiagnosticsScore;
 
   return {
     version: raw.version === 1 ? 1 : 1,
@@ -55,10 +64,10 @@ export function normalizeBlueprintData(
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : undefined,
     commitSha: typeof raw.commitSha === "string" ? raw.commitSha : undefined,
     analyzedAt: typeof raw.analyzedAt === "string" ? raw.analyzedAt : undefined,
-    routes: pickFromGraph(graphDiagnostics?.routes, legacyRoutes),
-    securityMatrix: pickFromGraph(graphDiagnostics?.securityMatrix, legacySecurityMatrix),
-    findings: pickFromGraph(graphDiagnostics?.findings, legacyFindings),
-    facts: pickFromGraph(graphDiagnostics?.facts, legacyFacts),
+    routes: useLegacyDiagnostics ? legacyRoutes : graphRoutes,
+    securityMatrix: useLegacyDiagnostics ? legacySecurityMatrix : graphMatrix,
+    findings: useLegacyDiagnostics ? legacyFindings : graphFindings,
+    facts: useLegacyDiagnostics ? legacyFacts : graphFacts,
     frameworkHints: sanitizeStringList(raw.frameworkHints),
     filesAnalyzed:
       typeof raw.filesAnalyzed === "number" && Number.isFinite(raw.filesAnalyzed)
