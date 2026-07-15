@@ -34,7 +34,6 @@ function resolveStatus(
   hasTiming: boolean,
 ): StatusBadgeVariant {
   if (isCycle) return "unknown";
-  // Observed timings count as confirmed for demo/live capture paths (Wave 4).
   return hasEvidence || hasTiming ? "confirmed" : "missing";
 }
 
@@ -62,7 +61,8 @@ export function ExecutionStepPipeline({
         const isCycle = cycleNodeId === nodeId;
         const hasEvidence = stepHasEvidence.get(nodeId) ?? false;
         const durationMs = durationByNodeId.get(nodeId);
-        const hasTiming = typeof durationMs === "number" && durationMs > 0;
+        const hasTiming =
+          typeof durationMs === "number" && Number.isFinite(durationMs) && durationMs >= 0;
 
         return (
           <div key={nodeId} className={styles.pipelineItem}>

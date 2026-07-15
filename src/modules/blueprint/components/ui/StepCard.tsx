@@ -52,7 +52,11 @@ export function StepCard({
         {subtitle ? <span className={styles.subtitle}>{subtitle}</span> : null}
       </span>
       <span className={styles.meta}>
-        {durationMs != null ? <span className={styles.duration}>{durationMs}ms</span> : null}
+        {typeof durationMs === "number" && Number.isFinite(durationMs) && durationMs >= 0 ? (
+          <span className={styles.duration} data-testid="execution-step-duration">
+            {durationMs}ms
+          </span>
+        ) : null}
         <StatusBadge variant={status} label={statusLabel} />
       </span>
     </button>
