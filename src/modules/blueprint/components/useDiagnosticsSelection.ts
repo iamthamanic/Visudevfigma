@@ -5,7 +5,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildGraphSnapshotKey } from "../services/graph-snapshot-key.js";
 import { useDiagnosticsDefaultFindingSelection } from "../hooks/useDiagnosticsDefaultFindingSelection.js";
-import { findingsForRoute } from "../services/blueprint-helpers";
 import type { BlueprintData, BlueprintFinding, RouteBlueprint } from "../types";
 
 export function useDiagnosticsSelection(blueprint: BlueprintData) {
@@ -23,10 +22,9 @@ export function useDiagnosticsSelection(blueprint: BlueprintData) {
     [routes, selectedRouteId],
   );
 
-  const routeFindings: BlueprintFinding[] = useMemo(
-    () => (selectedRouteId ? findingsForRoute(allFindings, selectedRouteId) : allFindings),
-    [allFindings, selectedRouteId],
-  );
+  // Zielbild shows the full findings list (paginated ~24). Route selection still
+  // drives matrix highlight / route canvas; do not collapse findings to one route.
+  const routeFindings: BlueprintFinding[] = useMemo(() => allFindings, [allFindings]);
 
   useEffect(() => {
     if (routes.length === 0) {

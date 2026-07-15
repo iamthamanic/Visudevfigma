@@ -134,9 +134,12 @@ export function DiagnosticsFindingsTable({
             className={styles.findingsPagination}
             aria-label="Findings-Seiten"
             data-testid="findings-pagination"
+            data-total={findings.length}
           >
             <span className={styles.findingsPageLabel}>
-              Seite {page + 1} von {pageCount}
+              {findings.length === 0
+                ? "0 von 0 Findings"
+                : `${page * PAGE_SIZE + 1}-${Math.min(findings.length, (page + 1) * PAGE_SIZE)} von ${findings.length} Findings`}
             </span>
             <div className={styles.findingsPageActions}>
               <button
