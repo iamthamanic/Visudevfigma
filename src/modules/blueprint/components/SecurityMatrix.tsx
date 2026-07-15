@@ -39,6 +39,7 @@ export function SecurityMatrix({ rows, selectedRouteId, onSelectRoute }: Securit
             <tr
               key={row.routeId}
               className={row.routeId === selectedRouteId ? styles.selectedRow : undefined}
+              data-testid="security-matrix-row"
             >
               <td>
                 <button

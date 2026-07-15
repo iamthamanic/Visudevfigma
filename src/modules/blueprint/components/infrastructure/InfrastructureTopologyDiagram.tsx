@@ -46,6 +46,7 @@ function TopologyNodeButton({
       type="button"
       className={`${styles.topologyNode} ${isSelected ? styles.topologyNodeSelected : ""}`}
       data-testid="infra-topology-node"
+      data-selected={isSelected ? "true" : "false"}
       data-kind={node.kind}
       data-tier={node.tier}
       aria-pressed={isSelected}

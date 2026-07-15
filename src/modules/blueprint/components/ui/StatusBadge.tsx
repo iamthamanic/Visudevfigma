@@ -16,11 +16,12 @@ export type StatusBadgeVariant =
 interface StatusBadgeProps {
   variant: StatusBadgeVariant;
   label: string;
+  testId?: string;
 }
 
-export function StatusBadge({ variant, label }: StatusBadgeProps): JSX.Element {
+export function StatusBadge({ variant, label, testId }: StatusBadgeProps): JSX.Element {
   return (
-    <span className={styles.root} data-variant={variant}>
+    <span className={styles.root} data-variant={variant} data-testid={testId}>
       {label}
     </span>
   );

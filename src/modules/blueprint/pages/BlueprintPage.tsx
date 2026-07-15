@@ -95,6 +95,16 @@ export function BlueprintPage({ projectId, activeView }: BlueprintPageProps) {
     (Array.isArray(blueprint?.findings) && blueprint.findings.length > 0) ||
     (Array.isArray(blueprint?.facts) && blueprint.facts.length > 0);
   const hasData = blueprint != null && (scanCompleted || hasContent);
+  const effectiveScanStatus =
+    scanCompleted || (blueprint != null && hasContent && !isScanning && !hasError)
+      ? "completed"
+      : scanStatuses.blueprint.status;
+
+  const lastScannedLabel = useMemo(() => {
+    const analyzedAt = blueprint?.analyzedAt ?? blueprint?.graph?.analyzedAt;
+    if (typeof analyzedAt !== "string") return null;
+    return formatRelativeFreshness(analyzedAt);
+  }, [blueprint?.analyzedAt, blueprint?.graph?.analyzedAt]);
 
   const handleExportJson = useCallback(() => {
     const data = blueprint ?? {};
@@ -127,7 +137,8 @@ export function BlueprintPage({ projectId, activeView }: BlueprintPageProps) {
       <BlueprintShellHeader
         projectName={activeProject?.name}
         branchLabel={branchLabel}
-        scanStatus={scanStatuses.blueprint.status}
+        scanStatus={effectiveScanStatus}
+        lastScannedLabel={lastScannedLabel}
         isRescanning={isRescan}
         notificationCount={notificationCount}
         onRescan={handleRescan}

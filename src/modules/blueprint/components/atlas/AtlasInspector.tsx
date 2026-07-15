@@ -27,7 +27,7 @@ export function AtlasInspector({ graph, node, cluster }: AtlasInspectorProps): J
   const subtitle = atlasKindLabel(cluster?.kind ?? node?.kind ?? "—");
 
   return (
-    <InspectorPanel title={title} subtitle={subtitle}>
+    <InspectorPanel title={title} subtitle={subtitle} testId="atlas-inspector">
       <AtlasInspectorTabs graph={graph} node={node} cluster={cluster} />
     </InspectorPanel>
   );

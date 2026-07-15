@@ -4,6 +4,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { BlueprintData } from "../types";
+import { useInfrastructureDefaultNodeSelection } from "../hooks/useInfrastructureDefaultNodeSelection.js";
+import { buildGraphSnapshotKey } from "../services/graph-snapshot-key.js";
 import { BlueprintViewLayout } from "./ui/BlueprintViewLayout.js";
 import { InfrastructureConnectionLegend } from "./infrastructure/InfrastructureConnectionLegend.js";
 import { InfrastructureInspector } from "./infrastructure/InfrastructureInspector.js";
@@ -27,6 +29,7 @@ interface InfrastructureViewProps {
 export function InfrastructureView({ blueprint }: InfrastructureViewProps) {
   const graph = blueprint.graph;
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const graphSnapshotKey = buildGraphSnapshotKey(graph);
   const [activeEnv, setActiveEnv] = useState<TopologyEnvFilter | null>("Produktion");
   const [activeRegion, setActiveRegion] = useState<TopologyRegionFilter | null>("eu-central-1");
   const [activeView, setActiveView] = useState<TopologyViewFilter | null>("Logische Topologie");
@@ -43,6 +46,13 @@ export function InfrastructureView({ blueprint }: InfrastructureViewProps) {
   }, [nodes, graph, activeEnv, activeRegion]);
 
   const topologyNodes = useMemo(() => buildTopologyNodes(filteredNodes), [filteredNodes]);
+
+  useInfrastructureDefaultNodeSelection(
+    topologyNodes,
+    selectedNodeId,
+    setSelectedNodeId,
+    graphSnapshotKey,
+  );
 
   const selectedNode = useMemo(
     () => filteredNodes.find((node) => node.id === selectedNodeId) ?? null,

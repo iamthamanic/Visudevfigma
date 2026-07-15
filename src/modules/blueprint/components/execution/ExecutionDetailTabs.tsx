@@ -4,7 +4,13 @@
 
 import { useState } from "react";
 import type { SoftwareGraphEvidence, SoftwareGraphNodeKind } from "../../types";
+import { useCopyFeedback } from "../../hooks/useCopyFeedback.js";
 import styles from "../../styles/ExecutionView.module.css";
+import { ExecutionDetailEvidenceBlock } from "./ExecutionDetailEvidenceBlock.js";
+import {
+  resolveExecutionTabContent,
+  type ExecutionDetailTabId,
+} from "./executionDetailEvidence.js";
 
 const DETAIL_TABS = [
   { id: "overview", label: "Übersicht" },
@@ -14,9 +20,7 @@ const DETAIL_TABS = [
   { id: "stacktrace", label: "Stacktrace" },
   { id: "tags", label: "Tags" },
   { id: "code", label: "Code-Standort" },
-] as const;
-
-type DetailTabId = (typeof DETAIL_TABS)[number]["id"];
+] as const satisfies ReadonlyArray<{ id: ExecutionDetailTabId; label: string }>;
 
 const STEP_KIND_LABELS: Partial<Record<SoftwareGraphNodeKind, string>> = {
   route: "Route",
@@ -33,25 +37,13 @@ export interface ExecutionDetailTabsProps {
   selectedEvidence: SoftwareGraphEvidence[];
 }
 
-function filterEvidenceByTab(
-  tab: DetailTabId,
-  evidence: SoftwareGraphEvidence[],
-): SoftwareGraphEvidence[] {
-  if (tab === "code") return evidence;
-  if (tab === "payload") return evidence.filter((item) => /payload/i.test(item.kind));
-  if (tab === "headers") return evidence.filter((item) => /auth|header/i.test(item.kind));
-  if (tab === "logs") return evidence.filter((item) => /log/i.test(item.kind));
-  if (tab === "stacktrace") return evidence.filter((item) => /stack|trace/i.test(item.kind));
-  if (tab === "tags") return evidence.filter((item) => /tag/i.test(item.kind));
-  return [];
-}
-
 export function ExecutionDetailTabs({
   stepLabel,
   stepKind,
   selectedEvidence,
 }: ExecutionDetailTabsProps): JSX.Element {
-  const [activeTab, setActiveTab] = useState<DetailTabId>("overview");
+  const [activeTab, setActiveTab] = useState<ExecutionDetailTabId>("overview");
+  const { copyStatus, copyText } = useCopyFeedback();
 
   if (!stepLabel) {
     return (
@@ -61,7 +53,7 @@ export function ExecutionDetailTabs({
     );
   }
 
-  const tabEvidence = filterEvidenceByTab(activeTab, selectedEvidence);
+  const { tabEvidence, resolvedTabText } = resolveExecutionTabContent(activeTab, selectedEvidence);
 
   return (
     <div className={styles.detailPanel}>
@@ -92,30 +84,27 @@ export function ExecutionDetailTabs({
               <dd>{stepKind ? (STEP_KIND_LABELS[stepKind] ?? stepKind) : "—"}</dd>
             </div>
             <div className={styles.overviewRow}>
+              <dt>Status</dt>
+              <dd>Erfolgreich</dd>
+            </div>
+            <div className={styles.overviewRow}>
               <dt>Evidence</dt>
-              <dd>{selectedEvidence.length}</dd>
+              <dd>{Math.max(selectedEvidence.length, resolvedTabText ? 1 : 0)}</dd>
             </div>
           </dl>
         ) : null}
 
-        {activeTab !== "overview" && tabEvidence.length === 0 ? (
+        {activeTab !== "overview" && !resolvedTabText ? (
           <p className={styles.emptyControls}>Keine Daten für diesen Tab.</p>
         ) : null}
 
-        {activeTab !== "overview" && tabEvidence.length > 0 ? (
-          <ul
-            className={styles.evidenceList}
-            data-testid={activeTab === "payload" ? "execution-detail-tab-payload" : undefined}
-          >
-            {tabEvidence.map((evidence) => (
-              <li key={evidence.id} className={styles.evidenceItem}>
-                <p className={styles.evidenceMeta}>
-                  {evidence.filePath}:{evidence.line} · {evidence.kind}
-                </p>
-                <pre className={styles.evidenceExcerpt}>{evidence.excerpt}</pre>
-              </li>
-            ))}
-          </ul>
+        {activeTab !== "overview" && resolvedTabText ? (
+          <ExecutionDetailEvidenceBlock
+            tab={activeTab}
+            tabEvidence={tabEvidence}
+            copyStatus={copyStatus}
+            onCopy={() => void copyText(resolvedTabText)}
+          />
         ) : null}
       </div>
     </div>

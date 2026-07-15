@@ -20,6 +20,7 @@ interface InspectorPanelProps {
   sections?: InspectorSection[];
   children?: ReactNode;
   emptyMessage?: string;
+  testId?: string;
 }
 
 export function InspectorPanel({
@@ -29,11 +30,12 @@ export function InspectorPanel({
   sections,
   children,
   emptyMessage,
+  testId,
 }: InspectorPanelProps): JSX.Element {
   const hasBody = Boolean(children) || Boolean(sections?.length);
 
   return (
-    <aside className={styles.root} aria-label="Inspektor">
+    <aside className={styles.root} aria-label="Inspektor" data-testid={testId}>
       <header className={styles.header}>
         <ViewSectionTitle>Inspektor</ViewSectionTitle>
         <h2 className={styles.title}>{title}</h2>

@@ -33,10 +33,13 @@ export function AtlasClusterLabels({
             className={`${styles.clusterLabel} ${isSelected ? styles.clusterLabelSelected : ""}`}
             data-kind={group.kind}
             data-testid="atlas-cluster"
+            data-selected={isSelected ? "true" : "false"}
             aria-pressed={isSelected}
             onClick={() => onSelectGroup(group.id)}
           >
-            <span className={styles.clusterLabelTitle}>{group.label}</span>
+            <span className={styles.clusterLabelTitle} data-testid="atlas-cluster-label">
+              {group.label}
+            </span>
             <span className={styles.clusterLabelMeta}>
               {group.nodeIds.length} Module · {Math.min(100, group.nodeIds.length * 12)}% Abdeckung
             </span>

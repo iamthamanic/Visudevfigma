@@ -11,7 +11,7 @@ import { findingLocationLabel } from "./diagnostics-finding-location.js";
 import type { FindingResolutionStatus } from "./finding-resolution.js";
 import styles from "../../styles/DiagnosticsView.module.css";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 5;
 
 interface DiagnosticsFindingsTableProps {
   findings: BlueprintFinding[];

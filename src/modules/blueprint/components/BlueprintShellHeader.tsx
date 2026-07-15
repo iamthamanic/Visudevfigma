@@ -14,6 +14,7 @@ interface BlueprintShellHeaderProps {
   projectName?: string;
   branchLabel?: string;
   scanStatus: BlueprintScanChipStatus;
+  lastScannedLabel?: string | null;
   isRescanning?: boolean;
   notificationCount?: number;
   onRescan: () => void;
@@ -59,6 +60,7 @@ export function BlueprintShellHeader({
   projectName,
   branchLabel,
   scanStatus,
+  lastScannedLabel = null,
   isRescanning = false,
   notificationCount = 0,
   onRescan,
@@ -88,7 +90,12 @@ export function BlueprintShellHeader({
           </span>
           <span className={styles.blueprintBadge}>Blueprint</span>
         </div>
-        <StatusBadge variant={statusVariant} label={statusLabel} />
+        <div className={styles.scanStatusGroup}>
+          <StatusBadge variant={statusVariant} label={statusLabel} testId="blueprint-scan-badge" />
+          {lastScannedLabel && scanStatus === "completed" && !isRescanning ? (
+            <span className={styles.lastScannedHint}>Zuletzt gescannt: {lastScannedLabel}</span>
+          ) : null}
+        </div>
       </div>
 
       <div className={styles.trailing}>
