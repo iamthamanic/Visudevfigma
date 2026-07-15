@@ -96,6 +96,7 @@ export function AtlasView({ blueprint }: AtlasViewProps) {
             groups={state.visibleGroups}
             selectedGroupId={state.selectedGroupId}
             onSelectGroup={state.handleSelectGroup}
+            coveragePercent={atlasStats.coveragePercent}
           />
           <AtlasLegend />
           <AtlasZoomControls />

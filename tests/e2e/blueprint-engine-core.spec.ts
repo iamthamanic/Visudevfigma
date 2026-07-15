@@ -286,8 +286,16 @@ test.describe("Blueprint Engine Core UI", () => {
       timeout: 15000,
     });
     const inspector = page.getByLabel("Inspektor");
-    if (!(await inspector.getByText("web-api.validation-before-db-write").isVisible().catch(() => false))) {
-      await page.getByRole("button", { name: /Runtime Validation fehlt vor DB Write/i }).first().click();
+    if (
+      !(await inspector
+        .getByText("web-api.validation-before-db-write")
+        .isVisible()
+        .catch(() => false))
+    ) {
+      await page
+        .getByRole("button", { name: /Runtime Validation fehlt vor DB Write/i })
+        .first()
+        .click();
     }
     await expect(inspector.getByText("web-api.validation-before-db-write")).toBeVisible({
       timeout: 15000,

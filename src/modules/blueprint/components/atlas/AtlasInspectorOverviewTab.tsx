@@ -79,7 +79,7 @@ export function AtlasInspectorOverviewTab({
         <h4 className={styles.subSectionTitle}>Technologien</h4>
         <div className={styles.techTags}>
           {clusterTechTags(label).map((tech) => (
-            <span key={tech} className={styles.techTag}>
+            <span key={tech} className={styles.techTag} data-testid="atlas-tech-chip">
               {tech}
             </span>
           ))}

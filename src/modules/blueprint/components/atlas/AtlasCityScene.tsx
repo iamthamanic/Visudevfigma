@@ -1,6 +1,6 @@
 /**
  * Lazy-loaded 3D city scene for AtlasView (Three.js + R3F, no drei).
- * Colored clusters + selection glow for Wave 4 Zielbild parity.
+ * Wave 5: neon glow plates under districts + Wave-4 selection glow.
  */
 
 import { Canvas } from "@react-three/fiber";
@@ -9,6 +9,7 @@ import { AtlasOrbitControls } from "./AtlasOrbitControls.js";
 import { resolveClusterPalette, type AtlasClusterCategory } from "./atlas-cluster-theme.js";
 import { getAtlasCityTheme } from "./atlas-city-theme.js";
 import type { CityBlock } from "./build-city-blocks.js";
+import { buildDistrictGlowPlates, type DistrictGlowPlate } from "./build-district-glow-plates.js";
 import styles from "../../styles/AtlasView.module.css";
 
 interface BuildingProps {
@@ -31,8 +32,8 @@ function Building({
   const fillColor = selected
     ? blockSelected || categoryColor || block.color || blockDefault
     : categoryColor || block.color || blockDefault;
-  const emissive = selected ? fillColor || blockDefault : blockDefault;
-  const emissiveIntensity = selected ? 0.55 : 0;
+  const emissive = selected ? fillColor || blockDefault : fillColor || blockDefault;
+  const emissiveIntensity = selected ? 0.55 : 0.12;
 
   return (
     <group position={[block.x, 0, block.z]}>
@@ -60,6 +61,33 @@ function Building({
   );
 }
 
+function GlowPlateMesh({ plate }: { plate: DistrictGlowPlate }): JSX.Element {
+  return (
+    <group position={[plate.x, 0.01, plate.z]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[plate.width, plate.depth]} />
+        <meshStandardMaterial
+          color={plate.color}
+          emissive={plate.color}
+          emissiveIntensity={0.85}
+          transparent
+          opacity={0.35}
+        />
+      </mesh>
+      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry
+          args={[
+            Math.min(plate.width, plate.depth) * 0.35,
+            Math.max(plate.width, plate.depth) * 0.55,
+            48,
+          ]}
+        />
+        <meshBasicMaterial color={plate.color} transparent opacity={0.45} />
+      </mesh>
+    </group>
+  );
+}
+
 export interface AtlasCitySceneProps {
   blocks: CityBlock[];
   selectedNodeId: string | null;
@@ -81,12 +109,18 @@ export function AtlasCityScene({
   const hasColoredBlocks = blocks.some((block) =>
     Boolean(categoryPalette[block.clusterCategory] || block.color),
   );
+  const glowPlates = useMemo(
+    () =>
+      buildDistrictGlowPlates(blocks, categoryPalette, theme.blockDefault || theme.ground || ""),
+    [blocks, categoryPalette, theme.blockDefault, theme.ground],
+  );
 
   return (
     <div
       className={styles.cityCanvasWrap}
       data-testid="atlas-city-scene"
       data-colored-clusters={hasColoredBlocks ? "true" : "false"}
+      data-glow-plates={String(glowPlates.length)}
     >
       <Canvas
         className={styles.cityCanvas}
@@ -100,6 +134,9 @@ export function AtlasCityScene({
           <planeGeometry args={[80, 80]} />
           <meshStandardMaterial color={theme.ground || undefined} />
         </mesh>
+        {glowPlates.map((plate) => (
+          <GlowPlateMesh key={plate.key} plate={plate} />
+        ))}
         {blocks.map((block) => (
           <Building
             key={block.id}

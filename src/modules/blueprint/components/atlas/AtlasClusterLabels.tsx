@@ -1,5 +1,6 @@
 /**
  * AtlasClusterLabels — floating cluster cards over the atlas canvas.
+ * Wave 5: glow-plate markers; coverage % from graph metrics when provided.
  */
 
 import type { SoftwareGraphGroup } from "../../types";
@@ -10,23 +11,30 @@ export interface AtlasClusterLabelsProps {
   groups: SoftwareGraphGroup[];
   selectedGroupId: string | null;
   onSelectGroup: (groupId: string) => void;
+  /** Graph-level coverage metric (0–100), when available. */
+  coveragePercent?: number | null;
 }
 
 export function AtlasClusterLabels({
   groups,
   selectedGroupId,
   onSelectGroup,
+  coveragePercent = null,
 }: AtlasClusterLabelsProps): JSX.Element | null {
   if (groups.length === 0) return null;
 
   const preview = groups.filter((group) => !group.id.startsWith("execution:")).slice(0, 8);
   if (preview.length === 0) return null;
 
+  const hasCoverage =
+    typeof coveragePercent === "number" && Number.isFinite(coveragePercent) && coveragePercent >= 0;
+
   return (
     <div className={styles.clusterLabels} aria-label="Cluster-Beschriftungen">
       {preview.map((group) => {
         const isSelected = selectedGroupId === group.id;
         const category = resolveAtlasClusterCategory(group.label, group.kind);
+        const coverageValue = hasCoverage ? Math.min(100, Math.round(coveragePercent)) : null;
 
         return (
           <button
@@ -35,16 +43,24 @@ export function AtlasClusterLabels({
             className={`${styles.clusterLabel} ${isSelected ? styles.clusterLabelSelected : ""}`}
             data-kind={group.kind}
             data-cluster-color={category}
+            data-coverage={coverageValue != null ? String(coverageValue) : undefined}
             data-testid="atlas-cluster"
             data-selected={isSelected ? "true" : "false"}
             aria-pressed={isSelected}
             onClick={() => onSelectGroup(group.id)}
           >
+            <span
+              className={styles.glowPlate}
+              data-testid="atlas-glow-plate"
+              data-cluster-color={category}
+              aria-hidden="true"
+            />
             <span className={styles.clusterLabelTitle} data-testid="atlas-cluster-label">
               {group.label}
             </span>
             <span className={styles.clusterLabelMeta}>
-              {group.nodeIds.length} Module · {Math.min(100, group.nodeIds.length * 12)}% Abdeckung
+              {group.nodeIds.length} Module
+              {coverageValue != null ? ` · ${coverageValue}% Abdeckung` : ""}
             </span>
             {isSelected ? (
               <span
