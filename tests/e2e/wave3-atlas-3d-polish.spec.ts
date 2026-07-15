@@ -20,9 +20,9 @@ test.describe("Wave 3 atlas 3D polish", () => {
     await expect(
       page
         .getByTestId("atlas-cluster")
-        .filter({ has: page.locator('[data-selected="true"]') })
+        .filter({ hasText: /API SERVICE/i })
         .first(),
-    ).toBeVisible();
+    ).toHaveAttribute("data-selected", "true", { timeout: 15000 });
     await expect(page.getByTestId("atlas-inspector")).toBeVisible();
   });
 });

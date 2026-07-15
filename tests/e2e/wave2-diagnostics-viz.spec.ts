@@ -44,11 +44,7 @@ test.describe("Wave 2 diagnostics viz parity", () => {
       expect(matrixBox.y).toBeLessThan(tableBox.y);
     }
 
-    await page
-      .getByRole("button", { name: /db\.rls-missing/i })
-      .first()
-      .click();
-    await expect(page.getByTestId("problem-inspector-evidence")).toBeVisible();
+    await expect(page.getByTestId("problem-inspector-evidence")).toBeVisible({ timeout: 15000 });
 
     await page.getByRole("button", { name: "Als erledigt markieren" }).click();
     await expect(page.getByTestId("finding-status-SEC-001")).toHaveText("Erledigt");

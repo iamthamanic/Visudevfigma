@@ -285,7 +285,9 @@ test.describe("Blueprint Engine Core UI", () => {
     await expect(page.getByRole("heading", { name: "Diagnosen" })).toBeVisible({
       timeout: 15000,
     });
-    await expect(page.getByText("Runtime Validation fehlt vor DB Write.")).toBeVisible({
+    await expect(
+      page.getByRole("heading", { name: /Runtime Validation fehlt vor DB Write/i }),
+    ).toBeVisible({
       timeout: 15000,
     });
 
