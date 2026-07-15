@@ -33,7 +33,7 @@ test.describe("Wave 2 execution viz parity", () => {
     await page.getByRole("tab", { name: "Payload" }).click();
     const payloadPanel = page.getByTestId("execution-detail-tab-payload");
     await expect(payloadPanel).toBeVisible({ timeout: 10000 });
-    await expect(payloadPanel).toContainText("employeeId");
+    await expect(payloadPanel).toContainText("resourceRef");
 
     await page.screenshot({
       path: `${EVIDENCE_DIR}/execution-pipeline-detail.png`,

@@ -67,71 +67,105 @@ export function buildMockGitSummary() {
   return buildDemoGitSummary();
 }
 
-/** Legacy diagnostics fixture without graph so normalize keeps explicit findings/evidence. */
-export function buildDiagnosticsMockBlueprint(projectId: string) {
-  const routeId = "GET /api/employees";
+/** Scaled diagnostics fixture for Wave 3 (5+ matrix rows, ~24 findings). */
+export function buildWave3DiagnosticsMock(projectId: string) {
+  const routeSpecs = [
+    { id: "GET /api/employees", method: "GET", path: "/api/employees" },
+    { id: "POST /api/leave-requests", method: "POST", path: "/api/leave-requests" },
+    { id: "GET /api/payroll", method: "GET", path: "/api/payroll" },
+    { id: "PUT /api/documents/:id", method: "PUT", path: "/api/documents/:id" },
+    { id: "DELETE /api/sessions", method: "DELETE", path: "/api/sessions" },
+    { id: "GET /api/analytics", method: "GET", path: "/api/analytics" },
+  ];
+
+  const routes = routeSpecs.map((spec) => ({
+    id: spec.id,
+    method: spec.method,
+    path: spec.path,
+    filePath: `src/routes/${spec.path.replace(/[/:]/g, "-").slice(1)}.ts`,
+    line: 8,
+    pipeline: [
+      { id: "r1", type: "request", label: "Request", state: "confirmed" },
+      { id: "r2", type: "auth-gate", label: "Auth", state: "confirmed" },
+      { id: "r3", type: "handler", label: "Handler", state: "confirmed" },
+    ],
+    concepts: { "auth-gate": "confirmed", "validation-gate": "confirmed" },
+  }));
+
+  const securityMatrix = routeSpecs.map((spec, index) => ({
+    routeId: spec.id,
+    method: spec.method,
+    path: spec.path,
+    auth: { state: index % 3 === 0 ? "missing" : "confirmed" },
+    role: { state: index % 4 === 0 ? "partial" : "confirmed" },
+    validation: { state: "confirmed" },
+    rateLimit: { state: index % 5 === 0 ? "unknown" : "confirmed" },
+    db: { state: "confirmed" },
+    rls: { state: index === 0 ? "missing" : index % 2 === 0 ? "partial" : "confirmed" },
+    audit: { state: index % 3 === 1 ? "partial" : "confirmed" },
+    findingCount: index === 0 ? 3 : 1,
+  }));
+
+  const severities = ["critical", "high", "medium", "low"] as const;
+  const findings = Array.from({ length: 24 }, (_, index) => {
+    const route = routeSpecs[index % routeSpecs.length];
+    const severity = severities[index % severities.length];
+    const id = index === 0 ? "SEC-001" : `SEC-${String(index + 1).padStart(3, "0")}`;
+    return {
+      id,
+      ruleId: index === 0 ? "db.rls-missing" : `rule.${index}`,
+      category: "security",
+      severity,
+      scopeId: route.id,
+      message:
+        index === 0
+          ? "RLS nicht aktiviert – Mitarbeiterdaten für alle sichtbar"
+          : `Finding ${id} auf ${route.path}`,
+      expectedState: "Compliant",
+      actualState: "Abweichung",
+      evidenceFactIds: index === 0 ? ["fact-rls"] : [`fact-${index}`],
+      confidence: 80 + (index % 15),
+      remediation:
+        index === 0 ? "Row Level Security auf employees aktivieren." : "Maßnahme prüfen.",
+    };
+  });
+
+  const facts = [
+    {
+      id: "fact-rls",
+      kind: "db-query",
+      filePath: "db/policy.sql",
+      line: 4,
+      snippet:
+        "-- Evidence SQL\nSELECT tablename, rowsecurity FROM pg_tables WHERE tablename = 'employees';\n-- rowsecurity = false",
+      metadata: { table: "employees" },
+    },
+    ...findings.slice(1).map((finding) => ({
+      id: finding.evidenceFactIds[0],
+      kind: "code-snippet",
+      filePath: `src/routes/${finding.scopeId.replace(/[/ ]/g, "-")}.ts`,
+      line: 12,
+      snippet: `-- context for ${finding.id}`,
+      metadata: {},
+    })),
+  ];
+
   return {
     version: 1,
     projectId,
     commitSha: "e9b3c42a",
     analyzedAt: new Date().toISOString(),
-    routes: [
-      {
-        id: routeId,
-        method: "GET",
-        path: "/api/employees",
-        filePath: "src/routes/employees.ts",
-        line: 8,
-        pipeline: [
-          { id: "r1", type: "request", label: "EmployeesList", state: "confirmed" },
-          { id: "r2", type: "auth-gate", label: "Auth", state: "confirmed" },
-          { id: "r3", type: "handler", label: "ListEmployees", state: "confirmed" },
-        ],
-        concepts: { "auth-gate": "confirmed", "validation-gate": "confirmed" },
-      },
-    ],
-    securityMatrix: [
-      {
-        routeId,
-        method: "GET",
-        path: "/api/employees",
-        auth: { state: "confirmed" },
-        role: { state: "partial" },
-        validation: { state: "confirmed" },
-        rateLimit: { state: "unknown" },
-        db: { state: "confirmed" },
-        rls: { state: "missing" },
-        audit: { state: "partial" },
-        findingCount: 1,
-      },
-    ],
-    findings: [
-      {
-        id: "SEC-001",
-        ruleId: "db.rls-missing",
-        category: "security",
-        severity: "critical",
-        scopeId: routeId,
-        message: "RLS nicht aktiviert – Mitarbeiterdaten für alle sichtbar",
-        expectedState: "RLS aktiv",
-        actualState: "RLS fehlt",
-        evidenceFactIds: ["fact-rls"],
-        confidence: 92,
-        remediation: "Row Level Security auf employees aktivieren.",
-      },
-    ],
-    facts: [
-      {
-        id: "fact-rls",
-        kind: "db-query",
-        filePath: "db/policy.sql",
-        line: 4,
-        snippet: "ALTER TABLE employees ENABLE ROW LEVEL SECURITY;",
-        metadata: { table: "employees" },
-      },
-    ],
+    routes,
+    securityMatrix,
+    findings,
+    facts,
     filesAnalyzed: 1872,
   };
+}
+
+/** Legacy diagnostics fixture without graph so normalize keeps explicit findings/evidence. */
+export function buildDiagnosticsMockBlueprint(projectId: string) {
+  return buildWave3DiagnosticsMock(projectId);
 }
 
 export async function seedSupabaseSession(page: import("@playwright/test").Page) {
