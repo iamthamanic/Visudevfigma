@@ -1,11 +1,14 @@
 /**
  * Paginated findings table for Diagnostics Security tab; drives Problem-Inspektor selection.
+ * Wave 5: severity/area/search filter chrome around the table.
  */
 
 import { useEffect, useMemo, useState } from "react";
 import type { BlueprintFinding, CodeFact, RouteBlueprint } from "../../types";
 import { StatusBadge } from "../ui/StatusBadge.js";
 import { ViewSectionTitle } from "../ui/ViewSectionTitle.js";
+import { DiagnosticsFindingsFilterBar } from "./DiagnosticsFindingsFilterBar.js";
+import { findingAreaLabel } from "./diagnostics-finding-area.js";
 import { SEVERITY_LABELS, severityBadgeVariant } from "./diagnostics-severity.js";
 import { findingLocationLabel } from "./diagnostics-finding-location.js";
 import type { FindingResolutionStatus } from "./finding-resolution.js";
@@ -31,8 +34,35 @@ export function DiagnosticsFindingsTable({
   resolutionByFindingId = {},
 }: DiagnosticsFindingsTableProps): JSX.Element {
   const [page, setPage] = useState(0);
+  const [severity, setSeverity] = useState("all");
+  const [area, setArea] = useState("all");
+  const [search, setSearch] = useState("");
   const routeMap = useMemo(() => new Map(routes.map((route) => [route.id, route])), [routes]);
-  const pageCount = Math.max(1, Math.ceil(findings.length / PAGE_SIZE));
+
+  const areas = useMemo(() => {
+    const unique = new Set(findings.map((finding) => findingAreaLabel(finding)));
+    return Array.from(unique).sort((left, right) => left.localeCompare(right, "de"));
+  }, [findings]);
+
+  const filteredFindings = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return findings.filter((finding) => {
+      if (severity !== "all" && finding.severity !== severity) return false;
+      if (area !== "all" && findingAreaLabel(finding) !== area) return false;
+      if (!query) return true;
+      const haystack = [
+        finding.ruleId,
+        finding.message,
+        finding.category,
+        findingAreaLabel(finding),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [findings, severity, area, search]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredFindings.length / PAGE_SIZE));
 
   useEffect(() => {
     if (page > pageCount - 1) {
@@ -42,17 +72,28 @@ export function DiagnosticsFindingsTable({
 
   useEffect(() => {
     setPage(0);
-  }, [findings]);
+  }, [findings, severity, area, search]);
 
   const pageFindings = useMemo(() => {
     const start = page * PAGE_SIZE;
-    return findings.slice(start, start + PAGE_SIZE);
-  }, [findings, page]);
+    return filteredFindings.slice(start, start + PAGE_SIZE);
+  }, [filteredFindings, page]);
 
   return (
     <section className={styles.findingsSectionInner} aria-label="Findings">
-      <ViewSectionTitle>Findings</ViewSectionTitle>
-      {findings.length === 0 ? (
+      <div className={styles.findingsHeaderRow}>
+        <ViewSectionTitle>{`Findings (${findings.length})`}</ViewSectionTitle>
+        <DiagnosticsFindingsFilterBar
+          severity={severity}
+          area={area}
+          search={search}
+          areas={areas}
+          onSeverityChange={setSeverity}
+          onAreaChange={setArea}
+          onSearchChange={setSearch}
+        />
+      </div>
+      {filteredFindings.length === 0 ? (
         <p className={styles.emptyControls}>Keine Findings für diese Auswahl.</p>
       ) : (
         <>
@@ -134,12 +175,12 @@ export function DiagnosticsFindingsTable({
             className={styles.findingsPagination}
             aria-label="Findings-Seiten"
             data-testid="findings-pagination"
-            data-total={findings.length}
+            data-total={filteredFindings.length}
           >
             <span className={styles.findingsPageLabel}>
-              {findings.length === 0
+              {filteredFindings.length === 0
                 ? "0 von 0 Findings"
-                : `${page * PAGE_SIZE + 1}-${Math.min(findings.length, (page + 1) * PAGE_SIZE)} von ${findings.length} Findings`}
+                : `${page * PAGE_SIZE + 1}-${Math.min(filteredFindings.length, (page + 1) * PAGE_SIZE)} von ${filteredFindings.length} Findings`}
             </span>
             <div className={styles.findingsPageActions}>
               <button

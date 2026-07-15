@@ -81,6 +81,59 @@
   line-height: 1.35;
 }
 
+.findingsHeaderRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.findingsFilterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1 1 16rem;
+  justify-content: flex-end;
+}
+
+.findingsFilterLabel {
+  display: inline-flex;
+  min-width: 8rem;
+}
+
+.findingsFilterLabelGrow {
+  display: inline-flex;
+  flex: 1 1 10rem;
+  min-width: 10rem;
+}
+
+.findingsFilterSelect,
+.findingsFilterSearch {
+  width: 100%;
+  min-height: 2rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  color: var(--color-foreground);
+  font-size: 0.75rem;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .findingsTableWrap {
   overflow-x: auto;
 }
