@@ -1,5 +1,5 @@
 /**
- * EvolutionCommitTimeline — keeps inspector commit section in sync with selected SHA.
+ * EvolutionCommitTimeline — commit dots with short SHA + subject for Wave 5 density.
  */
 
 import type { GitSummaryCommit } from "../../types";
@@ -48,11 +48,12 @@ export function EvolutionCommitTimeline({
                 className={`${styles.commitTimelineButton} ${isSelected ? styles.commitTimelineButtonActive : ""}`}
                 aria-pressed={isSelected}
                 title={displayText(commit.subject)}
-                data-testid="evolution-commit-dot"
+                data-testid="evolution-timeline-commit"
                 onClick={() => onSelectCommit(commit.sha)}
               >
                 <span className={styles.commitTimelineDot} aria-hidden="true" />
                 <span className={styles.commitTimelineSha}>{formatCommitSha(commit.sha)}</span>
+                <span className={styles.commitTimelineSubject}>{displayText(commit.subject)}</span>
               </button>
             </li>
           );

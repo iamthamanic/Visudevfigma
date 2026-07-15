@@ -1,8 +1,9 @@
 /**
- * EvolutionChangesGrid — Figma four-column change summary for diff + working tree.
+ * Renders the four-column Evolution changes summary from git/diff paths.
  */
 
 import type { GitSummary, SoftwareGraphDiffMetadata } from "../../types";
+import { buildEvolutionChangesColumns } from "./evolution-changes-columns.js";
 import styles from "../../styles/EvolutionView.module.css";
 
 export interface EvolutionChangesGridProps {
@@ -11,33 +12,40 @@ export interface EvolutionChangesGridProps {
 }
 
 export function EvolutionChangesGrid({ diff, gitSummary }: EvolutionChangesGridProps): JSX.Element {
-  const added = diff?.addedNodeIds.length ?? 0;
-  const changed = diff?.changedNodeIds.length ?? 0;
-  const removed = diff?.removedNodeIds.length ?? 0;
-  const working =
-    (gitSummary?.workingTree.added.length ?? 0) +
-    (gitSummary?.workingTree.modified.length ?? 0) +
-    (gitSummary?.workingTree.deleted.length ?? 0);
-
-  const changeMetrics = [
-    { id: "added", label: "Hinzugefügt", value: added },
-    { id: "changed", label: "Geändert", value: changed },
-    { id: "removed", label: "Entfernt", value: removed },
-    { id: "working", label: "Working Tree", value: working },
-  ];
+  const columns = buildEvolutionChangesColumns(diff, gitSummary);
 
   return (
-    <section className={styles.changesGridSection} aria-label="Änderungsübersicht">
+    <section
+      className={styles.changesGridSection}
+      aria-label="Änderungsübersicht"
+      data-testid="evolution-changes-grid"
+    >
       <div className={styles.changesGrid}>
-        {changeMetrics.map((changeMetric) => (
+        {columns.map((column) => (
           <article
-            key={changeMetric.id}
+            key={column.id}
             className={styles.changesColumn}
-            data-kind={changeMetric.id}
+            data-kind={column.id}
             data-testid="evolution-changes-column"
           >
-            <p className={styles.changesColumnLabel}>{changeMetric.label}</p>
-            <p className={styles.changesColumnValue}>{changeMetric.value}</p>
+            <p className={styles.changesColumnLabel}>
+              {column.label} ({column.count})
+            </p>
+            {column.paths.length === 0 ? (
+              <p className={styles.emptyControls}>Keine Einträge</p>
+            ) : (
+              <ul className={styles.changesItemList}>
+                {column.paths.map((filePath) => (
+                  <li
+                    key={`${column.id}:${filePath}`}
+                    className={styles.changesItem}
+                    title={filePath}
+                  >
+                    {filePath}
+                  </li>
+                ))}
+              </ul>
+            )}
           </article>
         ))}
       </div>

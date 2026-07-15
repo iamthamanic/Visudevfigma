@@ -29,8 +29,30 @@ export function buildDemoGitSummary(): GitSummary {
         subject: "Worker Queue",
         committedAt: "2026-05-18T16:00:00.000Z",
       },
+      {
+        sha: "b7c8d9e0f1a2b3c4",
+        subject: "Leave Request Trace",
+        committedAt: "2026-05-22T11:45:00.000Z",
+      },
     ],
-    branches: [{ name: "main", headSha: "a4b5c6d7e8f9a0b1" }],
-    workingTree: { modified: ["src/auth.ts"], added: [], deleted: [] },
+    branches: [{ name: "main", headSha: "b7c8d9e0f1a2b3c4" }],
+    workingTree: {
+      modified: [
+        "src/auth.ts",
+        "src/payroll/service.ts",
+        "src/leave/controller.ts",
+        "src/leave/repository.ts",
+        "package.json",
+        "package-lock.json",
+        "src/workers/notification.ts",
+      ],
+      added: [
+        "src/payroll/service.ts",
+        "src/payroll/batch.ts",
+        "src/leave/dto.ts",
+        "src/workers/payroll-job.ts",
+      ],
+      deleted: ["src/legacy/timesheet.ts"],
+    },
   };
 }

@@ -1,5 +1,5 @@
 /**
- * Horizontal snapshot selector cards with base/target markers.
+ * Horizontal snapshot selector cards with mini cyber-city thumbnail hints (Wave 5).
  */
 
 import { Check } from "lucide-react";
@@ -16,6 +16,29 @@ interface EvolutionSnapshotCardsProps {
   onSelectTarget: (snapshotId: string) => void;
 }
 
+function SnapshotThumb({ seed }: { seed: number }): JSX.Element {
+  const heights = [0, 1, 2, 3, 4, 5].map((index) => 1 + ((seed + index * 3) % 4));
+
+  return (
+    <span
+      className={styles.snapshotThumbnail}
+      data-testid="evolution-snapshot-thumb"
+      aria-hidden="true"
+    >
+      <span className={styles.snapshotThumbGrid}>
+        {heights.map((height, index) => (
+          <span
+            key={index}
+            className={styles.snapshotThumbBlock}
+            data-level={String(height)}
+            data-tone={String((seed + index) % 4)}
+          />
+        ))}
+      </span>
+    </span>
+  );
+}
+
 export function EvolutionSnapshotCards({
   snapshots,
   baseSnapshotId,
@@ -29,7 +52,7 @@ export function EvolutionSnapshotCards({
         <p className={styles.emptyControls}>Keine Snapshots vorhanden.</p>
       ) : (
         <ul className={styles.snapshotList}>
-          {snapshots.map((snapshot) => {
+          {snapshots.map((snapshot, index) => {
             const isTarget = snapshot.id === targetSnapshotId;
             const isBase = snapshot.id === baseSnapshotId;
             return (
@@ -41,9 +64,7 @@ export function EvolutionSnapshotCards({
                   data-testid="evolution-snapshot-card"
                   onClick={() => onSelectTarget(snapshot.id)}
                 >
-                  <span className={styles.snapshotThumbnail} aria-hidden="true">
-                    Atlas
-                  </span>
+                  <SnapshotThumb seed={index * 13 + snapshot.nodeIds.length} />
                   <span className={styles.snapshotCardHeader}>
                     <span className={styles.snapshotLabel}>{displayText(snapshot.label)}</span>
                     {isTarget ? (

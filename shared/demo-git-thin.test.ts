@@ -35,7 +35,7 @@ describe("demo-git-thin", () => {
       branches: [],
       workingTree: { modified: [], added: [], deleted: [] },
     });
-    expect(enriched.commits.length).toBeGreaterThanOrEqual(3);
+    expect(enriched.commits.length).toBeGreaterThanOrEqual(5);
   });
 
   it("merges demo commits without dropping existing repo data", () => {
@@ -47,7 +47,7 @@ describe("demo-git-thin", () => {
       workingTree: { modified: ["src/a.ts"], added: [], deleted: [] },
     });
     expect(enriched.commits.some((commit) => commit.sha === "real123")).toBe(true);
-    expect(enriched.commits.length).toBeGreaterThanOrEqual(3);
+    expect(enriched.commits.length).toBeGreaterThanOrEqual(5);
     expect(enriched.branches[0]?.name).toBe("feature/x");
     expect(enriched.workingTree.modified).toEqual(["src/a.ts"]);
   });
