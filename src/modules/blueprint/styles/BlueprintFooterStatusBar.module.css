@@ -22,6 +22,20 @@
   color: var(--color-border);
 }
 
+.healthLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-primary);
+}
+
+.healthDot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 9999px;
+  background: currentColor;
+}
+
 .actions {
   align-items: center;
   display: inline-flex;

@@ -1,5 +1,5 @@
 /**
- * Persistent Blueprint footer with graph counters and refresh.
+ * Persistent Blueprint footer with graph counters, health line, and refresh.
  * Location: src/modules/blueprint/components/
  */
 
@@ -34,6 +34,11 @@ export function BlueprintFooterStatusBar({
         <span className={styles.separator}>│</span>
         <span data-testid="footer-dependency-count">
           {formatCount(stats.dependencyCount)} Abhängigkeiten
+        </span>
+        <span className={styles.separator}>│</span>
+        <span className={styles.healthLine} data-testid="footer-health-line">
+          <span className={styles.healthDot} aria-hidden="true" />
+          Keine kritischen Probleme
         </span>
       </div>
 
