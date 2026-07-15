@@ -12,20 +12,33 @@ export interface AtlasAggregateStats {
   coveragePercent: number;
 }
 
+function metricValue(graph: SoftwareGraph, name: string): number | null {
+  const metrics = Array.isArray(graph.metrics) ? graph.metrics : [];
+  const match = metrics.find((metric) => metric.name === name);
+  if (!match || !Number.isFinite(match.value)) return null;
+  return Math.max(0, Math.round(match.value));
+}
+
 export function computeAtlasStats(
   graph: SoftwareGraph,
   filesAnalyzed: number,
 ): AtlasAggregateStats {
   const nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
-  const modules = nodes.filter((node) => node.kind === "module").length;
+  const modulesFromNodes = nodes.filter((node) => node.kind === "module").length;
   const services = nodes.filter((node) => node.kind === "service").length;
   const fileNodes = nodes.filter((node) => node.kind === "file").length;
   const systems = nodes.filter((node) =>
     ["application", "service", "runtime"].includes(node.kind),
   ).length;
-  const files = filesAnalyzed > 0 ? filesAnalyzed : fileNodes;
+  const modules = metricValue(graph, "modules") ?? modulesFromNodes;
+  const files = metricValue(graph, "files") ?? (filesAnalyzed > 0 ? filesAnalyzed : fileNodes);
+  const coverageFromMetric = metricValue(graph, "coverage");
   const coveragePercent =
-    nodes.length > 0 ? Math.min(100, Math.round((modules / nodes.length) * 100)) : 0;
+    coverageFromMetric != null
+      ? Math.min(100, coverageFromMetric)
+      : nodes.length > 0
+        ? Math.min(100, Math.round((modulesFromNodes / nodes.length) * 100))
+        : 0;
 
   return {
     systems,

@@ -37,6 +37,22 @@ describe("computeBlueprintGraphStats", () => {
     });
   });
 
+  it("prefers graph metrics for Zielbild-scale demo stats", () => {
+    expect(
+      computeBlueprintGraphStats({
+        ...sampleGraph,
+        metrics: [
+          { id: "m-modules", name: "modules", value: 1248 },
+          { id: "m-files", name: "files", value: 5732 },
+        ],
+      }),
+    ).toEqual({
+      moduleCount: 1248,
+      fileCount: 5732,
+      dependencyCount: 1,
+    });
+  });
+
   it("returns zeros for missing graph", () => {
     expect(computeBlueprintGraphStats(null)).toEqual({
       moduleCount: 0,

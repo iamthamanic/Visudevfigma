@@ -163,6 +163,29 @@ export function normalizeSoftwareGraph(raw: unknown): SoftwareGraph | undefined 
 
   const groups = sanitizeGroups(raw.groups, nodeIds);
 
+  const ALLOWED_METRIC_NAMES = new Set(["modules", "files", "coverage"]);
+  const MAX_METRIC_VALUE = 1_000_000;
+  const metrics = Array.isArray(raw.metrics)
+    ? raw.metrics
+        .map((metricEntry) => {
+          if (!isRecord(metricEntry)) return null;
+          const metricId = boundedString(metricEntry.id, 128);
+          const metricName = boundedString(metricEntry.name, 64);
+          const metricValue =
+            typeof metricEntry.value === "number" && Number.isFinite(metricEntry.value)
+              ? metricEntry.value
+              : null;
+          if (!metricId || !metricName || metricValue == null) return null;
+          if (!ALLOWED_METRIC_NAMES.has(metricName)) return null;
+          const boundedValue = Math.min(MAX_METRIC_VALUE, Math.max(0, Math.round(metricValue)));
+          return { id: metricId, name: metricName, value: boundedValue };
+        })
+        .filter(
+          (metricEntry): metricEntry is NonNullable<typeof metricEntry> => metricEntry != null,
+        )
+        .slice(0, 16)
+    : [];
+
   return {
     version: 1,
     projectId,
@@ -172,7 +195,7 @@ export function normalizeSoftwareGraph(raw: unknown): SoftwareGraph | undefined 
     edges,
     evidence,
     groups,
-    metrics: [],
+    metrics,
     condensed: false,
     limits: {
       maxNodes: MAX_NODES,

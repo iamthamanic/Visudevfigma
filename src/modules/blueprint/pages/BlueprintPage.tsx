@@ -121,8 +121,8 @@ export function BlueprintPage({ projectId, activeView }: BlueprintPageProps) {
   const branchLabel = activeProject?.github_branch ?? "main";
 
   const graphStats = useMemo(
-    () => computeBlueprintGraphStats(blueprint?.graph),
-    [blueprint?.graph],
+    () => computeBlueprintGraphStats(blueprint?.graph, blueprint?.filesAnalyzed ?? 0),
+    [blueprint?.graph, blueprint?.filesAnalyzed],
   );
 
   const freshnessLabel = useMemo(() => {
