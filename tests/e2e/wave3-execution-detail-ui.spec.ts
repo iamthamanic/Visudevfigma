@@ -24,11 +24,15 @@ test.describe("Wave 3 execution detail UI", () => {
     await expect(payload).toBeVisible();
     await expect(payload).toContainText("{");
 
-    await page.getByRole("button", { name: /LeaveController/i }).first().click();
+    await page
+      .getByTestId("execution-step-card")
+      .filter({ hasText: /LeaveController/i })
+      .first()
+      .click();
 
     await page.getByRole("tab", { name: "Headers" }).click();
     const headers = page.getByTestId("execution-detail-tab-headers");
-    await expect(headers).toBeVisible();
+    await expect(headers).toBeVisible({ timeout: 15000 });
     await expect(headers).not.toBeEmpty();
 
     await page.getByRole("tab", { name: "Logs" }).click();

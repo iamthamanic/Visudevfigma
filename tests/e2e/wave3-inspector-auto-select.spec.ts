@@ -66,6 +66,6 @@ test.describe("Wave 3 inspector auto-select", () => {
     await openBlueprintView(page, "diagnostics");
 
     await expect(page.getByTestId("problem-inspector-evidence")).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText("db.rls-missing")).toBeVisible();
+    await expect(page.getByLabel("Inspektor").getByText("db.rls-missing")).toBeVisible();
   });
 });
