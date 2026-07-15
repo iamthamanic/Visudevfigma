@@ -28,9 +28,14 @@ export interface ExecutionStepPipelineProps {
   onSelectStep: (nodeId: string) => void;
 }
 
-function resolveStatus(hasEvidence: boolean, isCycle: boolean): StatusBadgeVariant {
+function resolveStatus(
+  hasEvidence: boolean,
+  isCycle: boolean,
+  hasTiming: boolean,
+): StatusBadgeVariant {
   if (isCycle) return "unknown";
-  return hasEvidence ? "confirmed" : "missing";
+  // Observed timings count as confirmed for demo/live capture paths (Wave 4).
+  return hasEvidence || hasTiming ? "confirmed" : "missing";
 }
 
 export function ExecutionStepPipeline({
@@ -57,6 +62,7 @@ export function ExecutionStepPipeline({
         const isCycle = cycleNodeId === nodeId;
         const hasEvidence = stepHasEvidence.get(nodeId) ?? false;
         const durationMs = durationByNodeId.get(nodeId);
+        const hasTiming = typeof durationMs === "number" && durationMs > 0;
 
         return (
           <div key={nodeId} className={styles.pipelineItem}>
@@ -66,7 +72,7 @@ export function ExecutionStepPipeline({
               title={stepLabels.get(nodeId) ?? nodeId}
               subtitle={isCycle ? `${subtitle} · Zyklus` : subtitle}
               durationMs={durationMs}
-              status={resolveStatus(hasEvidence, isCycle)}
+              status={resolveStatus(hasEvidence, isCycle, hasTiming)}
               selected={selectedStepId === nodeId}
               testId="execution-step-card"
               onSelect={() => onSelectStep(nodeId)}
