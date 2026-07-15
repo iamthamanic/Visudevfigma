@@ -17,7 +17,7 @@ export function ExecutionTimelineRuler({
   const totalMs = stepTimings.at(-1)?.endMs ?? 0;
 
   return (
-    <div className={styles.timelineWrap} aria-label="Zeitachse">
+    <div className={styles.timelineWrap} aria-label="Zeitachse" data-testid="execution-timeline">
       <div className={styles.timelineTrack}>
         {stepTimings.map((timing, index) => (
           <div key={timing.nodeId} className={styles.timelineSegment}>

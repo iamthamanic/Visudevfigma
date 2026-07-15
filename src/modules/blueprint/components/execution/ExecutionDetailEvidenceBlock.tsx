@@ -12,6 +12,7 @@ export interface ExecutionDetailEvidenceBlockProps {
   tabEvidence: SoftwareGraphEvidence[];
   copyStatus: CopyFeedbackStatus;
   onCopy: () => void;
+  titleOverride?: string;
 }
 
 function copyButtonLabel(status: CopyFeedbackStatus): string {
@@ -25,6 +26,7 @@ export function ExecutionDetailEvidenceBlock({
   tabEvidence,
   copyStatus,
   onCopy,
+  titleOverride,
 }: ExecutionDetailEvidenceBlockProps): JSX.Element {
   return (
     <div
@@ -41,7 +43,7 @@ export function ExecutionDetailEvidenceBlock({
     >
       <div className={styles.evidenceBlockHeader}>
         <span className={styles.evidenceBlockTitle}>
-          {tab === "payload" ? "Request / Response" : tab.toUpperCase()}
+          {titleOverride ?? (tab === "payload" ? "Request / Response" : tab.toUpperCase())}
         </span>
         <button type="button" className={styles.copyButton} onClick={onCopy}>
           {copyButtonLabel(copyStatus)}

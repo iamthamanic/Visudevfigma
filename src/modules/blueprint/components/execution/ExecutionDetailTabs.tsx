@@ -13,6 +13,7 @@ import {
   resolveExecutionTabContent,
   type ExecutionDetailTabId,
 } from "./executionDetailEvidence.js";
+import { splitPayloadEvidence } from "./split-payload-evidence.js";
 
 const DETAIL_TABS = [
   { id: "overview", label: "Übersicht" },
@@ -57,6 +58,7 @@ export function ExecutionDetailTabs({
 
   const { tabEvidence, resolvedTabText } = resolveExecutionTabContent(activeTab, selectedEvidence);
   const overviewPayload = filterExecutionEvidenceByTab("payload", selectedEvidence);
+  const { request: requestBlock, response: responseBlock } = splitPayloadEvidence(overviewPayload);
 
   return (
     <div className={styles.detailPanel}>
@@ -96,15 +98,31 @@ export function ExecutionDetailTabs({
                 <dd>{selectedEvidence.length}</dd>
               </div>
             </dl>
-            {overviewPayload.length > 0 ? (
-              <ExecutionDetailEvidenceBlock
-                tab="payload"
-                tabEvidence={overviewPayload}
-                copyStatus={copyStatus}
-                onCopy={() =>
-                  void copyText(overviewPayload.map((entry) => entry.excerpt).join("\n\n"))
-                }
-              />
+            {requestBlock.length > 0 ? (
+              <div data-testid="execution-payload">
+                <ExecutionDetailEvidenceBlock
+                  tab="payload"
+                  titleOverride="PAYLOAD (REQUEST)"
+                  tabEvidence={requestBlock}
+                  copyStatus={copyStatus}
+                  onCopy={() =>
+                    void copyText(requestBlock.map((entry) => entry.excerpt).join("\n\n"))
+                  }
+                />
+              </div>
+            ) : null}
+            {responseBlock.length > 0 ? (
+              <div data-testid="execution-response">
+                <ExecutionDetailEvidenceBlock
+                  tab="payload"
+                  titleOverride="RESPONSE"
+                  tabEvidence={responseBlock}
+                  copyStatus={copyStatus}
+                  onCopy={() =>
+                    void copyText(responseBlock.map((entry) => entry.excerpt).join("\n\n"))
+                  }
+                />
+              </div>
             ) : null}
           </>
         ) : null}
