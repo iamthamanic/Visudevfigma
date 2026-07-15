@@ -92,14 +92,13 @@ describe("DiagnosticsView", () => {
     render(<DiagnosticsView blueprint={blueprint} />);
     expect(screen.getByRole("tab", { name: "Security", selected: true })).toBeInTheDocument();
     expect(screen.getByText("Sicherheits-Matrix")).toBeInTheDocument();
-    expect(screen.getByText("Auth fehlt auf Route")).toBeInTheDocument();
+    expect(screen.getAllByText("Auth fehlt auf Route").length).toBeGreaterThan(0);
     expect(screen.getByRole("columnheader", { name: "Schwere" })).toBeInTheDocument();
   });
 
-  it("opens Problem-Inspektor with artifacts and SQL evidence when selecting a finding", () => {
+  it("opens Problem-Inspektor with artifacts and SQL evidence when selecting a finding", async () => {
     render(<DiagnosticsView blueprint={blueprint} />);
-    fireEvent.click(screen.getByRole("button", { name: /auth\.missing/i }));
-    expect(screen.getByText("Erwartet")).toBeInTheDocument();
+    expect(await screen.findByText("Erwartet")).toBeInTheDocument();
     expect(screen.getByText(/getUsers/)).toBeInTheDocument();
     expect(screen.getByText("Verknüpfte Artefakte")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "GET /users" })).toBeInTheDocument();
@@ -108,8 +107,7 @@ describe("DiagnosticsView", () => {
 
   it("copies evidence from Problem-Inspektor actions", async () => {
     render(<DiagnosticsView blueprint={blueprint} />);
-    fireEvent.click(screen.getByRole("button", { name: /auth\.missing/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Evidence kopieren" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Evidence kopieren" }));
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       "export async function getUsers() {}",
     );
@@ -138,17 +136,17 @@ describe("DiagnosticsView", () => {
       />,
     );
 
-    expect(screen.getByText("Seite 1 von 2")).toBeInTheDocument();
+    expect(screen.getByText("Seite 1 von 3")).toBeInTheDocument();
     expect(screen.queryByText("Finding 11")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Weiter" }));
+    fireEvent.click(screen.getByRole("button", { name: "Weiter" }));
     expect(screen.getByText("Finding 11")).toBeInTheDocument();
-    expect(screen.getByText("Seite 2 von 2")).toBeInTheDocument();
+    expect(screen.getByText("Seite 3 von 3")).toBeInTheDocument();
   });
 
-  it("marks finding as resolved from Problem-Inspektor", () => {
+  it("marks finding as resolved from Problem-Inspektor", async () => {
     render(<DiagnosticsView blueprint={blueprint} />);
-    fireEvent.click(screen.getByRole("button", { name: /auth\.missing/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Als erledigt markieren" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Als erledigt markieren" }));
     expect(screen.getByTestId("finding-status-finding-1")).toHaveTextContent("Erledigt");
   });
 

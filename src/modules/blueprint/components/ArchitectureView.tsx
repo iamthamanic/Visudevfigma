@@ -13,6 +13,8 @@ import {
 } from "./architecture/architecture-grouping.js";
 import { buildArchitectureStackCards } from "./architecture/build-layer-stack.js";
 import { projectArchitectureGraph } from "./architecture/_projection.js";
+import { useArchitectureDefaultLayerSelection } from "../hooks/useArchitectureDefaultLayerSelection.js";
+import { buildGraphSnapshotKey } from "../services/graph-snapshot-key.js";
 import styles from "../styles/ArchitectureView.module.css";
 
 const GraphCanvas = lazy(() =>
@@ -32,10 +34,16 @@ export function ArchitectureView({ blueprint }: ArchitectureViewProps) {
     () => new Set(GROUPING_VISIBLE_KINDS.layers),
   );
 
+  const graphSnapshotKey = buildGraphSnapshotKey(graph);
+
   useEffect(() => {
     setVisibleKinds(new Set(GROUPING_VISIBLE_KINDS[groupingMode]));
-    setSelectedNodeId(null);
+    if (groupingMode !== "layers") {
+      setSelectedNodeId(null);
+    }
   }, [groupingMode]);
+
+  useArchitectureDefaultLayerSelection(graph, groupingMode, setSelectedNodeId, graphSnapshotKey);
 
   const architectureProjection = useMemo(() => {
     if (!graph) {

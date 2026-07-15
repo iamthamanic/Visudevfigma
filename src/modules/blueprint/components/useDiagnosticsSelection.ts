@@ -3,12 +3,15 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { buildGraphSnapshotKey } from "../services/graph-snapshot-key.js";
+import { useDiagnosticsDefaultFindingSelection } from "../hooks/useDiagnosticsDefaultFindingSelection.js";
 import { findingsForRoute } from "../services/blueprint-helpers";
 import type { BlueprintData, BlueprintFinding, RouteBlueprint } from "../types";
 
 export function useDiagnosticsSelection(blueprint: BlueprintData) {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedFindingId, setSelectedFindingId] = useState<string | null>(null);
+  const diagnosticsSnapshotKey = buildGraphSnapshotKey(blueprint.graph);
 
   const routes = useMemo(() => blueprint.routes ?? [], [blueprint.routes]);
   const matrix = useMemo(() => blueprint.securityMatrix ?? [], [blueprint.securityMatrix]);
@@ -34,6 +37,13 @@ export function useDiagnosticsSelection(blueprint: BlueprintData) {
       setSelectedRouteId(routes[0].id);
     }
   }, [routes, selectedRouteId]);
+
+  useDiagnosticsDefaultFindingSelection(
+    allFindings,
+    selectedFindingId,
+    setSelectedFindingId,
+    diagnosticsSnapshotKey,
+  );
 
   const selectRoute = (routeId: string) => {
     setSelectedRouteId(routeId);

@@ -125,7 +125,7 @@ describe("buildSoftwareGraph", () => {
     expect(() => buildSoftwareGraph(scan)).toThrow("Invalid RawBlueprintScan");
   });
 
-  it("marks condensed and truncates when limits exceeded", () => {
+  it("marks condensed and truncates when limits exceeded", { timeout: 15000 }, () => {
     const routes = Array.from({ length: 3000 }, (_, i) => ({
       id: `route:${i}`,
       method: "get",

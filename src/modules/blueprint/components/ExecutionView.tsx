@@ -36,12 +36,10 @@ export function ExecutionView({ blueprint }: ExecutionViewProps) {
   useEffect(() => {
     if (routes.length === 0) {
       setSelectedRouteId(null);
-      setSelectedStepId(null);
       return;
     }
     if (!selectedRouteId || !routes.some((route) => route.routeId === selectedRouteId)) {
       setSelectedRouteId(routes[0].routeId);
-      setSelectedStepId(null);
     }
   }, [routes, selectedRouteId]);
 
@@ -49,6 +47,16 @@ export function ExecutionView({ blueprint }: ExecutionViewProps) {
     if (!graph || !selectedRouteId) return null;
     return projectExecutionGraph(graph, { routeId: selectedRouteId });
   }, [graph, selectedRouteId]);
+
+  useEffect(() => {
+    if (!projection || projection.stepNodeIds.length === 0) {
+      setSelectedStepId(null);
+      return;
+    }
+    if (!selectedStepId || !projection.stepNodeIds.includes(selectedStepId)) {
+      setSelectedStepId(projection.stepNodeIds[0] ?? null);
+    }
+  }, [projection, selectedStepId]);
 
   const stepLabels = useMemo(() => {
     const labels = new Map<string, string>();

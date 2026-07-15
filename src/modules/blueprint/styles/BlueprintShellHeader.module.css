@@ -18,6 +18,19 @@
   min-width: 0;
 }
 
+.scanStatusGroup {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.lastScannedHint {
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  line-height: 1.2;
+}
+
 .pillGroup {
   align-items: center;
   display: inline-flex;

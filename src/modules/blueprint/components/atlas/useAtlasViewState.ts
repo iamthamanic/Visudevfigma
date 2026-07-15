@@ -4,6 +4,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { BlueprintData, SoftwareGraphGroup, SoftwareGraphNode } from "../../types";
+import { useAtlasDefaultClusterSelection } from "../../hooks/useAtlasDefaultClusterSelection.js";
+import { buildGraphSnapshotKey } from "../../services/graph-snapshot-key.js";
 import { buildCityBlocks } from "./build-city-blocks.js";
 import type { CityBlock } from "./build-city-blocks.js";
 import { findGraphNode, listVisibleGroups } from "./atlas-display.js";
@@ -39,6 +41,7 @@ export function useAtlasViewState(graph: BlueprintData["graph"]): AtlasViewState
   );
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const graphSnapshotKey = buildGraphSnapshotKey(graph);
 
   const projection = useMemo(() => {
     if (!graph) {
@@ -86,6 +89,16 @@ export function useAtlasViewState(graph: BlueprintData["graph"]): AtlasViewState
   useEffect(() => {
     setViewMode(threeDisabled ? "2d" : "3d");
   }, [threeDisabled]);
+
+  useAtlasDefaultClusterSelection(
+    graph,
+    visibleGroups,
+    selectedGroupId,
+    selectedNodeId,
+    setSelectedGroupId,
+    setSelectedNodeId,
+    graphSnapshotKey,
+  );
 
   useEffect(() => {
     const visibleIds = new Set(projection.nodes.map((node) => node.id));
