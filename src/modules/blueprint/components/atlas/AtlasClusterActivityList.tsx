@@ -15,7 +15,7 @@ export function AtlasClusterActivityList({ items }: AtlasClusterActivityListProp
       <h4 className={styles.subSectionTitle}>Aktivität</h4>
       <ul className={styles.activityList}>
         {items.map((item) => (
-          <li key={`${item.label}-${item.when}`}>
+          <li key={`${item.label}-${item.when}`} data-testid="atlas-activity-item">
             <span>{item.label}</span>
             <span className={styles.activityWhen}>{item.when}</span>
           </li>

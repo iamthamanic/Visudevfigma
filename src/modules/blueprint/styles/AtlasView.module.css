@@ -390,6 +390,7 @@
 }
 
 .clusterLabel {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
@@ -402,6 +403,83 @@
   color: var(--color-foreground);
   text-align: left;
   cursor: pointer;
+  overflow: hidden;
+}
+
+.glowPlate {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  background: radial-gradient(
+    ellipse at 30% 80%,
+    color-mix(in srgb, var(--color-primary) 55%, transparent),
+    transparent 70%
+  );
+  box-shadow: 0 0 14px color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+.clusterLabel[data-cluster-color="frontend"] .glowPlate {
+  background: radial-gradient(
+    ellipse at 30% 80%,
+    color-mix(in srgb, var(--color-graph-module) 60%, transparent),
+    transparent 70%
+  );
+  box-shadow: 0 0 16px color-mix(in srgb, var(--color-graph-module) 45%, transparent);
+}
+
+.clusterLabel[data-cluster-color="backend"] .glowPlate {
+  background: radial-gradient(
+    ellipse at 30% 80%,
+    color-mix(in srgb, var(--color-graph-service) 60%, transparent),
+    transparent 70%
+  );
+  box-shadow: 0 0 16px color-mix(in srgb, var(--color-graph-service) 45%, transparent);
+}
+
+.clusterLabel[data-cluster-color="worker"] .glowPlate {
+  background: radial-gradient(
+    ellipse at 30% 80%,
+    color-mix(in srgb, var(--color-graph-runtime) 60%, transparent),
+    transparent 70%
+  );
+  box-shadow: 0 0 16px color-mix(in srgb, var(--color-graph-runtime) 45%, transparent);
+}
+
+.clusterLabel[data-cluster-color="data"] .glowPlate {
+  background: radial-gradient(
+    ellipse at 30% 80%,
+    color-mix(in srgb, var(--color-graph-database) 60%, transparent),
+    transparent 70%
+  );
+  box-shadow: 0 0 16px color-mix(in srgb, var(--color-graph-database) 45%, transparent);
+}
+
+.clusterLabel[data-cluster-color="storage"] .glowPlate {
+  background: radial-gradient(
+    ellipse at 30% 80%,
+    color-mix(in srgb, var(--color-graph-repository) 60%, transparent),
+    transparent 70%
+  );
+  box-shadow: 0 0 16px color-mix(in srgb, var(--color-graph-repository) 45%, transparent);
+}
+
+.clusterLabel[data-cluster-color="external"] .glowPlate {
+  background: radial-gradient(
+    ellipse at 30% 80%,
+    color-mix(in srgb, var(--color-graph-external) 60%, transparent),
+    transparent 70%
+  );
+  box-shadow: 0 0 16px color-mix(in srgb, var(--color-graph-external) 45%, transparent);
+}
+
+.clusterLabel[data-cluster-color="security"] .glowPlate {
+  background: radial-gradient(
+    ellipse at 30% 80%,
+    color-mix(in srgb, var(--color-bp-rel-auth) 60%, transparent),
+    transparent 70%
+  );
+  box-shadow: 0 0 16px color-mix(in srgb, var(--color-bp-rel-auth) 45%, transparent);
 }
 
 .clusterLabel[data-cluster-color="frontend"] {
@@ -542,11 +620,15 @@
 }
 
 .clusterLabelTitle {
+  position: relative;
+  z-index: 1;
   font-weight: 700;
   font-size: 0.6875rem;
 }
 
 .clusterLabelMeta {
+  position: relative;
+  z-index: 1;
   color: var(--color-muted-foreground);
 }
 
