@@ -1,0 +1,30 @@
+/**
+ * Minimal cluster stack labels for Atlas inspector (derived from known Zweck labels).
+ * Location: src/modules/blueprint/components/atlas/
+ */
+
+const CLUSTER_STACK: Record<string, { stack: string; techs: string[] }> = {
+  "WEB APP": { stack: "Next.js · Frontend-System", techs: ["Next.js", "TypeScript"] },
+  "API SERVICE": { stack: "NestJS · Backend-System", techs: ["NestJS", "TypeScript"] },
+  WORKER: { stack: "BullMQ · Worker-System", techs: ["BullMQ", "TypeScript"] },
+  DATEN: { stack: "PostgreSQL · Datenbank", techs: ["PostgreSQL"] },
+  SPEICHER: { stack: "S3-kompatibler Speicher", techs: ["S3"] },
+  EXTERN: { stack: "Externe Integrationen", techs: ["HTTP"] },
+  SICHERHEIT: { stack: "Auth Service · Sicherheit", techs: ["JWT"] },
+};
+
+function normalizeClusterLabel(label: string): string {
+  return label.trim().toUpperCase();
+}
+
+export function atlasClusterProfile(label: string): {
+  stack: string;
+  tier: string;
+  techs: string[];
+} {
+  const profile = CLUSTER_STACK[normalizeClusterLabel(label)];
+  if (!profile) {
+    return { stack: "System-Cluster", tier: "System", techs: ["TypeScript"] };
+  }
+  return { stack: profile.stack, tier: "System", techs: profile.techs };
+}

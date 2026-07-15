@@ -1,15 +1,18 @@
 /**
  * Maps visible Atlas nodes into 3D city blocks (district grid layout).
+ * Color assignment is category-only; palette resolution happens in AtlasCityScene.
  */
 
 import type { GraphCanvasNode } from "../../types";
 import type { SoftwareGraphGroup } from "../../types";
+import { resolveAtlasClusterCategory, type AtlasClusterCategory } from "./atlas-cluster-theme.js";
 
 export interface CityBlock {
   id: string;
   label: string;
   kind: string;
   districtLabel: string;
+  clusterCategory: AtlasClusterCategory;
   x: number;
   z: number;
   width: number;
@@ -42,10 +45,12 @@ function heightForKind(kind: string): number {
 function layoutDistrict(
   nodes: GraphCanvasNode[],
   districtLabel: string,
+  districtKind: string | undefined,
   originX: number,
   originZ: number,
 ): CityBlock[] {
   if (nodes.length === 0) return [];
+  const clusterCategory = resolveAtlasClusterCategory(districtLabel, districtKind);
   const columns = Math.max(1, Math.ceil(Math.sqrt(nodes.length)));
   return nodes.map((node, index) => {
     const row = Math.floor(index / columns);
@@ -55,6 +60,7 @@ function layoutDistrict(
       label: node.label,
       kind: node.kind,
       districtLabel,
+      clusterCategory,
       x: originX + column * (BLOCK_SIZE + GRID_GAP),
       z: originZ + row * (BLOCK_SIZE + GRID_GAP),
       width: BLOCK_SIZE,
@@ -68,14 +74,14 @@ function layoutDistrict(
 function groupNodesByDistrict(
   nodes: GraphCanvasNode[],
   groups: SoftwareGraphGroup[],
-): { label: string; nodes: GraphCanvasNode[] }[] {
+): { label: string; kind?: string; nodes: GraphCanvasNode[] }[] {
   if (groups.length === 0) {
     return [{ label: "System", nodes }];
   }
 
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
   const assigned = new Set<string>();
-  const districts: { label: string; nodes: GraphCanvasNode[] }[] = [];
+  const districts: { label: string; kind?: string; nodes: GraphCanvasNode[] }[] = [];
 
   for (const group of groups) {
     const districtNodes = group.nodeIds
@@ -83,7 +89,7 @@ function groupNodesByDistrict(
       .filter((node): node is GraphCanvasNode => Boolean(node));
     if (districtNodes.length === 0) continue;
     districtNodes.forEach((node) => assigned.add(node.id));
-    districts.push({ label: group.label, nodes: districtNodes });
+    districts.push({ label: group.label, kind: group.kind, nodes: districtNodes });
   }
 
   const ungrouped = nodes.filter((node) => !assigned.has(node.id));
@@ -103,7 +109,7 @@ export function buildCityBlocks(
 
   districts.forEach((district, districtIndex) => {
     const originX = districtIndex * DISTRICT_GAP;
-    blocks.push(...layoutDistrict(district.nodes, district.label, originX, 0));
+    blocks.push(...layoutDistrict(district.nodes, district.label, district.kind, originX, 0));
   });
 
   if (blocks.length === 0) return blocks;

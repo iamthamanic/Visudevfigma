@@ -397,15 +397,148 @@
   border-radius: 0.35rem;
   background: color-mix(in srgb, var(--color-background) 88%, transparent);
   border: 1px solid var(--color-border);
+  border-left-width: 3px;
   font-size: 0.625rem;
   color: var(--color-foreground);
   text-align: left;
   cursor: pointer;
 }
 
+.clusterLabel[data-cluster-color="frontend"] {
+  border-left-color: var(--color-graph-module);
+}
+
+.clusterLabel[data-cluster-color="backend"] {
+  border-left-color: var(--color-graph-service);
+}
+
+.clusterLabel[data-cluster-color="worker"] {
+  border-left-color: var(--color-graph-runtime);
+}
+
+.clusterLabel[data-cluster-color="data"] {
+  border-left-color: var(--color-graph-database);
+}
+
+.clusterLabel[data-cluster-color="storage"] {
+  border-left-color: var(--color-graph-repository);
+}
+
+.clusterLabel[data-cluster-color="external"] {
+  border-left-color: var(--color-graph-external);
+}
+
+.clusterLabel[data-cluster-color="security"] {
+  border-left-color: var(--color-bp-rel-auth);
+}
+
 .clusterLabelSelected {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 45%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-primary) 45%, transparent),
+    0 0 18px color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+
+.glowMarker {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.clusterOverview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.clusterStack {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+
+.clusterHealth {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-primary);
+}
+
+.clusterHealthDot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 9999px;
+  background: currentColor;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.metricCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-card) 80%, transparent);
+}
+
+.metricCell strong {
+  font-size: 0.875rem;
+}
+
+.metricCell span {
+  font-size: 0.625rem;
+  color: var(--color-muted-foreground);
+}
+
+.overviewSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.techTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.techTag {
+  padding: 0.15rem 0.45rem;
+  border-radius: 9999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-muted);
+  font-size: 0.625rem;
+}
+
+.activityList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.6875rem;
+}
+
+.activityList li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.activityWhen {
+  color: var(--color-muted-foreground);
+  white-space: nowrap;
 }
 
 .clusterLabelTitle {

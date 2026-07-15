@@ -50,7 +50,12 @@ export function AtlasInspectorTabs({ graph, node, cluster }: AtlasInspectorTabsP
 
       <div className={styles.tabPanel} role="tabpanel">
         {activeTab === "overview" ? (
-          <AtlasInspectorOverviewTab node={node} cluster={cluster} nodeGroups={nodeGroups} />
+          <AtlasInspectorOverviewTab
+            graph={graph}
+            node={node}
+            cluster={cluster}
+            nodeGroups={nodeGroups}
+          />
         ) : null}
         {activeTab === "details" ? (
           <AtlasInspectorDetailsTab graph={graph} node={node} cluster={cluster} />

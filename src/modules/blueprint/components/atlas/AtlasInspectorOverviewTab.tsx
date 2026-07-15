@@ -1,44 +1,92 @@
 /**
- * Übersicht tab content for Atlas Inspektor.
+ * Übersicht tab content for Atlas Inspektor — rich cluster profile (Wave 4).
  */
 
-import type { SoftwareGraphGroup, SoftwareGraphNode } from "../../types";
+import type { SoftwareGraph, SoftwareGraphGroup, SoftwareGraphNode } from "../../types";
+import { AtlasClusterActivityList } from "./AtlasClusterActivityList.js";
+import { AtlasClusterMetricGrid } from "./AtlasClusterMetricGrid.js";
 import { atlasKindLabel } from "./atlas-display.js";
+import {
+  clusterActivityItems,
+  clusterOverviewMetrics,
+  clusterStackLabel,
+  clusterTechTags,
+  clusterTopDependencies,
+} from "./atlas-cluster-overview.js";
 import styles from "../../styles/AtlasView.module.css";
 
 export interface AtlasInspectorOverviewTabProps {
+  graph?: SoftwareGraph;
   node: SoftwareGraphNode | null;
   cluster: SoftwareGraphGroup | null;
   nodeGroups: SoftwareGraphGroup[];
 }
 
 export function AtlasInspectorOverviewTab({
+  graph,
   node,
   cluster,
   nodeGroups,
 }: AtlasInspectorOverviewTabProps): JSX.Element {
+  const label = cluster?.label ?? node?.label ?? "—";
+  const topDependencies = clusterTopDependencies(graph, node, cluster);
+
   return (
-    <dl className={styles.detailList}>
-      <div className={styles.detailRow}>
-        <dt>Name</dt>
-        <dd>{cluster?.label ?? node?.label ?? "—"}</dd>
-      </div>
-      <div className={styles.detailRow}>
-        <dt>Typ</dt>
-        <dd>{atlasKindLabel(cluster?.kind ?? node?.kind ?? "—")}</dd>
-      </div>
-      {cluster ? (
+    <div className={styles.clusterOverview} data-testid="atlas-inspector-overview">
+      <p className={styles.clusterStack}>{clusterStackLabel(label)}</p>
+      <p className={styles.clusterHealth}>
+        <span className={styles.clusterHealthDot} aria-hidden="true" />
+        Gesund
+      </p>
+
+      <dl className={styles.detailList}>
         <div className={styles.detailRow}>
-          <dt>Knoten</dt>
-          <dd>{cluster.nodeIds.length}</dd>
+          <dt>Name</dt>
+          <dd>{label}</dd>
         </div>
-      ) : null}
-      {node && nodeGroups.length > 0 ? (
         <div className={styles.detailRow}>
-          <dt>Cluster</dt>
-          <dd>{nodeGroups.map((group) => group.label).join(", ")}</dd>
+          <dt>Typ</dt>
+          <dd>{atlasKindLabel(cluster?.kind ?? node?.kind ?? "—")}</dd>
         </div>
+        {cluster ? (
+          <div className={styles.detailRow}>
+            <dt>Knoten</dt>
+            <dd>{cluster.nodeIds.length}</dd>
+          </div>
+        ) : null}
+        {node && nodeGroups.length > 0 ? (
+          <div className={styles.detailRow}>
+            <dt>Cluster</dt>
+            <dd>{nodeGroups.map((group) => group.label).join(", ")}</dd>
+          </div>
+        ) : null}
+      </dl>
+
+      <AtlasClusterMetricGrid metrics={clusterOverviewMetrics(graph, cluster)} />
+
+      {topDependencies.length > 0 ? (
+        <section className={styles.overviewSection} data-testid="atlas-inspector-deps">
+          <h4 className={styles.subSectionTitle}>Top Abhängigkeiten</h4>
+          <ul className={styles.checklist}>
+            {topDependencies.map((dependency) => (
+              <li key={dependency}>{dependency}</li>
+            ))}
+          </ul>
+        </section>
       ) : null}
-    </dl>
+
+      <section className={styles.overviewSection} data-testid="atlas-inspector-tech">
+        <h4 className={styles.subSectionTitle}>Technologien</h4>
+        <div className={styles.techTags}>
+          {clusterTechTags(label).map((tech) => (
+            <span key={tech} className={styles.techTag}>
+              {tech}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <AtlasClusterActivityList items={clusterActivityItems(graph)} />
+    </div>
   );
 }
