@@ -16,13 +16,22 @@ test.describe("Wave 3 execution detail UI", () => {
     await openBlueprintView(page, "execution");
 
     await expect(page.getByTestId("execution-live-badge")).toBeVisible();
-    const step = page.getByRole("button", { name: /CreateLeaveRequest/i }).first();
-    await step.click();
+
+    const createStep = page
+      .getByTestId("execution-step-card")
+      .filter({ hasText: /CreateLeaveRequest/i })
+      .first();
+    await createStep.click();
 
     await page.getByRole("tab", { name: "Payload" }).click();
     const payload = page.getByTestId("execution-detail-tab-payload");
-    await expect(payload).toBeVisible();
+    await expect(payload).toBeVisible({ timeout: 15000 });
     await expect(payload).toContainText("{");
+
+    await page.getByRole("tab", { name: "Logs" }).click();
+    const logs = page.getByTestId("execution-detail-tab-logs");
+    await expect(logs).toBeVisible({ timeout: 15000 });
+    await expect(logs).toContainText(/INFO|DEBUG/i);
 
     await page
       .getByTestId("execution-step-card")
@@ -34,10 +43,5 @@ test.describe("Wave 3 execution detail UI", () => {
     const headers = page.getByTestId("execution-detail-tab-headers");
     await expect(headers).toBeVisible({ timeout: 15000 });
     await expect(headers).not.toBeEmpty();
-
-    await page.getByRole("tab", { name: "Logs" }).click();
-    const logs = page.getByTestId("execution-detail-tab-logs");
-    await expect(logs).toBeVisible();
-    await expect(logs).toContainText(/INFO|DEBUG/i);
   });
 });

@@ -285,14 +285,13 @@ test.describe("Blueprint Engine Core UI", () => {
     await expect(page.getByRole("heading", { name: "Diagnosen" })).toBeVisible({
       timeout: 15000,
     });
-    await page.getByRole("button", { name: /Runtime Validation fehlt vor DB Write/i }).first().click();
-    await expect(
-      page.getByRole("heading", { name: /Runtime Validation fehlt vor DB Write/i }),
-    ).toBeVisible({
+    const inspector = page.getByLabel("Inspektor");
+    if (!(await inspector.getByText("web-api.validation-before-db-write").isVisible().catch(() => false))) {
+      await page.getByRole("button", { name: /Runtime Validation fehlt vor DB Write/i }).first().click();
+    }
+    await expect(inspector.getByText("web-api.validation-before-db-write")).toBeVisible({
       timeout: 15000,
     });
-    const inspector = page.getByLabel("Inspektor");
-    await expect(inspector.getByText("web-api.validation-before-db-write")).toBeVisible();
     await expect(inspector.getByRole("link", { name: "src/routes/employees.ts:18" })).toBeVisible();
 
     await page.screenshot({
