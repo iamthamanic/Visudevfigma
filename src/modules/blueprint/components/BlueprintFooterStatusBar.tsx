@@ -26,13 +26,15 @@ export function BlueprintFooterStatusBar({
   refreshDisabled = false,
 }: BlueprintFooterStatusBarProps): JSX.Element {
   return (
-    <footer className={styles.root}>
+    <footer className={styles.root} data-testid="blueprint-footer-stats">
       <div className={styles.metrics}>
-        <span>{formatCount(stats.moduleCount)} Module</span>
+        <span data-testid="footer-module-count">{formatCount(stats.moduleCount)} Module</span>
         <span className={styles.separator}>│</span>
-        <span>{formatCount(stats.fileCount)} Dateien</span>
+        <span data-testid="footer-file-count">{formatCount(stats.fileCount)} Dateien</span>
         <span className={styles.separator}>│</span>
-        <span>{formatCount(stats.dependencyCount)} Abhängigkeiten</span>
+        <span data-testid="footer-dependency-count">
+          {formatCount(stats.dependencyCount)} Abhängigkeiten
+        </span>
       </div>
 
       <div className={styles.actions}>

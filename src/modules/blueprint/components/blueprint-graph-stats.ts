@@ -1,5 +1,6 @@
 /**
  * Aggregated graph counters for Blueprint footer status bar.
+ * Prefers graph.metrics (Zielbild demo scale) when present.
  * Location: src/modules/blueprint/components/
  */
 
@@ -26,8 +27,16 @@ const DEPENDENCY_EDGE_KINDS = new Set([
   "depends_on",
 ]);
 
+function metricValue(graph: SoftwareGraph, name: string): number | null {
+  const metrics = Array.isArray(graph.metrics) ? graph.metrics : [];
+  const match = metrics.find((metric) => metric.name === name);
+  if (!match || !Number.isFinite(match.value)) return null;
+  return Math.max(0, Math.round(match.value));
+}
+
 export function computeBlueprintGraphStats(
   graph: SoftwareGraph | null | undefined,
+  filesAnalyzed = 0,
 ): BlueprintGraphStats {
   if (!graph) {
     return { moduleCount: 0, fileCount: 0, dependencyCount: 0 };
@@ -45,8 +54,14 @@ export function computeBlueprintGraphStats(
   }
 
   const dependencyCount = edges.filter((edge) => DEPENDENCY_EDGE_KINDS.has(edge.kind)).length;
+  const metricModules = metricValue(graph, "modules");
+  const metricFiles = metricValue(graph, "files");
 
-  return { moduleCount, fileCount, dependencyCount };
+  return {
+    moduleCount: metricModules ?? moduleCount,
+    fileCount: metricFiles ?? (filesAnalyzed > 0 ? filesAnalyzed : fileCount),
+    dependencyCount,
+  };
 }
 
 export function formatRelativeFreshness(updatedAt: string | undefined): string {
