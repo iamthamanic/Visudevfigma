@@ -2,7 +2,10 @@
 
 import { assertEquals } from "std/assert";
 import type { VisuDevGraph } from "../../dto/graph/visudev-graph.dto.ts";
-import { capGraphForExport } from "./graph-export-cap.ts";
+import {
+  capGraphForExport,
+  selectFactsPreservingPrismaModels,
+} from "./graph-export-cap.ts";
 import { repairGraphReferences } from "./graph-export-integrity.ts";
 import { sanitizeGraphForExport } from "./graph-export-sanitize.ts";
 
@@ -148,4 +151,58 @@ Deno.test("capGraphForExport accepts unknown and validates output", () => {
   assertEquals(result.version, 1);
   assertEquals(result.nodes.length, 1);
   assertEquals(result.scopes[0].nodeIds, result.nodes.map((node) => node.id));
+});
+
+import type { CodeFact } from "../../dto/blueprint/blueprint-document.dto.ts";
+
+function modelFact(table: string, line: number): CodeFact {
+  return {
+    id: `m-${table}`,
+    kind: "db-write",
+    filePath: "packages/database/schema.prisma",
+    line,
+    snippet: `model ${table} {`,
+    metadata: { table, operation: "prisma-model", framework: "prisma" },
+  };
+}
+
+function routeFact(i: number): CodeFact {
+  return {
+    id: `r-${i}`,
+    kind: "api-route",
+    filePath: `apps/web/app/api/r${i}/route.ts`,
+    line: 1,
+    snippet: `export async function GET() {}`,
+    metadata: { method: "GET", path: `/api/r${i}` },
+  };
+}
+
+Deno.test("selectFactsPreservingPrismaModels keeps all schema models under cap flood", () => {
+  const models = Array.from(
+    { length: 80 },
+    (_, i) => modelFact(`Model${i}`, i + 1),
+  );
+  const routes = Array.from({ length: 400 }, (_, i) => routeFact(i));
+  const selected = selectFactsPreservingPrismaModels(
+    [...routes, ...models],
+    100,
+  );
+  const keptModels = selected.filter((f) =>
+    f.metadata?.operation === "prisma-model"
+  );
+  assertEquals(keptModels.length, 80);
+  assertEquals(selected.some((f) => f.metadata?.table === "Model79"), true);
+});
+
+Deno.test("selectFactsPreservingPrismaModels keeps LeaveRequest among many models", () => {
+  const models = [
+    ...Array.from({ length: 40 }, (_, i) => modelFact(`Other${i}`, i + 1)),
+    modelFact("LeaveRequest", 99),
+  ];
+  const noise = Array.from({ length: 200 }, (_, i) => routeFact(i));
+  const selected = selectFactsPreservingPrismaModels([...noise, ...models], 50);
+  assertEquals(
+    selected.some((f) => f.metadata?.table === "LeaveRequest"),
+    true,
+  );
 });

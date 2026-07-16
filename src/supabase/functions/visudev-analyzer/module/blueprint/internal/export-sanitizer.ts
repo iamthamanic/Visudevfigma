@@ -1,6 +1,10 @@
 /** Fact export sanitization facade for Blueprint documents. */
 
-export { capGraphForExport, MAX_BLUEPRINT_FACTS } from "./graph-export-cap.ts";
+export {
+  capGraphForExport,
+  MAX_BLUEPRINT_FACTS,
+  selectFactsPreservingPrismaModels,
+} from "./graph-export-cap.ts";
 export { sanitizeFactMetadataForExport } from "./fact-metadata-sanitizer.ts";
 export {
   normalizeCodeFactForExport,

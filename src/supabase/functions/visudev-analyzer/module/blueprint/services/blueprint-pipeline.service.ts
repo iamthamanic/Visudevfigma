@@ -20,6 +20,7 @@ import {
 import {
   MAX_BLUEPRINT_FACTS,
   sanitizeFactsForExport,
+  selectFactsPreservingPrismaModels,
 } from "../internal/export-sanitizer.ts";
 import { buildConceptsForRoutes } from "./concept-engine.service.ts";
 import {
@@ -94,7 +95,7 @@ export function analyzeFromFileEntries(
     buildRouteScopes(allFacts, fileIndex),
   );
   const exportFacts = sanitizeFactsForExport(
-    allFacts.slice(0, MAX_BLUEPRINT_FACTS),
+    selectFactsPreservingPrismaModels(allFacts, MAX_BLUEPRINT_FACTS),
   );
   const concepts = buildConceptsForRoutes(routeScopes, allFacts);
   const findings = evaluatePolicies(routeScopes, concepts, allFacts);
