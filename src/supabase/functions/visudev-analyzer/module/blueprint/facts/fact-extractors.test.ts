@@ -107,12 +107,52 @@ model Webhook {
   assertEquals(facts.every((f) => f.metadata?.framework === "prisma"), true);
 });
 
-Deno.test("extractFactsFromFile detects prisma client calls", () => {
-  const content = `const survey = await prisma.survey.findMany({ where: {} });`;
-  const facts = extractFactsFromFile("apps/web/lib/survey.ts", content);
-  const read = facts.find((f) => f.kind === "db-read");
-  assertEquals(read?.metadata?.table, "survey");
-  assertEquals(read?.metadata?.framework, "prisma");
+Deno.test("extractFactsFromFile detects prisma this.prisma client calls", () => {
+  const content =
+    `const leaveRequest = await this.prisma.leaveRequest.create({ data });`;
+  const facts = extractFactsFromFile(
+    "app/modules/leaves/leaves.service.ts",
+    content,
+  );
+  const write = facts.find((f) => f.kind === "db-write");
+  assertEquals(write?.metadata?.table, "leaveRequest");
+  assertEquals(write?.metadata?.framework, "prisma");
+});
+
+Deno.test("extractFactsFromFile detects multiline express router paths", () => {
+  const content = `
+export function createLeavesRoutes() {
+  const router = Router();
+  router.get(
+    '/escalation-approvers',
+    authorize('hr.admin.approvals.read'),
+    handler,
+  );
+  return router;
+}
+`;
+  const facts = extractFactsFromFile(
+    "app/modules/leaves/leaves.routes.ts",
+    content,
+  );
+  const routes = facts.filter((fact) => fact.kind === "api-route");
+  assertEquals(routes.length, 1);
+  assertEquals(routes[0]?.metadata?.path, "/escalation-approvers");
+  assertEquals(routes[0]?.metadata?.method, "GET");
+});
+
+Deno.test("extractFactsFromFile detects express app.use mount prefixes", () => {
+  const content = `
+import { Router } from 'express';
+const router = createLeavesRoutes();
+app.use('/api/leaves', router);
+`;
+  const facts = extractFactsFromFile(
+    "app/modules/leaves/index.ts",
+    content,
+  );
+  const mount = facts.find((f) => f.kind === "route-mount");
+  assertEquals(mount?.metadata?.path, "/api/leaves");
 });
 
 Deno.test("extractFactsFromFile detects Django urlpatterns and permissions", () => {

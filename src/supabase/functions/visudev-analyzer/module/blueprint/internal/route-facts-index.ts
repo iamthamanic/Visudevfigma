@@ -94,7 +94,24 @@ function assignSharedFileFacts(
   routeById: Map<string, RouteScope>,
   index: Map<string, CodeFact[]>,
 ): void {
+  const normalized = filePath.replace(/\\/g, "/");
+  const isDataModuleFile =
+    /\.(service|repository|repo)\.[jt]sx?$/i.test(normalized) ||
+    /\/(services|repositories)\//i.test(normalized);
+
+  // visudev-gapclose P0-2: shared leaves.service.ts is related to many routes —
+  // still attach db-read/db-write so Execution can show LeaveRequest edges.
   if (routeIds.size > 1) {
+    if (!isDataModuleFile) return;
+    const dbFacts = facts.filter((f) =>
+      f.kind === "db-read" || f.kind === "db-write"
+    );
+    if (dbFacts.length === 0) return;
+    for (const routeId of routeIds) {
+      const route = routeById.get(routeId);
+      if (!route || filePath === route.filePath) continue;
+      index.get(routeId)?.push(...dbFacts);
+    }
     return;
   }
 
