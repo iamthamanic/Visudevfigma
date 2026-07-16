@@ -7,12 +7,16 @@ import { buildVisuDevGraphFromFacts } from "../graph/fact-graph.mapper.ts";
 import {
   capGraphForExport,
   MAX_BLUEPRINT_FACTS,
+  selectFactsPreservingPrismaModels,
 } from "../internal/export-sanitizer.ts";
 
 export function assembleBlueprintGraph(
   facts: CodeFact[],
   routeScopes: RouteScope[],
 ): VisuDevGraph {
-  const graphFacts = facts.slice(0, MAX_BLUEPRINT_FACTS);
+  const graphFacts = selectFactsPreservingPrismaModels(
+    facts,
+    MAX_BLUEPRINT_FACTS,
+  );
   return capGraphForExport(buildVisuDevGraphFromFacts(graphFacts, routeScopes));
 }
