@@ -116,4 +116,21 @@ describe("blueprint-local Softort coverage", () => {
     expect(capped.length).toBeLessThanOrEqual(20);
     expect(capped.some((p) => /\.(spec|test|mock)\./.test(p))).toBe(false);
   });
+
+  it("orders meteor method/model seeds ahead of generic meteor fill (P1-4)", () => {
+    const seeds = [
+      "apps/meteor/server/lib/utils.ts",
+      "apps/meteor/server/meteor-methods/users/setRealName.ts",
+      "apps/meteor/server/models.ts",
+      "packages/database/schema.prisma",
+    ];
+    const capped = applyFileLimitWithSeeds(seeds, seeds, 10);
+    expect(capped.indexOf("packages/database/schema.prisma")).toBe(0);
+    expect(capped.indexOf("apps/meteor/server/meteor-methods/users/setRealName.ts")).toBeLessThan(
+      capped.indexOf("apps/meteor/server/lib/utils.ts"),
+    );
+    expect(capped.indexOf("apps/meteor/server/models.ts")).toBeLessThan(
+      capped.indexOf("apps/meteor/server/lib/utils.ts"),
+    );
+  });
 });
