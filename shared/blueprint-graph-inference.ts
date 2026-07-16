@@ -201,7 +201,9 @@ export function collectRouteEdgeSignals(
   graph: SoftwareGraph,
   route: { filePath: string; line: number },
   siblingRoutes: Array<{ filePath: string; line: number }> = [],
+  nodeById?: Map<string, SoftwareGraph["nodes"][number]>,
 ): { hasAuth: boolean; hasValidation: boolean; hasDb: boolean } {
+  const nodesById = nodeById ?? new Map(graph.nodes.map((node) => [node.id, node] as const));
   const routeDir = dirnameOfFile(route.filePath);
   const routeFileNodeIds = new Set(
     graph.nodes
@@ -237,7 +239,7 @@ export function collectRouteEdgeSignals(
       continue;
     }
 
-    const sourceNode = graph.nodes.find((node) => node.id === edge.sourceId);
+    const sourceNode = nodesById.get(edge.sourceId);
     const fromRouteFile = routeFileNodeIds.has(edge.sourceId);
     const sourcePath = sourceNode?.filePath ?? "";
     const sameModuleData =
