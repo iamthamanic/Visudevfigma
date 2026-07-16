@@ -165,10 +165,11 @@ function detectFrameworkHints(facts: CodeFact[]): string[] {
     if (fact.filePath.includes("supabase/functions")) {
       hints.add("supabase-edge");
     }
+    const framework = String(fact.metadata.framework ?? "");
+    // Legacy supabase.from() facts omit framework — do not tag mongodb/prisma/django as supabase.
     if (
       (fact.kind === "db-read" || fact.kind === "db-write") &&
-      fact.metadata.framework !== "prisma" &&
-      fact.metadata.framework !== "django"
+      !framework
     ) {
       hints.add("supabase");
     }

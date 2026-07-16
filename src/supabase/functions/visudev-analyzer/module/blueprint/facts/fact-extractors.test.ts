@@ -182,3 +182,90 @@ class WorkspaceView(APIView):
   );
   assertEquals(facts.some((f) => f.kind === "auth-check"), true);
 });
+
+Deno.test("extractFactsFromFile detects Meteor.methods as METHOD api-routes", () => {
+  const content = `
+import { Meteor } from 'meteor/meteor';
+import { check } from 'meteor/check';
+
+Meteor.methods<ServerMethods>({
+	async setRealName(name) {
+		check(name, String);
+		const userId = Meteor.userId();
+		if (!userId) {
+			throw new Meteor.Error('error-invalid-user');
+		}
+		return name;
+	},
+	deleteUser(userId) {
+		return true;
+	},
+});
+`;
+  const facts = extractFactsFromFile(
+    "apps/meteor/server/meteor-methods/users/setRealName.ts",
+    content,
+  );
+  const routes = facts.filter((f) => f.kind === "api-route");
+  assertEquals(routes.length, 2);
+  assertEquals(
+    routes.every((r) => r.metadata?.framework === "meteor"),
+    true,
+  );
+  assertEquals(
+    routes.some((r) =>
+      r.metadata?.method === "METHOD" &&
+      r.metadata?.path === "/meteor/setRealName"
+    ),
+    true,
+  );
+  assertEquals(
+    routes.some((r) => r.metadata?.path === "/meteor/deleteUser"),
+    true,
+  );
+  // Nested check() must not become a method unit
+  assertEquals(
+    routes.some((r) => String(r.metadata?.path).includes("check")),
+    false,
+  );
+});
+
+Deno.test("extractFactsFromFile detects Meteor.publish and Mongo registerModel", () => {
+  const pubContent = `
+Meteor.publish('spotlight', function () {
+  return this.ready();
+});
+`;
+  const pubFacts = extractFactsFromFile(
+    "apps/meteor/server/publications/spotlight.ts",
+    pubContent,
+  );
+  const pub = pubFacts.find((f) => f.kind === "api-route");
+  assertEquals(pub?.metadata?.method, "PUBLISH");
+  assertEquals(pub?.metadata?.path, "/meteor/publish/spotlight");
+  assertEquals(pub?.metadata?.framework, "meteor");
+
+  const modelContent = `
+registerModel('IMessagesModel', new MessagesRaw(db));
+registerModel('IRoomsModel', new RoomsRaw(db));
+const legacy = new Mongo.Collection('rocketchat_roles');
+`;
+  const modelFacts = extractFactsFromFile(
+    "apps/meteor/server/models.ts",
+    modelContent,
+  );
+  const tables = modelFacts
+    .filter((f) => f.kind === "db-write")
+    .map((f) => f.metadata?.table);
+  assertEquals(tables.includes("Messages"), true);
+  assertEquals(tables.includes("Rooms"), true);
+  assertEquals(tables.includes("rocketchat_roles"), true);
+  assertEquals(
+    modelFacts
+      .filter((f) => f.kind === "db-write")
+      .every((f) => f.metadata?.framework === "mongodb"),
+    true,
+  );
+  // No invented RLS / PG policy facts
+  assertEquals(modelFacts.some((f) => f.kind === "rls-policy"), false);
+});
