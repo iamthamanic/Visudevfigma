@@ -125,16 +125,11 @@ export function InfrastructureTopologyDiagram({
         </span>
 
         <TierColumn title="Load Balancer">
-          {loadBalancerNodes.length > 0 ? (
-            renderTierNodes(loadBalancerNodes, selectedNodeId, onSelectNode, "Kein Load-Balancer.")
-          ) : (
-            <div
-              className={`${styles.topologyStaticNode} ${styles.topologyNodeLb}`}
-              data-testid="infra-topology-node"
-              data-tier="loadBalancer"
-            >
-              LOAD BALANCER / GATEWAY
-            </div>
+          {renderTierNodes(
+            loadBalancerNodes,
+            selectedNodeId,
+            onSelectNode,
+            "Kein Gateway im Scan.",
           )}
         </TierColumn>
 

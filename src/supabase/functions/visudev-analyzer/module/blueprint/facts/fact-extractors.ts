@@ -1,4 +1,4 @@
-/** Line-based fact extractors for Blueprint Engine v1 (Hono, Next, Express, Supabase, Zod, Auth). */
+/** Line-based fact extractors for Blueprint Engine v1 (Hono, Next, Express, Supabase, Zod, Auth, Django, Prisma). */
 
 import type { CodeFact } from "../../dto/blueprint/blueprint-document.dto.ts";
 import { extractAstFactsFromFile } from "../graph/ast-call-graph.ts";
@@ -17,13 +17,34 @@ function trimSnippet(line: string, max = 120): string {
   return t.length > max ? `${t.slice(0, max)}…` : t;
 }
 
+function isJsTsFile(filePath: string): boolean {
+  return /\.(tsx?|jsx?|mts|cts)$/i.test(filePath);
+}
+
+function isPythonFile(filePath: string): boolean {
+  return /\.py$/i.test(filePath);
+}
+
+function isPrismaFile(filePath: string): boolean {
+  return /\.prisma$/i.test(filePath);
+}
+
 export function extractFactsFromFile(
   filePath: string,
   content: string,
   fileIndex?: ReadonlyMap<string, FileIndexEntry>,
 ): CodeFact[] {
+  if (isPrismaFile(filePath)) {
+    return extractPrismaFacts(filePath, content);
+  }
+  if (isPythonFile(filePath)) {
+    return extractDjangoFacts(filePath, content);
+  }
+
   const regexFacts = extractRegexFactsFromFile(filePath, content);
-  const astFacts = extractAstFactsFromFile(filePath, content, fileIndex);
+  const astFacts = isJsTsFile(filePath)
+    ? extractAstFactsFromFile(filePath, content, fileIndex)
+    : [];
   return mergeFacts(regexFacts, astFacts);
 }
 
@@ -51,11 +72,193 @@ function extractRegexFactsFromFile(
     extractValidation(filePath, line, lineNum, facts);
     extractAuth(filePath, line, lineNum, facts);
     extractSupabase(filePath, line, lineNum, facts);
+    extractPrismaClient(filePath, line, lineNum, facts);
     extractExternalApi(filePath, line, lineNum, facts);
     extractRateLimit(filePath, line, lineNum, facts);
     extractErrorStatus(filePath, line, lineNum, facts);
   });
 
+  return facts;
+}
+
+/** Prisma schema.prisma → table facts for Softort Formbricks DB visibility. */
+function extractPrismaFacts(filePath: string, content: string): CodeFact[] {
+  const facts: CodeFact[] = [];
+  const lines = content.split("\n");
+  lines.forEach((line, index) => {
+    const lineNum = index + 1;
+    const modelMatch = line.match(/^\s*model\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{/);
+    if (!modelMatch) return;
+    const table = modelMatch[1];
+    facts.push({
+      id: makeFactId(filePath, lineNum, "db-write"),
+      kind: "db-write",
+      filePath,
+      line: lineNum,
+      snippet: trimSnippet(line),
+      metadata: { table, operation: "prisma-model", framework: "prisma" },
+    });
+  });
+  return facts;
+}
+
+/** Normalize Django path()/re_path() route strings into slash paths. */
+function normalizeDjangoRoutePath(raw: string): string {
+  let route = raw.trim();
+  if (route.startsWith("^")) route = route.slice(1);
+  if (route.endsWith("$")) route = route.slice(0, -1);
+  // Strip common re_path named groups: (?P<id>[^/.]+) → :id
+  route = route.replace(/\(\?P<([A-Za-z_][\w]*)>[^)]+\)/g, ":$1");
+  // Strip unnamed regex groups used as segments
+  route = route.replace(/\([^)]+\)/g, "*");
+  route = route.replace(/\/+/g, "/");
+  if (!route.startsWith("/")) route = `/${route}`;
+  return route === "/" ? "/" : route.replace(/\/$/, "") || "/";
+}
+
+function extractDjangoUrlPatterns(
+  filePath: string,
+  line: string,
+  lineNum: number,
+  facts: CodeFact[],
+  routeKeys: Set<string>,
+): void {
+  const pathMatch = line.match(
+    /(?:path|re_path)\s*\(\s*(?:r)?["'`]([^"'`]+)["'`]/,
+  );
+  if (!pathMatch) return;
+  const routePath = normalizeDjangoRoutePath(pathMatch[1]);
+  const key = `ALL:${routePath}`;
+  if (routeKeys.has(key)) return;
+  routeKeys.add(key);
+  facts.push({
+    id: makeFactId(filePath, lineNum, "api-route"),
+    kind: "api-route",
+    filePath,
+    line: lineNum,
+    snippet: trimSnippet(line),
+    metadata: {
+      method: "ALL",
+      path: routePath,
+      framework: "django",
+    },
+  });
+}
+
+function extractDjangoViewRoutes(
+  filePath: string,
+  line: string,
+  lineNum: number,
+  facts: CodeFact[],
+): void {
+  if (
+    !/@api_view\s*\(|class\s+\w+\s*\(.*APIView|class\s+\w+\s*\(.*ViewSet/.test(
+      line,
+    )
+  ) {
+    return;
+  }
+  facts.push({
+    id: makeFactId(filePath, lineNum, "api-route"),
+    kind: "api-route",
+    filePath,
+    line: lineNum,
+    snippet: trimSnippet(line),
+    metadata: {
+      method: "ALL",
+      path: `/${filePath.replace(/\\/g, "/")}`,
+      framework: "django",
+    },
+  });
+}
+
+function extractDjangoAuthChecks(
+  filePath: string,
+  line: string,
+  lineNum: number,
+  facts: CodeFact[],
+): void {
+  if (
+    !/permission_classes|has_permission|IsAuthenticated|DjangoModelPermissions|BasePermission/
+      .test(line)
+  ) {
+    return;
+  }
+  facts.push({
+    id: makeFactId(filePath, lineNum, "auth-check"),
+    kind: "auth-check",
+    filePath,
+    line: lineNum,
+    snippet: trimSnippet(line),
+    metadata: { framework: "django" },
+  });
+}
+
+function extractDjangoModels(
+  filePath: string,
+  line: string,
+  lineNum: number,
+  facts: CodeFact[],
+): void {
+  if (
+    !/class\s+\w+\s*\(.*models\.Model/.test(line) &&
+    !/models\.Model\)/.test(line)
+  ) {
+    return;
+  }
+  const modelName = line.match(/class\s+(\w+)\s*\(/)?.[1];
+  if (!modelName) return;
+  facts.push({
+    id: makeFactId(filePath, lineNum, "db-write"),
+    kind: "db-write",
+    filePath,
+    line: lineNum,
+    snippet: trimSnippet(line),
+    metadata: {
+      table: modelName,
+      operation: "django-model",
+      framework: "django",
+    },
+  });
+}
+
+function extractDjangoManageEntrypoint(
+  filePath: string,
+  content: string,
+  facts: CodeFact[],
+): void {
+  if (!filePath.toLowerCase().endsWith("manage.py")) return;
+  if (!/django|DJANGO_SETTINGS_MODULE/.test(content)) return;
+  facts.push({
+    id: makeFactId(filePath, 1, "api-route"),
+    kind: "api-route",
+    filePath,
+    line: 1,
+    snippet: "Django manage.py entrypoint",
+    metadata: {
+      method: "ALL",
+      path: "/django",
+      framework: "django",
+    },
+  });
+}
+
+/** Django urls/views/permissions → api-route + auth facts for Softort Plane. */
+function extractDjangoFacts(filePath: string, content: string): CodeFact[] {
+  const facts: CodeFact[] = [];
+  const routeKeys = new Set<string>();
+  const lines = content.split("\n");
+
+  lines.forEach((line, index) => {
+    const lineNum = index + 1;
+    const trimmed = line.trim();
+    extractDjangoUrlPatterns(filePath, trimmed, lineNum, facts, routeKeys);
+    extractDjangoViewRoutes(filePath, trimmed, lineNum, facts);
+    extractDjangoAuthChecks(filePath, trimmed, lineNum, facts);
+    extractDjangoModels(filePath, trimmed, lineNum, facts);
+  });
+
+  extractDjangoManageEntrypoint(filePath, content, facts);
   return facts;
 }
 
@@ -345,6 +548,30 @@ function extractSupabase(
     line: lineNum,
     snippet: trimSnippet(line),
     metadata: { table, operation },
+  });
+}
+
+/** prisma.model.findMany / create / update → db facts (Formbricks client usage). */
+function extractPrismaClient(
+  filePath: string,
+  line: string,
+  lineNum: number,
+  facts: CodeFact[],
+): void {
+  const match = line.match(
+    /\bprisma\.(\w+)\.(findMany|findFirst|findUnique|create|createMany|update|updateMany|upsert|delete|deleteMany|count|aggregate)\s*\(/,
+  );
+  if (!match) return;
+  const table = match[1];
+  const op = match[2];
+  const isRead = /^(find|count|aggregate)/.test(op);
+  facts.push({
+    id: makeFactId(filePath, lineNum, isRead ? "db-read" : "db-write"),
+    kind: isRead ? "db-read" : "db-write",
+    filePath,
+    line: lineNum,
+    snippet: trimSnippet(line),
+    metadata: { table, operation: op, framework: "prisma" },
   });
 }
 

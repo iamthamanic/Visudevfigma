@@ -34,6 +34,18 @@ describe("build-topology", () => {
     expect(classifyGraphNodeTopologyTier({ id: "7", label: "symbol", kind: "symbol" })).toBeNull();
   });
 
+  it("maps Softort scan nodes (routes/runtimes/tables) into topology tiers", () => {
+    expect(
+      classifyGraphNodeTopologyTier({ id: "r1", label: "GET /app/health", kind: "route" }),
+    ).toBe("service");
+    expect(classifyGraphNodeTopologyTier({ id: "rt1", label: "server", kind: "runtime" })).toBe(
+      "service",
+    );
+    expect(classifyGraphNodeTopologyTier({ id: "t1", label: "Survey", kind: "table" })).toBe(
+      "database",
+    );
+  });
+
   it("projects graph nodes without injecting synthetic topology nodes", () => {
     const projectedGraphNodes: GraphCanvasNode[] = [
       { id: "runtime:internet", label: "Internet", kind: "runtime" },

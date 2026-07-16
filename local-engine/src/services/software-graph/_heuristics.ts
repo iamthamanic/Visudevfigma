@@ -6,31 +6,110 @@ export function normalizePath(filePath: string): string {
   return filePath.replace(/^\/+/, "");
 }
 
+function isRouteGroupSegment(segment: string): boolean {
+  return /^\([^)]+\)$/.test(segment);
+}
+
+function firstMeaningfulSegment(parts: string[]): string | null {
+  for (const part of parts) {
+    if (!part || part.includes(".")) continue;
+    if (isRouteGroupSegment(part)) continue;
+    if (part === "app") continue;
+    return part;
+  }
+  return null;
+}
+
 export function detectDomain(filePath: string): string {
-  const parts = normalizePath(filePath).split("/");
+  const parts = normalizePath(filePath).split("/").filter(Boolean);
+  if (parts.length === 0) return "root";
+
+  // Monorepo: apps/<name>/… → apps/<name>, packages/<name>/… → packages/<name>
+  if ((parts[0] === "apps" || parts[0] === "packages" || parts[0] === "ee") && parts.length >= 2) {
+    return `${parts[0]}/${parts[1]}`;
+  }
+
   if (parts.length >= 2 && parts[0] === "src") return parts[1] || "src";
   return parts[0] || "root";
 }
 
 export function detectModule(filePath: string, domain: string): string {
   const normalized = normalizePath(filePath);
-  const prefix = domain === "src" ? "src/" : `src/${domain}/`;
-  const rest = normalized.startsWith(prefix) ? normalized.slice(prefix.length) : normalized;
-  const parts = rest.split("/").filter(Boolean);
-  if (parts.length === 0) return domain;
-  if (parts.length === 1) {
-    const only = parts[0];
-    return only.includes(".") ? domain : only;
+
+  if (normalized.startsWith("src/")) {
+    const prefix = domain === "src" ? "src/" : `src/${domain}/`;
+    const rest = normalized.startsWith(prefix)
+      ? normalized.slice(prefix.length)
+      : normalized.slice(4);
+    const parts = rest.split("/").filter(Boolean);
+    if (parts.length === 0) return domain;
+    if (parts.length === 1) {
+      const only = parts[0];
+      return only.includes(".") ? domain : only;
+    }
+    return parts[0];
   }
-  return parts[0];
+
+  const domainPrefix = `${domain}/`;
+  const rest = normalized.startsWith(domainPrefix)
+    ? normalized.slice(domainPrefix.length)
+    : normalized;
+  const parts = rest.split("/").filter(Boolean);
+  if (parts.length === 0) {
+    return domain.includes("/") ? domain.split("/")[1]! : domain;
+  }
+  if (parts.length === 1) {
+    const only = parts[0]!;
+    return only.includes(".") ? (domain.includes("/") ? domain.split("/")[1]! : domain) : only;
+  }
+
+  // Next App Router: skip `app/` and route groups like `(app)` / `(marketing)`
+  if (parts[0] === "app") {
+    const meaningful = firstMeaningfulSegment(parts.slice(1));
+    return meaningful ?? "app";
+  }
+
+  const meaningful = firstMeaningfulSegment(parts);
+  return meaningful ?? parts[0]!;
 }
 
 export function detectLayer(filePath: string): string {
   const normalized = normalizePath(filePath).toLowerCase();
+
+  if (/\.prisma$/.test(normalized) || /\/(prisma|database|db)\//.test(normalized)) {
+    return "data";
+  }
+  if (/\.py$/.test(normalized)) {
+    if (/(?:^|\/)(urls|views|viewsets|serializers)\.py$/.test(normalized)) {
+      return "presentation";
+    }
+    if (
+      /(?:^|\/)(models|migrations)\//.test(normalized) ||
+      /(?:^|\/)models\.py$/.test(normalized)
+    ) {
+      return "data";
+    }
+    if (/(?:^|\/)(permissions|auth|middleware)\.py$/.test(normalized)) {
+      return "application";
+    }
+    if (/(?:^|\/)(settings|manage)\.py$/.test(normalized)) return "config";
+    if (normalized.includes("/apps/api/") || normalized.includes("/api/")) {
+      return "application";
+    }
+  }
+
+  // Next.js App Router + API routes
+  if (/(?:^|\/)app\/api\//.test(normalized) || /(?:^|\/)pages\/api\//.test(normalized)) {
+    return "presentation";
+  }
+  if (/(?:^|\/)app\//.test(normalized) || /(?:^|\/)route\.(tsx?|jsx?)$/.test(normalized)) {
+    return "presentation";
+  }
+
   if (/\/(pages|routes|screens|views)\//.test(normalized)) return "presentation";
-  if (/\/(components|ui)\//.test(normalized)) return "ui";
+  if (/\/(components|ui|modules)\//.test(normalized)) return "ui";
   if (/\/(hooks|composables)\//.test(normalized)) return "hooks";
-  if (/\/(services|use-cases|application)\//.test(normalized)) return "application";
+  if (/\/(services|use-cases|application|server)\//.test(normalized)) return "application";
   if (/\/(repositories|infra|database|db)\//.test(normalized)) return "data";
   if (/\/(lib|utils|shared|common|helpers)\//.test(normalized)) return "shared";
   if (/\/(config|types)\//.test(normalized)) return "config";
@@ -40,7 +119,22 @@ export function detectLayer(filePath: string): string {
 export function inferRuntime(filePath: string): string {
   const normalized = normalizePath(filePath).toLowerCase();
   if (/\bsupabase\/functions\//.test(normalized)) return "edge";
+  // API routes before generic app/ browser classification
+  if (/(?:^|\/)app\/api\//.test(normalized) || /(?:^|\/)pages\/api\//.test(normalized)) {
+    return "server";
+  }
+  if (
+    /\.py$/.test(normalized) ||
+    /\b(apps\/api|src\/server|src\/api|src\/backend)\//.test(normalized)
+  ) {
+    return "server";
+  }
   if (/\b(src\/supabase|src\/server|src\/api|src\/backend)\//.test(normalized)) return "server";
-  if (/\b(src\/modules|src\/components|src\/pages|src\/app)\//.test(normalized)) return "browser";
+  if (/(?:^|\/)app\//.test(normalized)) return "browser";
+  if (
+    /\b(src\/modules|src\/components|src\/pages|src\/app|apps\/web|apps\/meteor)\//.test(normalized)
+  ) {
+    return "browser";
+  }
   return "shared";
 }

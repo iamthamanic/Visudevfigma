@@ -26,6 +26,16 @@ export function addFactEvidence(
   const classification = classifyFactKind(fact.kind);
   if (!classification.nodeKind) return;
 
+  const tableLabel =
+    typeof fact.metadata?.table === "string" && fact.metadata.table.trim()
+      ? fact.metadata.table.trim()
+      : null;
+  const pathLabel =
+    typeof fact.metadata?.path === "string" && fact.metadata.path.trim()
+      ? String(fact.metadata.method ?? "ALL") + " " + fact.metadata.path.trim()
+      : null;
+  const inferredLabel = tableLabel ?? pathLabel ?? fact.kind;
+
   const inferredNodeId = stableUniqueId(
     state.registry,
     "node",
@@ -34,7 +44,7 @@ export function addFactEvidence(
   addNode(state, {
     id: inferredNodeId,
     kind: classification.nodeKind,
-    label: fact.kind,
+    label: inferredLabel,
     scopeId: fileId,
     filePath: fact.filePath,
     line: fact.line,

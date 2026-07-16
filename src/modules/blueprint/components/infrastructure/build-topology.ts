@@ -63,11 +63,16 @@ function isExternalApiNode(graphNode: GraphCanvasNode): boolean {
 }
 
 function isInfraServiceNode(graphNode: GraphCanvasNode): boolean {
-  if (graphNode.kind !== "service") return false;
-  const label = normalizeLabel(graphNode.label);
-  return (
-    label === "web app" || label === "api service" || label === "worker" || label === "auth service"
-  );
+  if (graphNode.kind === "route") return true;
+  if (graphNode.kind === "service") return true;
+  if (graphNode.kind === "runtime") {
+    const label = normalizeLabel(graphNode.label);
+    if (label === "internet") return false;
+    if (label.includes("load balancer") || label.includes("gateway")) return false;
+    // Softort: browser/server/edge runtimes from real scans → service tier
+    return label === "browser" || label === "server" || label === "edge" || label === "shared";
+  }
+  return false;
 }
 
 /** Maps one projected graph node to a topology tier, or null when it is not shown in the diagram. */

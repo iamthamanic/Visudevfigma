@@ -54,7 +54,9 @@ export interface AnalyzeBlueprintFromFilesInput {
 
 export function isSupportedBlueprintFile(path: string): boolean {
   const ext = path.split(".").pop()?.toLowerCase();
-  return Boolean(ext && ["ts", "tsx", "js", "jsx", "vue"].includes(ext));
+  return Boolean(
+    ext && ["ts", "tsx", "js", "jsx", "vue", "py", "prisma"].includes(ext),
+  );
 }
 
 export function analyzeFromFileEntries(
@@ -154,7 +156,11 @@ function detectFrameworkHints(facts: CodeFact[]): string[] {
     if (fact.filePath.includes("supabase/functions")) {
       hints.add("supabase-edge");
     }
-    if (fact.kind === "db-read" || fact.kind === "db-write") {
+    if (
+      (fact.kind === "db-read" || fact.kind === "db-write") &&
+      fact.metadata.framework !== "prisma" &&
+      fact.metadata.framework !== "django"
+    ) {
       hints.add("supabase");
     }
   }

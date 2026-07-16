@@ -58,15 +58,30 @@ export function prioritizeBlueprintFiles<T extends { path: string }>(
 ): T[] {
   const score = (p: string): number => {
     const path = p.toLowerCase();
-    if (path.includes("supabase/functions")) return 100;
-    if (/(?:^|\/)route\.(tsx?|jsx?)$/.test(path)) return 95;
+    if (/(?:^|\/)schema\.prisma$/.test(path) || path.endsWith(".prisma")) {
+      return 100;
+    }
+    if (/(?:^|\/)manage\.py$/.test(path)) return 99;
+    if (/(?:^|\/)urls\.py$/.test(path)) return 98;
+    if (/(?:^|\/)(views|viewsets|serializers)\.py$/.test(path)) return 96;
+    if (path.includes("supabase/functions")) return 95;
+    if (/(?:^|\/)route\.(tsx?|jsx?)$/.test(path)) return 94;
     if (/(?:^|\/)pages\/api\//.test(path)) return 90;
+    if (/(?:^|\/)(models|permissions|settings)\.py$/.test(path)) return 88;
+    if (path.includes("/apps/meteor/") || path.includes("/apps/api/")) {
+      return 86;
+    }
     if (path.includes("/validators/")) return 85;
-    if (path.includes("/repositories/")) return 80;
+    if (
+      path.includes("/repositories/") || path.includes("/packages/database/")
+    ) {
+      return 80;
+    }
     if (path.includes("/services/")) return 75;
     if (path.includes("/middleware")) return 70;
-    if (path.includes("/routes/")) return 65;
-    if (path.includes("server/") || path.includes("/api/")) return 60;
+    if (path.includes("/routes/") || path.includes("/api/")) return 65;
+    if (path.endsWith(".py")) return 55;
+    if (path.includes("server/")) return 60;
     return 0;
   };
   return [...files].sort((a, b) => score(b.path) - score(a.path));
