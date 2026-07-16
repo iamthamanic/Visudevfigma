@@ -76,6 +76,48 @@ describe("projectExecutionGraph", () => {
     expect(listExecutionRoutes(graph)).toEqual([{ routeId: "route:a", label: "GET /a" }]);
   });
 
+  it("prefers leave routes as default execution sample (P1-2)", () => {
+    const graph = makeGraph({
+      nodes: [
+        {
+          id: "route:audit",
+          kind: "route",
+          label: "GET /",
+          filePath: "app/modules/audit-logs/audit-logs.routes.ts",
+          metadata: { routeId: "GET /", path: "/" },
+        },
+        {
+          id: "route:leave",
+          kind: "route",
+          label: "POST /api/leaves",
+          filePath: "app/modules/leaves/leaves.routes.ts",
+          metadata: { routeId: "POST /api/leaves", path: "/api/leaves" },
+        },
+      ],
+    });
+    expect(listExecutionRoutes(graph)[0]?.routeId).toBe("POST /api/leaves");
+  });
+
+  it("keeps non-leave route order unchanged when no leave routes (P1-2)", () => {
+    const graph = makeGraph({
+      nodes: [
+        {
+          id: "route:z",
+          kind: "route",
+          label: "GET /z",
+          metadata: { routeId: "GET /z", path: "/z" },
+        },
+        {
+          id: "route:a",
+          kind: "route",
+          label: "GET /a",
+          metadata: { routeId: "GET /a", path: "/a" },
+        },
+      ],
+    });
+    expect(listExecutionRoutes(graph).map((r) => r.routeId)).toEqual(["GET /z", "GET /a"]);
+  });
+
   it("computes step timings and metrics", () => {
     const graph = makeGraph({
       nodes: [

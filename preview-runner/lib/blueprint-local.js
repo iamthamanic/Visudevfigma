@@ -37,7 +37,10 @@ const FILE_LIMIT = Math.max(250, Number(process.env.BLUEPRINT_FILE_LIMIT) || 400
 const MAX_WALK_CANDIDATES = Math.max(2000, Number(process.env.BLUEPRINT_MAX_WALK) || 4000);
 /** visudev-gapclose P1-1: seed budgets so Cap cannot starve Prisma/Meteor. */
 const SEED_DATABASE_BUDGET = Math.max(20, Number(process.env.BLUEPRINT_SEED_DATABASE_BUDGET) || 80);
-const SEED_METEOR_SERVER_BUDGET = Math.max(40, Number(process.env.BLUEPRINT_SEED_METEOR_BUDGET) || 120);
+const SEED_METEOR_SERVER_BUDGET = Math.max(
+  40,
+  Number(process.env.BLUEPRINT_SEED_METEOR_BUDGET) || 120,
+);
 const SEED_SCHEMA_FIND_BUDGET = Math.max(5, Number(process.env.BLUEPRINT_SEED_SCHEMA_BUDGET) || 24);
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_STDIN_BYTES = 8 * 1024 * 1024;
@@ -244,9 +247,7 @@ function collectCriticalSeedRelPaths(workspaceRoot) {
  */
 function applyFileLimitWithSeeds(rankedRelPaths, seedRelPaths, limit = FILE_LIMIT) {
   const cap = Math.max(1, limit);
-  const seedSet = new Set(
-    (seedRelPaths || []).filter((p) => isCriticalWalkSeedPath(p)),
-  );
+  const seedSet = new Set((seedRelPaths || []).filter((p) => isCriticalWalkSeedPath(p)));
   const orderedSeeds = [...seedSet].sort((a, b) => {
     const diff = seedSortKey(a) - seedSortKey(b);
     return diff !== 0 ? diff : a.localeCompare(b);
@@ -291,9 +292,7 @@ export {
 function collectFileEntries(workspaceRoot) {
   const seedRelPaths = collectCriticalSeedRelPaths(workspaceRoot);
   const walkedAbs = walkCodeFiles(workspaceRoot);
-  const walkedRel = walkedAbs.map((abs) =>
-    relative(workspaceRoot, abs).replace(/\\/g, "/"),
-  );
+  const walkedRel = walkedAbs.map((abs) => relative(workspaceRoot, abs).replace(/\\/g, "/"));
   const merged = [...new Set([...seedRelPaths, ...walkedRel])];
   const prioritized = prioritizeBlueprintFiles(merged);
   const capped = applyFileLimitWithSeeds(prioritized, seedRelPaths, FILE_LIMIT);

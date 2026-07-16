@@ -35,9 +35,10 @@ Extract Express/Nest module routes (controllers, decorators, Nest `route.ts`, `m
 | 1    | `01-happy-path.png` |
 
 ## Implementation Notes
+
 - `this.prisma.*` client calls → db-read/db-write
 - Multiline `router.get(
- '/path'` Express extraction
+'/path'` Express extraction
 - `app.use('/api/…', router)` route-mount + same-dir join in buildRouteScopes
 - Shared `*.service.ts` db facts attach to all related routes (was skipped when routeIds>1)
 - Blocked on ship: `gh` auth token invalid — branch WIP local

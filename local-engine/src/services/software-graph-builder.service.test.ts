@@ -266,6 +266,53 @@ describe("buildSoftwareGraph", () => {
     const tableNodes = graph.nodes.filter((node) => node.kind === "table");
     expect(tableNodes.length).toBeGreaterThan(0);
     expect(executionGroup?.nodeIds.some((id) => tableNodes.some((t) => t.id === id))).toBe(true);
+    expect(executionGroup?.nodeIds.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("prefers leave routes and wires LeaveRequest tables into leave paths (P1-2)", () => {
+    const scan = makeScan({
+      filesAnalyzed: 3,
+      routes: [
+        {
+          id: "GET /",
+          method: "GET",
+          path: "/",
+          filePath: "app/modules/audit-logs/audit-logs.routes.ts",
+          line: 1,
+        },
+        {
+          id: "POST /api/leaves",
+          method: "POST",
+          path: "/api/leaves",
+          filePath: "app/modules/leaves/leaves.routes.ts",
+          line: 10,
+        },
+      ],
+      facts: [
+        {
+          id: "fact:db",
+          kind: "db-write",
+          filePath: "app/modules/leaves/leaves.service.ts",
+          line: 40,
+          snippet: "this.prisma.leaveRequest.create({})",
+          metadata: { table: "leaveRequest", framework: "prisma" },
+        },
+      ],
+    });
+
+    const graph = buildSoftwareGraph(scan);
+    const executionGroups = graph.groups.filter((g) => g.id.startsWith("execution:"));
+    const leaveGroup = executionGroups.find(
+      (g) => g.id.includes("leaves") || g.label.toLowerCase().includes("leave"),
+    );
+    expect(leaveGroup).toBeDefined();
+    expect(executionGroups[0]?.label.toLowerCase()).toMatch(/leave/);
+    expect(leaveGroup?.nodeIds.length).toBeGreaterThanOrEqual(3);
+    const tableNodes = graph.nodes.filter((n) => n.kind === "table");
+    expect(leaveGroup?.nodeIds.some((id) => tableNodes.some((t) => t.id === id))).toBe(true);
+    expect(
+      graph.edges.some((e) => e.kind === "data" && leaveGroup?.nodeIds.includes(e.targetId)),
+    ).toBe(true);
   });
 
   it("emits honest non-http execution group when no routes exist", () => {
