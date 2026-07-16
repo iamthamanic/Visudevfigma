@@ -97,10 +97,12 @@ function prioritizeBlueprintFiles(files) {
   return [...files].sort((a, b) => {
     const diff = score(b) - score(a);
     if (diff !== 0) return diff;
-    // Tie-break: deeper relative paths (module segments) before short basenames.
-    const depthDiff = b.split("/").length - a.split("/").length;
+    // Tie-break uses same path normalization as score() (Windows backslashes).
+    const aNorm = a.replace(/\\/g, "/");
+    const bNorm = b.replace(/\\/g, "/");
+    const depthDiff = bNorm.split("/").length - aNorm.split("/").length;
     if (depthDiff !== 0) return depthDiff;
-    return a.localeCompare(b);
+    return aNorm.localeCompare(bNorm);
   });
 }
 

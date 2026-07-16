@@ -77,6 +77,14 @@ describe("blueprint-local Softort coverage", () => {
     );
   });
 
+  it("tie-breaks module depth with normalized backslash paths", () => {
+    // Segment bonus caps at 8 — deeper Windows path must still win via tie-break.
+    const shallow = "a/b/c/d/e/f/g/h.ts";
+    const deeperWin = "a\\b\\c\\d\\e\\f\\g\\h\\i.ts";
+    const ranked = prioritizeBlueprintFiles([shallow, deeperWin]);
+    expect(ranked[0]).toBe(deeperWin);
+  });
+
   it("uses a Softort-friendly file limit (>=250)", () => {
     expect(FILE_LIMIT).toBeGreaterThanOrEqual(250);
   });

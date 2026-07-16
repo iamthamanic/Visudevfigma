@@ -112,8 +112,11 @@ export function prioritizeBlueprintFiles<T extends { path: string }>(
   return [...files].sort((a, b) => {
     const diff = score(b.path) - score(a.path);
     if (diff !== 0) return diff;
-    const depthDiff = b.path.split("/").length - a.path.split("/").length;
+    // Tie-break uses same path normalization as score() (Windows backslashes).
+    const aNorm = a.path.replace(/\\/g, "/");
+    const bNorm = b.path.replace(/\\/g, "/");
+    const depthDiff = bNorm.split("/").length - aNorm.split("/").length;
     if (depthDiff !== 0) return depthDiff;
-    return a.path.localeCompare(b.path);
+    return aNorm.localeCompare(bNorm);
   });
 }
