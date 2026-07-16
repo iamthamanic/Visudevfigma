@@ -92,10 +92,10 @@ function buildSecurityMatrix(
       method: route.method,
       path: route.path,
       auth: { state: states?.auth ?? "unknown" },
-      role: { state: "unknown" },
+      role: { state: states?.role ?? "unknown" },
       validation: { state: states?.validation ?? "unknown" },
       rateLimit: { state: "n/a" },
-      db: { state: "n/a" },
+      db: { state: states?.db ?? "unknown" },
       rls: { state: "n/a" },
       audit: { state: "n/a" },
       findingCount: findingCountByRoute.get(route.id) ?? 0,
@@ -120,7 +120,7 @@ export function deriveDiagnosticsFromGraph(graph: SoftwareGraph): {
   const facts = deriveFactsFromGraph(graph);
   const routes = deriveRoutesFromGraph(graph);
   const indexes = buildRouteFactsIndexes(routes, facts);
-  const routeStates = inferRouteStates(routes, indexes);
+  const routeStates = inferRouteStates(routes, indexes, graph);
   const findings = buildFindings(
     routes,
     indexes.routeFactsIndex,

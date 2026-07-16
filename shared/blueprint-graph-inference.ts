@@ -1,7 +1,9 @@
 /**
- * Heuristic security inference for graph-derived legacy diagnostics.
+ * Heuristic + graph-edge security inference for Diagnostics matrix.
+ * visudev-gapclose P0-4: prefer authenticates/validates/data edges over snippet-only `?`.
  */
 
+import type { SoftwareGraph } from "./software-graph.types.js";
 import type {
   ProjectedCodeFact,
   ProjectedRoute,
@@ -9,9 +11,11 @@ import type {
 } from "./blueprint-graph-types.js";
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const AUTH_EVIDENCE_PATTERN = /auth|middleware|protect|guard|session|jwt|oauth/i;
+const AUTH_EVIDENCE_PATTERN = /auth|middleware|protect|guard|session|jwt|oauth|authorize/i;
 const VALIDATION_EVIDENCE_PATTERN =
-  /zod|joi|yup|validator|validate|schema|body\(|query\(|params\(/i;
+  /zod|joi|yup|validator|validate|schema|body\(|query\(|params\(|class-validator|IsString|IsEmail/i;
+const ROLE_EVIDENCE_PATTERN =
+  /permission_classes|has_permission|BasePermission|DjangoModelPermissions|IsAuthenticated|authorize(?:Any|OrSelf)?\s*\(/i;
 
 type NormalizedRoute = Pick<ProjectedRoute, "id" | "method" | "path" | "filePath" | "line">;
 
@@ -179,21 +183,98 @@ export function inferValidationState(
 export interface RouteInference {
   auth: ProjectedSecurityMatrixRow["auth"]["state"];
   validation: ProjectedSecurityMatrixRow["validation"]["state"];
+  role: ProjectedSecurityMatrixRow["role"]["state"];
+  db: ProjectedSecurityMatrixRow["db"]["state"];
+}
+
+type MatrixState = ProjectedSecurityMatrixRow["auth"]["state"];
+
+function preferConfirmed(a: MatrixState, b: MatrixState): MatrixState {
+  if (a === "confirmed" || b === "confirmed") return "confirmed";
+  if (a === "missing" || b === "missing") return "missing";
+  if (a === "partial" || b === "partial") return "partial";
+  return a !== "unknown" && a !== "n/a" ? a : b;
+}
+
+/** File-node outgoing control/data edges for a route's source file. */
+export function collectRouteEdgeSignals(
+  graph: SoftwareGraph,
+  routeFilePath: string,
+): { hasAuth: boolean; hasValidation: boolean; hasDb: boolean } {
+  const fileNodeIds = new Set(
+    graph.nodes
+      .filter((node) => node.kind === "file" && node.filePath === routeFilePath)
+      .map((node) => node.id),
+  );
+  // Also accept edges sourced from the route node itself (analyzer-style graphs).
+  for (const node of graph.nodes) {
+    if (node.kind === "route" && node.filePath === routeFilePath) {
+      fileNodeIds.add(node.id);
+    }
+  }
+
+  let hasAuth = false;
+  let hasValidation = false;
+  let hasDb = false;
+  for (const edge of graph.edges) {
+    if (!fileNodeIds.has(edge.sourceId)) continue;
+    if (edge.kind === "authenticates") hasAuth = true;
+    else if (edge.kind === "validates") hasValidation = true;
+    else if (edge.kind === "data") hasDb = true;
+  }
+  return { hasAuth, hasValidation, hasDb };
+}
+
+function resolveRoleState(
+  route: NormalizedRoute,
+  hasRoleEvidence: boolean,
+): ProjectedSecurityMatrixRow["role"]["state"] {
+  if (hasRoleEvidence) return "confirmed";
+  if (MUTATING_METHODS.has(route.method)) return "unknown";
+  return "unknown";
+}
+
+function resolveDbState(hasDbEvidence: boolean): ProjectedSecurityMatrixRow["db"]["state"] {
+  return hasDbEvidence ? "confirmed" : "unknown";
 }
 
 export function inferRouteStates(
   routes: ProjectedRoute[],
   indexes: RouteFactsIndexes,
+  graph?: SoftwareGraph | null,
 ): Map<string, RouteInference> {
   const states = new Map<string, RouteInference>();
   for (const route of routes) {
     const directory = dirnameOfFile(route.filePath);
+    const routeFacts = indexes.routeFactsIndex.get(route.id) ?? [];
+    const snippetAuth = indexes.authByDirectory.get(directory) ?? false;
+    const snippetValidation = indexes.validationByFile.get(route.filePath) ?? false;
+    const snippetRole = routeFacts.some(
+      (fact) =>
+        (fact.filePath === route.filePath || isPathUnderDirectory(fact.filePath, directory)) &&
+        ROLE_EVIDENCE_PATTERN.test(fact.snippet),
+    );
+
+    const edgeSignals = graph
+      ? collectRouteEdgeSignals(graph, route.filePath)
+      : { hasAuth: false, hasValidation: false, hasDb: false };
+
+    const auth = preferConfirmed(
+      resolveAuthState(route, snippetAuth),
+      resolveAuthState(route, edgeSignals.hasAuth),
+    );
+    const validation = preferConfirmed(
+      resolveValidationState(route, snippetValidation),
+      resolveValidationState(route, edgeSignals.hasValidation),
+    );
+    // Role/Permission: only permission/authorize evidence — never invent from bare auth edges.
+    const role = resolveRoleState(route, snippetRole);
+
     states.set(route.id, {
-      auth: resolveAuthState(route, indexes.authByDirectory.get(directory) ?? false),
-      validation: resolveValidationState(
-        route,
-        indexes.validationByFile.get(route.filePath) ?? false,
-      ),
+      auth,
+      validation,
+      role,
+      db: resolveDbState(edgeSignals.hasDb),
     });
   }
   return states;
