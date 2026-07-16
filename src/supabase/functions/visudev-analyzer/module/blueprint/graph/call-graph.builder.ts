@@ -120,3 +120,86 @@ export function prioritizeBlueprintFiles<T extends { path: string }>(
     return aNorm.localeCompare(bNorm);
   });
 }
+
+/** visudev-gapclose P1-1 — keep in sync with blueprint-local.js */
+export function isCriticalWalkSeedPath(relPath: string): boolean {
+  const path = String(relPath || "")
+    .toLowerCase()
+    .replace(/\\/g, "/");
+  if (!path) return false;
+  if (/(?:^|\/)schema\.prisma$/.test(path)) return true;
+  if (
+    path.includes("/packages/database/") ||
+    path.startsWith("packages/database/")
+  ) {
+    return true;
+  }
+  if (
+    path.includes("/apps/meteor/server/") ||
+    path.startsWith("apps/meteor/server/")
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function seedSortKey(relPath: string): number {
+  const path = String(relPath || "")
+    .toLowerCase()
+    .replace(/\\/g, "/");
+  if (/(?:^|\/)packages\/database\/schema\.prisma$/.test(path)) return 0;
+  if (/(?:^|\/)prisma\/schema\.prisma$/.test(path)) return 1;
+  if (/(?:^|\/)schema\.prisma$/.test(path)) return 2;
+  if (
+    path.includes("/packages/database/") ||
+    path.startsWith("packages/database/")
+  ) {
+    return 3;
+  }
+  if (
+    path.includes("/apps/meteor/server/") ||
+    path.startsWith("apps/meteor/server/")
+  ) {
+    return 4;
+  }
+  return 9;
+}
+
+/**
+ * Guarantee seed paths occupy Cap slots before ranked fill.
+ * Keep in sync with preview-runner/lib/blueprint-local.js applyFileLimitWithSeeds.
+ */
+export function applyFileLimitWithSeeds<T extends { path: string }>(
+  ranked: T[],
+  limit: number,
+): T[] {
+  const cap = Math.max(1, limit);
+  const byPath = new Map<string, T>();
+  for (const item of ranked) {
+    if (!byPath.has(item.path)) byPath.set(item.path, item);
+  }
+
+  const seedPaths = [...byPath.keys()]
+    .filter((p) => isCriticalWalkSeedPath(p))
+    .sort((a, b) => {
+      const diff = seedSortKey(a) - seedSortKey(b);
+      return diff !== 0 ? diff : a.localeCompare(b);
+    });
+
+  const out: T[] = [];
+  const seen = new Set<string>();
+  for (const p of seedPaths) {
+    if (out.length >= cap) break;
+    const item = byPath.get(p);
+    if (!item || seen.has(p)) continue;
+    seen.add(p);
+    out.push(item);
+  }
+  for (const item of ranked) {
+    if (out.length >= cap) break;
+    if (seen.has(item.path)) continue;
+    seen.add(item.path);
+    out.push(item);
+  }
+  return out;
+}

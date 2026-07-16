@@ -14,7 +14,10 @@ import {
   redactFileRef,
   redactRepoRef,
 } from "../internal/log-redaction.ts";
-import { prioritizeBlueprintFiles } from "../graph/call-graph.builder.ts";
+import {
+  applyFileLimitWithSeeds,
+  prioritizeBlueprintFiles,
+} from "../graph/call-graph.builder.ts";
 import {
   analyzeFromFileEntries,
   isSupportedBlueprintFile,
@@ -52,7 +55,10 @@ export class BlueprintAnalysisService {
       (file) => file.type === "blob" && isSupportedBlueprintFile(file.path),
     );
     const fileLimit = Math.max(this.settings.analysisFileLimit, 250);
-    const prioritized = prioritizeBlueprintFiles(codeFiles).slice(0, fileLimit);
+    const prioritized = applyFileLimitWithSeeds(
+      prioritizeBlueprintFiles(codeFiles),
+      fileLimit,
+    );
 
     const fileEntries: Array<{ path: string; content: string }> = [];
 

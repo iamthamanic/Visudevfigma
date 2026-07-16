@@ -35,6 +35,10 @@ const SKIP_DIRS = new Set([
 const SUPPORTED_EXT = new Set(["ts", "tsx", "js", "jsx", "vue", "py", "prisma"]);
 const FILE_LIMIT = Math.max(250, Number(process.env.BLUEPRINT_FILE_LIMIT) || 400);
 const MAX_WALK_CANDIDATES = Math.max(2000, Number(process.env.BLUEPRINT_MAX_WALK) || 4000);
+/** visudev-gapclose P1-1: seed budgets so Cap cannot starve Prisma/Meteor. */
+const SEED_DATABASE_BUDGET = Math.max(20, Number(process.env.BLUEPRINT_SEED_DATABASE_BUDGET) || 80);
+const SEED_METEOR_SERVER_BUDGET = Math.max(40, Number(process.env.BLUEPRINT_SEED_METEOR_BUDGET) || 120);
+const SEED_SCHEMA_FIND_BUDGET = Math.max(5, Number(process.env.BLUEPRINT_SEED_SCHEMA_BUDGET) || 24);
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_STDIN_BYTES = 8 * 1024 * 1024;
 const DENO_TIMEOUT_MS = Math.max(30_000, Number(process.env.BLUEPRINT_DENO_TIMEOUT_MS) || 120_000);
@@ -110,11 +114,12 @@ function logBlueprintSkip(kind, detail) {
   console.warn(`[blueprint-local] ${kind}: ${detail}`);
 }
 
-function walkCodeFiles(rootDir) {
+function walkCodeFiles(rootDir, maxFiles = MAX_WALK_CANDIDATES) {
   const results = [];
   const stack = [rootDir];
+  const limit = Math.max(1, maxFiles);
 
-  while (stack.length > 0 && results.length < MAX_WALK_CANDIDATES) {
+  while (stack.length > 0 && results.length < limit) {
     const dir = stack.pop();
     let entries;
     try {
@@ -124,7 +129,7 @@ function walkCodeFiles(rootDir) {
       continue;
     }
     for (const entry of entries) {
-      if (results.length >= MAX_WALK_CANDIDATES) break;
+      if (results.length >= limit) break;
       const full = join(dir, entry.name);
       if (entry.isDirectory()) {
         if (SKIP_DIRS.has(entry.name)) continue;
@@ -142,6 +147,129 @@ function walkCodeFiles(rootDir) {
 }
 
 /**
+ * visudev-gapclose P1-1: paths that must survive FILE_LIMIT (Formbricks Prisma, RC Meteor).
+ */
+function isCriticalWalkSeedPath(relPath) {
+  const path = String(relPath || "")
+    .toLowerCase()
+    .replace(/\\/g, "/");
+  if (!path) return false;
+  if (/(?:^|\/)schema\.prisma$/.test(path)) return true;
+  if (path.includes("/packages/database/") || path.startsWith("packages/database/")) {
+    return true;
+  }
+  if (path.includes("/apps/meteor/server/") || path.startsWith("apps/meteor/server/")) {
+    return true;
+  }
+  return false;
+}
+
+function seedSortKey(relPath) {
+  const path = String(relPath || "")
+    .toLowerCase()
+    .replace(/\\/g, "/");
+  if (/(?:^|\/)packages\/database\/schema\.prisma$/.test(path)) return 0;
+  if (/(?:^|\/)prisma\/schema\.prisma$/.test(path)) return 1;
+  if (/(?:^|\/)schema\.prisma$/.test(path)) return 2;
+  if (path.includes("/packages/database/") || path.startsWith("packages/database/")) {
+    return 3;
+  }
+  if (path.includes("/apps/meteor/server/") || path.startsWith("apps/meteor/server/")) {
+    return 4;
+  }
+  return 9;
+}
+
+/**
+ * Targeted discovery so DFS MAX_WALK_CANDIDATES cannot miss Prisma/Meteor roots.
+ */
+function collectCriticalSeedRelPaths(workspaceRoot) {
+  const absSeeds = [];
+  const seen = new Set();
+
+  const pushAbs = (abs) => {
+    if (seen.has(abs)) return;
+    seen.add(abs);
+    absSeeds.push(abs);
+  };
+
+  const walkSub = (relDir, budget) => {
+    const absDir = join(workspaceRoot, relDir);
+    try {
+      if (!statSync(absDir).isDirectory()) return;
+    } catch {
+      return;
+    }
+    for (const abs of walkCodeFiles(absDir, budget)) {
+      pushAbs(abs);
+    }
+  };
+
+  walkSub("packages/database", SEED_DATABASE_BUDGET);
+  walkSub("prisma", Math.min(40, SEED_DATABASE_BUDGET));
+  walkSub("apps/meteor/server", SEED_METEOR_SERVER_BUDGET);
+
+  // Named schema.prisma search (shallow-biased DFS) when package roots differ.
+  const schemaHits = [];
+  const stack = [workspaceRoot];
+  while (stack.length > 0 && schemaHits.length < SEED_SCHEMA_FIND_BUDGET) {
+    const dir = stack.pop();
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (schemaHits.length >= SEED_SCHEMA_FIND_BUDGET) break;
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (SKIP_DIRS.has(entry.name)) continue;
+        stack.push(full);
+        continue;
+      }
+      if (entry.isFile() && entry.name === "schema.prisma") {
+        schemaHits.push(full);
+      }
+    }
+  }
+  for (const abs of schemaHits) pushAbs(abs);
+
+  return absSeeds.map((abs) => relative(workspaceRoot, abs).replace(/\\/g, "/"));
+}
+
+/**
+ * Guarantee seed paths occupy Cap slots before ranked fill (route.ts must not starve meteor).
+ * Keep in sync with call-graph.builder.ts applyFileLimitWithSeeds.
+ */
+function applyFileLimitWithSeeds(rankedRelPaths, seedRelPaths, limit = FILE_LIMIT) {
+  const cap = Math.max(1, limit);
+  const seedSet = new Set(
+    (seedRelPaths || []).filter((p) => isCriticalWalkSeedPath(p)),
+  );
+  const orderedSeeds = [...seedSet].sort((a, b) => {
+    const diff = seedSortKey(a) - seedSortKey(b);
+    return diff !== 0 ? diff : a.localeCompare(b);
+  });
+
+  const out = [];
+  const seen = new Set();
+  for (const p of orderedSeeds) {
+    if (out.length >= cap) break;
+    if (seen.has(p)) continue;
+    seen.add(p);
+    out.push(p);
+  }
+  for (const p of rankedRelPaths || []) {
+    if (out.length >= cap) break;
+    if (seen.has(p)) continue;
+    seen.add(p);
+    out.push(p);
+  }
+  return out;
+}
+
+/**
  * Blueprint analysis walks the clone root — not the preview "best web package".
  * Preview start still uses resolveAppWorkspaceDir; Softort needs FE+BE+packages.
  */
@@ -150,16 +278,28 @@ function resolveWorkspaceRoot(localPath) {
 }
 
 /** Exported for unit tests (monorepo root must stay clone root). */
-export { resolveWorkspaceRoot, prioritizeBlueprintFiles, SUPPORTED_EXT, FILE_LIMIT };
+export {
+  resolveWorkspaceRoot,
+  prioritizeBlueprintFiles,
+  applyFileLimitWithSeeds,
+  isCriticalWalkSeedPath,
+  collectCriticalSeedRelPaths,
+  SUPPORTED_EXT,
+  FILE_LIMIT,
+};
 
 function collectFileEntries(workspaceRoot) {
-  const absolutePaths = walkCodeFiles(workspaceRoot);
-  const prioritized = prioritizeBlueprintFiles(
-    absolutePaths.map((abs) => relative(workspaceRoot, abs).replace(/\\/g, "/")),
-  ).slice(0, FILE_LIMIT);
+  const seedRelPaths = collectCriticalSeedRelPaths(workspaceRoot);
+  const walkedAbs = walkCodeFiles(workspaceRoot);
+  const walkedRel = walkedAbs.map((abs) =>
+    relative(workspaceRoot, abs).replace(/\\/g, "/"),
+  );
+  const merged = [...new Set([...seedRelPaths, ...walkedRel])];
+  const prioritized = prioritizeBlueprintFiles(merged);
+  const capped = applyFileLimitWithSeeds(prioritized, seedRelPaths, FILE_LIMIT);
 
   const entries = [];
-  for (const relPath of prioritized) {
+  for (const relPath of capped) {
     const abs = join(workspaceRoot, relPath);
     try {
       const stat = statSync(abs);

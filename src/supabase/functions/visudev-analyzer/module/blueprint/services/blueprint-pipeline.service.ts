@@ -7,6 +7,7 @@ import type {
 } from "../../dto/blueprint/blueprint-document.dto.ts";
 import { extractFactsFromFile } from "../facts/fact-extractors.ts";
 import {
+  applyFileLimitWithSeeds,
   collectRelatedFiles,
   type FileIndexEntry,
   prioritizeBlueprintFiles,
@@ -68,9 +69,12 @@ export function analyzeFromFileEntries(
   input: AnalyzeBlueprintFromFilesInput,
 ): BlueprintDocument {
   const fileLimit = Math.max(input.fileLimit ?? 250, 250);
-  const prioritized = prioritizeBlueprintFiles(
-    input.fileEntries.filter((entry) => isSupportedBlueprintFile(entry.path)),
-  ).slice(0, fileLimit);
+  const prioritized = applyFileLimitWithSeeds(
+    prioritizeBlueprintFiles(
+      input.fileEntries.filter((entry) => isSupportedBlueprintFile(entry.path)),
+    ),
+    fileLimit,
+  );
 
   const fileIndex = new Map<string, FileIndexEntry>();
   const allFacts: CodeFact[] = [];

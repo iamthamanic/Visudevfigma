@@ -7,6 +7,8 @@ import { describe, expect, it } from "vitest";
 import {
   FILE_LIMIT,
   SUPPORTED_EXT,
+  applyFileLimitWithSeeds,
+  isCriticalWalkSeedPath,
   prioritizeBlueprintFiles,
   resolveWorkspaceRoot,
 } from "./blueprint-local.js";
@@ -87,5 +89,33 @@ describe("blueprint-local Softort coverage", () => {
 
   it("uses a Softort-friendly file limit (>=250)", () => {
     expect(FILE_LIMIT).toBeGreaterThanOrEqual(250);
+  });
+
+  it("identifies critical walk-seed paths (P1-1)", () => {
+    expect(isCriticalWalkSeedPath("packages/database/schema.prisma")).toBe(true);
+    expect(isCriticalWalkSeedPath("apps/meteor/server/methods/setRealName.ts")).toBe(
+      true,
+    );
+    expect(isCriticalWalkSeedPath("apps/web/app/api/foo/route.ts")).toBe(false);
+  });
+
+  it("guarantees schema.prisma + meteor/server before FILE_LIMIT fill (P1-1)", () => {
+    // route.ts scores higher than meteor/server — without seeds, Cap would drop meteor.
+    const flood = Array.from({ length: 50 }, (_, i) => `apps/web/app/api/r${i}/route.ts`);
+    const seeds = [
+      "packages/database/schema.prisma",
+      "apps/meteor/server/methods/setRealName.ts",
+      "apps/meteor/server/models.ts",
+    ];
+    const ranked = prioritizeBlueprintFiles([...flood, ...seeds, "apps/web/page.tsx"]);
+    const capped = applyFileLimitWithSeeds(ranked, seeds, 20);
+    expect(capped).toContain("packages/database/schema.prisma");
+    expect(capped).toContain("apps/meteor/server/methods/setRealName.ts");
+    expect(capped).toContain("apps/meteor/server/models.ts");
+    expect(capped.indexOf("packages/database/schema.prisma")).toBeLessThan(
+      capped.indexOf("apps/web/app/api/r0/route.ts"),
+    );
+    expect(capped.length).toBeLessThanOrEqual(20);
+    expect(capped.some((p) => /\.(spec|test|mock)\./.test(p))).toBe(false);
   });
 });
