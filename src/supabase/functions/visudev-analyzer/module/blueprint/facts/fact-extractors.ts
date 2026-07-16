@@ -723,8 +723,7 @@ function extractMeteorPublications(
   routeKeys: Set<string>,
 ): void {
   const lines = content.split("\n");
-  const pubRe =
-    /\bMeteor\.publish\s*\(\s*['"`]([^'"`]+)['"`]/g;
+  const pubRe = /\bMeteor\.publish\s*\(\s*['"`]([^'"`]+)['"`]/g;
   lines.forEach((line, index) => {
     const lineNum = index + 1;
     let m: RegExpExecArray | null;
