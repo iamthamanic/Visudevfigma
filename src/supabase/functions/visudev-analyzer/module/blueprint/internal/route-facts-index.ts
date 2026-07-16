@@ -10,18 +10,22 @@ import {
   type RouteLineRange,
 } from "./route-ownership.ts";
 import { buildRelatedRouteIdsByFile } from "./route-related-files.ts";
+import { resolveRoutePath } from "./route-path.util.ts";
 
 export function buildRouteFactsIndex(
   routeScopes: RouteScope[],
   facts: CodeFact[],
 ): Map<string, CodeFact[]> {
   const index = new Map<string, CodeFact[]>();
-  const routeByFileLine = new Map<string, RouteScope>();
+  const routesByLocation = new Map<string, RouteScope[]>();
   const routeById = new Map<string, RouteScope>();
 
   for (const route of routeScopes) {
     index.set(route.id, []);
-    routeByFileLine.set(routeScopeLineKey(route), route);
+    const locationKey = `${route.filePath}:${route.line}:${route.method}`;
+    const atLocation = routesByLocation.get(locationKey) ?? [];
+    atLocation.push(route);
+    routesByLocation.set(locationKey, atLocation);
     routeById.set(route.id, route);
   }
 
@@ -37,10 +41,11 @@ export function buildRouteFactsIndex(
   for (const fact of facts) {
     if (fact.kind === "api-route") {
       const method = String(fact.metadata.method ?? "GET").toUpperCase();
-      // Match by file+line+method so mounted scope paths can differ from raw fact paths.
-      const route = routeByFileLine.get(
+      const rawPath = resolveRoutePath(fact);
+      const candidates = routesByLocation.get(
         `${fact.filePath}:${fact.line}:${method}`,
-      );
+      ) ?? [];
+      const route = matchRouteScopeForFact(candidates, rawPath);
       if (route) index.get(route.id)?.push(fact);
       continue;
     }
@@ -86,6 +91,35 @@ export function buildRouteFactsIndex(
   return index;
 }
 
+/**
+ * Prefer exact path match; else uniquely match mounted scope whose path ends
+ * with the extracted router path (mount join). Ambiguous candidates → no attach.
+ */
+function matchRouteScopeForFact(
+  candidates: RouteScope[],
+  rawPath: string,
+): RouteScope | undefined {
+  if (candidates.length === 0) return undefined;
+  const exact = candidates.find((route) => route.path === rawPath);
+  if (exact) return exact;
+  if (candidates.length === 1) {
+    const only = candidates[0]!;
+    if (
+      only.path === rawPath ||
+      only.path.endsWith(rawPath) ||
+      only.path.endsWith(`/${rawPath.replace(/^\//, "")}`)
+    ) {
+      return only;
+    }
+    return undefined;
+  }
+  const mounted = candidates.filter((route) =>
+    route.path.endsWith(rawPath) ||
+    route.path.endsWith(`/${rawPath.replace(/^\//, "")}`)
+  );
+  return mounted.length === 1 ? mounted[0] : undefined;
+}
+
 function assignSharedFileFacts(
   filePath: string,
   facts: CodeFact[],
@@ -121,10 +155,6 @@ function assignSharedFileFacts(
       index.get(onlyRouteId)?.push(...facts);
     }
   }
-}
-
-function routeScopeLineKey(route: RouteScope): string {
-  return `${route.filePath}:${route.line}:${route.method}`;
 }
 
 function attachAstCallFacts(
