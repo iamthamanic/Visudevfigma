@@ -1,4 +1,4 @@
-/** Line-based fact extractors for Blueprint Engine v1 (Hono, Next, Express, Supabase, Zod, Auth, Django, Prisma). */
+/** Line-based fact extractors for Blueprint Engine v1 (Hono, Next, Express, Meteor, Mongo, Supabase, Zod, Auth, Django, Prisma). */
 
 import type { CodeFact } from "../../dto/blueprint/blueprint-document.dto.ts";
 import { extractAstFactsFromFile } from "../graph/ast-call-graph.ts";
@@ -87,6 +87,12 @@ function extractRegexFactsFromFile(
     routeFramework,
   );
   extractExpressMountPrefixes(filePath, content, facts);
+
+  // Rocket.Chat / Meteor: methods + publications as units; registerModel / Mongo.Collection as DB.
+  extractMeteorMethods(filePath, content, facts, routeKeys);
+  extractMeteorPublications(filePath, content, facts, routeKeys);
+  extractMongoRegisterModels(filePath, content, facts);
+  extractMongoCollections(filePath, content, facts);
 
   return facts;
 }
@@ -645,6 +651,202 @@ function extractPrismaClient(
     snippet: trimSnippet(line),
     metadata: { table, operation: op, framework: "prisma" },
   });
+}
+
+/**
+ * Meteor.methods({ name() {} }) → api-route units (Rocket.Chat RC-W2).
+ * Path convention: /meteor/<methodName>, method METHOD — feeds existing execution pipeline.
+ * Only top-level object keys (brace depth 0) are registered — nested calls like check() are ignored.
+ */
+function extractMeteorMethods(
+  filePath: string,
+  content: string,
+  facts: CodeFact[],
+  routeKeys: Set<string>,
+): void {
+  if (!/\bMeteor\.methods\b/.test(content)) return;
+  const openRe = /Meteor\.methods(?:\s*<[^>]*>)?\s*\(\s*\{/g;
+  let openMatch: RegExpExecArray | null;
+  while ((openMatch = openRe.exec(content)) !== null) {
+    const braceStart = content.indexOf("{", openMatch.index);
+    if (braceStart < 0) continue;
+    const body = sliceBalancedBlock(content, braceStart);
+    if (!body) continue;
+    const bodyStartLine = content.slice(0, braceStart).split("\n").length;
+    let depth = 0;
+    const lines = body.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i] ?? "";
+      const lineNum = bodyStartLine + i;
+      if (depth === 0) {
+        const fnMatch = line.match(
+          /^\s*(?:async\s+)?([A-Za-z_$][\w$]*)\s*\(/,
+        );
+        const keyMatch = line.match(
+          /^\s*['"`]([A-Za-z_$][\w$]*)['"`]\s*:/,
+        );
+        const name = fnMatch?.[1] ?? keyMatch?.[1];
+        if (name && !isMeteorNoiseIdentifier(name)) {
+          const path = `/meteor/${name}`;
+          const key = `${filePath}:${lineNum}:METHOD:${path}`;
+          if (!routeKeys.has(key)) {
+            routeKeys.add(key);
+            facts.push({
+              id: makeFactId(filePath, lineNum, `api-route-meteor-${name}`),
+              kind: "api-route",
+              filePath,
+              line: lineNum,
+              snippet: trimSnippet(line),
+              metadata: {
+                method: "METHOD",
+                path,
+                framework: "meteor",
+                unit: "meteor-method",
+              },
+            });
+          }
+        }
+      }
+      for (const ch of line) {
+        if (ch === "{") depth += 1;
+        else if (ch === "}") depth = Math.max(0, depth - 1);
+      }
+    }
+  }
+}
+
+/** Meteor.publish('name', …) → api-route publication units. */
+function extractMeteorPublications(
+  filePath: string,
+  content: string,
+  facts: CodeFact[],
+  routeKeys: Set<string>,
+): void {
+  const lines = content.split("\n");
+  const pubRe =
+    /\bMeteor\.publish\s*\(\s*['"`]([^'"`]+)['"`]/g;
+  lines.forEach((line, index) => {
+    const lineNum = index + 1;
+    let m: RegExpExecArray | null;
+    pubRe.lastIndex = 0;
+    while ((m = pubRe.exec(line)) !== null) {
+      const name = m[1];
+      if (!name) continue;
+      const path = `/meteor/publish/${name}`;
+      const key = `${filePath}:${lineNum}:PUBLISH:${path}`;
+      if (routeKeys.has(key)) continue;
+      routeKeys.add(key);
+      facts.push({
+        id: makeFactId(filePath, lineNum, `api-route-meteor-pub-${name}`),
+        kind: "api-route",
+        filePath,
+        line: lineNum,
+        snippet: trimSnippet(line),
+        metadata: {
+          method: "PUBLISH",
+          path,
+          framework: "meteor",
+          unit: "meteor-publication",
+        },
+      });
+    }
+  });
+}
+
+/** registerModel('IMessagesModel', …) → mongodb collection/table facts (Rocket.Chat). */
+function extractMongoRegisterModels(
+  filePath: string,
+  content: string,
+  facts: CodeFact[],
+): void {
+  const lines = content.split("\n");
+  const modelRe = /\bregisterModel\s*\(\s*['"`]([^'"`]+)['"`]/g;
+  lines.forEach((line, index) => {
+    const lineNum = index + 1;
+    let m: RegExpExecArray | null;
+    modelRe.lastIndex = 0;
+    while ((m = modelRe.exec(line)) !== null) {
+      const modelId = m[1];
+      const table = mongoTableFromModelId(modelId);
+      if (!table) continue;
+      facts.push({
+        id: makeFactId(filePath, lineNum, `db-write-mongo-${table}`),
+        kind: "db-write",
+        filePath,
+        line: lineNum,
+        snippet: trimSnippet(line),
+        metadata: {
+          table,
+          operation: "register-model",
+          framework: "mongodb",
+          modelId,
+        },
+      });
+    }
+  });
+}
+
+/** new Mongo.Collection('name') → mongodb collection facts. */
+function extractMongoCollections(
+  filePath: string,
+  content: string,
+  facts: CodeFact[],
+): void {
+  const lines = content.split("\n");
+  const colRe =
+    /\b(?:new\s+)?Mongo\.Collection(?:\s*<[^>]*>)?\s*\(\s*['"`]([^'"`]+)['"`]/g;
+  lines.forEach((line, index) => {
+    const lineNum = index + 1;
+    let m: RegExpExecArray | null;
+    colRe.lastIndex = 0;
+    while ((m = colRe.exec(line)) !== null) {
+      const table = m[1];
+      if (!table) continue;
+      facts.push({
+        id: makeFactId(filePath, lineNum, `db-write-mongo-col-${table}`),
+        kind: "db-write",
+        filePath,
+        line: lineNum,
+        snippet: trimSnippet(line),
+        metadata: {
+          table,
+          operation: "mongo-collection",
+          framework: "mongodb",
+        },
+      });
+    }
+  });
+}
+
+function sliceBalancedBlock(source: string, openBraceIndex: number): string {
+  if (source[openBraceIndex] !== "{") return "";
+  let depth = 0;
+  for (let i = openBraceIndex; i < source.length; i++) {
+    const ch = source[i];
+    if (ch === "{") depth += 1;
+    else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return source.slice(openBraceIndex + 1, i);
+      }
+    }
+  }
+  return "";
+}
+
+function isMeteorNoiseIdentifier(name: string): boolean {
+  return /^(?:async|await|function|if|for|while|return|const|let|var|throw|new|class|import|export|typeof|this)$/
+    .test(name);
+}
+
+/** IMessagesModel → Messages; ILivechatDepartmentAgentsModel → LivechatDepartmentAgents */
+function mongoTableFromModelId(modelId: string): string {
+  let name = modelId.trim();
+  if (name.startsWith("I") && name.length > 1 && /[A-Z]/.test(name[1] ?? "")) {
+    name = name.slice(1);
+  }
+  if (name.endsWith("Model")) name = name.slice(0, -"Model".length);
+  return name.length > 0 ? name : "";
 }
 
 function extractExternalApi(
