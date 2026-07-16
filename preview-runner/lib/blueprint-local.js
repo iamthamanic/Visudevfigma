@@ -177,8 +177,25 @@ function seedSortKey(relPath) {
   if (path.includes("/packages/database/") || path.startsWith("packages/database/")) {
     return 3;
   }
-  if (path.includes("/apps/meteor/server/") || path.startsWith("apps/meteor/server/")) {
+  // visudev-gapclose P1-4: prefer Meteor methods/models over generic server fill.
+  if (
+    path.includes("/apps/meteor/server/meteor-methods/") ||
+    path.includes("/apps/meteor/server/methods/") ||
+    path.startsWith("apps/meteor/server/meteor-methods/") ||
+    path.startsWith("apps/meteor/server/methods/")
+  ) {
     return 4;
+  }
+  if (
+    /(?:^|\/)apps\/meteor\/server\/models\.ts$/.test(path) ||
+    path.includes("/apps/meteor/server/models/") ||
+    path.includes("/apps/meteor/server/database/")
+  ) {
+    return 5;
+  }
+  if (path.includes("/apps/meteor/server/publications/")) return 6;
+  if (path.includes("/apps/meteor/server/") || path.startsWith("apps/meteor/server/")) {
+    return 7;
   }
   return 9;
 }
@@ -208,9 +225,31 @@ function collectCriticalSeedRelPaths(workspaceRoot) {
     }
   };
 
+  const pushFile = (relFile) => {
+    const abs = join(workspaceRoot, relFile);
+    try {
+      if (statSync(abs).isFile()) pushAbs(abs);
+    } catch {
+      /* missing */
+    }
+  };
+
   walkSub("packages/database", SEED_DATABASE_BUDGET);
   walkSub("prisma", Math.min(40, SEED_DATABASE_BUDGET));
-  walkSub("apps/meteor/server", SEED_METEOR_SERVER_BUDGET);
+
+  // Meteor: meteor-methods / publications / models first (Rocket.Chat layout).
+  const methodsBudget = Math.max(40, Math.floor(SEED_METEOR_SERVER_BUDGET * 0.55));
+  const publicationsBudget = Math.max(10, Math.floor(SEED_METEOR_SERVER_BUDGET * 0.15));
+  walkSub("apps/meteor/server/meteor-methods", methodsBudget);
+  walkSub("apps/meteor/server/methods", Math.min(20, methodsBudget));
+  walkSub("apps/meteor/server/publications", publicationsBudget);
+  walkSub("apps/meteor/server/database", Math.max(10, Math.floor(SEED_METEOR_SERVER_BUDGET * 0.1)));
+  pushFile("apps/meteor/server/models.ts");
+  const usedMeteor = absSeeds.filter((abs) =>
+    abs.replace(/\\/g, "/").includes("/apps/meteor/server/"),
+  ).length;
+  const fillBudget = Math.max(0, SEED_METEOR_SERVER_BUDGET - usedMeteor);
+  if (fillBudget > 0) walkSub("apps/meteor/server", fillBudget);
 
   // Named schema.prisma search (shallow-biased DFS) when package roots differ.
   const schemaHits = [];
