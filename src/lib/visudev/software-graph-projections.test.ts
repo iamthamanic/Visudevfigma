@@ -46,39 +46,158 @@ describe("deriveDiagnosticsFromGraph", () => {
     expect(derived.securityMatrix[0]?.findingCount).toBeGreaterThanOrEqual(1);
   });
 
-  it("does not assign facts from prefix-colliding directories", () => {
+  it("maps authenticates/validates/data edges into matrix cells (not all ?)", () => {
     const graph: SoftwareGraph = {
       version: 1,
-      projectId: "p1",
+      projectId: "browo",
       analyzedAt: "2026-01-01T00:00:00.000Z",
       scopes: [],
       nodes: [
         {
-          id: "route:api",
+          id: "file:leaves",
+          kind: "file",
+          label: "leaves.routes.ts",
+          filePath: "app/modules/leaves/leaves.routes.ts",
+          metadata: {},
+        },
+        {
+          id: "route:1",
           kind: "route",
-          label: "POST /api/items",
-          filePath: "/api/items.ts",
-          line: 5,
-          metadata: { routeId: "api-route", method: "POST", path: "/api/items", pipelineCount: 0 },
+          label: "POST /api/leaves",
+          filePath: "app/modules/leaves/leaves.routes.ts",
+          line: 62,
+          metadata: {
+            routeId: "POST /api/leaves",
+            method: "POST",
+            path: "/api/leaves",
+            pipelineCount: 0,
+          },
+        },
+        {
+          id: "svc:auth",
+          kind: "service",
+          label: "auth-check",
+          filePath: "app/modules/leaves/leaves.routes.ts",
+          line: 62,
+          metadata: {},
+        },
+        {
+          id: "svc:val",
+          kind: "service",
+          label: "schema-safe-parse",
+          filePath: "app/modules/leaves/leaves.routes.ts",
+          line: 63,
+          metadata: {},
+        },
+        {
+          id: "file:service",
+          kind: "file",
+          label: "leaves.service.ts",
+          filePath: "app/modules/leaves/leaves.service.ts",
+          metadata: {},
+        },
+        {
+          id: "table:leave",
+          kind: "table",
+          label: "leaveRequest",
+          filePath: "app/modules/leaves/leaves.service.ts",
+          line: 40,
+          metadata: {},
+        },
+      ],
+      edges: [
+        {
+          id: "e-auth",
+          kind: "authenticates",
+          sourceId: "file:leaves",
+          targetId: "svc:auth",
+          metadata: { evidenceFactId: "fact-auth" },
+        },
+        {
+          id: "e-val",
+          kind: "validates",
+          sourceId: "file:leaves",
+          targetId: "svc:val",
+          metadata: { evidenceFactId: "fact-val" },
+        },
+        {
+          id: "e-db",
+          kind: "data",
+          sourceId: "file:service",
+          targetId: "table:leave",
+          metadata: { evidenceFactId: "fact-db" },
+        },
+      ],
+      evidence: [
+        {
+          id: "ev-auth",
+          factId: "fact-auth",
+          kind: "auth-check",
+          filePath: "app/modules/leaves/leaves.routes.ts",
+          line: 62,
+          excerpt: "authorize('hr.calendar.leave.request')",
+        },
+        {
+          id: "ev-val",
+          factId: "fact-val",
+          kind: "schema-safe-parse",
+          filePath: "app/modules/leaves/leaves.routes.ts",
+          line: 63,
+          excerpt: "LeaveRequestSchema.safeParse(body)",
+        },
+        {
+          id: "ev-db",
+          factId: "fact-db",
+          kind: "db-write",
+          filePath: "app/modules/leaves/leaves.service.ts",
+          line: 40,
+          excerpt: "this.prisma.leaveRequest.create({})",
+        },
+      ],
+      groups: [],
+      metrics: [],
+      condensed: false,
+      limits: { maxNodes: 2500, maxEdges: 5000 },
+    };
+
+    const derived = deriveDiagnosticsFromGraph(graph);
+    expect(derived.securityMatrix).toHaveLength(1);
+    expect(derived.securityMatrix[0]?.auth.state).toBe("confirmed");
+    expect(derived.securityMatrix[0]?.validation.state).toBe("confirmed");
+    expect(derived.securityMatrix[0]?.role.state).toBe("confirmed");
+    expect(derived.securityMatrix[0]?.db.state).toBe("confirmed");
+  });
+
+  it("sets ROLE confirmed from Django permission_classes evidence", () => {
+    const graph: SoftwareGraph = {
+      version: 1,
+      projectId: "plane",
+      analyzedAt: "2026-01-01T00:00:00.000Z",
+      scopes: [],
+      nodes: [
+        {
+          id: "route:ws",
+          kind: "route",
+          label: "ALL /api/workspaces/",
+          filePath: "apps/api/plane/urls.py",
+          line: 10,
+          metadata: {
+            routeId: "ALL /api/workspaces/",
+            method: "ALL",
+            path: "/api/workspaces/",
+            pipelineCount: 0,
+          },
         },
       ],
       edges: [],
       evidence: [
         {
-          id: "ev-api2",
-          factId: "fact-api2",
-          kind: "code:snippet",
-          filePath: "/api2/guard.ts",
-          line: 1,
-          excerpt: "auth middleware protect session",
-        },
-        {
-          id: "ev-sub",
-          factId: "fact-sub",
-          kind: "code:snippet",
-          filePath: "/api/shared/guard.ts",
-          line: 1,
-          excerpt: "auth middleware protect session",
+          id: "ev-perm",
+          factId: "fact-perm",
+          kind: "auth-check",
+          filePath: "apps/api/plane/urls.py",
+          line: 20,
+          excerpt: "permission_classes = [IsAuthenticated]",
         },
       ],
       groups: [],
@@ -89,5 +208,6 @@ describe("deriveDiagnosticsFromGraph", () => {
 
     const derived = deriveDiagnosticsFromGraph(graph);
     expect(derived.securityMatrix[0]?.auth.state).toBe("confirmed");
+    expect(derived.securityMatrix[0]?.role.state).toBe("confirmed");
   });
 });

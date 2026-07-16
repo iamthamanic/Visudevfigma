@@ -29,10 +29,14 @@ export function buildSecurityMatrixFromGraph(
     const graphCells = deriveMatrixCellsFromScope(graph, scope);
     return {
       ...legacyRow,
-      auth: graphCells.auth,
-      validation: graphCells.validation,
-      rateLimit: graphCells.rateLimit,
-      db: graphCells.db,
+      auth: preferConfirmedCell(legacyRow.auth, graphCells.auth),
+      role: preferConfirmedCell(legacyRow.role, graphCells.role),
+      validation: preferConfirmedCell(
+        legacyRow.validation,
+        graphCells.validation,
+      ),
+      rateLimit: preferConfirmedCell(legacyRow.rateLimit, graphCells.rateLimit),
+      db: preferConfirmedCell(legacyRow.db, graphCells.db),
     };
   });
 }
@@ -77,6 +81,17 @@ interface GraphMatrixCells {
   validation: SecurityMatrixCell;
   rateLimit: SecurityMatrixCell;
   db: SecurityMatrixCell;
+  role: SecurityMatrixCell;
+}
+
+function preferConfirmedCell(
+  legacy: SecurityMatrixCell,
+  fromGraph: SecurityMatrixCell,
+): SecurityMatrixCell {
+  if (fromGraph.state === "confirmed") return fromGraph;
+  if (legacy.state === "confirmed") return legacy;
+  if (fromGraph.state !== "unknown") return fromGraph;
+  return legacy;
 }
 
 function deriveMatrixCellsFromScope(
@@ -90,6 +105,7 @@ function deriveMatrixCellsFromScope(
       validation: { state: "unknown" },
       rateLimit: { state: "unknown" },
       db: { state: "unknown" },
+      role: { state: "unknown" },
     };
   }
 
@@ -98,13 +114,15 @@ function deriveMatrixCellsFromScope(
     edge.fromNodeId === routeNode.id && scopeEdgeIds.has(edge.id)
   );
 
+  const auth = controlCellFromEdge(
+    graph,
+    outgoing,
+    "authenticates",
+    "auth",
+  );
+
   return {
-    auth: controlCellFromEdge(
-      graph,
-      outgoing,
-      "authenticates",
-      "auth",
-    ),
+    auth,
     validation: controlCellFromEdge(
       graph,
       outgoing,
@@ -118,7 +136,35 @@ function deriveMatrixCellsFromScope(
       "rate-limit",
     ),
     db: dbCellFromGraph(graph, outgoing),
+    role: roleCellFromAuthEdges(graph, outgoing, auth),
   };
+}
+
+/** Permission/authorize-style auth edges also fill ROLE (Plane + browo). */
+function roleCellFromAuthEdges(
+  graph: VisuDevGraph,
+  outgoingEdges: VisuDevGraph["edges"],
+  authCell: SecurityMatrixCell,
+): SecurityMatrixCell {
+  if (authCell.state !== "confirmed") return { state: "unknown" };
+  const authEdges = outgoingEdges.filter((edge) =>
+    edge.kind === "authenticates"
+  );
+  for (const edge of authEdges) {
+    const target = graph.nodes.find((node) => node.id === edge.toNodeId);
+    const haystack = `${target?.label ?? ""} ${
+      typeof target?.metadata?.snippet === "string"
+        ? target.metadata.snippet
+        : ""
+    }`;
+    if (
+      /permission|authorize|IsAuthenticated|BasePermission|role/i.test(haystack)
+    ) {
+      return { state: "confirmed" };
+    }
+  }
+  // Confirmed auth without permission cue still leaves ROLE unknown (no invention).
+  return { state: "unknown" };
 }
 
 function findRouteNodeInScope(
