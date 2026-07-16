@@ -60,10 +60,65 @@ function appendUnique(steps: string[], nodeId: string): boolean {
   return true;
 }
 
+function dirnameOf(filePath: string): string {
+  const normalized = filePath.replace(/\\/g, "/");
+  const idx = normalized.lastIndexOf("/");
+  return idx <= 0 ? "" : normalized.slice(0, idx);
+}
+
+function isModuleDataFile(filePath: string): boolean {
+  const normalized = filePath.replace(/\\/g, "/");
+  return (
+    /\.(service|repository|repo)\.[jt]sx?$/i.test(normalized) ||
+    /\/(lib|server|repositories|services)\//i.test(normalized)
+  );
+}
+
+function appendModuleDataTargets(
+  routeFileId: string,
+  routeDir: string,
+  dataTargetsByDir: Map<string, string[]>,
+  steps: string[],
+  visited: Set<string>,
+  state: GraphBuilderState,
+): void {
+  if (!routeDir) return;
+  for (const tableId of dataTargetsByDir.get(routeDir) ?? []) {
+    if (visited.has(tableId)) continue;
+    const tableNode = state.nodes.get(tableId);
+    if (!tableNode || tableNode.kind !== "table") continue;
+    visited.add(tableId);
+    appendUnique(steps, tableId);
+  }
+  void routeFileId;
+}
+
+/** Precompute same-dir service/repository → table targets once per graph. */
+function buildModuleDataTargetsByDir(
+  state: GraphBuilderState,
+  index: OutgoingIndex,
+): Map<string, string[]> {
+  const byDir = new Map<string, string[]>();
+  for (const node of state.nodes.values()) {
+    if (node.kind !== "file" || !node.filePath) continue;
+    if (!isModuleDataFile(node.filePath)) continue;
+    const dir = dirnameOf(node.filePath);
+    if (!dir) continue;
+    const tables = outgoingTargets(index, node.id, ["data"]);
+    if (tables.length === 0) continue;
+    const existing = byDir.get(dir) ?? [];
+    existing.push(...tables);
+    byDir.set(dir, existing);
+  }
+  return byDir;
+}
+
 function buildPrimaryPath(
   routeNodeId: string,
   fileId: string,
   index: OutgoingIndex,
+  state: GraphBuilderState,
+  dataTargetsByDir: Map<string, string[]>,
 ): ExecutionPath {
   const steps: string[] = [routeNodeId];
   let cycleNodeId: string | undefined;
@@ -94,6 +149,10 @@ function buildPrimaryPath(
     }
   }
 
+  const routeFile = state.nodes.get(fileId);
+  const routeDir = routeFile?.filePath ? dirnameOf(routeFile.filePath) : "";
+  appendModuleDataTargets(fileId, routeDir, dataTargetsByDir, steps, visited, state);
+
   return cycleNodeId ? { nodeIds: steps, cycleNodeId } : { nodeIds: steps };
 }
 
@@ -110,7 +169,23 @@ function applyExecutionPathMetadata(
 export function attachExecutionPathGroups(state: GraphBuilderState): SoftwareGraphGroup[] {
   const groups: SoftwareGraphGroup[] = [];
   const index = buildOutgoingIndex(state);
+  const dataTargetsByDir = buildModuleDataTargetsByDir(state, index);
   const routeNodes = [...state.nodes.values()].filter((node) => node.kind === "route");
+
+  if (routeNodes.length === 0) {
+    // Honest non-HTTP surface (Rocket.Chat Meteor) — do not pretend empty HTTP succeeded.
+    const fallbackNodes = [...state.nodes.values()]
+      .filter((node) => node.kind === "service" || node.kind === "file" || node.kind === "runtime")
+      .slice(0, 8)
+      .map((node) => node.id);
+    groups.push({
+      id: "execution:non-http:0",
+      kind: "runtime",
+      label: "Non-HTTP surface — keine HTTP-Routen extrahiert",
+      nodeIds: fallbackNodes,
+    });
+    return groups;
+  }
 
   for (const routeNode of routeNodes) {
     const fileId = readRouteFileId(routeNode);
@@ -118,7 +193,7 @@ export function attachExecutionPathGroups(state: GraphBuilderState): SoftwareGra
       typeof routeNode.metadata.routeId === "string" ? routeNode.metadata.routeId : routeNode.id;
 
     const path = fileId
-      ? buildPrimaryPath(routeNode.id, fileId, index)
+      ? buildPrimaryPath(routeNode.id, fileId, index, state, dataTargetsByDir)
       : { nodeIds: [routeNode.id] };
 
     applyExecutionPathMetadata(state, routeNode.id, path);

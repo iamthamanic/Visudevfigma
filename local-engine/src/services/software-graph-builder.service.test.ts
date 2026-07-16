@@ -228,4 +228,63 @@ describe("buildSoftwareGraph", () => {
     expect(executionGroup).toBeDefined();
     expect(executionGroup?.nodeIds.length).toBeGreaterThan(0);
   });
+
+  it("includes same-module service data tables in execution path", () => {
+    const scan = makeScan({
+      filesAnalyzed: 2,
+      routes: [
+        {
+          id: "POST /api/leaves",
+          method: "POST",
+          path: "/api/leaves",
+          filePath: "app/modules/leaves/leaves.routes.ts",
+          line: 62,
+        },
+      ],
+      facts: [
+        {
+          id: "fact:auth",
+          kind: "auth-check",
+          filePath: "app/modules/leaves/leaves.routes.ts",
+          line: 62,
+          snippet: "authorize('hr.calendar.leave.request')",
+        },
+        {
+          id: "fact:db",
+          kind: "db-write",
+          filePath: "app/modules/leaves/leaves.service.ts",
+          line: 40,
+          snippet: "this.prisma.leaveRequest.create({})",
+          metadata: { table: "leaveRequest", framework: "prisma" },
+        },
+      ],
+    });
+
+    const graph = buildSoftwareGraph(scan);
+    const executionGroup = graph.groups.find((group) => group.id.startsWith("execution:"));
+    expect(executionGroup).toBeDefined();
+    const tableNodes = graph.nodes.filter((node) => node.kind === "table");
+    expect(tableNodes.length).toBeGreaterThan(0);
+    expect(executionGroup?.nodeIds.some((id) => tableNodes.some((t) => t.id === id))).toBe(true);
+  });
+
+  it("emits honest non-http execution group when no routes exist", () => {
+    const scan = makeScan({
+      filesAnalyzed: 1,
+      routes: [],
+      facts: [
+        {
+          id: "fact:file",
+          kind: "external-api-call",
+          filePath: "apps/meteor/server/methods/sendMessage.ts",
+          line: 1,
+          snippet: "Meteor.methods({ sendMessage() {} })",
+        },
+      ],
+    });
+    const graph = buildSoftwareGraph(scan);
+    const nonHttp = graph.groups.find((group) => group.id === "execution:non-http:0");
+    expect(nonHttp).toBeDefined();
+    expect(nonHttp?.label).toMatch(/Non-HTTP/i);
+  });
 });
