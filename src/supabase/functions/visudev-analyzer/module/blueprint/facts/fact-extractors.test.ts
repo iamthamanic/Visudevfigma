@@ -118,11 +118,12 @@ Deno.test("extractFactsFromFile detects prisma client calls", () => {
 Deno.test("extractFactsFromFile detects Django urlpatterns and permissions", () => {
   const content = `
 from rest_framework.permissions import IsAuthenticated
-from django.urls import path
+from django.urls import path, re_path
 
 urlpatterns = [
     path("api/workspaces/", WorkspaceView.as_view()),
     path("api/projects/", ProjectViewSet.as_view({"get": "list"})),
+    re_path(r"^api/issues/(?P<pk>[^/.]+)/$", IssueView.as_view()),
 ]
 
 class WorkspaceView(APIView):
@@ -130,7 +131,14 @@ class WorkspaceView(APIView):
 `;
   const facts = extractFactsFromFile("apps/api/plane/urls.py", content);
   const routes = facts.filter((f) => f.kind === "api-route");
-  assertEquals(routes.length >= 2, true);
-  assertEquals(routes.some((r) => r.metadata?.framework === "django"), true);
+  assertEquals(routes.length >= 3, true);
+  assertEquals(
+    routes.some((r) => r.metadata?.framework === "django"),
+    true,
+  );
+  assertEquals(
+    routes.some((r) => String(r.metadata?.path).includes(":pk")),
+    true,
+  );
   assertEquals(facts.some((f) => f.kind === "auth-check"), true);
 });

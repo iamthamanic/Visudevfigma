@@ -102,118 +102,163 @@ function extractPrismaFacts(filePath: string, content: string): CodeFact[] {
   return facts;
 }
 
+/** Normalize Django path()/re_path() route strings into slash paths. */
+function normalizeDjangoRoutePath(raw: string): string {
+  let route = raw.trim();
+  if (route.startsWith("^")) route = route.slice(1);
+  if (route.endsWith("$")) route = route.slice(0, -1);
+  // Strip common re_path named groups: (?P<id>[^/.]+) → :id
+  route = route.replace(/\(\?P<([A-Za-z_][\w]*)>[^)]+\)/g, ":$1");
+  // Strip unnamed regex groups used as segments
+  route = route.replace(/\([^)]+\)/g, "*");
+  route = route.replace(/\/+/g, "/");
+  if (!route.startsWith("/")) route = `/${route}`;
+  return route === "/" ? "/" : route.replace(/\/$/, "") || "/";
+}
+
+function extractDjangoUrlPatterns(
+  filePath: string,
+  line: string,
+  lineNum: number,
+  facts: CodeFact[],
+  routeKeys: Set<string>,
+): void {
+  const pathMatch = line.match(
+    /(?:path|re_path)\s*\(\s*(?:r)?["'`]([^"'`]+)["'`]/,
+  );
+  if (!pathMatch) return;
+  const routePath = normalizeDjangoRoutePath(pathMatch[1]);
+  const key = `ALL:${routePath}`;
+  if (routeKeys.has(key)) return;
+  routeKeys.add(key);
+  facts.push({
+    id: makeFactId(filePath, lineNum, "api-route"),
+    kind: "api-route",
+    filePath,
+    line: lineNum,
+    snippet: trimSnippet(line),
+    metadata: {
+      method: "ALL",
+      path: routePath,
+      framework: "django",
+    },
+  });
+}
+
+function extractDjangoViewRoutes(
+  filePath: string,
+  line: string,
+  lineNum: number,
+  facts: CodeFact[],
+): void {
+  if (
+    !/@api_view\s*\(|class\s+\w+\s*\(.*APIView|class\s+\w+\s*\(.*ViewSet/.test(
+      line,
+    )
+  ) {
+    return;
+  }
+  facts.push({
+    id: makeFactId(filePath, lineNum, "api-route"),
+    kind: "api-route",
+    filePath,
+    line: lineNum,
+    snippet: trimSnippet(line),
+    metadata: {
+      method: "ALL",
+      path: `/${filePath.replace(/\\/g, "/")}`,
+      framework: "django",
+    },
+  });
+}
+
+function extractDjangoAuthChecks(
+  filePath: string,
+  line: string,
+  lineNum: number,
+  facts: CodeFact[],
+): void {
+  if (
+    !/permission_classes|has_permission|IsAuthenticated|DjangoModelPermissions|BasePermission/
+      .test(line)
+  ) {
+    return;
+  }
+  facts.push({
+    id: makeFactId(filePath, lineNum, "auth-check"),
+    kind: "auth-check",
+    filePath,
+    line: lineNum,
+    snippet: trimSnippet(line),
+    metadata: { framework: "django" },
+  });
+}
+
+function extractDjangoModels(
+  filePath: string,
+  line: string,
+  lineNum: number,
+  facts: CodeFact[],
+): void {
+  if (
+    !/class\s+\w+\s*\(.*models\.Model/.test(line) &&
+    !/models\.Model\)/.test(line)
+  ) {
+    return;
+  }
+  const modelName = line.match(/class\s+(\w+)\s*\(/)?.[1];
+  if (!modelName) return;
+  facts.push({
+    id: makeFactId(filePath, lineNum, "db-write"),
+    kind: "db-write",
+    filePath,
+    line: lineNum,
+    snippet: trimSnippet(line),
+    metadata: {
+      table: modelName,
+      operation: "django-model",
+      framework: "django",
+    },
+  });
+}
+
+function extractDjangoManageEntrypoint(
+  filePath: string,
+  content: string,
+  facts: CodeFact[],
+): void {
+  if (!filePath.toLowerCase().endsWith("manage.py")) return;
+  if (!/django|DJANGO_SETTINGS_MODULE/.test(content)) return;
+  facts.push({
+    id: makeFactId(filePath, 1, "api-route"),
+    kind: "api-route",
+    filePath,
+    line: 1,
+    snippet: "Django manage.py entrypoint",
+    metadata: {
+      method: "ALL",
+      path: "/django",
+      framework: "django",
+    },
+  });
+}
+
 /** Django urls/views/permissions → api-route + auth facts for Softort Plane. */
 function extractDjangoFacts(filePath: string, content: string): CodeFact[] {
   const facts: CodeFact[] = [];
   const routeKeys = new Set<string>();
   const lines = content.split("\n");
-  const lowerPath = filePath.toLowerCase();
 
   lines.forEach((line, index) => {
     const lineNum = index + 1;
     const trimmed = line.trim();
-
-    // path("api/...", ...) / re_path(r"^api/...", ...)
-    const pathMatch = trimmed.match(
-      /(?:path|re_path)\s*\(\s*(?:r)?["'`]([^"'`]+)["'`]/,
-    );
-    if (pathMatch) {
-      const routePath = pathMatch[1].startsWith("^")
-        ? `/${pathMatch[1].replace(/^\^/, "").replace(/\$$/, "")}`
-        : pathMatch[1].startsWith("/")
-        ? pathMatch[1]
-        : `/${pathMatch[1]}`;
-      const key = `ALL:${routePath}`;
-      if (!routeKeys.has(key)) {
-        routeKeys.add(key);
-        facts.push({
-          id: makeFactId(filePath, lineNum, "api-route"),
-          kind: "api-route",
-          filePath,
-          line: lineNum,
-          snippet: trimSnippet(line),
-          metadata: {
-            method: "ALL",
-            path: routePath,
-            framework: "django",
-          },
-        });
-      }
-    }
-
-    if (
-      /@api_view\s*\(|class\s+\w+\s*\(.*APIView|class\s+\w+\s*\(.*ViewSet/.test(
-        trimmed,
-      )
-    ) {
-      facts.push({
-        id: makeFactId(filePath, lineNum, "api-route"),
-        kind: "api-route",
-        filePath,
-        line: lineNum,
-        snippet: trimSnippet(line),
-        metadata: {
-          method: "ALL",
-          path: `/${filePath.replace(/\\/g, "/")}`,
-          framework: "django",
-        },
-      });
-    }
-
-    if (
-      /permission_classes|has_permission|IsAuthenticated|DjangoModelPermissions|BasePermission/
-        .test(trimmed)
-    ) {
-      facts.push({
-        id: makeFactId(filePath, lineNum, "auth-check"),
-        kind: "auth-check",
-        filePath,
-        line: lineNum,
-        snippet: trimSnippet(line),
-        metadata: { framework: "django" },
-      });
-    }
-
-    if (
-      /class\s+\w+\s*\(.*models\.Model/.test(trimmed) ||
-      /models\.Model\)/.test(trimmed)
-    ) {
-      const modelName = trimmed.match(/class\s+(\w+)\s*\(/)?.[1];
-      if (modelName) {
-        facts.push({
-          id: makeFactId(filePath, lineNum, "db-write"),
-          kind: "db-write",
-          filePath,
-          line: lineNum,
-          snippet: trimSnippet(line),
-          metadata: {
-            table: modelName,
-            operation: "django-model",
-            framework: "django",
-          },
-        });
-      }
-    }
+    extractDjangoUrlPatterns(filePath, trimmed, lineNum, facts, routeKeys);
+    extractDjangoViewRoutes(filePath, trimmed, lineNum, facts);
+    extractDjangoAuthChecks(filePath, trimmed, lineNum, facts);
+    extractDjangoModels(filePath, trimmed, lineNum, facts);
   });
 
-  if (
-    lowerPath.endsWith("manage.py") &&
-    /django|DJANGO_SETTINGS_MODULE/.test(content)
-  ) {
-    facts.push({
-      id: makeFactId(filePath, 1, "api-route"),
-      kind: "api-route",
-      filePath,
-      line: 1,
-      snippet: "Django manage.py entrypoint",
-      metadata: {
-        method: "ALL",
-        path: "/django",
-        framework: "django",
-      },
-    });
-  }
-
+  extractDjangoManageEntrypoint(filePath, content, facts);
   return facts;
 }
 

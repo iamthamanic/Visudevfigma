@@ -6,6 +6,20 @@ export function normalizePath(filePath: string): string {
   return filePath.replace(/^\/+/, "");
 }
 
+function isRouteGroupSegment(segment: string): boolean {
+  return /^\([^)]+\)$/.test(segment);
+}
+
+function firstMeaningfulSegment(parts: string[]): string | null {
+  for (const part of parts) {
+    if (!part || part.includes(".")) continue;
+    if (isRouteGroupSegment(part)) continue;
+    if (part === "app") continue;
+    return part;
+  }
+  return null;
+}
+
 export function detectDomain(filePath: string): string {
   const parts = normalizePath(filePath).split("/").filter(Boolean);
   if (parts.length === 0) return "root";
@@ -48,11 +62,15 @@ export function detectModule(filePath: string, domain: string): string {
     const only = parts[0]!;
     return only.includes(".") ? (domain.includes("/") ? domain.split("/")[1]! : domain) : only;
   }
-  if (parts[0] === "app" && parts.length >= 2) {
-    const next = parts[1]!;
-    return next.includes(".") ? "app" : next;
+
+  // Next App Router: skip `app/` and route groups like `(app)` / `(marketing)`
+  if (parts[0] === "app") {
+    const meaningful = firstMeaningfulSegment(parts.slice(1));
+    return meaningful ?? "app";
   }
-  return parts[0]!;
+
+  const meaningful = firstMeaningfulSegment(parts);
+  return meaningful ?? parts[0]!;
 }
 
 export function detectLayer(filePath: string): string {
@@ -101,6 +119,10 @@ export function detectLayer(filePath: string): string {
 export function inferRuntime(filePath: string): string {
   const normalized = normalizePath(filePath).toLowerCase();
   if (/\bsupabase\/functions\//.test(normalized)) return "edge";
+  // API routes before generic app/ browser classification
+  if (/(?:^|\/)app\/api\//.test(normalized) || /(?:^|\/)pages\/api\//.test(normalized)) {
+    return "server";
+  }
   if (
     /\.py$/.test(normalized) ||
     /\b(apps\/api|src\/server|src\/api|src\/backend)\//.test(normalized)
@@ -108,12 +130,11 @@ export function inferRuntime(filePath: string): string {
     return "server";
   }
   if (/\b(src\/supabase|src\/server|src\/api|src\/backend)\//.test(normalized)) return "server";
+  if (/(?:^|\/)app\//.test(normalized)) return "browser";
   if (
     /\b(src\/modules|src\/components|src\/pages|src\/app|apps\/web|apps\/meteor)\//.test(normalized)
   ) {
     return "browser";
   }
-  if (/(?:^|\/)app\/api\//.test(normalized)) return "server";
-  if (/(?:^|\/)app\//.test(normalized)) return "browser";
   return "shared";
 }

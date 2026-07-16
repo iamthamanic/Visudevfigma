@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { detectDomain, detectLayer, detectModule, normalizePath } from "./_heuristics.js";
+import {
+  detectDomain,
+  detectLayer,
+  detectModule,
+  inferRuntime,
+  normalizePath,
+} from "./_heuristics.js";
 
 describe("software graph heuristics", () => {
   it("normalizes leading slashes", () => {
@@ -31,6 +37,13 @@ describe("software graph heuristics", () => {
     expect(detectLayer("packages/database/schema.prisma")).toBe("data");
     expect(detectLayer("apps/api/plane/urls.py")).toBe("presentation");
     expect(detectLayer("apps/api/plane/models.py")).toBe("data");
+  });
+
+  it("skips Next route groups in module names and classifies app/api as server", () => {
+    expect(detectModule("apps/web/app/(app)/surveys/page.tsx", "apps/web")).toBe("surveys");
+    expect(detectModule("apps/web/app/(app)/page.tsx", "apps/web")).toBe("app");
+    expect(inferRuntime("apps/web/app/api/health/route.ts")).toBe("server");
+    expect(inferRuntime("apps/web/app/(app)/page.tsx")).toBe("browser");
   });
 
   it("detects data layer for repositories folder", () => {
