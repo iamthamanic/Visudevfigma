@@ -290,6 +290,7 @@ export function inferRouteStates(
 ): Map<string, RouteInference> {
   const states = new Map<string, RouteInference>();
   const siblingRoutes = routes.map((r) => ({ filePath: r.filePath, line: r.line }));
+  const nodeById = graph ? new Map(graph.nodes.map((node) => [node.id, node] as const)) : undefined;
   for (const route of routes) {
     const directory = dirnameOfFile(route.filePath);
     const routeFacts = indexes.routeFactsIndex.get(route.id) ?? [];
@@ -302,7 +303,7 @@ export function inferRouteStates(
     );
 
     const edgeSignals = graph
-      ? collectRouteEdgeSignals(graph, route, siblingRoutes)
+      ? collectRouteEdgeSignals(graph, route, siblingRoutes, nodeById)
       : { hasAuth: false, hasValidation: false, hasDb: false };
 
     const auth = preferConfirmed(
