@@ -53,36 +53,70 @@ export function collectRelatedFiles(
   return ordered;
 }
 
+/**
+ * Soft-cap ranking: app/module surface before specs/mocks/basename noise.
+ * Keep in sync with preview-runner/lib/blueprint-local.js prioritizeBlueprintFiles.
+ */
 export function prioritizeBlueprintFiles<T extends { path: string }>(
   files: T[],
 ): T[] {
   const score = (p: string): number => {
-    const path = p.toLowerCase();
-    if (/(?:^|\/)schema\.prisma$/.test(path) || path.endsWith(".prisma")) {
-      return 100;
-    }
-    if (/(?:^|\/)manage\.py$/.test(path)) return 99;
-    if (/(?:^|\/)urls\.py$/.test(path)) return 98;
-    if (/(?:^|\/)(views|viewsets|serializers)\.py$/.test(path)) return 96;
-    if (path.includes("supabase/functions")) return 95;
-    if (/(?:^|\/)route\.(tsx?|jsx?)$/.test(path)) return 94;
-    if (/(?:^|\/)pages\/api\//.test(path)) return 90;
-    if (/(?:^|\/)(models|permissions|settings)\.py$/.test(path)) return 88;
-    if (path.includes("/apps/meteor/") || path.includes("/apps/api/")) {
-      return 86;
-    }
-    if (path.includes("/validators/")) return 85;
+    const path = p.toLowerCase().replace(/\\/g, "/");
+    // visudev-gapclose P0-1: specs/mocks must not dominate FILE_LIMIT.
     if (
+      /\.(spec|test)\.[jt]sx?$/.test(path) ||
+      /\.mock\.[jt]sx?$/.test(path) ||
+      /(?:^|\/)(__tests__|__mocks__|fixtures|testdata)\//.test(path) ||
+      /(?:^|\/)(test|tests|spec|specs|e2e)\//.test(path)
+    ) {
+      return -100;
+    }
+
+    let s = 0;
+    if (/(?:^|\/)packages\/database\/schema\.prisma$/.test(path)) s = 100;
+    else if (/(?:^|\/)prisma\/schema\.prisma$/.test(path)) s = 100;
+    else if (/(?:^|\/)schema\.prisma$/.test(path)) s = 78;
+    else if (path.endsWith(".prisma")) s = 70;
+    else if (/(?:^|\/)manage\.py$/.test(path)) s = 99;
+    else if (/(?:^|\/)urls\.py$/.test(path)) s = 98;
+    else if (/(?:^|\/)(views|viewsets|serializers)\.py$/.test(path)) s = 96;
+    else if (path.includes("supabase/functions")) s = 95;
+    else if (/(?:^|\/)route\.(tsx?|jsx?)$/.test(path)) s = 94;
+    else if (/(?:^|\/)pages\/api\//.test(path)) s = 90;
+    else if (/(?:^|\/)(models|permissions|settings)\.py$/.test(path)) s = 88;
+    else if (path.includes("/apps/meteor/server")) s = 87;
+    else if (path.includes("/apps/meteor/") || path.includes("/apps/api/")) {
+      s = 86;
+    } else if (path.includes("/validators/")) s = 85;
+    else if (
       path.includes("/repositories/") || path.includes("/packages/database/")
     ) {
-      return 80;
-    }
-    if (path.includes("/services/")) return 75;
-    if (path.includes("/middleware")) return 70;
-    if (path.includes("/routes/") || path.includes("/api/")) return 65;
-    if (path.endsWith(".py")) return 55;
-    if (path.includes("server/")) return 60;
-    return 0;
+      s = 80;
+    } else if (path.includes("/modules/")) s = 79;
+    else if (path.includes("/controllers/")) s = 78;
+    else if (path.includes("/services/")) s = 75;
+    else if (path.includes("/middleware")) s = 70;
+    else if (path.includes("/routes/") || path.includes("/api/")) s = 65;
+    else if (path.includes("server/")) s = 60;
+    else if (path.endsWith(".py")) s = 55;
+    else s = 10;
+
+    const segments = path.split("/").filter(Boolean);
+    s += Math.min(segments.length, 8);
+    if (path.includes("/leaves/") || path.includes("/leave/")) s += 12;
+    if (path.includes("/src/") || path.includes("/app/")) s += 4;
+    if (path.includes("/frontend/") && s < 70) s -= 8;
+    return s;
   };
-  return [...files].sort((a, b) => score(b.path) - score(a.path));
+
+  return [...files].sort((a, b) => {
+    const diff = score(b.path) - score(a.path);
+    if (diff !== 0) return diff;
+    // Tie-break uses same path normalization as score() (Windows backslashes).
+    const aNorm = a.path.replace(/\\/g, "/");
+    const bNorm = b.path.replace(/\\/g, "/");
+    const depthDiff = bNorm.split("/").length - aNorm.split("/").length;
+    if (depthDiff !== 0) return depthDiff;
+    return aNorm.localeCompare(bNorm);
+  });
 }

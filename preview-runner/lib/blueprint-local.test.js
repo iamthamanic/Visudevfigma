@@ -38,6 +38,53 @@ describe("blueprint-local Softort coverage", () => {
     );
   });
 
+  it("keeps specs/mocks/tests below app modules under soft-cap ranking", () => {
+    // Mirrors Actual/Immich soft-cap bias (spec/mock domination).
+    const ranked = prioritizeBlueprintFiles([
+      "packages/sync-server/src/app/gocardless-service.spec.ts",
+      "server/src/repositories/asset.repository.spec.ts",
+      "server/src/repositories/asset.repository.mock.ts",
+      "packages/sync-server/src/app/gocardless-service.ts",
+      "server/src/repositories/asset.repository.ts",
+      "apps/web/src/app/api/route.ts",
+      "src/modules/leaves/leaves.routes.ts",
+    ]);
+    const top = ranked.slice(0, 4);
+    expect(top.some((p) => /\.(spec|test|mock)\./.test(p))).toBe(false);
+    expect(ranked.indexOf("src/modules/leaves/leaves.routes.ts")).toBeLessThan(
+      ranked.indexOf("packages/sync-server/src/app/gocardless-service.spec.ts"),
+    );
+    expect(ranked.indexOf("server/src/repositories/asset.repository.ts")).toBeLessThan(
+      ranked.indexOf("server/src/repositories/asset.repository.spec.ts"),
+    );
+  });
+
+  it("prefers module-segment paths and canonical prisma over basename lottery", () => {
+    const ranked = prioritizeBlueprintFiles([
+      "HrKo_LeaveService.ts",
+      "schema.prisma",
+      "modules/hr/services/HrKo_LeaveService.ts",
+      "modules/leaves/schema.prisma",
+      "packages/database/schema.prisma",
+      "src/modules/leaves/leave.controller.ts",
+    ]);
+    expect(ranked[0]).toBe("packages/database/schema.prisma");
+    expect(ranked.indexOf("src/modules/leaves/leave.controller.ts")).toBeLessThan(
+      ranked.indexOf("HrKo_LeaveService.ts"),
+    );
+    expect(ranked.indexOf("modules/hr/services/HrKo_LeaveService.ts")).toBeLessThan(
+      ranked.indexOf("HrKo_LeaveService.ts"),
+    );
+  });
+
+  it("tie-breaks module depth with normalized backslash paths", () => {
+    // Segment bonus caps at 8 — deeper Windows path must still win via tie-break.
+    const shallow = "a/b/c/d/e/f/g/h.ts";
+    const deeperWin = "a\\b\\c\\d\\e\\f\\g\\h\\i.ts";
+    const ranked = prioritizeBlueprintFiles([shallow, deeperWin]);
+    expect(ranked[0]).toBe(deeperWin);
+  });
+
   it("uses a Softort-friendly file limit (>=250)", () => {
     expect(FILE_LIMIT).toBeGreaterThanOrEqual(250);
   });
