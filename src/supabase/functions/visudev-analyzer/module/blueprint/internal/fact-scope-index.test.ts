@@ -129,6 +129,51 @@ Deno.test("buildRouteFactsIndex skips ambiguous shared related-file facts", () =
   );
 });
 
+Deno.test("buildRouteFactsIndex attaches shared *.service.ts db facts to related routes", () => {
+  const routes: RouteScope[] = [{
+    id: "POST /api/leaves",
+    method: "POST",
+    path: "/api/leaves",
+    filePath: "app/modules/leaves/leaves.routes.ts",
+    line: 10,
+    relatedFiles: [
+      "app/modules/leaves/leaves.routes.ts",
+      "app/modules/leaves/leaves.service.ts",
+    ],
+  }, {
+    id: "GET /api/leaves/me",
+    method: "GET",
+    path: "/api/leaves/me",
+    filePath: "app/modules/leaves/leaves.routes.ts",
+    line: 4,
+    relatedFiles: [
+      "app/modules/leaves/leaves.routes.ts",
+      "app/modules/leaves/leaves.service.ts",
+    ],
+  }];
+  const facts: CodeFact[] = [{
+    id: "fact-leave-write",
+    kind: "db-write",
+    filePath: "app/modules/leaves/leaves.service.ts",
+    line: 40,
+    snippet: "await this.prisma.leaveRequest.create({})",
+    metadata: { table: "leaveRequest", framework: "prisma" },
+  }];
+  const index = buildRouteFactsIndex(routes, facts);
+  assertEquals(
+    index.get("POST /api/leaves")?.some((fact) =>
+      fact.id === "fact-leave-write"
+    ),
+    true,
+  );
+  assertEquals(
+    index.get("GET /api/leaves/me")?.some((fact) =>
+      fact.id === "fact-leave-write"
+    ),
+    true,
+  );
+});
+
 Deno.test("sanitizeFactMetadataForExport drops unknown metadata keys", () => {
   const facts = sanitizeFactsForExport([{
     id: "fact-meta",

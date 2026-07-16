@@ -29,6 +29,11 @@ import {
 import { assembleBlueprintGraph } from "./blueprint-graph-assembly.ts";
 import { attachGraphFindings } from "../graph/graph-policy-findings.ts";
 import { resolveRoutePath } from "../internal/route-path.util.ts";
+import {
+  buildExpressMountPrefixByDir,
+  joinMountPrefix,
+  lookupExpressMountPrefix,
+} from "../internal/route-mount.util.ts";
 
 const DEFAULT_PROFILE: ProjectProfile = {
   appType: "saas",
@@ -118,13 +123,17 @@ function buildRouteScopes(
   fileIndex: Map<string, FileIndexEntry>,
 ): RouteScope[] {
   const routeFacts = facts.filter((fact) => fact.kind === "api-route");
+  const mountsByDir = buildExpressMountPrefixByDir(facts);
   const scopes: RouteScope[] = [];
   const seen = new Set<string>();
   const usedBaseIds = new Set<string>();
 
   for (const fact of routeFacts) {
     const method = String(fact.metadata.method ?? "GET").toUpperCase();
-    const path = resolveRoutePath(fact);
+    const path = joinMountPrefix(
+      lookupExpressMountPrefix(fact.filePath, mountsByDir),
+      resolveRoutePath(fact),
+    );
     const id = buildRouteScopeId(
       method,
       path,

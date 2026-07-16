@@ -17,12 +17,15 @@ export function buildRouteFactsIndex(
   facts: CodeFact[],
 ): Map<string, CodeFact[]> {
   const index = new Map<string, CodeFact[]>();
-  const routeByFileLine = new Map<string, RouteScope>();
+  const routesByLocation = new Map<string, RouteScope[]>();
   const routeById = new Map<string, RouteScope>();
 
   for (const route of routeScopes) {
     index.set(route.id, []);
-    routeByFileLine.set(routeScopeLineKey(route), route);
+    const locationKey = `${route.filePath}:${route.line}:${route.method}`;
+    const atLocation = routesByLocation.get(locationKey) ?? [];
+    atLocation.push(route);
+    routesByLocation.set(locationKey, atLocation);
     routeById.set(route.id, route);
   }
 
@@ -38,10 +41,11 @@ export function buildRouteFactsIndex(
   for (const fact of facts) {
     if (fact.kind === "api-route") {
       const method = String(fact.metadata.method ?? "GET").toUpperCase();
-      const path = resolveRoutePath(fact);
-      const route = routeByFileLine.get(
-        `${fact.filePath}:${fact.line}:${method}:${path}`,
-      );
+      const rawPath = resolveRoutePath(fact);
+      const candidates = routesByLocation.get(
+        `${fact.filePath}:${fact.line}:${method}`,
+      ) ?? [];
+      const route = matchRouteScopeForFact(candidates, rawPath);
       if (route) index.get(route.id)?.push(fact);
       continue;
     }
@@ -87,6 +91,41 @@ export function buildRouteFactsIndex(
   return index;
 }
 
+/**
+ * Prefer exact path match; else uniquely match mounted scope whose path ends
+ * with the extracted router path (mount join). Ambiguous candidates → no attach.
+ */
+function matchRouteScopeForFact(
+  candidates: RouteScope[],
+  rawPath: string,
+): RouteScope | undefined {
+  if (candidates.length === 0) return undefined;
+  const path = rawPath.trim();
+  if (!path || path === "/") {
+    // Degenerate extracted paths: only exact "/" match, never endsWith("").
+    return candidates.find((route) =>
+      route.path === "/" || route.path === path
+    );
+  }
+  const exact = candidates.find((route) => route.path === path);
+  if (exact) return exact;
+  if (candidates.length === 1) {
+    const only = candidates[0]!;
+    if (
+      only.path === path || only.path.endsWith(path) ||
+      only.path.endsWith(`/${path.replace(/^\//, "")}`)
+    ) {
+      return only;
+    }
+    return undefined;
+  }
+  const suffix = path.replace(/^\//, "");
+  const mounted = candidates.filter((route) =>
+    route.path.endsWith(path) || route.path.endsWith(`/${suffix}`)
+  );
+  return mounted.length === 1 ? mounted[0] : undefined;
+}
+
 function assignSharedFileFacts(
   filePath: string,
   facts: CodeFact[],
@@ -94,7 +133,24 @@ function assignSharedFileFacts(
   routeById: Map<string, RouteScope>,
   index: Map<string, CodeFact[]>,
 ): void {
+  const normalized = filePath.replace(/\\/g, "/");
+  const isDataModuleFile =
+    /\.(service|repository|repo)\.[jt]sx?$/i.test(normalized) ||
+    /\/(services|repositories)\//i.test(normalized);
+
+  // visudev-gapclose P0-2: shared leaves.service.ts is related to many routes —
+  // still attach db-read/db-write so Execution can show LeaveRequest edges.
   if (routeIds.size > 1) {
+    if (!isDataModuleFile) return;
+    const dbFacts = facts.filter((f) =>
+      f.kind === "db-read" || f.kind === "db-write"
+    );
+    if (dbFacts.length === 0) return;
+    for (const routeId of routeIds) {
+      const route = routeById.get(routeId);
+      if (!route || filePath === route.filePath) continue;
+      index.get(routeId)?.push(...dbFacts);
+    }
     return;
   }
 
@@ -105,10 +161,6 @@ function assignSharedFileFacts(
       index.get(onlyRouteId)?.push(...facts);
     }
   }
-}
-
-function routeScopeLineKey(route: RouteScope): string {
-  return `${route.filePath}:${route.line}:${route.method}:${route.path}`;
 }
 
 function attachAstCallFacts(

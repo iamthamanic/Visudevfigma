@@ -78,6 +78,16 @@ function extractRegexFactsFromFile(
     extractErrorStatus(filePath, line, lineNum, facts);
   });
 
+  // Multi-line router.get(\n  '/path'…) — common in browo Express modules.
+  extractExpressMultilineRoutes(
+    filePath,
+    content,
+    facts,
+    routeKeys,
+    routeFramework,
+  );
+  extractExpressMountPrefixes(filePath, content, facts);
+
   return facts;
 }
 
@@ -396,6 +406,68 @@ function extractExpressRouteMatches(
   }
 }
 
+/** router.get(\n  '/path', …) — path on following line (browo leaves.routes.ts). */
+function extractExpressMultilineRoutes(
+  filePath: string,
+  content: string,
+  facts: CodeFact[],
+  routeKeys: Set<string>,
+  routeFramework: "hono" | "express",
+): void {
+  if (routeFramework !== "express" || !isLikelyExpressRouteFile(filePath)) {
+    return;
+  }
+  const multiline =
+    /\b(app|router)\.(get|post|put|patch|delete|all)\s*\(\s*[\r\n]+\s*['"`]([^'"`]+)['"`]/gi;
+  let m: RegExpExecArray | null;
+  while ((m = multiline.exec(content)) !== null) {
+    const method = m[2].toUpperCase();
+    const path = m[3];
+    const lineNum = content.slice(0, m.index).split("\n").length;
+    const key = `${filePath}:${lineNum}:${method}:${path}`;
+    if (routeKeys.has(key)) continue;
+    routeKeys.add(key);
+    const snippetLine = content.split("\n")[lineNum - 1] ?? m[0];
+    facts.push({
+      id: makeFactId(filePath, lineNum, `api-route-express-${method}-${path}`),
+      kind: "api-route",
+      filePath,
+      line: lineNum,
+      snippet: trimSnippet(snippetLine),
+      metadata: { method, path, framework: "express" },
+    });
+  }
+}
+
+/** app.use('/api/leaves', router) → route-mount facts for scope path join. */
+function extractExpressMountPrefixes(
+  filePath: string,
+  content: string,
+  facts: CodeFact[],
+): void {
+  if (!/\bexpress\b|\bRouter\b|from ['"]express['"]/.test(content)) return;
+  const mountRe =
+    /\bapp\.use\s*\(\s*['"`]([^'"`]+)['"`]\s*,\s*([A-Za-z_$][\w$]*)/g;
+  let m: RegExpExecArray | null;
+  while ((m = mountRe.exec(content)) !== null) {
+    const mountPath = m[1];
+    if (!mountPath.startsWith("/")) continue;
+    const lineNum = content.slice(0, m.index).split("\n").length;
+    facts.push({
+      id: makeFactId(filePath, lineNum, `route-mount-${mountPath}`),
+      kind: "route-mount",
+      filePath,
+      line: lineNum,
+      snippet: trimSnippet(m[0]),
+      metadata: {
+        path: mountPath,
+        routerBinding: m[2],
+        framework: "express",
+      },
+    });
+  }
+}
+
 function extractNextRouteHandlers(
   filePath: string,
   line: string,
@@ -551,7 +623,7 @@ function extractSupabase(
   });
 }
 
-/** prisma.model.findMany / create / update → db facts (Formbricks client usage). */
+/** prisma.model / this.prisma.model ops → db facts (Formbricks + browo Nest/Express services). */
 function extractPrismaClient(
   filePath: string,
   line: string,
@@ -559,7 +631,7 @@ function extractPrismaClient(
   facts: CodeFact[],
 ): void {
   const match = line.match(
-    /\bprisma\.(\w+)\.(findMany|findFirst|findUnique|create|createMany|update|updateMany|upsert|delete|deleteMany|count|aggregate)\s*\(/,
+    /\b(?:this\.)?prisma\.(\w+)\.(findMany|findFirst|findUnique|create|createMany|update|updateMany|upsert|delete|deleteMany|count|aggregate)\s*\(/,
   );
   if (!match) return;
   const table = match[1];
