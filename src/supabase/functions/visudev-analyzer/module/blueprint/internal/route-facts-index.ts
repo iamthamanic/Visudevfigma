@@ -10,7 +10,6 @@ import {
   type RouteLineRange,
 } from "./route-ownership.ts";
 import { buildRelatedRouteIdsByFile } from "./route-related-files.ts";
-import { resolveRoutePath } from "./route-path.util.ts";
 
 export function buildRouteFactsIndex(
   routeScopes: RouteScope[],
@@ -38,9 +37,9 @@ export function buildRouteFactsIndex(
   for (const fact of facts) {
     if (fact.kind === "api-route") {
       const method = String(fact.metadata.method ?? "GET").toUpperCase();
-      const path = resolveRoutePath(fact);
+      // Match by file+line+method so mounted scope paths can differ from raw fact paths.
       const route = routeByFileLine.get(
-        `${fact.filePath}:${fact.line}:${method}:${path}`,
+        `${fact.filePath}:${fact.line}:${method}`,
       );
       if (route) index.get(route.id)?.push(fact);
       continue;
@@ -125,7 +124,7 @@ function assignSharedFileFacts(
 }
 
 function routeScopeLineKey(route: RouteScope): string {
-  return `${route.filePath}:${route.line}:${route.method}:${route.path}`;
+  return `${route.filePath}:${route.line}:${route.method}`;
 }
 
 function attachAstCallFacts(

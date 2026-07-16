@@ -29,6 +29,11 @@ import {
 import { assembleBlueprintGraph } from "./blueprint-graph-assembly.ts";
 import { attachGraphFindings } from "../graph/graph-policy-findings.ts";
 import { resolveRoutePath } from "../internal/route-path.util.ts";
+import {
+  buildExpressMountPrefixByDir,
+  joinMountPrefix,
+  lookupExpressMountPrefix,
+} from "../internal/route-mount.util.ts";
 
 const DEFAULT_PROFILE: ProjectProfile = {
   appType: "saas",
@@ -118,6 +123,7 @@ function buildRouteScopes(
   fileIndex: Map<string, FileIndexEntry>,
 ): RouteScope[] {
   const routeFacts = facts.filter((fact) => fact.kind === "api-route");
+  const mountsByDir = buildExpressMountPrefixByDir(facts);
   const scopes: RouteScope[] = [];
   const seen = new Set<string>();
   const usedBaseIds = new Set<string>();
@@ -125,11 +131,9 @@ function buildRouteScopes(
   for (const fact of routeFacts) {
     const method = String(fact.metadata.method ?? "GET").toUpperCase();
     const path = joinMountPrefix(
-      findExpressMountPrefix(fact.filePath, facts),
+      lookupExpressMountPrefix(fact.filePath, mountsByDir),
       resolveRoutePath(fact),
     );
-    // Keep fact path in sync so route-facts-index keys match mounted scopes.
-    fact.metadata = { ...fact.metadata, path, method };
     const id = buildRouteScopeId(
       method,
       path,
@@ -152,28 +156,6 @@ function buildRouteScopes(
   }
 
   return scopes.sort((a, b) => a.path.localeCompare(b.path));
-}
-
-/** Same-dir app.use('/api/leaves', router) → prefix for module route files. */
-function findExpressMountPrefix(
-  routeFilePath: string,
-  facts: CodeFact[],
-): string | null {
-  const routeDir = routeFilePath.replace(/\\/g, "/").replace(/\/[^/]+$/, "");
-  for (const fact of facts) {
-    if (fact.kind !== "route-mount") continue;
-    const mountDir = fact.filePath.replace(/\\/g, "/").replace(/\/[^/]+$/, "");
-    if (mountDir !== routeDir) continue;
-    const mount = String(fact.metadata.path ?? "").trim();
-    if (mount.startsWith("/")) return mount.replace(/\/$/, "") || "/";
-  }
-  return null;
-}
-
-function joinMountPrefix(mount: string | null, path: string): string {
-  if (!mount || mount === "/") return path;
-  if (!path || path === "/") return mount;
-  return `${mount}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 function detectFrameworkHints(facts: CodeFact[]): string[] {

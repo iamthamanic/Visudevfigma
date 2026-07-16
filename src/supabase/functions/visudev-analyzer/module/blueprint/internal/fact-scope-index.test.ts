@@ -161,7 +161,9 @@ Deno.test("buildRouteFactsIndex attaches shared *.service.ts db facts to related
   }];
   const index = buildRouteFactsIndex(routes, facts);
   assertEquals(
-    index.get("POST /api/leaves")?.some((fact) => fact.id === "fact-leave-write"),
+    index.get("POST /api/leaves")?.some((fact) =>
+      fact.id === "fact-leave-write"
+    ),
     true,
   );
   assertEquals(
