@@ -82,3 +82,55 @@ export function createLeavesRoutes() {
   );
   assertEquals(routes.some((r) => r.metadata?.method === "POST"), true);
 });
+
+Deno.test("extractFactsFromFile detects Prisma models in schema.prisma", () => {
+  const content = `
+generator client {
+  provider = "prisma-client-js"
+}
+model Survey {
+  id String @id
+}
+model Webhook {
+  id String @id
+}
+`;
+  const facts = extractFactsFromFile(
+    "packages/database/schema.prisma",
+    content,
+  );
+  const tables = facts.filter((f) => f.kind === "db-write").map((f) =>
+    f.metadata?.table
+  );
+  assertEquals(tables.includes("Survey"), true);
+  assertEquals(tables.includes("Webhook"), true);
+  assertEquals(facts.every((f) => f.metadata?.framework === "prisma"), true);
+});
+
+Deno.test("extractFactsFromFile detects prisma client calls", () => {
+  const content = `const survey = await prisma.survey.findMany({ where: {} });`;
+  const facts = extractFactsFromFile("apps/web/lib/survey.ts", content);
+  const read = facts.find((f) => f.kind === "db-read");
+  assertEquals(read?.metadata?.table, "survey");
+  assertEquals(read?.metadata?.framework, "prisma");
+});
+
+Deno.test("extractFactsFromFile detects Django urlpatterns and permissions", () => {
+  const content = `
+from rest_framework.permissions import IsAuthenticated
+from django.urls import path
+
+urlpatterns = [
+    path("api/workspaces/", WorkspaceView.as_view()),
+    path("api/projects/", ProjectViewSet.as_view({"get": "list"})),
+]
+
+class WorkspaceView(APIView):
+    permission_classes = [IsAuthenticated]
+`;
+  const facts = extractFactsFromFile("apps/api/plane/urls.py", content);
+  const routes = facts.filter((f) => f.kind === "api-route");
+  assertEquals(routes.length >= 2, true);
+  assertEquals(routes.some((r) => r.metadata?.framework === "django"), true);
+  assertEquals(facts.some((f) => f.kind === "auth-check"), true);
+});

@@ -8,7 +8,6 @@ import { createHash, randomUUID } from "node:crypto";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolveAppWorkspaceDir } from "../build-candidates.js";
 import { resolveValidatedLocalPath } from "./local-path-security.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -27,11 +26,15 @@ const SKIP_DIRS = new Set([
   ".qa",
   ".turbo",
   "vendor",
+  "__pycache__",
+  ".venv",
+  "venv",
 ]);
 
-const SUPPORTED_EXT = new Set(["ts", "tsx", "js", "jsx", "vue"]);
-const FILE_LIMIT = 250;
-const MAX_WALK_CANDIDATES = 2000;
+/** JS/TS plus Python (Django) and Prisma schema for Softort monorepo truth. */
+const SUPPORTED_EXT = new Set(["ts", "tsx", "js", "jsx", "vue", "py", "prisma"]);
+const FILE_LIMIT = Math.max(250, Number(process.env.BLUEPRINT_FILE_LIMIT) || 400);
+const MAX_WALK_CANDIDATES = Math.max(2000, Number(process.env.BLUEPRINT_MAX_WALK) || 4000);
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_STDIN_BYTES = 8 * 1024 * 1024;
 const DENO_TIMEOUT_MS = Math.max(30_000, Number(process.env.BLUEPRINT_DENO_TIMEOUT_MS) || 120_000);
@@ -42,15 +45,22 @@ let activeAnalyzeCount = 0;
 function prioritizeBlueprintFiles(files) {
   const score = (p) => {
     const path = p.toLowerCase();
-    if (path.includes("supabase/functions")) return 100;
-    if (/(?:^|\/)route\.(tsx?|jsx?)$/.test(path)) return 95;
+    if (/(?:^|\/)schema\.prisma$/.test(path) || path.endsWith(".prisma")) return 100;
+    if (/(?:^|\/)manage\.py$/.test(path)) return 99;
+    if (/(?:^|\/)urls\.py$/.test(path)) return 98;
+    if (/(?:^|\/)(views|viewsets|serializers)\.py$/.test(path)) return 96;
+    if (path.includes("supabase/functions")) return 95;
+    if (/(?:^|\/)route\.(tsx?|jsx?)$/.test(path)) return 94;
     if (/(?:^|\/)pages\/api\//.test(path)) return 90;
+    if (/(?:^|\/)(models|permissions|settings)\.py$/.test(path)) return 88;
+    if (path.includes("/apps/meteor/") || path.includes("/apps/api/")) return 86;
     if (path.includes("/validators/")) return 85;
-    if (path.includes("/repositories/")) return 80;
+    if (path.includes("/repositories/") || path.includes("/packages/database/")) return 80;
     if (path.includes("/services/")) return 75;
     if (path.includes("/middleware")) return 70;
-    if (path.includes("/routes/")) return 65;
-    if (path.includes("server/") || path.includes("/api/")) return 60;
+    if (path.includes("/routes/") || path.includes("/api/")) return 65;
+    if (path.endsWith(".py")) return 55;
+    if (path.includes("server/")) return 60;
     return 0;
   };
   return [...files].sort((a, b) => score(b) - score(a));
@@ -91,10 +101,16 @@ function walkCodeFiles(rootDir) {
   return results;
 }
 
+/**
+ * Blueprint analysis walks the clone root — not the preview "best web package".
+ * Preview start still uses resolveAppWorkspaceDir; Softort needs FE+BE+packages.
+ */
 function resolveWorkspaceRoot(localPath) {
-  const resolved = resolveAppWorkspaceDir(localPath, null);
-  return resolved.appDir ?? localPath;
+  return localPath;
 }
+
+/** Exported for unit tests (monorepo root must stay clone root). */
+export { resolveWorkspaceRoot, prioritizeBlueprintFiles, SUPPORTED_EXT, FILE_LIMIT };
 
 function collectFileEntries(workspaceRoot) {
   const absolutePaths = walkCodeFiles(workspaceRoot);
