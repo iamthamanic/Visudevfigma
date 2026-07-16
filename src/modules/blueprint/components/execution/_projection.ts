@@ -85,6 +85,7 @@ export function projectExecutionGraph(
         id: `exec-edge-${index}`,
         source: stepNodeIds[index]!,
         target: targetId,
+        kind: "executes",
       })),
       stepNodeIds,
       cycleNodeId: null,
