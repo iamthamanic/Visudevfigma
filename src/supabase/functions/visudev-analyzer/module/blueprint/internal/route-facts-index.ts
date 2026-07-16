@@ -100,22 +100,28 @@ function matchRouteScopeForFact(
   rawPath: string,
 ): RouteScope | undefined {
   if (candidates.length === 0) return undefined;
-  const exact = candidates.find((route) => route.path === rawPath);
+  const path = rawPath.trim();
+  if (!path || path === "/") {
+    // Degenerate extracted paths: only exact "/" match, never endsWith("").
+    return candidates.find((route) =>
+      route.path === "/" || route.path === path
+    );
+  }
+  const exact = candidates.find((route) => route.path === path);
   if (exact) return exact;
   if (candidates.length === 1) {
     const only = candidates[0]!;
     if (
-      only.path === rawPath ||
-      only.path.endsWith(rawPath) ||
-      only.path.endsWith(`/${rawPath.replace(/^\//, "")}`)
+      only.path === path || only.path.endsWith(path) ||
+      only.path.endsWith(`/${path.replace(/^\//, "")}`)
     ) {
       return only;
     }
     return undefined;
   }
+  const suffix = path.replace(/^\//, "");
   const mounted = candidates.filter((route) =>
-    route.path.endsWith(rawPath) ||
-    route.path.endsWith(`/${rawPath.replace(/^\//, "")}`)
+    route.path.endsWith(path) || route.path.endsWith(`/${suffix}`)
   );
   return mounted.length === 1 ? mounted[0] : undefined;
 }
