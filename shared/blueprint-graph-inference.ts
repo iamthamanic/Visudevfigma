@@ -196,28 +196,73 @@ function preferConfirmed(a: MatrixState, b: MatrixState): MatrixState {
   return a !== "unknown" && a !== "n/a" ? a : b;
 }
 
-/** File-node outgoing control/data edges for a route's source file. */
+/** Outgoing control/data edges scoped to a route via evidence line ownership. */
 export function collectRouteEdgeSignals(
   graph: SoftwareGraph,
-  routeFilePath: string,
+  route: { filePath: string; line: number },
+  siblingRoutes: Array<{ filePath: string; line: number }> = [],
 ): { hasAuth: boolean; hasValidation: boolean; hasDb: boolean } {
-  const fileNodeIds = new Set(
+  const routeDir = dirnameOfFile(route.filePath);
+  const routeFileNodeIds = new Set(
     graph.nodes
-      .filter((node) => node.kind === "file" && node.filePath === routeFilePath)
+      .filter((node) => node.kind === "file" && node.filePath === route.filePath)
       .map((node) => node.id),
   );
-  // Also accept edges sourced from the route node itself (analyzer-style graphs).
   for (const node of graph.nodes) {
-    if (node.kind === "route" && node.filePath === routeFilePath) {
-      fileNodeIds.add(node.id);
+    if (node.kind === "route" && node.filePath === route.filePath) {
+      routeFileNodeIds.add(node.id);
     }
   }
+
+  const evidenceByFactId = new Map(graph.evidence.map((ev) => [ev.factId, ev] as const));
+  const sameFileLines = siblingRoutes
+    .filter((r) => r.filePath === route.filePath)
+    .map((r) => r.line)
+    .sort((a, b) => a - b);
+  const routeIndex = sameFileLines.indexOf(route.line);
+  const lineStart = route.line;
+  const lineEnd =
+    routeIndex >= 0 && routeIndex + 1 < sameFileLines.length
+      ? sameFileLines[routeIndex + 1]!
+      : Number.POSITIVE_INFINITY;
+  const routesInFile = sameFileLines.length || 1;
+
+  const lineOwnsEvidence = (line: number): boolean => line >= lineStart && line < lineEnd;
 
   let hasAuth = false;
   let hasValidation = false;
   let hasDb = false;
   for (const edge of graph.edges) {
-    if (!fileNodeIds.has(edge.sourceId)) continue;
+    if (edge.kind !== "authenticates" && edge.kind !== "validates" && edge.kind !== "data") {
+      continue;
+    }
+
+    const sourceNode = graph.nodes.find((node) => node.id === edge.sourceId);
+    const fromRouteFile = routeFileNodeIds.has(edge.sourceId);
+    const sourcePath = sourceNode?.filePath ?? "";
+    const sameModuleData =
+      edge.kind === "data" &&
+      Boolean(sourcePath) &&
+      dirnameOfFile(sourcePath) === routeDir &&
+      /\.(service|repository|repo)\.[jt]sx?$/i.test(sourcePath);
+
+    if (!fromRouteFile && !sameModuleData) continue;
+
+    const evidenceFactId =
+      typeof edge.metadata.evidenceFactId === "string" ? edge.metadata.evidenceFactId : "";
+    const evidence = evidenceFactId ? evidenceByFactId.get(evidenceFactId) : undefined;
+
+    let applies = false;
+    if (sameModuleData) {
+      // Shared module service DB facts apply to all routes in the module file.
+      applies = true;
+    } else if (routesInFile <= 1) {
+      applies = true;
+    } else if (evidence) {
+      applies = evidence.filePath === route.filePath && lineOwnsEvidence(evidence.line);
+    }
+
+    if (!applies) continue;
     if (edge.kind === "authenticates") hasAuth = true;
     else if (edge.kind === "validates") hasValidation = true;
     else if (edge.kind === "data") hasDb = true;
@@ -244,6 +289,7 @@ export function inferRouteStates(
   graph?: SoftwareGraph | null,
 ): Map<string, RouteInference> {
   const states = new Map<string, RouteInference>();
+  const siblingRoutes = routes.map((r) => ({ filePath: r.filePath, line: r.line }));
   for (const route of routes) {
     const directory = dirnameOfFile(route.filePath);
     const routeFacts = indexes.routeFactsIndex.get(route.id) ?? [];
@@ -256,7 +302,7 @@ export function inferRouteStates(
     );
 
     const edgeSignals = graph
-      ? collectRouteEdgeSignals(graph, route.filePath)
+      ? collectRouteEdgeSignals(graph, route, siblingRoutes)
       : { hasAuth: false, hasValidation: false, hasDb: false };
 
     const auth = preferConfirmed(
