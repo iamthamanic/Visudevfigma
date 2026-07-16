@@ -64,6 +64,7 @@ function buildPrimaryPath(
   routeNodeId: string,
   fileId: string,
   index: OutgoingIndex,
+  state: GraphBuilderState,
 ): ExecutionPath {
   const steps: string[] = [routeNodeId];
   let cycleNodeId: string | undefined;
@@ -94,7 +95,58 @@ function buildPrimaryPath(
     }
   }
 
+  // visudev-gapclose P0-3: pull DB tables from same-module service/repository files
+  // when import/call chain does not yet reach them (browo leaves.service, Formbricks libs).
+  appendModuleDataTargets(state, fileId, index, steps, visited);
+
   return cycleNodeId ? { nodeIds: steps, cycleNodeId } : { nodeIds: steps };
+}
+
+function dirnameOf(filePath: string): string {
+  const normalized = filePath.replace(/\\/g, "/");
+  const idx = normalized.lastIndexOf("/");
+  return idx <= 0 ? "" : normalized.slice(0, idx);
+}
+
+function isModuleDataFile(filePath: string): boolean {
+  const normalized = filePath.replace(/\\/g, "/");
+  return (
+    /\.(service|repository|repo)\.[jt]sx?$/i.test(normalized) ||
+    /\/(lib|server|repositories|services)\//i.test(normalized)
+  );
+}
+
+/**
+ * Attach table nodes from data edges on sibling module files (same directory).
+ * Keeps Execution DB contact >0 when Prisma lives in *.service.ts next to routes.
+ */
+function appendModuleDataTargets(
+  state: GraphBuilderState,
+  routeFileId: string,
+  index: OutgoingIndex,
+  steps: string[],
+  visited: Set<string>,
+): void {
+  const routeFile = state.nodes.get(routeFileId);
+  const routePath = routeFile?.filePath;
+  if (!routePath) return;
+  const routeDir = dirnameOf(routePath);
+  if (!routeDir) return;
+
+  for (const node of state.nodes.values()) {
+    if (node.kind !== "file" || !node.filePath) continue;
+    if (node.id === routeFileId) continue;
+    if (dirnameOf(node.filePath) !== routeDir) continue;
+    if (!isModuleDataFile(node.filePath)) continue;
+
+    for (const tableId of outgoingTargets(index, node.id, ["data"])) {
+      if (visited.has(tableId)) continue;
+      const tableNode = state.nodes.get(tableId);
+      if (!tableNode || tableNode.kind !== "table") continue;
+      visited.add(tableId);
+      appendUnique(steps, tableId);
+    }
+  }
 }
 
 function applyExecutionPathMetadata(
@@ -112,13 +164,28 @@ export function attachExecutionPathGroups(state: GraphBuilderState): SoftwareGra
   const index = buildOutgoingIndex(state);
   const routeNodes = [...state.nodes.values()].filter((node) => node.kind === "route");
 
+  if (routeNodes.length === 0) {
+    // Honest non-HTTP surface (Rocket.Chat Meteor) — do not pretend empty HTTP succeeded.
+    const fallbackNodes = [...state.nodes.values()]
+      .filter((node) => node.kind === "service" || node.kind === "file" || node.kind === "runtime")
+      .slice(0, 8)
+      .map((node) => node.id);
+    groups.push({
+      id: "execution:non-http:0",
+      kind: "runtime",
+      label: "Non-HTTP surface — keine HTTP-Routen extrahiert",
+      nodeIds: fallbackNodes,
+    });
+    return groups;
+  }
+
   for (const routeNode of routeNodes) {
     const fileId = readRouteFileId(routeNode);
     const routeKey =
       typeof routeNode.metadata.routeId === "string" ? routeNode.metadata.routeId : routeNode.id;
 
     const path = fileId
-      ? buildPrimaryPath(routeNode.id, fileId, index)
+      ? buildPrimaryPath(routeNode.id, fileId, index, state)
       : { nodeIds: [routeNode.id] };
 
     applyExecutionPathMetadata(state, routeNode.id, path);

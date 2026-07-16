@@ -47,7 +47,7 @@ function toCanvasNode(node: SoftwareGraphNode, cycleNodeId: string | null): Grap
 }
 
 export function listExecutionRoutes(graph: SoftwareGraph): { routeId: string; label: string }[] {
-  return graph.nodes
+  const routes = graph.nodes
     .filter((node) => node.kind === "route")
     .map((node) => ({
       routeId:
@@ -56,12 +56,41 @@ export function listExecutionRoutes(graph: SoftwareGraph): { routeId: string; la
           : node.id,
       label: node.label,
     }));
+  if (routes.length > 0) return routes;
+
+  // Honest non-HTTP surface (e.g. Meteor) when no HTTP routes were extracted.
+  const nonHttp = (Array.isArray(graph.groups) ? graph.groups : []).find(
+    (group) => group.id === "execution:non-http:0",
+  );
+  if (nonHttp) {
+    return [{ routeId: "non-http", label: nonHttp.label }];
+  }
+  return [];
 }
 
 export function projectExecutionGraph(
   graph: SoftwareGraph,
   options: ExecutionProjectionOptions,
 ): ExecutionProjection | null {
+  if (options.routeId === "non-http") {
+    const group = (Array.isArray(graph.groups) ? graph.groups : []).find(
+      (entry) => entry.id === "execution:non-http:0",
+    );
+    if (!group) return null;
+    const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+    const stepNodeIds = group.nodeIds.filter((id) => nodeById.has(id));
+    return {
+      nodes: stepNodeIds.map((id) => toCanvasNode(nodeById.get(id)!, null)),
+      edges: stepNodeIds.slice(1).map((targetId, index) => ({
+        id: `exec-edge-${index}`,
+        source: stepNodeIds[index]!,
+        target: targetId,
+      })),
+      stepNodeIds,
+      cycleNodeId: null,
+    };
+  }
+
   const routeNode = findRouteNode(graph, options.routeId);
   if (!routeNode) return null;
 

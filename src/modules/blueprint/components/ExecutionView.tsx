@@ -146,7 +146,10 @@ export function ExecutionView({ blueprint }: ExecutionViewProps) {
         <ExecutionLiveBadge live={isLive} />
         <ViewSectionTitle>Route</ViewSectionTitle>
         {routes.length === 0 ? (
-          <p className={styles.emptyControls}>Keine Routen im Graph vorhanden.</p>
+          <p className={styles.emptyControls}>
+            Keine HTTP-Routen im Graph. Non-HTTP Surfaces (z.&nbsp;B. Meteor Methods) brauchen
+            Extractor-Support — siehe Atlas/Dependencies.
+          </p>
         ) : (
           <select
             className={styles.select}
