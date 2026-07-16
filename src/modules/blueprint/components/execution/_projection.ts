@@ -46,6 +46,16 @@ function toCanvasNode(node: SoftwareGraphNode, cycleNodeId: string | null): Grap
   };
 }
 
+function isLeaveRouteSample(label: string, filePath: string, path: string): boolean {
+  const normalized = `${label} ${filePath} ${path}`.toLowerCase().replace(/\\/g, "/");
+  return (
+    normalized.includes("/leaves/") ||
+    normalized.includes("/leave/") ||
+    /(?:^|\/)leaves?(?:\/|\.|$)/.test(normalized) ||
+    /\/api\/leaves?(?:\/|$)/.test(normalized)
+  );
+}
+
 export function listExecutionRoutes(graph: SoftwareGraph): { routeId: string; label: string }[] {
   const routes = graph.nodes
     .filter((node) => node.kind === "route")
@@ -55,7 +65,16 @@ export function listExecutionRoutes(graph: SoftwareGraph): { routeId: string; la
           ? node.metadata.routeId
           : node.id,
       label: node.label,
-    }));
+      filePath: node.filePath ?? "",
+      path: typeof node.metadata.path === "string" ? node.metadata.path : "",
+    }))
+    .sort((a, b) => {
+      // Stable partition only — preserve non-leave insertion order.
+      const aLeave = isLeaveRouteSample(a.label, a.filePath, a.path) ? 0 : 1;
+      const bLeave = isLeaveRouteSample(b.label, b.filePath, b.path) ? 0 : 1;
+      return aLeave - bLeave;
+    })
+    .map(({ routeId, label }) => ({ routeId, label }));
   if (routes.length > 0) return routes;
 
   // Honest non-HTTP surface (e.g. Meteor) when no HTTP routes were extracted.

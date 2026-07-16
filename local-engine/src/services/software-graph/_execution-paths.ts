@@ -4,7 +4,15 @@
  */
 
 import type { SoftwareGraphGroup } from "../../../../shared/software-graph.types.js";
+import {
+  appendLeaveRequestTables,
+  collectLeaveTableRefs,
+  ensureLeaveRouteDataEdges,
+  isLeaveSurface,
+  leaveRouteRank,
+} from "./_execution-leave.js";
 import type { GraphBuilderState } from "./_state.js";
+import type { LeaveTableRef } from "./_execution-leave.js";
 
 const PRE_HANDLER_KINDS = ["authenticates", "validates"] as const;
 const POST_HANDLER_KINDS = ["calls", "api", "data", "imports"] as const;
@@ -81,14 +89,24 @@ function appendModuleDataTargets(
   steps: string[],
   visited: Set<string>,
   state: GraphBuilderState,
+  allowParentDir: boolean,
 ): void {
   if (!routeDir) return;
-  for (const tableId of dataTargetsByDir.get(routeDir) ?? []) {
-    if (visited.has(tableId)) continue;
-    const tableNode = state.nodes.get(tableId);
-    if (!tableNode || tableNode.kind !== "table") continue;
-    visited.add(tableId);
-    appendUnique(steps, tableId);
+  const dirsToScan = [routeDir];
+  // Parent scan only for leave modules — avoids polluting unrelated routes under app/modules.
+  if (allowParentDir) {
+    const parent = dirnameOf(routeDir);
+    if (parent && parent !== routeDir) dirsToScan.push(parent);
+  }
+
+  for (const dir of dirsToScan) {
+    for (const tableId of dataTargetsByDir.get(dir) ?? []) {
+      if (visited.has(tableId)) continue;
+      const tableNode = state.nodes.get(tableId);
+      if (!tableNode || tableNode.kind !== "table") continue;
+      visited.add(tableId);
+      appendUnique(steps, tableId);
+    }
   }
   void routeFileId;
 }
@@ -101,7 +119,7 @@ function buildModuleDataTargetsByDir(
   const byDir = new Map<string, string[]>();
   for (const node of state.nodes.values()) {
     if (node.kind !== "file" || !node.filePath) continue;
-    if (!isModuleDataFile(node.filePath)) continue;
+    if (!isModuleDataFile(node.filePath) && !isLeaveSurface(node.filePath)) continue;
     const dir = dirnameOf(node.filePath);
     if (!dir) continue;
     const tables = outgoingTargets(index, node.id, ["data"]);
@@ -119,6 +137,7 @@ function buildPrimaryPath(
   index: OutgoingIndex,
   state: GraphBuilderState,
   dataTargetsByDir: Map<string, string[]>,
+  leaveTables: readonly LeaveTableRef[],
 ): ExecutionPath {
   const steps: string[] = [routeNodeId];
   let cycleNodeId: string | undefined;
@@ -151,7 +170,28 @@ function buildPrimaryPath(
 
   const routeFile = state.nodes.get(fileId);
   const routeDir = routeFile?.filePath ? dirnameOf(routeFile.filePath) : "";
-  appendModuleDataTargets(fileId, routeDir, dataTargetsByDir, steps, visited, state);
+  const routeNode = state.nodes.get(routeNodeId);
+  const allowParentDir = Boolean(
+    routeNode &&
+    isLeaveSurface(
+      `${routeNode.label} ${routeNode.filePath ?? ""} ${
+        typeof routeNode.metadata.path === "string" ? routeNode.metadata.path : ""
+      }`,
+    ),
+  );
+  appendModuleDataTargets(
+    fileId,
+    routeDir,
+    dataTargetsByDir,
+    steps,
+    visited,
+    state,
+    allowParentDir,
+  );
+
+  if (routeNode) {
+    appendLeaveRequestTables(routeNode, leaveTables, steps, visited);
+  }
 
   return cycleNodeId ? { nodeIds: steps, cycleNodeId } : { nodeIds: steps };
 }
@@ -168,12 +208,16 @@ function applyExecutionPathMetadata(
 
 export function attachExecutionPathGroups(state: GraphBuilderState): SoftwareGraphGroup[] {
   const groups: SoftwareGraphGroup[] = [];
+  const leaveTables = collectLeaveTableRefs(state);
+  ensureLeaveRouteDataEdges(state, leaveTables);
   const index = buildOutgoingIndex(state);
   const dataTargetsByDir = buildModuleDataTargetsByDir(state, index);
-  const routeNodes = [...state.nodes.values()].filter((node) => node.kind === "route");
+  const routeNodes = [...state.nodes.values()]
+    .filter((node) => node.kind === "route")
+    // Stable partition: leave first; non-leave keep insertion order.
+    .sort((a, b) => leaveRouteRank(a) - leaveRouteRank(b));
 
   if (routeNodes.length === 0) {
-    // Honest non-HTTP surface (Rocket.Chat Meteor) — do not pretend empty HTTP succeeded.
     const fallbackNodes = [...state.nodes.values()]
       .filter((node) => node.kind === "service" || node.kind === "file" || node.kind === "runtime")
       .slice(0, 8)
@@ -193,7 +237,7 @@ export function attachExecutionPathGroups(state: GraphBuilderState): SoftwareGra
       typeof routeNode.metadata.routeId === "string" ? routeNode.metadata.routeId : routeNode.id;
 
     const path = fileId
-      ? buildPrimaryPath(routeNode.id, fileId, index, state, dataTargetsByDir)
+      ? buildPrimaryPath(routeNode.id, fileId, index, state, dataTargetsByDir, leaveTables)
       : { nodeIds: [routeNode.id] };
 
     applyExecutionPathMetadata(state, routeNode.id, path);
