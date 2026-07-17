@@ -97,3 +97,16 @@
   font-size: 0.875rem;
   color: var(--color-muted-foreground);
 }
+
+.detailSection {
+  margin-bottom: var(--space-md);
+}
+
+.detailTitle {
+  margin: 0 0 var(--space-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}

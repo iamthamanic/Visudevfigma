@@ -11,7 +11,7 @@ import type {
   AccessControlStatus,
 } from "../../../lib/visudev/access-control-types";
 import { accessControlStatusSymbol } from "../../../lib/visudev/access-control-types";
-import type { MatrixControlColumn } from "./diagnostics/AccessControlInspector.js";
+import type { MatrixControlColumn } from "./diagnostics/access-control-matrix-columns.js";
 import { StatusBadge } from "./ui/StatusBadge.js";
 import styles from "../styles/SecurityMatrix.module.css";
 

@@ -13,11 +13,11 @@ import { BlueprintViewLayout } from "./ui/BlueprintViewLayout.js";
 import { ViewSectionTitle } from "./ui/ViewSectionTitle.js";
 import { DiagnosticsFindingsTable } from "./diagnostics/DiagnosticsFindingsTable.js";
 import { DiagnosticsProblemInspector } from "./diagnostics/DiagnosticsProblemInspector.js";
+import { AccessControlInspector } from "./diagnostics/AccessControlInspector.js";
 import {
-  AccessControlInspector,
   MATRIX_COLUMN_TO_CONTROL,
   type MatrixControlColumn,
-} from "./diagnostics/AccessControlInspector.js";
+} from "./diagnostics/access-control-matrix-columns.js";
 import { DiagnosticsSubTabs, type DiagnosticsTabId } from "./diagnostics/DiagnosticsSubTabs.js";
 import type { AccessControlControl } from "../../../lib/visudev/access-control-types";
 import type { BlueprintData, BlueprintFinding } from "../types";
