@@ -213,13 +213,38 @@ Deno.test("selectFactsPreservingPrismaModels keeps infra-service past route floo
     kind: "infra-service",
     filePath: "docker-compose.yml",
     line: 12,
-    snippet: 'image: redis:7-alpine',
-    metadata: { service: "Redis", source: "docker-compose", framework: "docker-compose" },
+    snippet: "image: redis:7-alpine",
+    metadata: {
+      service: "Redis",
+      source: "docker-compose",
+      framework: "docker-compose",
+    },
   };
   const noise = Array.from({ length: 400 }, (_, i) => routeFact(i));
   const selected = selectFactsPreservingPrismaModels([...noise, infra], 50);
   assertEquals(
-    selected.some((f) => f.kind === "infra-service" && f.metadata?.service === "Redis"),
+    selected.some((f) =>
+      f.kind === "infra-service" && f.metadata?.service === "Redis"
+    ),
     true,
   );
+});
+
+Deno.test("selectFactsPreservingPrismaModels bounds infra-service preservation (P3-2b)", () => {
+  const flood = Array.from({ length: 40 }, (_, i) => ({
+    id: `fact-infra-${i}`,
+    kind: "infra-service" as const,
+    filePath: "docker-compose.yml",
+    line: i + 1,
+    snippet: `image: custom-${i}`,
+    metadata: {
+      service: `Service${i}`,
+      source: "docker-compose",
+      framework: "docker-compose",
+    },
+  }));
+  const selected = selectFactsPreservingPrismaModels(flood, 10);
+  const infra = selected.filter((f) => f.kind === "infra-service");
+  assertEquals(infra.length <= 16, true);
+  assertEquals(infra.length, 16);
 });
