@@ -34,6 +34,18 @@ function filterFindings(
   });
 }
 
+function controlSummary(findings: AccessControlFinding[]): AccessControlControl[] {
+  const seen = new Set<AccessControlControl>();
+  const order: AccessControlControl[] = [];
+  for (const finding of findings) {
+    if (!seen.has(finding.control)) {
+      seen.add(finding.control);
+      order.push(finding.control);
+    }
+  }
+  return order;
+}
+
 export function AccessControlInspector({
   findings,
   routeId,
@@ -42,7 +54,7 @@ export function AccessControlInspector({
 }: AccessControlInspectorProps): JSX.Element {
   const scoped = filterFindings(findings, routeId, selectedControl);
 
-  if (!selectedControl) {
+  if (!routeId && !selectedControl) {
     return (
       <InspectorPanel
         title="Keine Auswahl"
@@ -52,10 +64,36 @@ export function AccessControlInspector({
     );
   }
 
+  // Route selected but no cell yet: show which controls have findings — not a random detail panel.
+  if (routeId && !selectedControl) {
+    const routeFindings = filterFindings(findings, routeId, null);
+    const controls = controlSummary(routeFindings);
+    return (
+      <InspectorPanel
+        title="Access Control"
+        subtitle={routeLabel ?? routeId}
+        testId="access-control-inspector"
+        sections={[
+          {
+            id: "prompt",
+            title: "Auswahl",
+            content: (
+              <p data-testid="ac-route-prompt">
+                {controls.length === 0
+                  ? "Keine Access-Control-Findings für diese Route. Klicke eine Matrix-Zelle für Details."
+                  : `Findings für: ${controls.map((c) => CONTROL_LABELS[c]).join(", ")}. Klicke eine Matrix-Zelle für Mechanismen und Evidence.`}
+              </p>
+            ),
+          },
+        ]}
+      />
+    );
+  }
+
   if (scoped.length === 0) {
     return (
       <InspectorPanel
-        title={CONTROL_LABELS[selectedControl]}
+        title={selectedControl ? CONTROL_LABELS[selectedControl] : "Access Control"}
         subtitle={routeLabel ?? routeId ?? undefined}
         emptyMessage="Keine Access-Control-Findings für diese Auswahl."
         testId="access-control-inspector"
