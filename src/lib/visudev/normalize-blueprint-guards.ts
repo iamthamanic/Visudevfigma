@@ -240,11 +240,10 @@ export function isAccessControlFinding(value: unknown): value is AccessControlFi
   if (!Array.isArray(value.evidence) || value.evidence.length > MAX_AC_NESTED) return false;
   for (const mechanism of value.mechanisms) {
     if (!isRecord(mechanism)) return false;
-    if (typeof mechanism.kind !== "string" || mechanism.kind.length === 0) return false;
-    if (!boundedString(mechanism.label)) return false;
+    if (!boundedString(mechanism.kind) || !boundedString(mechanism.label)) return false;
   }
   for (const layer of value.enforcementLayers) {
-    if (typeof layer !== "string" || layer.length === 0 || layer.length > 64) return false;
+    if (!boundedString(layer, 64)) return false;
   }
   for (const evidence of value.evidence) {
     if (!isRecord(evidence)) return false;
