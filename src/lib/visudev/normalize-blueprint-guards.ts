@@ -40,11 +40,36 @@ const ACCESS_CONTROL_STATUSES = new Set<AccessControlStatus>([
   "unsupported",
 ]);
 
+const ACCESS_CONTROL_CONTROLS = new Set([
+  "authentication",
+  "authorization",
+  "resource-scope",
+  "tenant-isolation",
+  "ownership",
+  "read-restriction",
+  "write-restriction",
+  "validation",
+  "rate-limit",
+  "privileged-access",
+  "audit",
+  "encryption",
+]);
+
+const ACCESS_CONTROL_RESOURCE_KINDS = new Set([
+  "route",
+  "table",
+  "collection",
+  "document",
+  "service",
+  "other",
+]);
+
 const MAX_ROUTES = 2_000;
 const MAX_FINDINGS = 5_000;
 const MAX_FACTS = 10_000;
 const MAX_MATRIX_ROWS = 2_000;
 const MAX_AC_FINDINGS = 5_000;
+const MAX_AC_NESTED = 64;
 
 function isConceptState(value: unknown): value is ConceptState {
   return typeof value === "string" && CONCEPT_STATES.has(value as ConceptState);
@@ -197,12 +222,37 @@ export function isAccessControlFinding(value: unknown): value is AccessControlFi
   const id = boundedString(value.id);
   const resourceId = boundedString(value.resourceId);
   if (!id || !resourceId || !isAccessControlStatus(value.status)) return false;
-  if (typeof value.control !== "string" || value.control.length === 0) return false;
-  if (typeof value.resourceKind !== "string" || value.resourceKind.length === 0) return false;
+  if (typeof value.control !== "string" || !ACCESS_CONTROL_CONTROLS.has(value.control)) {
+    return false;
+  }
+  if (
+    typeof value.resourceKind !== "string" ||
+    !ACCESS_CONTROL_RESOURCE_KINDS.has(value.resourceKind)
+  ) {
+    return false;
+  }
   if (typeof value.confidence !== "number" || !Number.isFinite(value.confidence)) return false;
   if (value.confidence < 0 || value.confidence > 100) return false;
-  if (!Array.isArray(value.mechanisms) || !Array.isArray(value.enforcementLayers)) return false;
-  if (!Array.isArray(value.evidence)) return false;
+  if (!Array.isArray(value.mechanisms) || value.mechanisms.length > MAX_AC_NESTED) return false;
+  if (!Array.isArray(value.enforcementLayers) || value.enforcementLayers.length > MAX_AC_NESTED) {
+    return false;
+  }
+  if (!Array.isArray(value.evidence) || value.evidence.length > MAX_AC_NESTED) return false;
+  for (const mechanism of value.mechanisms) {
+    if (!isRecord(mechanism)) return false;
+    if (typeof mechanism.kind !== "string" || mechanism.kind.length === 0) return false;
+    if (!boundedString(mechanism.label)) return false;
+  }
+  for (const layer of value.enforcementLayers) {
+    if (typeof layer !== "string" || layer.length === 0 || layer.length > 64) return false;
+  }
+  for (const evidence of value.evidence) {
+    if (!isRecord(evidence)) return false;
+    if (!boundedString(evidence.id) || !boundedString(evidence.kind)) return false;
+    if (!boundedString(evidence.filePath)) return false;
+    if (!positiveLine(evidence.line)) return false;
+    if (boundedString(evidence.excerpt, MAX_STRING_LEN * 4) === undefined) return false;
+  }
   return true;
 }
 
