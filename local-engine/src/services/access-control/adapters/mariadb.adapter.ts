@@ -107,18 +107,108 @@ function mechanisms(signals: MariadbSignals): AccessControlMechanismDetail[] {
   return list;
 }
 
-function statusFromSignals(signals: MariadbSignals): AccessControlStatus {
+function statusFromSignals(
+  signals: MariadbSignals,
+  hasDataTouchingFacts: boolean,
+): AccessControlStatus {
   const dbNative = signals.hasSecurityView || signals.hasGrant || signals.hasProcedure;
   if (dbNative && signals.hasRepoTenantFilter) return "protected";
   if (dbNative || signals.hasRepoTenantFilter) return "partial";
-  if (signals.matchedFacts.length === 0) return "unverified";
-  return "missing";
+  // Data/query facts without any isolation mechanism → missing (reachable)
+  if (hasDataTouchingFacts) return "missing";
+  return "unverified";
 }
 
-function buildFindings(resourceId: string, signals: MariadbSignals): AccessControlFinding[] {
+function isFactRecord(value: unknown): value is DatabaseSecurityAdapterInput["facts"][number] {
+  if (!value || typeof value !== "object") return false;
+  const fact = value as Record<string, unknown>;
+  return (
+    typeof fact.id === "string" &&
+    fact.id.length > 0 &&
+    fact.id.length <= 256 &&
+    typeof fact.kind === "string" &&
+    typeof fact.filePath === "string" &&
+    typeof fact.snippet === "string" &&
+    typeof fact.line === "number" &&
+    Number.isFinite(fact.line)
+  );
+}
+
+function sanitizeFacts(
+  facts: DatabaseSecurityAdapterInput["facts"] | undefined,
+): DatabaseSecurityAdapterInput["facts"] {
+  if (!Array.isArray(facts)) return [];
+  return facts.filter(isFactRecord).slice(0, 500);
+}
+
+function sanitizeResourceIds(ids: string[] | undefined): string[] {
+  if (!Array.isArray(ids) || ids.length === 0) return ["*"];
+  return ids
+    .filter((id): id is string => typeof id === "string" && id.length > 0 && id.length <= 256)
+    .slice(0, 200);
+}
+
+function isSqlSchemaFact(fact: DatabaseSecurityAdapterInput["facts"][number]): boolean {
+  return /sql|migration|schema|ddl/i.test(fact.kind) || /\.sql$/i.test(fact.filePath);
+}
+
+function isDataTouchingFact(fact: DatabaseSecurityAdapterInput["facts"][number]): boolean {
+  return (
+    isSqlSchemaFact(fact) ||
+    /query|repository|orm|prisma|table/i.test(fact.kind) ||
+    /\b(?:SELECT|INSERT|UPDATE|DELETE|FROM|INTO)\b/i.test(fact.snippet)
+  );
+}
+
+function factsForResource(
+  facts: DatabaseSecurityAdapterInput["facts"],
+  resourceId: string,
+): {
+  dbFacts: DatabaseSecurityAdapterInput["facts"];
+  appFacts: DatabaseSecurityAdapterInput["facts"];
+  hasDataTouchingFacts: boolean;
+} {
+  const dbFacts = facts.filter(isSqlSchemaFact);
+  if (resourceId === "*") {
+    return {
+      dbFacts,
+      appFacts: facts.filter((f) => !isSqlSchemaFact(f)),
+      hasDataTouchingFacts: facts.some(isDataTouchingFact),
+    };
+  }
+  const needle = resourceId.toLowerCase();
+  const appFacts = facts.filter((f) => {
+    if (isSqlSchemaFact(f)) return false;
+    const blob = `${f.id}\n${f.filePath}\n${f.snippet}`.toLowerCase();
+    return blob.includes(needle);
+  });
+  const scopedData = [...dbFacts, ...appFacts];
+  return {
+    dbFacts,
+    appFacts,
+    hasDataTouchingFacts: scopedData.some(isDataTouchingFact),
+  };
+}
+
+function mergeSignals(db: MariadbSignals, app: MariadbSignals): MariadbSignals {
+  return {
+    hasSecurityView: db.hasSecurityView,
+    hasGrant: db.hasGrant,
+    hasProcedure: db.hasProcedure,
+    hasRepoTenantFilter: app.hasRepoTenantFilter,
+    matchedFacts: [...db.matchedFacts, ...app.matchedFacts].slice(0, 16),
+  };
+}
+
+function buildFindings(
+  resourceId: string,
+  signals: MariadbSignals,
+  hasDataTouchingFacts: boolean,
+): AccessControlFinding[] {
+  const safeId = resourceId.replace(/[^a-zA-Z0-9._:/-]/g, "_").slice(0, 128);
   const mech = mechanisms(signals);
   const evidence = toEvidence(signals.matchedFacts);
-  const status = statusFromSignals(signals);
+  const status = statusFromSignals(signals, hasDataTouchingFacts);
   const layers: AccessControlFinding["enforcementLayers"] = [];
   if (signals.hasSecurityView || signals.hasGrant || signals.hasProcedure) {
     layers.push("database");
@@ -128,7 +218,7 @@ function buildFindings(resourceId: string, signals: MariadbSignals): AccessContr
 
   return [
     {
-      id: `ac-maria-tenant-${resourceId}`,
+      id: `ac-maria-tenant-${safeId}`,
       resourceId,
       resourceKind: "route",
       control: "tenant-isolation",
@@ -148,7 +238,7 @@ function buildFindings(resourceId: string, signals: MariadbSignals): AccessContr
       ruleId: "access-control.mariadb-tenant",
     },
     {
-      id: `ac-maria-scope-${resourceId}`,
+      id: `ac-maria-scope-${safeId}`,
       resourceId,
       resourceKind: "route",
       control: "resource-scope",
@@ -167,9 +257,13 @@ function createMariadbAdapter(dialect: "mariadb" | "mysql"): DatabaseSecurityAda
     dialect,
     analyze(input: DatabaseSecurityAdapterInput): AccessControlFinding[] {
       if (input.dialect !== "mariadb" && input.dialect !== "mysql") return [];
-      const signals = detectMariadbSignals(input.facts);
-      const resourceIds = input.resourceIds?.length ? input.resourceIds : ["*"];
-      return resourceIds.flatMap((id) => buildFindings(id, signals));
+      const facts = sanitizeFacts(input.facts);
+      const resourceIds = sanitizeResourceIds(input.resourceIds);
+      return resourceIds.flatMap((id) => {
+        const { dbFacts, appFacts, hasDataTouchingFacts } = factsForResource(facts, id);
+        const signals = mergeSignals(detectMariadbSignals(dbFacts), detectMariadbSignals(appFacts));
+        return buildFindings(id, signals, hasDataTouchingFacts);
+      });
     },
   };
 }
