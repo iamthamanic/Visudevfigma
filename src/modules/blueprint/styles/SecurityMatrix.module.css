@@ -50,6 +50,22 @@
   color: var(--color-primary);
 }
 
+.cellButton {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.15rem 0.35rem;
+  border-radius: var(--radius-sm);
+}
+
+.cellButton:hover,
+.cellButton[aria-pressed="true"] {
+  outline: 1px solid var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
 .method {
   color: var(--color-muted-foreground);
   font-size: 0.6875rem;

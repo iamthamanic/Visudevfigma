@@ -13,7 +13,13 @@ import { BlueprintViewLayout } from "./ui/BlueprintViewLayout.js";
 import { ViewSectionTitle } from "./ui/ViewSectionTitle.js";
 import { DiagnosticsFindingsTable } from "./diagnostics/DiagnosticsFindingsTable.js";
 import { DiagnosticsProblemInspector } from "./diagnostics/DiagnosticsProblemInspector.js";
+import { AccessControlInspector } from "./diagnostics/AccessControlInspector.js";
+import {
+  MATRIX_COLUMN_TO_CONTROL,
+  type MatrixControlColumn,
+} from "./diagnostics/access-control-matrix-columns.js";
 import { DiagnosticsSubTabs, type DiagnosticsTabId } from "./diagnostics/DiagnosticsSubTabs.js";
+import type { AccessControlControl } from "../../../lib/visudev/access-control-types";
 import type { BlueprintData, BlueprintFinding } from "../types";
 import styles from "../styles/DiagnosticsView.module.css";
 
@@ -23,6 +29,7 @@ interface DiagnosticsViewProps {
 
 export function DiagnosticsView({ blueprint }: DiagnosticsViewProps) {
   const [activeTab, setActiveTab] = useState<DiagnosticsTabId>("security");
+  const [selectedAcColumn, setSelectedAcColumn] = useState<MatrixControlColumn | null>(null);
   const {
     routes,
     matrix,
@@ -59,7 +66,31 @@ export function DiagnosticsView({ blueprint }: DiagnosticsViewProps) {
   }, [matrix, selectedFinding, selectedMatrixRow]);
 
   const accessControlRows = blueprint.accessControlMatrix ?? [];
+  const accessControlFindings = blueprint.accessControlFindings ?? [];
   const useAccessControlV2 = isAccessControlV2Enabled() && accessControlRows.length > 0;
+
+  const selectedAcControl: AccessControlControl | null = selectedAcColumn
+    ? MATRIX_COLUMN_TO_CONTROL[selectedAcColumn]
+    : null;
+
+  const handleSelectRoute = (routeId: string) => {
+    setSelectedAcColumn(null);
+    setSelectedFindingId(null);
+    selectRoute(routeId);
+  };
+
+  const handleSelectAcCell = (routeId: string, column: MatrixControlColumn) => {
+    setSelectedFindingId(null);
+    setSelectedAcColumn(column);
+    selectRoute(routeId);
+  };
+
+  const handleSelectFinding = (findingId: string | null) => {
+    setSelectedAcColumn(null);
+    setSelectedFindingId(findingId);
+  };
+
+  const showAccessControlInspector = useAccessControlV2 && selectedFinding == null;
 
   return (
     <div className={styles.root}>
@@ -75,7 +106,9 @@ export function DiagnosticsView({ blueprint }: DiagnosticsViewProps) {
                   <AccessControlMatrix
                     rows={accessControlRows}
                     selectedRouteId={selectedRouteId}
-                    onSelectRoute={selectRoute}
+                    selectedControl={selectedAcColumn}
+                    onSelectRoute={handleSelectRoute}
+                    onSelectCell={handleSelectAcCell}
                   />
                 ) : (
                   <SecurityMatrix
@@ -91,7 +124,7 @@ export function DiagnosticsView({ blueprint }: DiagnosticsViewProps) {
                   facts={facts}
                   routes={routes}
                   selectedFindingId={selectedFindingId}
-                  onSelectFinding={setSelectedFindingId}
+                  onSelectFinding={handleSelectFinding}
                   resolutionByFindingId={resolutionByFindingId}
                 />
               </section>
@@ -99,14 +132,23 @@ export function DiagnosticsView({ blueprint }: DiagnosticsViewProps) {
             </div>
           }
           inspector={
-            <DiagnosticsProblemInspector
-              finding={selectedFinding}
-              facts={facts}
-              route={inspectorRoute}
-              matrixRow={inspectorMatrixRow}
-              resolutionStatus={selectedResolutionStatus}
-              onToggleResolved={toggleSelectedFindingResolved}
-            />
+            showAccessControlInspector ? (
+              <AccessControlInspector
+                findings={accessControlFindings}
+                routeId={selectedRouteId}
+                selectedControl={selectedAcControl}
+                routeLabel={selectedRoute ? `${selectedRoute.method} ${selectedRoute.path}` : null}
+              />
+            ) : (
+              <DiagnosticsProblemInspector
+                finding={selectedFinding}
+                facts={facts}
+                route={inspectorRoute}
+                matrixRow={inspectorMatrixRow}
+                resolutionStatus={selectedResolutionStatus}
+                onToggleResolved={toggleSelectedFindingResolved}
+              />
+            )
           }
         />
       ) : (

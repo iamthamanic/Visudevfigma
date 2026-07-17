@@ -11,13 +11,16 @@ import type {
   AccessControlStatus,
 } from "../../../lib/visudev/access-control-types";
 import { accessControlStatusSymbol } from "../../../lib/visudev/access-control-types";
+import type { MatrixControlColumn } from "./diagnostics/access-control-matrix-columns.js";
 import { StatusBadge } from "./ui/StatusBadge.js";
 import styles from "../styles/SecurityMatrix.module.css";
 
 interface AccessControlMatrixProps {
   rows: AccessControlMatrixRow[];
   selectedRouteId: string | null;
+  selectedControl: MatrixControlColumn | null;
   onSelectRoute: (routeId: string) => void;
+  onSelectCell: (routeId: string, column: MatrixControlColumn) => void;
 }
 
 function acStateClass(status: AccessControlStatus): string {
@@ -29,12 +32,13 @@ function acStateClass(status: AccessControlStatus): string {
 }
 
 function overallBadge(status: AccessControlStatus): {
-  variant: "confirmed" | "warning" | "critical" | "missing";
+  variant: "confirmed" | "warning" | "critical" | "missing" | "unknown";
   label: string;
 } {
   if (status === "protected" || status === "not-applicable")
     return { variant: "confirmed", label: "OK" };
-  if (status === "partial" || status === "unverified" || status === "unsupported")
+  if (status === "unsupported") return { variant: "unknown", label: "⊘ N/A" };
+  if (status === "partial" || status === "unverified")
     return { variant: "warning", label: "Warnung" };
   if (status === "missing") return { variant: "missing", label: "Hoch" };
   return { variant: "warning", label: "Warnung" };
@@ -44,10 +48,40 @@ function cellStatus(cell: AccessControlMatrixCell | undefined): AccessControlSta
   return cell?.status ?? "unverified";
 }
 
+function ControlCell({
+  routeId,
+  column,
+  status,
+  selected,
+  onSelect,
+}: {
+  routeId: string;
+  column: MatrixControlColumn;
+  status: AccessControlStatus;
+  selected: boolean;
+  onSelect: (routeId: string, column: MatrixControlColumn) => void;
+}) {
+  return (
+    <td className={acStateClass(status)}>
+      <button
+        type="button"
+        className={styles.cellButton}
+        aria-pressed={selected}
+        data-testid={`ac-matrix-cell-${column}`}
+        onClick={() => onSelect(routeId, column)}
+      >
+        {accessControlStatusSymbol(status)}
+      </button>
+    </td>
+  );
+}
+
 export function AccessControlMatrix({
   rows,
   selectedRouteId,
+  selectedControl,
   onSelectRoute,
+  onSelectCell,
 }: AccessControlMatrixProps) {
   if (rows.length === 0) {
     return <p className={styles.empty}>Keine API-Routes erkannt.</p>;
@@ -76,14 +110,16 @@ export function AccessControlMatrix({
             const overall =
               typeof row.overallStatus === "string" ? row.overallStatus : "unverified";
             const badge = overallBadge(overall);
-            const authN = cellStatus(row.authentication);
-            const authZ = cellStatus(row.authorization);
-            const scope = cellStatus(row.resourceScope);
-            const tenant = cellStatus(row.tenantIsolation);
-            const ownership = cellStatus(row.ownership);
-            const validation = cellStatus(row.validation);
-            const rateLimit = cellStatus(row.rateLimit);
-            const audit = cellStatus(row.audit);
+            const cells: { column: MatrixControlColumn; status: AccessControlStatus }[] = [
+              { column: "authentication", status: cellStatus(row.authentication) },
+              { column: "authorization", status: cellStatus(row.authorization) },
+              { column: "resourceScope", status: cellStatus(row.resourceScope) },
+              { column: "tenantIsolation", status: cellStatus(row.tenantIsolation) },
+              { column: "ownership", status: cellStatus(row.ownership) },
+              { column: "validation", status: cellStatus(row.validation) },
+              { column: "rateLimit", status: cellStatus(row.rateLimit) },
+              { column: "audit", status: cellStatus(row.audit) },
+            ];
             return (
               <tr
                 key={row.routeId}
@@ -101,16 +137,16 @@ export function AccessControlMatrix({
                     <code className={styles.path}>{row.path}</code>
                   </button>
                 </td>
-                <td className={acStateClass(authN)}>{accessControlStatusSymbol(authN)}</td>
-                <td className={acStateClass(authZ)}>{accessControlStatusSymbol(authZ)}</td>
-                <td className={acStateClass(scope)}>{accessControlStatusSymbol(scope)}</td>
-                <td className={acStateClass(tenant)}>{accessControlStatusSymbol(tenant)}</td>
-                <td className={acStateClass(ownership)}>{accessControlStatusSymbol(ownership)}</td>
-                <td className={acStateClass(validation)}>
-                  {accessControlStatusSymbol(validation)}
-                </td>
-                <td className={acStateClass(rateLimit)}>{accessControlStatusSymbol(rateLimit)}</td>
-                <td className={acStateClass(audit)}>{accessControlStatusSymbol(audit)}</td>
+                {cells.map((cell) => (
+                  <ControlCell
+                    key={cell.column}
+                    routeId={row.routeId}
+                    column={cell.column}
+                    status={cell.status}
+                    selected={row.routeId === selectedRouteId && selectedControl === cell.column}
+                    onSelect={onSelectCell}
+                  />
+                ))}
                 <td>{typeof row.findingCount === "number" ? row.findingCount : 0}</td>
                 <td>
                   <StatusBadge
