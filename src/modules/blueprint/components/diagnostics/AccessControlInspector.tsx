@@ -42,7 +42,7 @@ export function AccessControlInspector({
 }: AccessControlInspectorProps): JSX.Element {
   const scoped = filterFindings(findings, routeId, selectedControl);
 
-  if (!routeId && !selectedControl) {
+  if (!selectedControl) {
     return (
       <InspectorPanel
         title="Keine Auswahl"
@@ -55,7 +55,7 @@ export function AccessControlInspector({
   if (scoped.length === 0) {
     return (
       <InspectorPanel
-        title={selectedControl ? CONTROL_LABELS[selectedControl] : "Access Control"}
+        title={CONTROL_LABELS[selectedControl]}
         subtitle={routeLabel ?? routeId ?? undefined}
         emptyMessage="Keine Access-Control-Findings für diese Auswahl."
         testId="access-control-inspector"
