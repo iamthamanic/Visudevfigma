@@ -3,30 +3,101 @@ import { deriveAccessControlMatrixFromFindings } from "./access-control-matrix.j
 import type { AccessControlFinding } from "./access-control.types.js";
 
 describe("deriveAccessControlMatrixFromFindings", () => {
-  it("groups findings by route and picks worst mechanism status", () => {
+  const routes = [{ id: "r1", method: "GET", path: "/employees" }];
+
+  it("returns unverified cells when no findings exist", () => {
+    const matrix = deriveAccessControlMatrixFromFindings(routes, []);
+    expect(matrix).toHaveLength(1);
+    expect(matrix[0].authentication.status).toBe("unverified");
+    expect(matrix[0].overallStatus).toBe("unverified");
+  });
+
+  it("maps tenant-isolation finding to tenantIsolation column", () => {
     const findings: AccessControlFinding[] = [
       {
         id: "f1",
-        routeId: "GET /api/employees",
-        mechanism: "authn",
-        status: "pass",
-        message: "ok",
+        resourceId: "r1",
+        resourceKind: "route",
+        control: "tenant-isolation",
+        status: "protected",
+        mechanisms: [
+          { kind: "repository-filter", label: "Repository Query Filter", technology: "app" },
+        ],
+        enforcementLayers: ["repository"],
+        evidence: [],
+        confidence: 0.9,
+      },
+    ];
+    const matrix = deriveAccessControlMatrixFromFindings(routes, findings);
+    expect(matrix[0].tenantIsolation.status).toBe("protected");
+    expect(matrix[0].tenantIsolation.mechanismLabel).toBe("Repository Query Filter");
+  });
+
+  it("maps rate-limit control to rateLimit column", () => {
+    const findings: AccessControlFinding[] = [
+      {
+        id: "f-rl",
+        resourceId: "r1",
+        resourceKind: "route",
+        control: "rate-limit",
+        status: "protected",
+        mechanisms: [{ kind: "rate-limit", label: "Express rate limit" }],
+        enforcementLayers: ["api"],
+        evidence: [],
+        confidence: 0.8,
+      },
+    ];
+    const matrix = deriveAccessControlMatrixFromFindings(routes, findings);
+    expect(matrix[0].rateLimit.status).toBe("protected");
+    expect(matrix[0].rateLimit.mechanismLabel).toBe("Express rate limit");
+  });
+
+  it("ignores non-route findings with the same resourceId", () => {
+    const findings: AccessControlFinding[] = [
+      {
+        id: "f-table",
+        resourceId: "r1",
+        resourceKind: "table",
+        control: "tenant-isolation",
+        status: "missing",
+        mechanisms: [],
+        enforcementLayers: ["database"],
+        evidence: [],
+        confidence: 0.7,
+      },
+    ];
+    const matrix = deriveAccessControlMatrixFromFindings(routes, findings);
+    expect(matrix[0].tenantIsolation.status).toBe("unverified");
+    expect(matrix[0].findingCount).toBe(0);
+  });
+
+  it("uses worst status for overallStatus", () => {
+    const findings: AccessControlFinding[] = [
+      {
+        id: "f1",
+        resourceId: "r1",
+        resourceKind: "route",
+        control: "authentication",
+        status: "protected",
+        mechanisms: [],
+        enforcementLayers: ["api"],
+        evidence: [],
+        confidence: 0.9,
       },
       {
         id: "f2",
-        routeId: "GET /api/employees",
-        mechanism: "tenant",
-        status: "fail",
-        message: "missing tenant filter",
+        resourceId: "r1",
+        resourceKind: "route",
+        control: "tenant-isolation",
+        status: "missing",
+        mechanisms: [],
+        enforcementLayers: [],
+        evidence: [],
+        confidence: 0.8,
       },
     ];
-
-    const rows = deriveAccessControlMatrixFromFindings(findings);
-    expect(rows).toHaveLength(1);
-    expect(rows[0]?.method).toBe("GET");
-    expect(rows[0]?.path).toBe("/api/employees");
-    expect(rows[0]?.authn).toBe("pass");
-    expect(rows[0]?.tenant).toBe("fail");
-    expect(rows[0]?.status).toBe("fail");
+    const matrix = deriveAccessControlMatrixFromFindings(routes, findings);
+    expect(matrix[0].overallStatus).toBe("missing");
+    expect(matrix[0].findingCount).toBe(2);
   });
 });

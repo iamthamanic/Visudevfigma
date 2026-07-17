@@ -27,9 +27,9 @@ Export-Sanitize behält `service`/`source`/`provider` für `infra-service` Facts
 
 ## Screenshots
 
-| Step | Filename |
-| ---- | -------- |
-| 1 | `01-happy-path.png` |
+| Step | Filename            |
+| ---- | ------------------- |
+| 1    | `01-happy-path.png` |
 
 ## Implementation Notes
 
@@ -40,4 +40,3 @@ Export-Sanitize behält `service`/`source`/`provider` für `infra-service` Facts
 - Root cause: `sanitizeFactMetadataForExport` dropped `service`/`source`/`provider`, so `isInfraServiceFact` never matched after export.
 - Allowlist extended; compose facts set `framework: "docker-compose"`; export cap preserves infra-service facts like Prisma models.
 - Tests: sanitizer + extractors + graph-export-cap (38 Deno) + software-graph-builder (21 Vitest).
-

@@ -1,0 +1,221 @@
+{
+  "epicSlug": "blueprint-access-control",
+  "epicTitle": "Stack-Agnostic Access Control for Blueprint Diagnostics",
+  "designPath": ".qa/design/blueprint-access-control.md",
+  "draftPath": ".qa/intake/blueprint-access-control-issues.md",
+  "milestone": "blueprint-access-control",
+  "issues": [
+    {
+      "title": "Access control types + matrix derivation (Phase 0)",
+      "priority": "P0",
+      "labels": ["needs-design", "blueprint", "security"],
+      "dependsOn": [],
+      "featureSlug": "access-control-types",
+      "bodySections": {
+        "intent": "Introduce stack-agnostic access control types and derive route matrix from findings instead of a fixed RLS column.",
+        "userJourney": "Blueprint scan produces accessControlFindings and accessControlMatrix alongside legacy securityMatrix; no UI break yet.",
+        "problem": "RLS is treated as universal; MariaDB/MongoDB/app-layer scoping cannot be expressed.",
+        "solution": "Add shared/access-control.types.ts, shared/access-control-matrix.ts, optional BlueprintDocument fields, unit tests. Export from shared/blueprint.ts and src/lib/visudev/access-control-types.ts.",
+        "edgeCases": "Empty findings → unverified cells. MariaDB project → no false RLS critical from types alone.",
+        "acceptance": [
+          "AccessControlFinding and AccessControlMatrixRow types exist in shared/",
+          "deriveAccessControlMatrixFromFindings() covered by unit tests",
+          "BlueprintData accepts optional accessControlFindings/accessControlMatrix",
+          "npm run checks green"
+        ],
+        "runtime": "local: yes; github: yes (shared types)."
+      }
+    },
+    {
+      "title": "Application chain analyzer (middleware → repository → query)",
+      "priority": "P0",
+      "labels": ["blueprint", "security"],
+      "dependsOn": ["Access control types + matrix derivation (Phase 0)"],
+      "featureSlug": "access-control-app-chain",
+      "bodySections": {
+        "intent": "Trace auth/authz/validation/tenant/ownership along the full request path from SoftwareGraph edges and facts.",
+        "userJourney": "After scan, tenant-isolation shows protected when TenantGuard + repository WHERE tenant_id is evidenced; critical when direct DB access bypasses scope.",
+        "problem": "Current inference only regex-matches auth/validation in directory; no chain completeness check.",
+        "solution": "local-engine/src/services/access-control/app-chain-analyzer.service.ts walks route→auth→service→repository→query nodes; emits AccessControlFinding[] with enforcementLayers and evidence.",
+        "edgeCases": "Incomplete graph → unverified not missing. List endpoints → ownership n/a.",
+        "acceptance": [
+          "Analyzer emits findings for auth, authorization, validation, tenant-isolation, ownership",
+          "Bypass pattern (direct collection/table access without scope) → partial or missing + warning",
+          "Wired into blueprint-enrichment.service.ts",
+          "Unit tests with fixture graph snippets"
+        ],
+        "runtime": "local: yes; github: yes."
+      }
+    },
+    {
+      "title": "Database security adapter registry + unknown fallback",
+      "priority": "P0",
+      "labels": ["blueprint", "security"],
+      "dependsOn": ["Access control types + matrix derivation (Phase 0)"],
+      "featureSlug": "access-control-adapter-registry",
+      "bodySections": {
+        "intent": "Select technology-specific security adapters by detected DB dialect; honest unsupported for native features on unknown DBs.",
+        "userJourney": "Project with SQLite gets app-layer findings only; PostgreSQL project additionally gets DB policy findings.",
+        "problem": "No adapter boundary; all DBs implicitly judged by RLS.",
+        "solution": "DatabaseSecurityAdapter interface, registry in access-control/index.ts, unknown.adapter.ts (app facts only). Reuse resolve-database-config dialect hint.",
+        "edgeCases": "No DATABASE_URL → unknown adapter, app-chain only.",
+        "acceptance": [
+          "Registry resolves adapter by DatabaseSecurityDialect",
+          "Unknown adapter never emits false RLS-missing criticals",
+          "Unit tests for registry selection"
+        ],
+        "runtime": "local: yes; github: partial."
+      }
+    },
+    {
+      "title": "PostgreSQL / Supabase security adapter",
+      "priority": "P1",
+      "labels": ["blueprint", "security"],
+      "dependsOn": ["Database security adapter registry + unknown fallback"],
+      "featureSlug": "access-control-postgres-adapter",
+      "bodySections": {
+        "intent": "Detect ENABLE ROW LEVEL SECURITY, CREATE POLICY, grants, roles from SQL migrations and code facts.",
+        "userJourney": "Inspector shows Tenant Isolation: Protected — Mechanism: PostgreSQL RLS — Evidence: CREATE POLICY tenant_employees.",
+        "problem": "rls-policy concept is route-scoped only; no migration/SQL file analysis.",
+        "solution": "postgres.adapter.ts parses fact snippets and .sql files for RLS/grants; maps to database-row-policy, database-grant mechanisms; tenant-isolation/resource-scope findings.",
+        "edgeCases": "RLS enabled but no policies → partial. Supabase extends postgres adapter.",
+        "acceptance": [
+          "Detects CREATE POLICY and ENABLE ROW LEVEL SECURITY in fixtures",
+          "Findings include mechanism label PostgreSQL RLS",
+          "Does not require live DB connection"
+        ],
+        "runtime": "local: yes; github: yes."
+      }
+    },
+    {
+      "title": "Replace db.rls-missing policy with abstract tenant-isolation rule",
+      "priority": "P1",
+      "labels": ["blueprint", "security"],
+      "dependsOn": [
+        "Application chain analyzer (middleware → repository → query)",
+        "Database security adapter registry + unknown fallback"
+      ],
+      "featureSlug": "access-control-policy-engine",
+      "bodySections": {
+        "intent": "Expectation engine checks abstract controls, not RLS presence.",
+        "userJourney": "MariaDB project with repository tenant filter shows OK; missing filter on sensitive table shows critical tenant-isolation finding.",
+        "problem": "db.rls-missing and rls-policy concept treat RLS as universal requirement.",
+        "solution": "Add access-control.tenant-isolation-missing rule using AccessControlFinding status; deprecate db.rls-missing; map legacy findings in normalizeBlueprintData.",
+        "edgeCases": "Non-multi-tenant app → tenant-isolation not-applicable via project profile.",
+        "acceptance": [
+          "No new findings with ruleId db.rls-missing",
+          "Sensitive tenant data without scope → access-control.tenant-isolation-missing",
+          "MariaDB + repo filter fixture → protected, not critical"
+        ],
+        "runtime": "local: yes; github: yes."
+      }
+    },
+    {
+      "title": "Diagnostics UI — abstract Security Matrix columns",
+      "priority": "P1",
+      "labels": ["blueprint", "ui", "security"],
+      "dependsOn": [
+        "Access control types + matrix derivation (Phase 0)",
+        "Application chain analyzer (middleware → repository → query)"
+      ],
+      "featureSlug": "access-control-matrix-ui",
+      "bodySections": {
+        "intent": "Replace RLS column with Scope, Tenant, Ownership; show status symbols from AccessControlStatus.",
+        "userJourney": "Diagnostics matrix columns: Route, AuthN, AuthZ, Scope, Tenant, Ownership, Validation, Rate Limit, Audit, Status.",
+        "problem": "SecurityMatrix.tsx still renders fixed RLS column.",
+        "solution": "AccessControlMatrix component (or extend SecurityMatrix behind VITE_ACCESS_CONTROL_V2). Use accessControlStatusSymbol(). Legacy matrix when flag off.",
+        "edgeCases": "Old blueprint.json without new fields → fall back to legacy matrix.",
+        "acceptance": [
+          "RLS column removed when VITE_ACCESS_CONTROL_V2=true",
+          "Cells use protected/partial/missing/unverified/n/a/unsupported symbols",
+          "Playwright smoke updated for new columns"
+        ],
+        "runtime": "local: yes; github: yes."
+      }
+    },
+    {
+      "title": "Access Control Inspector — mechanisms and evidence",
+      "priority": "P1",
+      "labels": ["blueprint", "ui", "security"],
+      "dependsOn": ["Diagnostics UI — abstract Security Matrix columns"],
+      "featureSlug": "access-control-inspector",
+      "bodySections": {
+        "intent": "Inspector shows concrete mechanisms (PostgreSQL RLS, Repository Filter, MongoDB Collection Role) when user opens a matrix cell or finding.",
+        "userJourney": "Click Tenant cell → Inspector: Status Protected, Mechanisms list, Enforcement layers, Evidence snippets, optional warning for bypass path.",
+        "problem": "ProblemInspector is finding-centric only; no mechanism/enforcement display.",
+        "solution": "AccessControlInspector.tsx in diagnostics/; bind to selected matrix cell control + route findings.",
+        "edgeCases": "unsupported mechanism shows ⊘ with explanation, not error styling.",
+        "acceptance": [
+          "Inspector lists mechanisms with technology labels",
+          "Shows enforcementLayers and evidence excerpts",
+          "Warning block when finding.warning set"
+        ],
+        "runtime": "local: yes; github: yes."
+      }
+    },
+    {
+      "title": "MariaDB / MySQL security adapter",
+      "priority": "P2",
+      "labels": ["blueprint", "security"],
+      "dependsOn": ["Database security adapter registry + unknown fallback"],
+      "featureSlug": "access-control-mariadb-adapter",
+      "bodySections": {
+        "intent": "Detect grants, SQL SECURITY views, stored procedures, repository tenant_id filters for MariaDB/MySQL projects.",
+        "userJourney": "MariaDB tenant isolation via view + repo filter shows Protected with dual mechanisms; no RLS false positive.",
+        "problem": "MariaDB has no native RLS; current model cannot represent view-based isolation.",
+        "solution": "mariadb.adapter.ts detects GRANT, CREATE VIEW ... SQL SECURITY, WHERE tenant_id in repo facts.",
+        "edgeCases": "Direct table grants to app user without view → partial/missing.",
+        "acceptance": [
+          "Fixture with security view + repo filter → tenant-isolation protected",
+          "Mechanism labels include SQL SECURITY View and Repository Query Filter",
+          "RLS never required for pass"
+        ],
+        "runtime": "local: yes; github: partial."
+      }
+    },
+    {
+      "title": "MongoDB security adapter",
+      "priority": "P2",
+      "labels": ["blueprint", "security"],
+      "dependsOn": ["Database security adapter registry + unknown fallback"],
+      "featureSlug": "access-control-mongodb-adapter",
+      "bodySections": {
+        "intent": "Detect collection roles, tenantId/ownerId query filters, middleware; schema validation maps to validation control only.",
+        "userJourney": "MongoDB route with find({ tenantId }) + requireTenantContext shows protected; find({}) bypass shows partial + warning.",
+        "problem": "No MongoDB-specific detection; RLS column meaningless.",
+        "solution": "mongodb.adapter.ts from facts: collection permissions strings, query filter patterns, middleware names.",
+        "edgeCases": "Schema validation alone does not satisfy tenant-isolation.",
+        "acceptance": [
+          "tenantId filter in query → tenant-isolation protected",
+          "Unscoped find → partial with warning",
+          "Schema validator → validation finding only"
+        ],
+        "runtime": "local: yes; github: partial."
+      }
+    },
+    {
+      "title": "Legacy securityMatrix deprecation + docs",
+      "priority": "P1",
+      "labels": ["blueprint", "security"],
+      "dependsOn": [
+        "Diagnostics UI — abstract Security Matrix columns",
+        "Replace db.rls-missing policy with abstract tenant-isolation rule"
+      ],
+      "featureSlug": "access-control-deprecation",
+      "bodySections": {
+        "intent": "Retire RLS column and rls-policy concept; document stack-agnostic security model.",
+        "userJourney": "Docs explain abstract controls vs technology mechanisms; old API consumers still get synthesized legacy matrix one release.",
+        "problem": "Dual models confuse contributors; docs still list RLS as universal Blueprint column.",
+        "solution": "Update docs/visudev-blueprint-engine.md, normalizeBlueprintData synthesizes legacy from accessControlMatrix; mark securityMatrix @deprecated; remove rls from default UI.",
+        "edgeCases": "E2E mocks with rls field still parse via normalization.",
+        "acceptance": [
+          "docs/visudev-blueprint-engine.md describes abstract controls",
+          "RLS removed from SecurityMatrix default export path",
+          "normalizeBlueprintData maps new matrix → legacy for compat tests",
+          "npm run checks green"
+        ],
+        "runtime": "docs + shared normalization."
+      }
+    }
+  ]
+}
