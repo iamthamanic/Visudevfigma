@@ -54,6 +54,19 @@ describe("AccessControlInspector", () => {
     expect(screen.getByText(/Klicke eine Matrix-Zelle/)).toBeInTheDocument();
   });
 
+  it("shows route prompt without opening a random control detail", () => {
+    render(
+      <AccessControlInspector
+        findings={findings}
+        routeId="route-1"
+        selectedControl={null}
+        routeLabel="GET /users"
+      />,
+    );
+    expect(screen.getByTestId("ac-route-prompt")).toHaveTextContent("Tenant-Isolation");
+    expect(screen.queryByTestId("ac-mechanisms")).not.toBeInTheDocument();
+  });
+
   it("filters findings by control and shows mechanisms, layers, evidence, warning", () => {
     render(
       <AccessControlInspector
