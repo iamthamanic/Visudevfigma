@@ -233,6 +233,55 @@ export interface RouteEdgeSignals {
   evidence: SoftwareGraph["evidence"];
 }
 
+export interface RouteSnippetSignals {
+  hasAuth: boolean;
+  hasValidation: boolean;
+  hasRole: boolean;
+  evidence: SoftwareGraph["evidence"];
+}
+
+/**
+ * Directory/file snippet signals — same heuristics as legacy securityMatrix
+ * (authByDirectory / validationByFile / ROLE_EVIDENCE_PATTERN). Needed when the
+ * graph has auth-check facts but no authenticates edges (common after condensation).
+ */
+export function collectRouteSnippetSignals(
+  route: { id: string; filePath: string },
+  indexes: RouteFactsIndexes,
+): RouteSnippetSignals {
+  const directory = dirnameOfFile(route.filePath);
+  const routeFacts = indexes.routeFactsIndex.get(route.id) ?? [];
+  const hasAuth = indexes.authByDirectory.get(directory) ?? false;
+  const hasValidation = indexes.validationByFile.get(route.filePath) ?? false;
+  const hasRole = routeFacts.some(
+    (fact) =>
+      (fact.filePath === route.filePath || isPathUnderDirectory(fact.filePath, directory)) &&
+      ROLE_EVIDENCE_PATTERN.test(fact.snippet),
+  );
+
+  const evidence: SoftwareGraph["evidence"] = [];
+  const seen = new Set<string>();
+  for (const fact of routeFacts) {
+    if (evidence.length >= 8) break;
+    const hit =
+      AUTH_EVIDENCE_PATTERN.test(fact.snippet) ||
+      ROLE_EVIDENCE_PATTERN.test(fact.snippet) ||
+      (fact.filePath === route.filePath && VALIDATION_EVIDENCE_PATTERN.test(fact.snippet));
+    if (!hit || seen.has(fact.id)) continue;
+    seen.add(fact.id);
+    evidence.push({
+      id: `ev-snippet-${fact.id}`,
+      factId: fact.id,
+      kind: fact.kind,
+      filePath: fact.filePath,
+      line: fact.line,
+      excerpt: fact.snippet,
+    });
+  }
+
+  return { hasAuth, hasValidation, hasRole, evidence };
+}
+
 /** Outgoing control/data edges scoped to a route via evidence line ownership. */
 export function collectRouteEdgeSignals(
   graph: SoftwareGraph,

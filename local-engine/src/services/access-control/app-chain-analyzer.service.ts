@@ -1,12 +1,20 @@
 /**
  * Application chain analyzer — walks SoftwareGraph route → auth → service →
  * repository → data edges and emits stack-agnostic AccessControlFinding rows.
- * Bridges legacy file-scoped route edge signals (leave-route-db-fact, file→auth)
- * so AC v2 matrix/inspector matches securityMatrix evidence without force-green.
+ * Bridges legacy file-scoped route edge + snippet signals (leave auth-check /
+ * leave-route-db-fact) so AC v2 matches securityMatrix without force-green.
  */
 
-import { collectRouteEdgeSignals } from "../../../../shared/blueprint-graph-inference.js";
+import {
+  buildRouteFactsIndexes,
+  collectRouteEdgeSignals,
+  collectRouteSnippetSignals,
+} from "../../../../shared/blueprint-graph-inference.js";
 import type { AccessControlFinding } from "../../../../shared/access-control.types.js";
+import type {
+  ProjectedCodeFact,
+  ProjectedRoute,
+} from "../../../../shared/blueprint-graph-types.js";
 import type { SoftwareGraph, SoftwareGraphNode } from "../../../../shared/software-graph.types.js";
 import { emitRouteAccessFindings } from "./app-chain-emit.js";
 import {
@@ -30,6 +38,37 @@ function routeLine(route: SoftwareGraphNode): number {
   return typeof route.line === "number" && Number.isFinite(route.line) ? route.line : 0;
 }
 
+function projectedRouteId(route: SoftwareGraphNode): string {
+  return typeof route.metadata.routeId === "string" && route.metadata.routeId.length > 0
+    ? route.metadata.routeId
+    : route.id;
+}
+
+function evidenceAsFacts(graph: SoftwareGraph): ProjectedCodeFact[] {
+  return graph.evidence.map((item) => ({
+    id: item.factId || item.id,
+    kind: item.kind,
+    filePath: item.filePath,
+    line: item.line,
+    snippet: item.excerpt,
+    metadata: {},
+  }));
+}
+
+function projectedRoutesFromNodes(routes: SoftwareGraphNode[]): ProjectedRoute[] {
+  return routes
+    .filter((r) => typeof r.filePath === "string" && r.filePath.length > 0)
+    .map((r) => ({
+      id: projectedRouteId(r),
+      method: typeof r.metadata.method === "string" ? r.metadata.method : "ALL",
+      path: typeof r.metadata.path === "string" ? r.metadata.path : r.label,
+      filePath: r.filePath!,
+      line: routeLine(r),
+      pipeline: [] as [],
+      concepts: {},
+    }));
+}
+
 /**
  * Analyze application-layer enforcement along each route's graph neighborhood.
  */
@@ -44,14 +83,15 @@ export function analyzeApplicationChain(input: AppChainAnalyzerInput): AccessCon
   const siblingRoutes = routes
     .filter((r) => typeof r.filePath === "string" && r.filePath.length > 0)
     .map((r) => ({ filePath: r.filePath!, line: routeLine(r) }));
+  const snippetIndexes = buildRouteFactsIndexes(
+    projectedRoutesFromNodes(routes),
+    evidenceAsFacts(graph),
+  );
 
   const findings: AccessControlFinding[] = [];
 
   for (const route of routes) {
-    const resourceId =
-      typeof route.metadata.routeId === "string" && route.metadata.routeId.length > 0
-        ? route.metadata.routeId
-        : route.id;
+    const resourceId = projectedRouteId(route);
     const seeds = resolveRouteChainSeeds(route, nodes);
     const { nodeIds, edgeKinds, nodesByKind, truncated } = collectReachable(seeds, outgoing, nodes);
     const edgeSignals =
@@ -63,14 +103,22 @@ export function analyzeApplicationChain(input: AppChainAnalyzerInput): AccessCon
             nodes,
           )
         : { hasAuth: false, hasValidation: false, hasDb: false, evidence: [] };
+    const snippetSignals =
+      route.filePath && route.filePath.length > 0
+        ? collectRouteSnippetSignals({ id: resourceId, filePath: route.filePath }, snippetIndexes)
+        : { hasAuth: false, hasValidation: false, hasRole: false, evidence: [] };
 
     const chainEvidence = mergeEvidence(
-      collectChainEvidence(nodeIds, evidenceByNode),
-      edgeSignals.evidence,
+      mergeEvidence(collectChainEvidence(nodeIds, evidenceByNode), edgeSignals.evidence),
+      snippetSignals.evidence,
     );
     const signals = detectChainSignals(chainEvidence);
-    const hasAuth = edgeKinds.has("authenticates") || edgeSignals.hasAuth;
-    const hasValidation = edgeKinds.has("validates") || edgeSignals.hasValidation;
+    if (snippetSignals.hasRole) {
+      signals.hasRole = true;
+    }
+    const hasAuth = edgeKinds.has("authenticates") || edgeSignals.hasAuth || snippetSignals.hasAuth;
+    const hasValidation =
+      edgeKinds.has("validates") || edgeSignals.hasValidation || snippetSignals.hasValidation;
     const hasRepo = (nodesByKind.get("repository")?.length ?? 0) > 0;
     const hasTable =
       (nodesByKind.get("table")?.length ?? 0) > 0 || edgeKinds.has("data") || edgeSignals.hasDb;
