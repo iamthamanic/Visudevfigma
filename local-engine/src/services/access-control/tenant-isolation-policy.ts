@@ -67,14 +67,6 @@ export function evaluateTenantIsolationPolicy(
     }
     if (tenant.status !== "missing" && tenant.status !== "partial") continue;
 
-    const hasRepoFilter = tenant.mechanisms.some(
-      (m) => m.kind === "repository-filter" || m.kind === "tenant-filter",
-    );
-    // Partial with repo filter still present is OK for MariaDB-style stacks.
-    if (tenant.status === "partial" && hasRepoFilter && !tenant.warning?.includes("bypass")) {
-      continue;
-    }
-
     policyFindings.push({
       id: `finding-tenant-${routeId}`,
       ruleId: TENANT_ISOLATION_MISSING_RULE_ID,
