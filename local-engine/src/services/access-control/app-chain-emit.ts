@@ -125,7 +125,9 @@ export function emitRouteAccessFindings(input: RouteChainEmitInput): AccessContr
       enforcementLayers: hasAuth ? ["api"] : [],
       evidence: toAccessEvidence(
         filterEvidence(chainEvidence, (e) =>
-          /auth|session|middleware|authorize/i.test(`${e.kind}\n${e.excerpt}`),
+          /auth-check|authorize|requireAuth|middleware|protect|jwt|oauth/i.test(
+            `${e.kind}\n${e.excerpt}`,
+          ),
         ),
       ),
       warning: truncateNote,

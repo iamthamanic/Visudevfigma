@@ -263,8 +263,11 @@ export function collectRouteSnippetSignals(
   const seen = new Set<string>();
   for (const fact of routeFacts) {
     if (evidence.length >= 8) break;
+    // Prefer auth-check / authorize / role / validation — not incidental "session" in DB snippets.
     const hit =
-      AUTH_EVIDENCE_PATTERN.test(fact.snippet) ||
+      /auth-check|authorize|requireAuth|middleware|permission_classes|IsAuthenticated/i.test(
+        `${fact.kind}\n${fact.snippet}`,
+      ) ||
       ROLE_EVIDENCE_PATTERN.test(fact.snippet) ||
       (fact.filePath === route.filePath && VALIDATION_EVIDENCE_PATTERN.test(fact.snippet));
     if (!hit || seen.has(fact.id)) continue;
