@@ -5,9 +5,16 @@
 import type { RawBlueprintFact } from "../../types/api.types.js";
 import { classifyFactKind } from "./_classification.js";
 import { createId, stableUniqueId } from "./_ids.js";
+import { infraServiceNodeId, isInfraServiceFact } from "./_infra-services.js";
 import { isPrismaSchemaModelFact, prismaTableNodeId } from "./_prisma-models.js";
 import { sanitizeExcerpt, sanitizeMetadata } from "./_sanitize.js";
-import { addEdge, addNode, type GraphBuilderState } from "./_state.js";
+import {
+  addEdge,
+  addEdgePrefer,
+  addNode,
+  addNodePrefer,
+  type GraphBuilderState,
+} from "./_state.js";
 
 export function addFactEvidence(
   fact: RawBlueprintFact,
@@ -31,21 +38,27 @@ export function addFactEvidence(
     typeof fact.metadata?.table === "string" && fact.metadata.table.trim()
       ? fact.metadata.table.trim()
       : null;
+  const infraService =
+    typeof fact.metadata?.service === "string" && fact.metadata.service.trim()
+      ? fact.metadata.service.trim()
+      : null;
   const pathLabel =
     typeof fact.metadata?.path === "string" && fact.metadata.path.trim()
       ? String(fact.metadata.method ?? "ALL") + " " + fact.metadata.path.trim()
       : null;
-  const inferredLabel = tableLabel ?? pathLabel ?? fact.kind;
+  const inferredLabel = infraService ?? tableLabel ?? pathLabel ?? fact.kind;
 
-  // Prisma schema models share a stable table id so LeaveRequest survives route floods.
+  const preferCritical = isInfraServiceFact(fact);
   const inferredNodeId = stableUniqueId(
     state.registry,
     "node",
-    tableLabel && isPrismaSchemaModelFact(fact)
-      ? prismaTableNodeId(tableLabel)
-      : createId("inferred", fact.kind, fact.id),
+    infraService && isInfraServiceFact(fact)
+      ? infraServiceNodeId(infraService)
+      : tableLabel && isPrismaSchemaModelFact(fact)
+        ? prismaTableNodeId(tableLabel)
+        : createId("inferred", fact.kind, fact.id),
   );
-  addNode(state, {
+  const nodePayload = {
     id: inferredNodeId,
     kind: classification.nodeKind,
     label: inferredLabel,
@@ -53,18 +66,22 @@ export function addFactEvidence(
     filePath: fact.filePath,
     line: fact.line,
     metadata: sanitizeMetadata(fact.metadata ?? {}),
-  });
+  };
+  if (preferCritical) addNodePrefer(state, nodePayload);
+  else addNode(state, nodePayload);
 
-  addEdge(state, {
+  const containsEdge = {
     id: stableUniqueId(state.registry, "edge", createId("edge", fileId, inferredNodeId)),
-    kind: "contains",
+    kind: "contains" as const,
     sourceId: fileId,
     targetId: inferredNodeId,
     metadata: {},
-  });
+  };
+  if (preferCritical) addEdgePrefer(state, containsEdge);
+  else addEdge(state, containsEdge);
 
   if (classification.edgeKind) {
-    addEdge(state, {
+    const typedEdge = {
       id: stableUniqueId(
         state.registry,
         "edge",
@@ -74,6 +91,8 @@ export function addFactEvidence(
       sourceId: fileId,
       targetId: inferredNodeId,
       metadata: { evidenceFactId: fact.id },
-    });
+    };
+    if (preferCritical) addEdgePrefer(state, typedEdge);
+    else addEdge(state, typedEdge);
   }
 }

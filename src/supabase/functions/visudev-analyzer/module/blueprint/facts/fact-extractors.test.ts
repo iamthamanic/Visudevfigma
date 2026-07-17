@@ -269,3 +269,58 @@ const legacy = new Mongo.Collection('rocketchat_roles');
   // No invented RLS / PG policy facts
   assertEquals(modelFacts.some((f) => f.kind === "rls-policy"), false);
 });
+
+Deno.test("extractFactsFromFile emits prisma datasource PostgreSQL infra (P3-2)", () => {
+  const content = `
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model User {
+  id String @id
+}
+`;
+  const facts = extractFactsFromFile("backend/prisma/schema.prisma", content);
+  const infra = facts.filter((f) => f.kind === "infra-service");
+  assertEquals(infra.length, 1);
+  assertEquals(infra[0]?.metadata?.service, "PostgreSQL");
+  assertEquals(infra[0]?.metadata?.source, "prisma-datasource");
+  assertEquals(facts.some((f) => f.metadata?.table === "User"), true);
+});
+
+Deno.test("extractFactsFromFile emits compose Postgres+Redis infra (P3-2)", () => {
+  const content = `
+services:
+  db:
+    image: postgres:16-alpine
+  redis:
+    image: redis:7-alpine
+  api:
+    image: node:20-alpine
+`;
+  const facts = extractFactsFromFile("docker-compose.yml", content);
+  const services = facts
+    .filter((f) => f.kind === "infra-service")
+    .map((f) => f.metadata?.service)
+    .sort();
+  assertEquals(services, ["PostgreSQL", "Redis"]);
+  assertEquals(facts.every((f) => f.metadata?.source === "docker-compose"), true);
+});
+
+Deno.test("extractFactsFromFile maps plane valkey image to Redis (P3-2)", () => {
+  const content = `
+services:
+  plane-redis:
+    image: valkey/valkey:7.2.11-alpine
+`;
+  const facts = extractFactsFromFile("docker-compose.yml", content);
+  assertEquals(facts[0]?.metadata?.service, "Redis");
+});
+
+Deno.test("extractFactsFromFile invents no infra without compose/datasource evidence", () => {
+  const facts = extractFactsFromFile("README.md", "hello postgres redis");
+  assertEquals(facts.some((f) => f.kind === "infra-service"), false);
+});

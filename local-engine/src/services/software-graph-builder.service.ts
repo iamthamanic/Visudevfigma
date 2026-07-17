@@ -18,6 +18,7 @@ import { attachExecutionPathGroups } from "./software-graph/_execution-paths.js"
 import { ensureFileContext } from "./software-graph/_file-context.js";
 import { createId, stableUniqueId } from "./software-graph/_ids.js";
 import { partitionPrismaModelFacts } from "./software-graph/_prisma-models.js";
+import { partitionInfraServiceFacts } from "./software-graph/_infra-services.js";
 import { addRouteNodes } from "./software-graph/_route-nodes.js";
 import { buildRuntimeGroups, dropDanglingEdges } from "./software-graph/_runtime-groups.js";
 import { createApplicationScope, createOrganizationScope } from "./software-graph/_scopes.js";
@@ -68,7 +69,9 @@ export function buildSoftwareGraph(scan: RawBlueprintScan): SoftwareGraph {
 
   // P2-1: promote all Prisma schema models to table nodes BEFORE route flood
   // consumes the soft node budget (browo: 473 routes starved LeaveRequest @ idx 36).
-  const { prismaModels, other: otherFacts } = partitionPrismaModelFacts(facts);
+  // P3-2: promote compose/datasource infra engines first (Postgres/Redis).
+  const { prismaModels, other: afterPrisma } = partitionPrismaModelFacts(facts);
+  const { infraServices, other: otherFacts } = partitionInfraServiceFacts(afterPrisma);
 
   const ingestFact = (fact: RawBlueprintFact): void => {
     const { fileId } = ensureFileContext(fact.filePath, projectId, state);
@@ -76,6 +79,7 @@ export function buildSoftwareGraph(scan: RawBlueprintScan): SoftwareGraph {
     addDependencyFactEdge(fact, fileId, projectId, state);
   };
 
+  for (const fact of infraServices) ingestFact(fact);
   for (const fact of prismaModels) ingestFact(fact);
 
   for (const route of routes) {

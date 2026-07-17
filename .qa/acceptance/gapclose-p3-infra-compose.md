@@ -35,4 +35,9 @@ Aus docker-compose und Prisma `provider = postgresql` ehrliche Infra-Facts/Nodes
 
 ## Implementation Notes
 
+- Seed `docker-compose*.yml` (+ yml/yaml ext, compose-only walk filter) in `blueprint-local.js` / `call-graph.builder.ts`
+- `fact-extractors`: prisma `provider=` → infra-service; compose `image:` postgres/redis/valkey → infra-service
+- Graph: `_infra-services.ts` stable `infra:*` nodes; ingest before routes; `addNodePrefer` past condensation
+- Topology: PostgreSQL/Redis as `kind=table` → database tier (honest engines, no Stub-LB)
+
 (filled by @implement)

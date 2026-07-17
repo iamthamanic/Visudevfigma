@@ -6,6 +6,7 @@ import type { Classification } from "./_types.js";
 
 export function classifyFactKind(kind: string): Classification {
   if (kind === "ast-import" || kind === "ast-call") return {};
+  if (kind === "infra-service") return { nodeKind: "table", edgeKind: "data" };
   if (kind.startsWith("route") || kind.includes("api-route"))
     return { nodeKind: "route", edgeKind: "api" };
   if (kind.includes("repository") || kind.includes("repo-read") || kind.includes("repo-write"))

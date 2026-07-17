@@ -75,6 +75,13 @@ export function prioritizeBlueprintFiles<T extends { path: string }>(
     let s = 0;
     if (/(?:^|\/)packages\/database\/schema\.prisma$/.test(path)) s = 100;
     else if (/(?:^|\/)prisma\/schema\.prisma$/.test(path)) s = 100;
+    else if (/(?:^|\/)docker-compose\.ya?ml$/.test(path)) s = 99;
+    else if (
+      /(?:^|\/)docker-compose[^/]*\.(ya?ml)$/.test(path) ||
+      /(?:^|\/)compose\.(ya?ml)$/.test(path)
+    ) {
+      s = 97;
+    }
     else if (/(?:^|\/)schema\.prisma$/.test(path)) s = 78;
     else if (path.endsWith(".prisma")) s = 70;
     else if (/(?:^|\/)manage\.py$/.test(path)) s = 99;
@@ -129,6 +136,12 @@ export function isCriticalWalkSeedPath(relPath: string): boolean {
   if (!path) return false;
   if (/(?:^|\/)schema\.prisma$/.test(path)) return true;
   if (
+    /(?:^|\/)docker-compose[^/]*\.(ya?ml)$/.test(path) ||
+    /(?:^|\/)compose\.(ya?ml)$/.test(path)
+  ) {
+    return true;
+  }
+  if (
     path.includes("/packages/database/") ||
     path.startsWith("packages/database/")
   ) {
@@ -150,6 +163,13 @@ function seedSortKey(relPath: string): number {
   if (/(?:^|\/)packages\/database\/schema\.prisma$/.test(path)) return 0;
   if (/(?:^|\/)prisma\/schema\.prisma$/.test(path)) return 1;
   if (/(?:^|\/)schema\.prisma$/.test(path)) return 2;
+  if (/(?:^|\/)docker-compose\.ya?ml$/.test(path)) return 2.5;
+  if (
+    /(?:^|\/)docker-compose[^/]*\.(ya?ml)$/.test(path) ||
+    /(?:^|\/)compose\.(ya?ml)$/.test(path)
+  ) {
+    return 2.6;
+  }
   if (
     path.includes("/packages/database/") ||
     path.startsWith("packages/database/")

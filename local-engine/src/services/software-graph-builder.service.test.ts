@@ -403,11 +403,7 @@ describe("buildSoftwareGraph", () => {
     );
     expect(leaveTable).toBeDefined();
     expect(leaveGroup?.nodeIds).toContain(leaveTable!.id);
-    expect(
-      graph.edges.some(
-        (e) => e.kind === "data" && e.targetId === leaveTable!.id,
-      ),
-    ).toBe(true);
+    expect(graph.edges.some((e) => e.kind === "data" && e.targetId === leaveTable!.id)).toBe(true);
   });
 
   it("emits honest non-http execution group when no routes exist", () => {
@@ -428,5 +424,68 @@ describe("buildSoftwareGraph", () => {
     const nonHttp = graph.groups.find((group) => group.id === "execution:non-http:0");
     expect(nonHttp).toBeDefined();
     expect(nonHttp?.label).toMatch(/Non-HTTP/i);
+  });
+
+  it("promotes compose+prisma infra engines before route flood (P3-2)", () => {
+    const scan = makeScan({
+      filesAnalyzed: 3,
+      routes: [
+        {
+          id: "r1",
+          method: "GET",
+          path: "/api/health",
+          filePath: "backend/app/health.routes.ts",
+          line: 1,
+        },
+      ],
+      facts: [
+        {
+          id: "fact:compose-pg",
+          kind: "infra-service",
+          filePath: "docker-compose.yml",
+          line: 10,
+          snippet: "image: postgres:16-alpine",
+          metadata: {
+            service: "PostgreSQL",
+            source: "docker-compose",
+            image: "postgres:16-alpine",
+          },
+        },
+        {
+          id: "fact:compose-redis",
+          kind: "infra-service",
+          filePath: "docker-compose.yml",
+          line: 20,
+          snippet: "image: redis:7-alpine",
+          metadata: {
+            service: "Redis",
+            source: "docker-compose",
+            image: "redis:7-alpine",
+          },
+        },
+        {
+          id: "fact:prisma-ds",
+          kind: "infra-service",
+          filePath: "backend/prisma/schema.prisma",
+          line: 7,
+          snippet: 'provider = "postgresql"',
+          metadata: {
+            service: "PostgreSQL",
+            source: "prisma-datasource",
+            provider: "postgresql",
+            framework: "prisma",
+          },
+        },
+      ],
+    });
+    const graph = buildSoftwareGraph(scan);
+    const pg = graph.nodes.find((n) => n.id === "infra:postgresql" || n.label === "PostgreSQL");
+    const redis = graph.nodes.find((n) => n.id === "infra:redis" || n.label === "Redis");
+    expect(pg).toBeDefined();
+    expect(redis).toBeDefined();
+    expect(pg?.kind).toBe("table");
+    expect(redis?.kind).toBe("table");
+    // No invented Stub LB from this path
+    expect(graph.nodes.some((n) => /LOAD BALANCER/i.test(n.label))).toBe(false);
   });
 });
