@@ -20,13 +20,15 @@ export type {
   AccessControlMechanism,
   AccessControlMechanismDetail,
   AccessControlStatus,
-  DatabaseSecurityAdapter,
-  DatabaseSecurityAdapterInput,
   DatabaseSecurityDialect,
   EnforcementLayer,
 } from "./access-control.types.js";
+export type {
+  DatabaseSecurityAdapter,
+  DatabaseSecurityAdapterInput,
+} from "./access-control-adapter.js";
 export {
   ACCESS_CONTROL_STATUS_RANK,
   accessControlStatusSymbol,
   worstAccessControlStatus,
-} from "./access-control.types.js";
+} from "./access-control-status.js";

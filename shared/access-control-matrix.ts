@@ -1,6 +1,6 @@
 /**
  * Derive route-level access control matrix from stack-agnostic findings.
- * Location: shared/access-control-matrix.ts
+ * Indexes findings once (O(F)) then builds rows in O(R·C) — avoids repeated scans.
  */
 
 import type {
@@ -10,7 +10,7 @@ import type {
   AccessControlMatrixRow,
   AccessControlStatus,
 } from "./access-control.types.js";
-import { worstAccessControlStatus } from "./access-control.types.js";
+import { worstAccessControlStatus } from "./access-control-status.js";
 
 export interface RouteRef {
   id: string;
@@ -18,26 +18,36 @@ export interface RouteRef {
   path: string;
 }
 
-const CONTROL_TO_COLUMN: Record<
-  AccessControlControl,
-  | keyof Omit<
-      AccessControlMatrixRow,
-      "routeId" | "method" | "path" | "overallStatus" | "findingCount"
-    >
-  | null
-> = {
+type MatrixColumn = keyof Omit<
+  AccessControlMatrixRow,
+  "routeId" | "method" | "path" | "overallStatus" | "findingCount"
+>;
+
+const CONTROL_TO_COLUMN: Record<AccessControlControl, MatrixColumn | null> = {
   authentication: "authentication",
   authorization: "authorization",
   "resource-scope": "resourceScope",
   "tenant-isolation": "tenantIsolation",
   ownership: "ownership",
   validation: "validation",
+  "rate-limit": "rateLimit",
   "read-restriction": "resourceScope",
   "write-restriction": "resourceScope",
   "privileged-access": "authorization",
   audit: "audit",
   encryption: null,
 };
+
+const MATRIX_COLUMNS: MatrixColumn[] = [
+  "authentication",
+  "authorization",
+  "resourceScope",
+  "tenantIsolation",
+  "ownership",
+  "validation",
+  "rateLimit",
+  "audit",
+];
 
 function emptyCell(): AccessControlMatrixCell {
   return { status: "unverified" };
@@ -53,18 +63,41 @@ function cellFromFindings(findings: AccessControlFinding[]): AccessControlMatrix
   };
 }
 
-function findingsForRouteControl(
+function isRouteScopedFinding(finding: AccessControlFinding): boolean {
+  return finding.resourceKind === "route";
+}
+
+/** Index route findings by resourceId → column → findings (single pass). */
+function indexRouteFindingsByColumn(
   findings: AccessControlFinding[],
-  routeId: string,
-  control: AccessControlControl,
-): AccessControlFinding[] {
-  return findings.filter(
-    (f) =>
-      f.resourceId === routeId &&
-      (f.control === control ||
-        (control === "resource-scope" &&
-          (f.control === "read-restriction" || f.control === "write-restriction"))),
-  );
+): Map<string, Map<MatrixColumn, AccessControlFinding[]>> {
+  const byRoute = new Map<string, Map<MatrixColumn, AccessControlFinding[]>>();
+
+  for (const finding of findings) {
+    if (!isRouteScopedFinding(finding)) continue;
+    const column = CONTROL_TO_COLUMN[finding.control];
+    if (!column) continue;
+
+    let byColumn = byRoute.get(finding.resourceId);
+    if (!byColumn) {
+      byColumn = new Map();
+      byRoute.set(finding.resourceId, byColumn);
+    }
+    const bucket = byColumn.get(column) ?? [];
+    bucket.push(finding);
+    byColumn.set(column, bucket);
+  }
+
+  return byRoute;
+}
+
+function countRouteFindings(findings: AccessControlFinding[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const finding of findings) {
+    if (!isRouteScopedFinding(finding)) continue;
+    counts.set(finding.resourceId, (counts.get(finding.resourceId) ?? 0) + 1);
+  }
+  return counts;
 }
 
 /** Build matrix rows for routes from access control findings. */
@@ -72,10 +105,12 @@ export function deriveAccessControlMatrixFromFindings(
   routes: RouteRef[],
   findings: AccessControlFinding[],
 ): AccessControlMatrixRow[] {
+  const indexed = indexRouteFindingsByColumn(findings);
+  const routeFindingCounts = countRouteFindings(findings);
+
   return routes.map((route) => {
-    const routeFindings = findings.filter((f) => f.resourceId === route.id);
-    const pick = (control: AccessControlControl) =>
-      cellFromFindings(findingsForRouteControl(findings, route.id, control));
+    const byColumn = indexed.get(route.id);
+    const pick = (column: MatrixColumn) => cellFromFindings(byColumn?.get(column) ?? []);
 
     const row: AccessControlMatrixRow = {
       routeId: route.id,
@@ -83,25 +118,19 @@ export function deriveAccessControlMatrixFromFindings(
       path: route.path,
       authentication: pick("authentication"),
       authorization: pick("authorization"),
-      resourceScope: pick("resource-scope"),
-      tenantIsolation: pick("tenant-isolation"),
+      resourceScope: pick("resourceScope"),
+      tenantIsolation: pick("tenantIsolation"),
       ownership: pick("ownership"),
       validation: pick("validation"),
-      rateLimit: emptyCell(),
+      rateLimit: pick("rateLimit"),
       audit: pick("audit"),
       overallStatus: "unverified",
-      findingCount: routeFindings.length,
+      findingCount: routeFindingCounts.get(route.id) ?? 0,
     };
 
-    const statuses = (
-      Object.entries(CONTROL_TO_COLUMN) as Array<
-        [AccessControlControl, keyof AccessControlMatrixRow | null]
-      >
-    )
-      .map(([, col]) =>
-        col && col in row ? (row[col as keyof typeof row] as AccessControlMatrixCell).status : null,
-      )
-      .filter((s): s is AccessControlStatus => s != null);
+    const statuses = MATRIX_COLUMNS.map((col) => row[col].status).filter(
+      (s): s is AccessControlStatus => s != null,
+    );
 
     row.overallStatus = worstAccessControlStatus(statuses);
     return row;

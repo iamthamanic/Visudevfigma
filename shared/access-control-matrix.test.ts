@@ -33,6 +33,44 @@ describe("deriveAccessControlMatrixFromFindings", () => {
     expect(matrix[0].tenantIsolation.mechanismLabel).toBe("Repository Query Filter");
   });
 
+  it("maps rate-limit control to rateLimit column", () => {
+    const findings: AccessControlFinding[] = [
+      {
+        id: "f-rl",
+        resourceId: "r1",
+        resourceKind: "route",
+        control: "rate-limit",
+        status: "protected",
+        mechanisms: [{ kind: "rate-limit", label: "Express rate limit" }],
+        enforcementLayers: ["api"],
+        evidence: [],
+        confidence: 0.8,
+      },
+    ];
+    const matrix = deriveAccessControlMatrixFromFindings(routes, findings);
+    expect(matrix[0].rateLimit.status).toBe("protected");
+    expect(matrix[0].rateLimit.mechanismLabel).toBe("Express rate limit");
+  });
+
+  it("ignores non-route findings with the same resourceId", () => {
+    const findings: AccessControlFinding[] = [
+      {
+        id: "f-table",
+        resourceId: "r1",
+        resourceKind: "table",
+        control: "tenant-isolation",
+        status: "missing",
+        mechanisms: [],
+        enforcementLayers: ["database"],
+        evidence: [],
+        confidence: 0.7,
+      },
+    ];
+    const matrix = deriveAccessControlMatrixFromFindings(routes, findings);
+    expect(matrix[0].tenantIsolation.status).toBe("unverified");
+    expect(matrix[0].findingCount).toBe(0);
+  });
+
   it("uses worst status for overallStatus", () => {
     const findings: AccessControlFinding[] = [
       {

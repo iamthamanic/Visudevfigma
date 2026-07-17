@@ -1,7 +1,6 @@
 /**
- * Stack-agnostic access control model for Blueprint Diagnostics.
+ * Stack-agnostic access control domain model for Blueprint Diagnostics.
  * Mechanisms are technology-specific; controls and status are universal.
- * Location: shared/access-control.types.ts
  */
 
 /** How access is constrained — detected by technology-specific adapters. */
@@ -33,6 +32,7 @@ export type AccessControlControl =
   | "read-restriction"
   | "write-restriction"
   | "validation"
+  | "rate-limit"
   | "privileged-access"
   | "audit"
   | "encryption";
@@ -103,28 +103,6 @@ export type DatabaseSecurityDialect =
   | "dynamodb"
   | "unknown";
 
-/** Contract for technology-specific security detection. */
-export interface DatabaseSecurityAdapter {
-  dialect: DatabaseSecurityDialect;
-  /** Analyze graph facts / SQL snippets and return findings. */
-  analyze(input: DatabaseSecurityAdapterInput): AccessControlFinding[];
-}
-
-export interface DatabaseSecurityAdapterInput {
-  projectId: string;
-  facts: Array<{
-    id: string;
-    kind: string;
-    filePath: string;
-    line: number;
-    snippet: string;
-  }>;
-  /** Detected or configured dialect; adapters may no-op if mismatch. */
-  dialect: DatabaseSecurityDialect;
-  /** Route/table scope ids from SoftwareGraph when available. */
-  resourceIds?: string[];
-}
-
 /** Per-route summary for Diagnostics matrix (replaces legacy RLS column). */
 export interface AccessControlMatrixCell {
   status: AccessControlStatus;
@@ -158,37 +136,3 @@ export type LegacyConceptState =
   | "unknown"
   | "contradictory"
   | "n/a";
-
-/** Severity order for picking worst status across findings. */
-export const ACCESS_CONTROL_STATUS_RANK: Record<AccessControlStatus, number> = {
-  missing: 0,
-  partial: 1,
-  unverified: 2,
-  unsupported: 3,
-  "not-applicable": 4,
-  protected: 5,
-};
-
-export function worstAccessControlStatus(statuses: AccessControlStatus[]): AccessControlStatus {
-  if (statuses.length === 0) return "unverified";
-  return statuses.reduce((worst, current) =>
-    ACCESS_CONTROL_STATUS_RANK[current] < ACCESS_CONTROL_STATUS_RANK[worst] ? current : worst,
-  );
-}
-
-export function accessControlStatusSymbol(status: AccessControlStatus): string {
-  switch (status) {
-    case "protected":
-      return "✓";
-    case "partial":
-      return "~";
-    case "missing":
-      return "✕";
-    case "not-applicable":
-      return "—";
-    case "unsupported":
-      return "⊘";
-    default:
-      return "?";
-  }
-}
