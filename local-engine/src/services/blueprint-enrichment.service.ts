@@ -14,6 +14,7 @@ import {
   analyzeWithDatabaseSecurityAdapter,
   resolveDialectFromHints,
 } from "./access-control/database-security-registry.js";
+import { evaluateTenantIsolationPolicy } from "./access-control/tenant-isolation-policy.js";
 import { buildSoftwareGraph } from "./software-graph-builder.service.js";
 
 const DEFAULT_PROFILE = {
@@ -51,6 +52,14 @@ export function enrichBlueprint(scan: RawBlueprintScan): BlueprintDocument {
     routes.map((r) => ({ id: r.id, method: r.method, path: r.path })),
     accessControlFindings,
   );
+  const tenantPolicyFindings = evaluateTenantIsolationPolicy(accessControlFindings);
+  const mergedFindings = [
+    ...findings,
+    ...tenantPolicyFindings.map((f) => ({
+      ...f,
+      confidence: f.confidence / 100,
+    })),
+  ];
 
   return {
     version: 1,
@@ -62,7 +71,7 @@ export function enrichBlueprint(scan: RawBlueprintScan): BlueprintDocument {
     projectProfile: DEFAULT_PROFILE,
     routes,
     securityMatrix,
-    findings,
+    findings: mergedFindings,
     facts,
     concepts: [],
     filesAnalyzed: scan.filesAnalyzed,

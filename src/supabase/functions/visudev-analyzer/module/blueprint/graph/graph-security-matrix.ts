@@ -70,7 +70,7 @@ function buildLegacyMatrixRow(
     validation: cell(route.concepts["validation-gate"]),
     rateLimit: cell(route.concepts["rate-limit"]),
     db: dbCellFromConcepts(route.concepts),
-    rls: cell(route.concepts["rls-policy"]),
+    rls: { state: "n/a" },
     audit: cell(route.concepts["audit-log"]),
     findingCount: routeFindings.length,
   };

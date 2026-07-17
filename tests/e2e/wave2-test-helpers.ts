@@ -113,7 +113,7 @@ export function buildWave3DiagnosticsMock(projectId: string) {
     const id = index === 0 ? "SEC-001" : `SEC-${String(index + 1).padStart(3, "0")}`;
     return {
       id,
-      ruleId: index === 0 ? "db.rls-missing" : `rule.${index}`,
+      ruleId: index === 0 ? "access-control.tenant-isolation-missing" : `rule.${index}`,
       category: "security",
       severity,
       scopeId: route.id,
