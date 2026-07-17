@@ -62,7 +62,10 @@ export interface AnalyzeBlueprintFromFilesInput {
 export function isSupportedBlueprintFile(path: string): boolean {
   const ext = path.split(".").pop()?.toLowerCase();
   return Boolean(
-    ext && ["ts", "tsx", "js", "jsx", "vue", "py", "prisma"].includes(ext),
+    ext &&
+      ["ts", "tsx", "js", "jsx", "vue", "py", "prisma", "yml", "yaml"].includes(
+        ext,
+      ),
   );
 }
 
