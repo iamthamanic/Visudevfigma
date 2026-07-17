@@ -210,4 +210,168 @@ describe("deriveDiagnosticsFromGraph", () => {
     expect(derived.securityMatrix[0]?.auth.state).toBe("confirmed");
     expect(derived.securityMatrix[0]?.role.state).toBe("confirmed");
   });
+
+  it("confirms db from leave-route-db-fact edges even with many routes in one file", () => {
+    const graph: SoftwareGraph = {
+      version: 1,
+      projectId: "browo",
+      analyzedAt: "2026-01-01T00:00:00.000Z",
+      scopes: [],
+      nodes: [
+        {
+          id: "file:leaves",
+          kind: "file",
+          label: "leaves.routes.ts",
+          filePath: "app/modules/leaves/leaves.routes.ts",
+          metadata: {},
+        },
+        {
+          id: "route:list",
+          kind: "route",
+          label: "GET /api/leaves",
+          filePath: "app/modules/leaves/leaves.routes.ts",
+          line: 10,
+          metadata: {
+            routeId: "GET /api/leaves",
+            method: "GET",
+            path: "/api/leaves",
+            pipelineCount: 0,
+          },
+        },
+        {
+          id: "route:create",
+          kind: "route",
+          label: "POST /api/leaves",
+          filePath: "app/modules/leaves/leaves.routes.ts",
+          line: 40,
+          metadata: {
+            routeId: "POST /api/leaves",
+            method: "POST",
+            path: "/api/leaves",
+            pipelineCount: 0,
+          },
+        },
+        {
+          id: "table:prisma:LeaveRequest",
+          kind: "table",
+          label: "LeaveRequest",
+          filePath: "prisma/schema.prisma",
+          metadata: {},
+        },
+      ],
+      edges: [
+        {
+          id: "e-leave-db",
+          kind: "data",
+          sourceId: "file:leaves",
+          targetId: "table:prisma:LeaveRequest",
+          metadata: { reason: "leave-route-db-fact" },
+        },
+      ],
+      evidence: [],
+      groups: [],
+      metrics: [],
+      condensed: false,
+      limits: { maxNodes: 2500, maxEdges: 5000 },
+    };
+
+    const derived = deriveDiagnosticsFromGraph(graph);
+    expect(derived.securityMatrix).toHaveLength(2);
+    expect(derived.securityMatrix.every((row) => row.db.state === "confirmed")).toBe(true);
+  });
+
+  it("confirms db from execution group table steps when leave edges were condensed away", () => {
+    const graph: SoftwareGraph = {
+      version: 1,
+      projectId: "browo",
+      analyzedAt: "2026-01-01T00:00:00.000Z",
+      scopes: [],
+      nodes: [
+        {
+          id: "file:leaves",
+          kind: "file",
+          label: "leaves.routes.ts",
+          filePath: "app/modules/leaves/leaves.routes.ts",
+          metadata: {},
+        },
+        {
+          id: "route:list",
+          kind: "route",
+          label: "GET /api/leaves",
+          filePath: "app/modules/leaves/leaves.routes.ts",
+          line: 10,
+          metadata: {
+            routeId: "legacy-route-180",
+            method: "GET",
+            path: "/api/leaves",
+            pipelineCount: 0,
+          },
+        },
+        {
+          id: "table:prisma:LeaveRequest",
+          kind: "table",
+          label: "LeaveRequest",
+          filePath: "prisma/schema.prisma",
+          metadata: {},
+        },
+      ],
+      edges: [],
+      evidence: [],
+      groups: [
+        {
+          id: "execution:legacy-route-180:0",
+          kind: "route",
+          label: "GET /api/leaves · path 1",
+          nodeIds: ["route:list", "file:leaves", "table:prisma:LeaveRequest"],
+        },
+      ],
+      metrics: [],
+      condensed: true,
+      limits: { maxNodes: 2500, maxEdges: 5000 },
+    };
+
+    const derived = deriveDiagnosticsFromGraph(graph);
+    expect(derived.securityMatrix).toHaveLength(1);
+    expect(derived.securityMatrix[0]?.db.state).toBe("confirmed");
+  });
+
+  it("keeps db unknown without table edges or execution table steps", () => {
+    const graph: SoftwareGraph = {
+      version: 1,
+      projectId: "browo",
+      analyzedAt: "2026-01-01T00:00:00.000Z",
+      scopes: [],
+      nodes: [
+        {
+          id: "route:health",
+          kind: "route",
+          label: "GET /health",
+          filePath: "app/health.ts",
+          line: 1,
+          metadata: {
+            routeId: "GET /health",
+            method: "GET",
+            path: "/health",
+            pipelineCount: 0,
+          },
+        },
+      ],
+      edges: [],
+      evidence: [],
+      groups: [
+        {
+          id: "execution:GET /health:0",
+          kind: "route",
+          label: "GET /health · path 1",
+          nodeIds: ["route:health"],
+        },
+      ],
+      metrics: [],
+      condensed: false,
+      limits: { maxNodes: 2500, maxEdges: 5000 },
+    };
+
+    const derived = deriveDiagnosticsFromGraph(graph);
+    expect(derived.securityMatrix[0]?.db.state).toBe("unknown");
+  });
 });
