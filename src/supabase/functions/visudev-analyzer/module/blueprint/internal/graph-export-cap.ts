@@ -21,23 +21,35 @@ export function isPrismaSchemaModelFact(fact: CodeFact): boolean {
   );
 }
 
+/** visudev-gapclose P3-2b: keep compose/datasource infra facts past soft fact cap. */
+export function isInfraServiceExportFact(fact: CodeFact): boolean {
+  return (
+    fact.kind === "infra-service" &&
+    typeof fact.metadata?.service === "string" &&
+    fact.metadata.service.trim().length > 0
+  );
+}
+
 /**
- * Cap facts for export while keeping **all** prisma-model facts from parsed schemas.
- * Soft-cap may drop other facts; model lists from a read schema stay honest.
+ * Cap facts for export while keeping **all** prisma-model facts from parsed schemas
+ * and infra-service engine facts (Postgres/Redis). Soft-cap may drop other facts.
  */
 export function selectFactsPreservingPrismaModels(
   facts: CodeFact[],
   limit: number = MAX_BLUEPRINT_FACTS,
 ): CodeFact[] {
   const models: CodeFact[] = [];
+  const infra: CodeFact[] = [];
   const rest: CodeFact[] = [];
   for (const fact of facts) {
     if (isPrismaSchemaModelFact(fact)) models.push(fact);
+    else if (isInfraServiceExportFact(fact)) infra.push(fact);
     else rest.push(fact);
   }
-  // Honesty: keep every model even if models.length > limit.
-  const remaining = Math.max(0, limit - models.length);
-  return [...models, ...rest.slice(0, remaining)];
+  // Honesty: keep every model + infra engine even if over limit.
+  const preserved = [...models, ...infra];
+  const remaining = Math.max(0, limit - preserved.length);
+  return [...preserved, ...rest.slice(0, remaining)];
 }
 
 export function capGraphForExport(input: unknown): VisuDevGraph {

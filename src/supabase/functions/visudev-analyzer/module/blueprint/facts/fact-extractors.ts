@@ -213,7 +213,8 @@ function extractComposeInfraFacts(
       metadata: {
         service,
         source: "docker-compose",
-        image,
+        framework: "docker-compose",
+        // Keep image out of export allowlist (tags/digests); service name is enough.
       },
     });
   });

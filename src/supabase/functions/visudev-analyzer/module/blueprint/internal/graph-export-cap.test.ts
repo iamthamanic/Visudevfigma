@@ -206,3 +206,20 @@ Deno.test("selectFactsPreservingPrismaModels keeps LeaveRequest among many model
     true,
   );
 });
+
+Deno.test("selectFactsPreservingPrismaModels keeps infra-service past route flood (P3-2b)", () => {
+  const infra: CodeFact = {
+    id: "fact-compose-redis",
+    kind: "infra-service",
+    filePath: "docker-compose.yml",
+    line: 12,
+    snippet: 'image: redis:7-alpine',
+    metadata: { service: "Redis", source: "docker-compose", framework: "docker-compose" },
+  };
+  const noise = Array.from({ length: 400 }, (_, i) => routeFact(i));
+  const selected = selectFactsPreservingPrismaModels([...noise, infra], 50);
+  assertEquals(
+    selected.some((f) => f.kind === "infra-service" && f.metadata?.service === "Redis"),
+    true,
+  );
+});
