@@ -10,6 +10,10 @@ import {
 } from "../../../shared/blueprint.js";
 import { enrichSoftwareGraphIfThin } from "../../../shared/demo-graph-thin.js";
 import { analyzeApplicationChain } from "./access-control/app-chain-analyzer.service.js";
+import {
+  analyzeWithDatabaseSecurityAdapter,
+  resolveDialectFromHints,
+} from "./access-control/database-security-registry.js";
 import { buildSoftwareGraph } from "./software-graph-builder.service.js";
 
 const DEFAULT_PROFILE = {
@@ -26,7 +30,23 @@ export function enrichBlueprint(scan: RawBlueprintScan): BlueprintDocument {
   const graph = demoEnrichmentEnabled ? enrichSoftwareGraphIfThin(built, scan.projectId) : built;
   const { routes, securityMatrix, findings, facts } = deriveDiagnosticsFromGraph(graph);
 
-  const accessControlFindings = analyzeApplicationChain({ graph });
+  const appFindings = analyzeApplicationChain({ graph });
+  const dialect = resolveDialectFromHints({
+    frameworkHints: [scan.providerId],
+  });
+  const dbFindings = analyzeWithDatabaseSecurityAdapter({
+    projectId: scan.projectId,
+    dialect,
+    facts: facts.map((f) => ({
+      id: f.id,
+      kind: f.kind,
+      filePath: f.filePath,
+      line: f.line,
+      snippet: f.snippet,
+    })),
+    resourceIds: routes.map((r) => r.id),
+  });
+  const accessControlFindings = [...appFindings, ...dbFindings];
   const accessControlMatrix = deriveAccessControlMatrixFromFindings(
     routes.map((r) => ({ id: r.id, method: r.method, path: r.path })),
     accessControlFindings,
@@ -51,5 +71,6 @@ export function enrichBlueprint(scan: RawBlueprintScan): BlueprintDocument {
     graph,
     accessControlFindings,
     accessControlMatrix,
+    databaseSecurityDialect: dialect,
   };
 }
