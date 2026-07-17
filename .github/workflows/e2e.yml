@@ -34,6 +34,7 @@ jobs:
         run: npm run build
         env:
           VITE_BLUEPRINT_DEMO_ENRICHMENT: "true"
+          VITE_ACCESS_CONTROL_V2: "true"
 
       - name: Run E2E tests
         run: npm run e2e
