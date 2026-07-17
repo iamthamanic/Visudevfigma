@@ -327,7 +327,8 @@ export function buildSecurityMatrix(
       validation: cell(route.concepts["validation-gate"]),
       rateLimit: cell(route.concepts["rate-limit"]),
       db: dbCell(route.concepts),
-      rls: cell(route.concepts["rls-policy"]),
+      // rls-policy concept deprecated — RLS is not a universal control.
+      rls: { state: "n/a" },
       audit: cell(route.concepts["audit-log"]),
       findingCount: routeFindings.length,
     };

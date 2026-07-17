@@ -13,6 +13,7 @@ export type ConceptType =
   | "storage-access"
   | "external-api"
   | "audit-log"
+  /** @deprecated Prefer AccessControlFinding tenant-isolation / resource-scope. */
   | "rls-policy";
 
 export type ConceptState =

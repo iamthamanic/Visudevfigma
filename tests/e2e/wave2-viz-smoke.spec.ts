@@ -93,7 +93,7 @@ function mockBlueprint() {
     findings: [
       {
         id: "SEC-001",
-        ruleId: "db.rls-missing",
+        ruleId: "access-control.tenant-isolation-missing",
         category: "security",
         severity: "critical",
         scopeId: "GET /api/employees",
