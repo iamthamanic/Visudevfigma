@@ -18,12 +18,18 @@ import {
   postgresDatabaseSecurityAdapter,
   supabaseDatabaseSecurityAdapter,
 } from "./adapters/postgres.adapter.js";
+import {
+  mariadbDatabaseSecurityAdapter,
+  mysqlDatabaseSecurityAdapter,
+} from "./adapters/mariadb.adapter.js";
 
 function createDefaultAdapters(): Map<DatabaseSecurityDialect, DatabaseSecurityAdapter> {
   return new Map<DatabaseSecurityDialect, DatabaseSecurityAdapter>([
     ["unknown", unknownDatabaseSecurityAdapter],
     ["postgres", postgresDatabaseSecurityAdapter],
     ["supabase", supabaseDatabaseSecurityAdapter],
+    ["mariadb", mariadbDatabaseSecurityAdapter],
+    ["mysql", mysqlDatabaseSecurityAdapter],
   ]);
 }
 

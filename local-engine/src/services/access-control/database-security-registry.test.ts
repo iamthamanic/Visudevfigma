@@ -30,7 +30,7 @@ describe("database-security-registry", () => {
   });
 
   it("selects unknown adapter when dialect has no concrete implementation", () => {
-    const adapter = selectDatabaseSecurityAdapter("mariadb");
+    const adapter = selectDatabaseSecurityAdapter("firestore");
     expect(adapter.dialect).toBe("unknown");
   });
 
