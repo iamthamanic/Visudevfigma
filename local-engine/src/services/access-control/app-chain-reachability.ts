@@ -38,19 +38,34 @@ export function buildOutgoing(edges: SoftwareGraphEdge[]): Map<string, SoftwareG
   return map;
 }
 
+/**
+ * BFS from one or more seed nodes (route + owning file). File seeds matter because
+ * authenticates/validates/data edges are attached to file nodes, not route nodes.
+ */
 export function collectReachable(
-  routeId: string,
+  seedIds: string | string[],
   outgoing: Map<string, SoftwareGraphEdge[]>,
   nodes: Map<string, SoftwareGraphNode>,
   maxDepth = MAX_CHAIN_DEPTH,
 ): ReachableChain {
-  const nodeIds = new Set<string>([routeId]);
+  const start = (Array.isArray(seedIds) ? seedIds : [seedIds]).filter((id) => nodes.has(id));
+  const nodeIds = new Set<string>(start);
   const edgeKinds = new Set<string>();
   const nodesByKind = new Map<string, SoftwareGraphNode[]>();
-  const queue = [routeId];
+  const queue = [...start];
   let head = 0;
   let depth = 0;
   let truncated = false;
+
+  for (const id of start) {
+    const node = nodes.get(id);
+    if (!node) continue;
+    const bucket = nodesByKind.get(node.kind) ?? [];
+    if (!bucket.some((n) => n.id === id)) {
+      bucket.push(node);
+      nodesByKind.set(node.kind, bucket);
+    }
+  }
 
   while (head < queue.length) {
     if (depth >= maxDepth) {
@@ -76,4 +91,23 @@ export function collectReachable(
   }
 
   return { nodeIds, edgeKinds, nodesByKind, truncated };
+}
+
+/** Route node id plus owning file node(s) — matches how the graph builder attaches edges. */
+export function resolveRouteChainSeeds(
+  route: SoftwareGraphNode,
+  nodes: Map<string, SoftwareGraphNode>,
+): string[] {
+  const seeds = new Set<string>([route.id]);
+  if (typeof route.scopeId === "string" && nodes.has(route.scopeId)) {
+    seeds.add(route.scopeId);
+  }
+  if (route.filePath) {
+    for (const node of nodes.values()) {
+      if (node.kind === "file" && node.filePath === route.filePath) {
+        seeds.add(node.id);
+      }
+    }
+  }
+  return [...seeds];
 }

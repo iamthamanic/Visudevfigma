@@ -61,3 +61,19 @@ export function filterEvidence(
 ): SoftwareGraphEvidence[] {
   return evidence.filter(predicate).slice(0, 8);
 }
+
+/** Merge node-walk evidence with legacy route-edge evidence (dedupe by id). */
+export function mergeEvidence(
+  chain: SoftwareGraphEvidence[],
+  routed: SoftwareGraphEvidence[],
+): SoftwareGraphEvidence[] {
+  if (routed.length === 0) return chain;
+  const seen = new Set(chain.map((e) => e.id));
+  const merged = [...chain];
+  for (const item of routed) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    merged.push(item);
+  }
+  return merged;
+}

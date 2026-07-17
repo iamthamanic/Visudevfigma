@@ -225,13 +225,21 @@ export function routeExecutionHasTable(
   return false;
 }
 
+export interface RouteEdgeSignals {
+  hasAuth: boolean;
+  hasValidation: boolean;
+  hasDb: boolean;
+  /** Evidence linked via applicable authenticates/validates/data edges (for AC v2 inspector). */
+  evidence: SoftwareGraph["evidence"];
+}
+
 /** Outgoing control/data edges scoped to a route via evidence line ownership. */
 export function collectRouteEdgeSignals(
   graph: SoftwareGraph,
   route: { id?: string; filePath: string; line: number },
   siblingRoutes: Array<{ filePath: string; line: number }> = [],
   nodeById?: Map<string, SoftwareGraph["nodes"][number]>,
-): { hasAuth: boolean; hasValidation: boolean; hasDb: boolean } {
+): RouteEdgeSignals {
   const nodesById = nodeById ?? new Map(graph.nodes.map((node) => [node.id, node] as const));
   const routeDir = dirnameOfFile(route.filePath);
   const routeFileNodeIds = new Set(
@@ -263,6 +271,15 @@ export function collectRouteEdgeSignals(
   let hasAuth = false;
   let hasValidation = false;
   let hasDb = false;
+  const evidence: SoftwareGraph["evidence"] = [];
+  const seenEvidence = new Set<string>();
+
+  const pushEvidence = (item: SoftwareGraph["evidence"][number] | undefined): void => {
+    if (!item || seenEvidence.has(item.id)) return;
+    seenEvidence.add(item.id);
+    evidence.push(item);
+  };
+
   for (const edge of graph.edges) {
     if (edge.kind !== "authenticates" && edge.kind !== "validates" && edge.kind !== "data") {
       continue;
@@ -283,7 +300,7 @@ export function collectRouteEdgeSignals(
 
     const evidenceFactId =
       typeof edge.metadata.evidenceFactId === "string" ? edge.metadata.evidenceFactId : "";
-    const evidence = evidenceFactId ? evidenceByFactId.get(evidenceFactId) : undefined;
+    const linkedEvidence = evidenceFactId ? evidenceByFactId.get(evidenceFactId) : undefined;
 
     let applies = false;
     if (sameModuleData || leaveRouteDbFact) {
@@ -291,14 +308,27 @@ export function collectRouteEdgeSignals(
       applies = true;
     } else if (routesInFile <= 1) {
       applies = true;
-    } else if (evidence) {
-      applies = evidence.filePath === route.filePath && lineOwnsEvidence(evidence.line);
+    } else if (linkedEvidence) {
+      applies = linkedEvidence.filePath === route.filePath && lineOwnsEvidence(linkedEvidence.line);
     }
 
     if (!applies) continue;
     if (edge.kind === "authenticates") hasAuth = true;
     else if (edge.kind === "validates") hasValidation = true;
     else if (edge.kind === "data") hasDb = true;
+
+    pushEvidence(linkedEvidence);
+    if (leaveRouteDbFact && !linkedEvidence) {
+      const table = nodesById.get(edge.targetId);
+      pushEvidence({
+        id: `ev-leave-db-${edge.id}`,
+        factId: edge.id,
+        kind: "leave-route-db-fact",
+        filePath: route.filePath,
+        line: route.line,
+        excerpt: `data→${table?.label ?? "LeaveRequest"} (leave-route-db-fact)`,
+      });
+    }
   }
 
   if (
@@ -313,7 +343,7 @@ export function collectRouteEdgeSignals(
     hasDb = true;
   }
 
-  return { hasAuth, hasValidation, hasDb };
+  return { hasAuth, hasValidation, hasDb, evidence };
 }
 
 function resolveRoleState(
