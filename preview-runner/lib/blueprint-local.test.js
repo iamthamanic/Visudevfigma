@@ -94,6 +94,7 @@ describe("blueprint-local Softort coverage", () => {
   it("identifies critical walk-seed paths (P1-1)", () => {
     expect(isCriticalWalkSeedPath("packages/database/schema.prisma")).toBe(true);
     expect(isCriticalWalkSeedPath("apps/meteor/server/methods/setRealName.ts")).toBe(true);
+    expect(isCriticalWalkSeedPath("docker-compose.yml")).toBe(true);
     expect(isCriticalWalkSeedPath("apps/web/app/api/foo/route.ts")).toBe(false);
   });
 

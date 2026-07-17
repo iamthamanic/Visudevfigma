@@ -29,6 +29,14 @@ function isPrismaFile(filePath: string): boolean {
   return /\.prisma$/i.test(filePath);
 }
 
+function isComposeFile(filePath: string): boolean {
+  const path = filePath.replace(/\\/g, "/").toLowerCase();
+  return (
+    /(?:^|\/)docker-compose[^/]*\.(ya?ml)$/.test(path) ||
+    /(?:^|\/)compose\.(ya?ml)$/.test(path)
+  );
+}
+
 export function extractFactsFromFile(
   filePath: string,
   content: string,
@@ -36,6 +44,9 @@ export function extractFactsFromFile(
 ): CodeFact[] {
   if (isPrismaFile(filePath)) {
     return extractPrismaFacts(filePath, content);
+  }
+  if (isComposeFile(filePath)) {
+    return extractComposeInfraFacts(filePath, content);
   }
   if (isPythonFile(filePath)) {
     return extractDjangoFacts(filePath, content);
@@ -97,12 +108,71 @@ function extractRegexFactsFromFile(
   return facts;
 }
 
-/** Prisma schema.prisma → table facts for Softort Formbricks DB visibility. */
+/** Map Prisma datasource provider → honest infra service label (no invention). */
+function prismaProviderToService(provider: string): string | null {
+  const normalized = provider.trim().toLowerCase();
+  if (normalized === "postgresql" || normalized === "postgres") {
+    return "PostgreSQL";
+  }
+  if (normalized === "mysql" || normalized === "mariadb") return "MySQL";
+  if (normalized === "mongodb" || normalized === "mongo") return "MongoDB";
+  if (normalized === "sqlite") return "SQLite";
+  return null;
+}
+
+/** Compose image line → Redis / PostgreSQL (and valkey→Redis). */
+function composeImageToService(image: string): string | null {
+  const normalized = image.trim().toLowerCase();
+  if (
+    /^postgres(?:ql)?(?:[:@/]|$)/.test(normalized) ||
+    /\/postgres(?:ql)?(?:[:@/]|$)/.test(normalized)
+  ) {
+    return "PostgreSQL";
+  }
+  if (
+    /^redis(?:[:@/]|$)/.test(normalized) ||
+    /\/redis(?:[:@/]|$)/.test(normalized)
+  ) {
+    return "Redis";
+  }
+  if (
+    /^valkey(?:[:@/]|$)/.test(normalized) ||
+    /\/valkey(?:[:@/]|$)/.test(normalized)
+  ) {
+    return "Redis";
+  }
+  return null;
+}
+
+/** Prisma schema.prisma → table facts + datasource provider infra (visudev-gapclose P3-2). */
 function extractPrismaFacts(filePath: string, content: string): CodeFact[] {
   const facts: CodeFact[] = [];
   const lines = content.split("\n");
+  const seenServices = new Set<string>();
   lines.forEach((line, index) => {
     const lineNum = index + 1;
+    const providerMatch = line.match(
+      /^\s*provider\s*=\s*["']([A-Za-z0-9_]+)["']/,
+    );
+    if (providerMatch) {
+      const service = prismaProviderToService(providerMatch[1] ?? "");
+      if (service && !seenServices.has(service)) {
+        seenServices.add(service);
+        facts.push({
+          id: makeFactId(filePath, lineNum, "infra-service"),
+          kind: "infra-service",
+          filePath,
+          line: lineNum,
+          snippet: trimSnippet(line),
+          metadata: {
+            service,
+            source: "prisma-datasource",
+            provider: providerMatch[1],
+            framework: "prisma",
+          },
+        });
+      }
+    }
     const modelMatch = line.match(/^\s*model\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{/);
     if (!modelMatch) return;
     const table = modelMatch[1];
@@ -113,6 +183,38 @@ function extractPrismaFacts(filePath: string, content: string): CodeFact[] {
       line: lineNum,
       snippet: trimSnippet(line),
       metadata: { table, operation: "prisma-model", framework: "prisma" },
+    });
+  });
+  return facts;
+}
+
+/** docker-compose.yml → Postgres/Redis infra facts (visudev-gapclose P3-2). */
+function extractComposeInfraFacts(
+  filePath: string,
+  content: string,
+): CodeFact[] {
+  const facts: CodeFact[] = [];
+  const seenServices = new Set<string>();
+  const lines = content.split("\n");
+  lines.forEach((line, index) => {
+    const lineNum = index + 1;
+    const imageMatch = line.match(/^\s*image:\s*["']?([^\s"'#]+)/);
+    if (!imageMatch) return;
+    const image = imageMatch[1] ?? "";
+    const service = composeImageToService(image);
+    if (!service || seenServices.has(service)) return;
+    seenServices.add(service);
+    facts.push({
+      id: makeFactId(filePath, lineNum, "infra-service"),
+      kind: "infra-service",
+      filePath,
+      line: lineNum,
+      snippet: trimSnippet(line),
+      metadata: {
+        service,
+        source: "docker-compose",
+        image,
+      },
     });
   });
   return facts;

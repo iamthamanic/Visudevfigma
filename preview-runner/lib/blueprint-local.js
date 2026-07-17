@@ -31,8 +31,8 @@ const SKIP_DIRS = new Set([
   "venv",
 ]);
 
-/** JS/TS plus Python (Django) and Prisma schema for Softort monorepo truth. */
-const SUPPORTED_EXT = new Set(["ts", "tsx", "js", "jsx", "vue", "py", "prisma"]);
+/** JS/TS plus Python (Django), Prisma, and compose YAML for Softort infra truth. */
+const SUPPORTED_EXT = new Set(["ts", "tsx", "js", "jsx", "vue", "py", "prisma", "yml", "yaml"]);
 const FILE_LIMIT = Math.max(250, Number(process.env.BLUEPRINT_FILE_LIMIT) || 400);
 const MAX_WALK_CANDIDATES = Math.max(2000, Number(process.env.BLUEPRINT_MAX_WALK) || 4000);
 /** visudev-gapclose P1-1: seed budgets so Cap cannot starve Prisma/Meteor. */
@@ -69,7 +69,13 @@ function prioritizeBlueprintFiles(files) {
     let s = 0;
     if (/(?:^|\/)packages\/database\/schema\.prisma$/.test(path)) s = 100;
     else if (/(?:^|\/)prisma\/schema\.prisma$/.test(path)) s = 100;
-    else if (/(?:^|\/)schema\.prisma$/.test(path)) s = 78;
+    else if (/(?:^|\/)docker-compose\.ya?ml$/.test(path)) s = 99;
+    else if (
+      /(?:^|\/)docker-compose[^/]*\.(ya?ml)$/.test(path) ||
+      /(?:^|\/)compose\.(ya?ml)$/.test(path)
+    ) {
+      s = 97;
+    } else if (/(?:^|\/)schema\.prisma$/.test(path)) s = 78;
     else if (path.endsWith(".prisma")) s = 70;
     else if (/(?:^|\/)manage\.py$/.test(path)) s = 99;
     else if (/(?:^|\/)urls\.py$/.test(path)) s = 98;
@@ -142,6 +148,14 @@ function walkCodeFiles(rootDir, maxFiles = MAX_WALK_CANDIDATES) {
       if (!entry.isFile()) continue;
       const ext = entry.name.split(".").pop()?.toLowerCase();
       if (!ext || !SUPPORTED_EXT.has(ext)) continue;
+      // Only compose YAML — generic .yml (CI/k8s) must not flood FILE_LIMIT.
+      if (
+        (ext === "yml" || ext === "yaml") &&
+        !/^docker-compose/i.test(entry.name) &&
+        !/^compose\.(ya?ml)$/i.test(entry.name)
+      ) {
+        continue;
+      }
       results.push(full);
     }
   }
@@ -158,6 +172,12 @@ function isCriticalWalkSeedPath(relPath) {
     .replace(/\\/g, "/");
   if (!path) return false;
   if (/(?:^|\/)schema\.prisma$/.test(path)) return true;
+  if (
+    /(?:^|\/)docker-compose[^/]*\.(ya?ml)$/.test(path) ||
+    /(?:^|\/)compose\.(ya?ml)$/.test(path)
+  ) {
+    return true;
+  }
   if (path.includes("/packages/database/") || path.startsWith("packages/database/")) {
     return true;
   }
@@ -174,6 +194,13 @@ function seedSortKey(relPath) {
   if (/(?:^|\/)packages\/database\/schema\.prisma$/.test(path)) return 0;
   if (/(?:^|\/)prisma\/schema\.prisma$/.test(path)) return 1;
   if (/(?:^|\/)schema\.prisma$/.test(path)) return 2;
+  if (/(?:^|\/)docker-compose\.ya?ml$/.test(path)) return 2.5;
+  if (
+    /(?:^|\/)docker-compose[^/]*\.(ya?ml)$/.test(path) ||
+    /(?:^|\/)compose\.(ya?ml)$/.test(path)
+  ) {
+    return 2.6;
+  }
   if (path.includes("/packages/database/") || path.startsWith("packages/database/")) {
     return 3;
   }
@@ -236,6 +263,15 @@ function collectCriticalSeedRelPaths(workspaceRoot) {
 
   walkSub("packages/database", SEED_DATABASE_BUDGET);
   walkSub("prisma", Math.min(40, SEED_DATABASE_BUDGET));
+
+  // visudev-gapclose P3-2: compose files often sit outside soft-cap DFS — seed explicitly.
+  pushFile("docker-compose.yml");
+  pushFile("docker-compose.yaml");
+  pushFile("compose.yml");
+  pushFile("compose.yaml");
+  pushFile("docker-compose-local.yml");
+  pushFile("docker-compose-test.yml");
+  pushFile("deployments/cli/community/docker-compose.yml");
 
   // Meteor: meteor-methods / publications / models first (Rocket.Chat layout).
   const methodsBudget = Math.max(40, Math.floor(SEED_METEOR_SERVER_BUDGET * 0.55));

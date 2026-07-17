@@ -87,6 +87,21 @@ export function addEdgePrefer(state: GraphBuilderState, edge: SoftwareGraphEdge)
   state.edgeCount += 1;
 }
 
+/**
+ * Prefer critical nodes (infra engines) even when soft node-cap set `condensed`.
+ * Still respects maxNodes and skips duplicates.
+ */
+export function addNodePrefer(state: GraphBuilderState, node: SoftwareGraphNode): void {
+  state.attemptedNodes += 1;
+  if (state.nodes.has(node.id)) return;
+  if (state.nodeCount >= DEFAULT_LIMITS.maxNodes) {
+    state.condensed = true;
+    return;
+  }
+  state.nodes.set(node.id, node);
+  state.nodeCount += 1;
+}
+
 export function addScope(state: GraphBuilderState, scope: SoftwareGraphScope): void {
   if (!state.scopes.has(scope.id)) {
     state.scopes.set(scope.id, scope);
