@@ -4,10 +4,10 @@
  */
 
 import type {
+  AccessControlFinding,
   DatabaseSecurityAdapter,
   DatabaseSecurityAdapterInput,
-} from "../../../../../shared/access-control-adapter.js";
-import type { AccessControlFinding } from "../../../../../shared/access-control.types.js";
+} from "../types.js";
 
 function unknownFinding(
   resourceId: string,

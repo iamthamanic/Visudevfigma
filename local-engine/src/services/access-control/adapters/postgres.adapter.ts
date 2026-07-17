@@ -4,26 +4,22 @@
  */
 
 import type {
-  DatabaseSecurityAdapter,
-  DatabaseSecurityAdapterInput,
-} from "../../../../../shared/access-control-adapter.js";
-import type {
   AccessControlEvidence,
   AccessControlFinding,
   AccessControlMechanismDetail,
   AccessControlStatus,
+  DatabaseSecurityAdapter,
+  DatabaseSecurityAdapterInput,
   DatabaseSecurityDialect,
-} from "../../../../../shared/access-control.types.js";
+} from "../types.js";
 
 export const POSTGRES_RLS_LABEL = "PostgreSQL RLS";
 export const POSTGRES_GRANT_LABEL = "PostgreSQL Grant";
-export const POSTGRES_ROLE_LABEL = "PostgreSQL Role";
 
 const RLS_ENABLE_RE = /\bENABLE\s+ROW\s+LEVEL\s+SECURITY\b/i;
 const RLS_FORCE_RE = /\bFORCE\s+ROW\s+LEVEL\s+SECURITY\b/i;
 const CREATE_POLICY_RE = /\bCREATE\s+POLICY\b/i;
 const GRANT_RE = /\bGRANT\s+\w+/i;
-const CREATE_ROLE_RE = /\bCREATE\s+ROLE\b/i;
 const ALTER_TABLE_POLICY_RE =
   /\bALTER\s+TABLE\b[\s\S]{0,120}\b(?:ENABLE|FORCE)\s+ROW\s+LEVEL\s+SECURITY\b/i;
 
@@ -31,7 +27,6 @@ export interface PostgresSqlSignals {
   hasRlsEnable: boolean;
   hasPolicy: boolean;
   hasGrant: boolean;
-  hasRole: boolean;
   matchedFacts: DatabaseSecurityAdapterInput["facts"];
 }
 
@@ -42,7 +37,6 @@ export function detectPostgresSqlSignals(
   let hasRlsEnable = false;
   let hasPolicy = false;
   let hasGrant = false;
-  let hasRole = false;
 
   for (const fact of facts) {
     const blob = `${fact.kind}\n${fact.snippet}\n${fact.filePath}`;
@@ -59,14 +53,10 @@ export function detectPostgresSqlSignals(
       hasGrant = true;
       matched = true;
     }
-    if (CREATE_ROLE_RE.test(blob)) {
-      hasRole = true;
-      matched = true;
-    }
     if (matched) matchedFacts.push(fact);
   }
 
-  return { hasRlsEnable, hasPolicy, hasGrant, hasRole, matchedFacts };
+  return { hasRlsEnable, hasPolicy, hasGrant, matchedFacts };
 }
 
 function toEvidence(facts: DatabaseSecurityAdapterInput["facts"]): AccessControlEvidence[] {
@@ -96,20 +86,13 @@ function rlsMechanisms(signals: PostgresSqlSignals): AccessControlMechanismDetai
       technology: "postgresql",
     });
   }
-  if (signals.hasRole) {
-    mechanisms.push({
-      kind: "database-role",
-      label: POSTGRES_ROLE_LABEL,
-      technology: "postgresql",
-    });
-  }
   return mechanisms;
 }
 
 function statusFromSignals(signals: PostgresSqlSignals): AccessControlStatus {
   if (signals.hasRlsEnable && signals.hasPolicy) return "protected";
   if (signals.hasRlsEnable || signals.hasPolicy) return "partial";
-  if (signals.hasGrant || signals.hasRole) return "partial";
+  if (signals.hasGrant) return "partial";
   if (signals.matchedFacts.length === 0) return "unverified";
   return "missing";
 }
