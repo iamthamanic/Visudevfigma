@@ -1,14 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { DatabaseSecurityAdapter } from "../../../../shared/access-control-adapter.js";
 import {
   analyzeWithDatabaseSecurityAdapter,
   registerDatabaseSecurityAdapter,
+  resetDatabaseSecurityAdapterRegistry,
   resolveDialectFromDatabaseConfig,
   resolveDialectFromHints,
   selectDatabaseSecurityAdapter,
 } from "./database-security-registry.js";
 
 describe("database-security-registry", () => {
+  afterEach(() => {
+    resetDatabaseSecurityAdapterRegistry();
+  });
+
   it("maps resolve-database-config postgres to postgres dialect", () => {
     expect(
       resolveDialectFromDatabaseConfig({
@@ -48,6 +53,11 @@ describe("database-security-registry", () => {
 
   it("resolveDialectFromHints picks mongodb from framework hints", () => {
     expect(resolveDialectFromHints({ frameworkHints: ["express", "mongodb"] })).toBe("mongodb");
+  });
+
+  it("does not treat substring lookalikes as dialects", () => {
+    expect(resolveDialectFromHints({ frameworkHints: ["monorepo-mysqlish"] })).toBe("unknown");
+    expect(resolveDialectFromHints({ frameworkHints: ["not-mongo"] })).toBe("unknown");
   });
 
   it("registerDatabaseSecurityAdapter overrides selection for that dialect", () => {

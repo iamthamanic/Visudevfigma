@@ -14,10 +14,19 @@ import type {
 import type { ResolvedDatabaseConfig } from "../../lib/resolve-database-config.js";
 import { unknownDatabaseSecurityAdapter } from "./adapters/unknown.adapter.js";
 
-const adaptersByDialect = new Map<DatabaseSecurityDialect, DatabaseSecurityAdapter>([
-  ["unknown", unknownDatabaseSecurityAdapter],
-  // Concrete adapters land in later issues (#136 postgres, #140 mariadb, #141 mongodb).
-]);
+function createDefaultRegistry(): Map<DatabaseSecurityDialect, DatabaseSecurityAdapter> {
+  return new Map<DatabaseSecurityDialect, DatabaseSecurityAdapter>([
+    ["unknown", unknownDatabaseSecurityAdapter],
+    // Concrete adapters land in later issues (#136 postgres, #140 mariadb, #141 mongodb).
+  ]);
+}
+
+let adaptersByDialect = createDefaultRegistry();
+
+/** Test-only: restore default registry after mutating registrations. */
+export function resetDatabaseSecurityAdapterRegistry(): void {
+  adaptersByDialect = createDefaultRegistry();
+}
 
 export function registerDatabaseSecurityAdapter(adapter: DatabaseSecurityAdapter): void {
   adaptersByDialect.set(adapter.dialect, adapter);
@@ -30,28 +39,35 @@ export function resolveDialectFromDatabaseConfig(
   if (config.kind === "sqlite") return "sqlite";
   if (config.kind === "postgres") {
     const source = `${config.source} ${config.connectionString}`.toLowerCase();
-    if (source.includes("supabase")) return "supabase";
+    if (/\bsupabase\b/.test(source) || source.includes(".supabase.")) return "supabase";
     return "postgres";
   }
   return "unknown";
 }
 
+const HINT_RULES: Array<{ dialect: DatabaseSecurityDialect; pattern: RegExp }> = [
+  { dialect: "supabase", pattern: /\bsupabase\b/i },
+  { dialect: "postgres", pattern: /\bpostgres(?:ql)?\b/i },
+  { dialect: "mariadb", pattern: /\bmariadb\b/i },
+  { dialect: "mysql", pattern: /\bmysql\b/i },
+  { dialect: "mongodb", pattern: /\bmongo(?:db)?\b/i },
+  { dialect: "sqlite", pattern: /\bsqlite\b/i },
+  { dialect: "firestore", pattern: /\bfirestore\b/i },
+  { dialect: "dynamodb", pattern: /\bdynamodb\b/i },
+];
+
 export function resolveDialectFromHints(hints: {
   frameworkHints?: string[];
   connectionHint?: string;
 }): DatabaseSecurityDialect {
-  const blob = [...(hints.frameworkHints ?? []), hints.connectionHint ?? ""]
-    .join(" ")
-    .toLowerCase();
-  if (!blob.trim()) return "unknown";
-  if (blob.includes("supabase")) return "supabase";
-  if (blob.includes("postgres") || blob.includes("postgresql")) return "postgres";
-  if (blob.includes("mariadb")) return "mariadb";
-  if (blob.includes("mysql")) return "mysql";
-  if (blob.includes("mongodb") || blob.includes("mongo")) return "mongodb";
-  if (blob.includes("sqlite")) return "sqlite";
-  if (blob.includes("firestore")) return "firestore";
-  if (blob.includes("dynamodb")) return "dynamodb";
+  const tokens = [...(hints.frameworkHints ?? []), hints.connectionHint ?? ""]
+    .map((t) => t.trim())
+    .filter(Boolean);
+  if (tokens.length === 0) return "unknown";
+  const blob = tokens.join(" ");
+  for (const rule of HINT_RULES) {
+    if (rule.pattern.test(blob)) return rule.dialect;
+  }
   return "unknown";
 }
 
