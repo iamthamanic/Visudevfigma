@@ -79,8 +79,13 @@ function tablesForRoute(
   leaveTables: readonly LeaveTableRef[],
 ): LeaveTableRef[] {
   const prefix = routeModulePrefix(routeNode);
-  if (!prefix) return [];
-  return leaveTables.filter((table) => table.modulePrefix === prefix);
+  if (prefix) {
+    const sameModule = leaveTables.filter((table) => table.modulePrefix === prefix);
+    if (sameModule.length > 0) return sameModule;
+  }
+  // Prisma schema models live under schema.prisma (no /leaves/ path). Still wire
+  // them to leave routes so Execution can reach ≥3 steps with DB (P2-2).
+  return leaveTables.filter((table) => table.modulePrefix === null);
 }
 
 /** Ensure leave route files have data edges only to same-module LeaveRequest tables. */

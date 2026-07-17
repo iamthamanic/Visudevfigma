@@ -350,6 +350,66 @@ describe("buildSoftwareGraph", () => {
     expect(tableLabels).toContain("Model39");
   });
 
+  it("wires schema.prisma LeaveRequest into leave paths when table has no /leaves/ path (P2-2)", () => {
+    const scan = makeScan({
+      filesAnalyzed: 3,
+      routes: [
+        {
+          id: "GET /api/leaves",
+          method: "GET",
+          path: "/api/leaves",
+          filePath: "app/modules/leaves/leaves.routes.ts",
+          line: 10,
+        },
+        {
+          id: "GET /",
+          method: "GET",
+          path: "/",
+          filePath: "app/modules/audit-logs/audit-logs.routes.ts",
+          line: 1,
+        },
+      ],
+      facts: [
+        {
+          id: "fact:prisma:LeaveRequest",
+          kind: "db-write",
+          filePath: "prisma/schema.prisma",
+          line: 36,
+          snippet: "model LeaveRequest { id String }",
+          metadata: {
+            table: "LeaveRequest",
+            operation: "prisma-model",
+            framework: "prisma",
+          },
+        },
+        {
+          id: "fact:auth",
+          kind: "auth-check",
+          filePath: "app/modules/leaves/leaves.routes.ts",
+          line: 8,
+          snippet: "authorize('hr.leave.request')",
+        },
+      ],
+    });
+
+    const graph = buildSoftwareGraph(scan);
+    const leaveGroup = graph.groups.find(
+      (g) => g.id.startsWith("execution:") && g.label.toLowerCase().includes("leave"),
+    );
+    expect(leaveGroup).toBeDefined();
+    expect(leaveGroup?.nodeIds.length).toBeGreaterThanOrEqual(3);
+    const leaveTable = graph.nodes.find(
+      (n) => n.kind === "table" && /leaverequest/i.test(n.label.replace(/[^a-zA-Z0-9]/g, "")),
+    );
+    expect(leaveTable).toBeDefined();
+    expect(leaveGroup?.nodeIds).toContain(leaveTable!.id);
+    expect(
+      graph.edges.some(
+        (e) => e.kind === "data" && e.targetId === leaveTable!.id,
+      ),
+    ).toBe(true);
+  });
+
   it("emits honest non-http execution group when no routes exist", () => {
     const scan = makeScan({
       filesAnalyzed: 1,
