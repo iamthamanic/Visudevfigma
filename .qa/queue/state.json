@@ -1,16 +1,15 @@
 {
   "version": 2,
   "repo": "iamthamanic/visudev-app",
-  "activeIssue": 204,
-  "featureSlug": "gapclose-p2-leave-exec-depth",
+  "activeIssue": 205,
+  "featureSlug": "gapclose-p2-meteor-method-label",
   "phase": "implement",
-  "branch": "fix/gapclose-p2-204-leave-exec-depth",
+  "branch": "fix/gapclose-p2-205-meteor-method-label",
   "prUrl": null,
   "milestoneFilter": "visudev-gapclose-p2",
   "paused": false,
   "runMode": "loop",
   "queue": [
-    204,
     205
   ],
   "completedIssues": [
@@ -60,7 +59,8 @@
     196,
     197,
     198,
-    203
+    203,
+    204
   ],
   "mergedIssues": [
     105,
@@ -90,14 +90,16 @@
     196,
     197,
     198,
-    203
+    203,
+    204
   ],
   "prUrls": {
     "195": "https://github.com/iamthamanic/visudev-app/pull/199",
     "196": "https://github.com/iamthamanic/visudev-app/pull/200",
     "197": "https://github.com/iamthamanic/visudev-app/pull/201",
     "198": "https://github.com/iamthamanic/visudev-app/pull/202",
-    "203": "https://github.com/iamthamanic/visudev-app/pull/206"
+    "203": "https://github.com/iamthamanic/visudev-app/pull/206",
+    "204": "https://github.com/iamthamanic/visudev-app/pull/207"
   },
   "retries": {
     "implement": 0,
@@ -115,8 +117,8 @@
   "lastError": null,
   "lastErrorCount": 0,
   "issuesProcessedInSession": 4,
-  "updatedAt": "2026-07-17T00:13:02.000Z",
+  "updatedAt": "2026-07-17T00:13:49.000Z",
   "notes": "loop: #203 merged PR #206; next #204/#205",
-  "currentIssue": 204,
-  "lastCompletedIssue": 203
+  "currentIssue": 205,
+  "lastCompletedIssue": 204
 }

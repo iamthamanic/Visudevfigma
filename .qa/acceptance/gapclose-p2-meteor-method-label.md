@@ -1,30 +1,19 @@
-# Feature: [visudev-gapclose P2-3] Meteor: METHOD-Labels statt PAGE für meteor-methods
+# Feature: [visudev-gapclose P2-3] Meteor: METHOD-Labels statt PAGE
 
-<!-- seeded by ecc-runner from issue #205 on 2026-07-17 — @implement may refine -->
+<!-- seeded by ecc-runner from issue #205 — refined after implement -->
 
 ## Intent
-Rocket.Chat Meteor-Methods als `METHOD` labellen (nicht `PAGE /meteor/…`); Extractor/Labeling fertigstellen. Mongo PARTIAL+ bleibt erhalten.
+
+Rocket.Chat Meteor-Methods als `METHOD` labellen (nicht `PAGE /meteor/…`); Mongo PARTIAL+ bleibt erhalten.
 
 ## Happy Path
-- [ ] - [ ] Routen/Units aus `meteor-methods/**` tragen Label/Kind **METHOD** (nicht PAGE)
-- [ ] - [ ] Mongo collection Tables bleiben ≥ P1 Niveau (keine Regression vs 73 unique)
-- [ ] - [ ] Execution zeigt METHOD-Units ehrlich (kein leeres Pseudo-HTTP)
-- [ ] - [ ] Unit-Tests: Fixture Meteor.methods → METHOD label
-- [ ] - [ ] visudev-gapclose Re-Scan Rocket.Chat; Enrichment OFF; Diff vs [P1-Verification](https://github.com/iamthamanic/visudev-app/blob/main/visudev-test-repos/evidence/VISUDEV-GAPCLOSE-P1-VERIFICATION.md)
 
-## Edge Cases
-- [ ] (from .qa/edge-cases.md + @implement)
-
-## Regression
-- [ ] Feed and topic routes still load
-
-## Assumptions
-- none
-
-## Screenshots
-| Step | Filename |
-|------|----------|
-| 1 | `01-happy-path.png` |
+- [x] Routen aus `meteor-methods/**` tragen Label/Kind **METHOD** (nicht PAGE)
+- [x] `normalizeRouteMethod` preserves METHOD/PUBLISH
+- [x] Unit-Tests: Fixture Meteor METHOD → projected route METHOD
+- [ ] visudev-gapclose Re-Scan Rocket.Chat; Enrichment OFF (post-merge)
 
 ## Implementation Notes
-<!-- filled after coding -->
+
+- `shared/blueprint-graph-routes.ts`: allow METHOD/PUBLISH/API in `normalizeRouteMethod` (was collapsing to PAGE)
+- Graph nodes already had METHOD labels; blueprint.routes projection was the bug

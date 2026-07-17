@@ -5,8 +5,9 @@
 import type { SoftwareGraph } from "./software-graph.types.js";
 import type { ProjectedCodeFact, ProjectedRoute } from "./blueprint-graph-types.js";
 
+/** Keep Meteor METHOD/PUBLISH (and HTTP verbs); unknown → PAGE for UI pages. */
 export function normalizeRouteMethod(method: unknown): string {
-  const HTTP_METHODS = new Set([
+  const ROUTE_METHODS = new Set([
     "GET",
     "POST",
     "PUT",
@@ -15,9 +16,12 @@ export function normalizeRouteMethod(method: unknown): string {
     "HEAD",
     "OPTIONS",
     "PAGE",
+    "METHOD",
+    "PUBLISH",
+    "API",
   ]);
   const raw = typeof method === "string" ? method.trim().toUpperCase() : "";
-  return HTTP_METHODS.has(raw) ? raw : "PAGE";
+  return ROUTE_METHODS.has(raw) ? raw : "PAGE";
 }
 
 export function normalizeRoutePath(path: unknown): string {
