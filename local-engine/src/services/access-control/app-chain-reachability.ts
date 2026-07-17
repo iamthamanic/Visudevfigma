@@ -48,17 +48,18 @@ export function collectReachable(
   const edgeKinds = new Set<string>();
   const nodesByKind = new Map<string, SoftwareGraphNode[]>();
   const queue = [routeId];
+  let head = 0;
   let depth = 0;
   let truncated = false;
 
-  while (queue.length > 0) {
+  while (head < queue.length) {
     if (depth >= maxDepth) {
       truncated = true;
       break;
     }
     const size = queue.length;
-    for (let i = 0; i < size; i++) {
-      const sourceId = queue.shift()!;
+    while (head < size) {
+      const sourceId = queue[head++];
       for (const edge of outgoing.get(sourceId) ?? []) {
         edgeKinds.add(edge.kind);
         if (nodeIds.has(edge.targetId)) continue;
