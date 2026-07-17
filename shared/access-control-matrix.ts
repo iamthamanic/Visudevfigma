@@ -1,70 +1,109 @@
 /**
- * Derives route-level access control matrix rows from mechanism findings.
+ * Derive route-level access control matrix from stack-agnostic findings.
+ * Location: shared/access-control-matrix.ts
  */
 
 import type {
+  AccessControlControl,
   AccessControlFinding,
+  AccessControlMatrixCell,
   AccessControlMatrixRow,
-  AccessControlMechanism,
   AccessControlStatus,
 } from "./access-control.types.js";
+import { worstAccessControlStatus } from "./access-control.types.js";
 
-const MECHANISMS: AccessControlMechanism[] = ["authn", "authz", "scope", "tenant", "ownership"];
-
-const STATUS_RANK: Record<AccessControlStatus, number> = {
-  fail: 3,
-  warn: 2,
-  unknown: 1,
-  pass: 0,
-};
-
-function worstStatus(statuses: AccessControlStatus[]): AccessControlStatus {
-  return statuses.reduce<AccessControlStatus>((worst, status) => {
-    return STATUS_RANK[status] > STATUS_RANK[worst] ? status : worst;
-  }, "pass");
+export interface RouteRef {
+  id: string;
+  method: string;
+  path: string;
 }
 
-function parseRouteId(routeId: string): { method: string; path: string } {
-  const spaceIndex = routeId.indexOf(" ");
-  if (spaceIndex <= 0) {
-    return { method: "GET", path: routeId };
-  }
+const CONTROL_TO_COLUMN: Record<
+  AccessControlControl,
+  | keyof Omit<
+      AccessControlMatrixRow,
+      "routeId" | "method" | "path" | "overallStatus" | "findingCount"
+    >
+  | null
+> = {
+  authentication: "authentication",
+  authorization: "authorization",
+  "resource-scope": "resourceScope",
+  "tenant-isolation": "tenantIsolation",
+  ownership: "ownership",
+  validation: "validation",
+  "read-restriction": "resourceScope",
+  "write-restriction": "resourceScope",
+  "privileged-access": "authorization",
+  audit: "audit",
+  encryption: null,
+};
+
+function emptyCell(): AccessControlMatrixCell {
+  return { status: "unverified" };
+}
+
+function cellFromFindings(findings: AccessControlFinding[]): AccessControlMatrixCell {
+  if (findings.length === 0) return emptyCell();
+  const status = worstAccessControlStatus(findings.map((f) => f.status));
+  const primary = findings.find((f) => f.mechanisms[0])?.mechanisms[0];
   return {
-    method: routeId.slice(0, spaceIndex).trim() || "GET",
-    path: routeId.slice(spaceIndex + 1).trim() || routeId,
+    status,
+    mechanismLabel: primary?.label,
   };
 }
 
+function findingsForRouteControl(
+  findings: AccessControlFinding[],
+  routeId: string,
+  control: AccessControlControl,
+): AccessControlFinding[] {
+  return findings.filter(
+    (f) =>
+      f.resourceId === routeId &&
+      (f.control === control ||
+        (control === "resource-scope" &&
+          (f.control === "read-restriction" || f.control === "write-restriction"))),
+  );
+}
+
+/** Build matrix rows for routes from access control findings. */
 export function deriveAccessControlMatrixFromFindings(
+  routes: RouteRef[],
   findings: AccessControlFinding[],
 ): AccessControlMatrixRow[] {
-  const byRoute = new Map<string, Partial<Record<AccessControlMechanism, AccessControlStatus>>>();
+  return routes.map((route) => {
+    const routeFindings = findings.filter((f) => f.resourceId === route.id);
+    const pick = (control: AccessControlControl) =>
+      cellFromFindings(findingsForRouteControl(findings, route.id, control));
 
-  for (const finding of findings) {
-    const routeStatuses = byRoute.get(finding.routeId) ?? {};
-    const current = routeStatuses[finding.mechanism];
-    if (!current || STATUS_RANK[finding.status] > STATUS_RANK[current]) {
-      routeStatuses[finding.mechanism] = finding.status;
-    }
-    byRoute.set(finding.routeId, routeStatuses);
-  }
-
-  return [...byRoute.entries()].map(([routeId, mechanismStatuses]) => {
-    const { method, path } = parseRouteId(routeId);
-    const statuses = MECHANISMS.map(
-      (mechanism) => mechanismStatuses[mechanism] ?? ("unknown" as AccessControlStatus),
-    );
-
-    return {
-      routeId,
-      method,
-      path,
-      authn: mechanismStatuses.authn ?? "unknown",
-      authz: mechanismStatuses.authz ?? "unknown",
-      scope: mechanismStatuses.scope ?? "unknown",
-      tenant: mechanismStatuses.tenant ?? "unknown",
-      ownership: mechanismStatuses.ownership ?? "unknown",
-      status: worstStatus(statuses),
+    const row: AccessControlMatrixRow = {
+      routeId: route.id,
+      method: route.method,
+      path: route.path,
+      authentication: pick("authentication"),
+      authorization: pick("authorization"),
+      resourceScope: pick("resource-scope"),
+      tenantIsolation: pick("tenant-isolation"),
+      ownership: pick("ownership"),
+      validation: pick("validation"),
+      rateLimit: emptyCell(),
+      audit: pick("audit"),
+      overallStatus: "unverified",
+      findingCount: routeFindings.length,
     };
+
+    const statuses = (
+      Object.entries(CONTROL_TO_COLUMN) as Array<
+        [AccessControlControl, keyof AccessControlMatrixRow | null]
+      >
+    )
+      .map(([, col]) =>
+        col && col in row ? (row[col as keyof typeof row] as AccessControlMatrixCell).status : null,
+      )
+      .filter((s): s is AccessControlStatus => s != null);
+
+    row.overallStatus = worstAccessControlStatus(statuses);
+    return row;
   });
 }

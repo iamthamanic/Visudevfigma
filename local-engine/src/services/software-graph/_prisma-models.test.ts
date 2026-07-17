@@ -11,7 +11,9 @@ import {
 } from "./_prisma-models.js";
 import type { RawBlueprintFact } from "../../types/api.types.js";
 
-function fact(partial: Partial<RawBlueprintFact> & Pick<RawBlueprintFact, "id" | "kind">): RawBlueprintFact {
+function fact(
+  partial: Partial<RawBlueprintFact> & Pick<RawBlueprintFact, "id" | "kind">,
+): RawBlueprintFact {
   return {
     filePath: "prisma/schema.prisma",
     line: 1,

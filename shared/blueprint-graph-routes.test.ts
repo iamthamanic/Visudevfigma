@@ -4,10 +4,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import {
-  deriveRoutesFromGraph,
-  normalizeRouteMethod,
-} from "./blueprint-graph-routes.js";
+import { deriveRoutesFromGraph, normalizeRouteMethod } from "./blueprint-graph-routes.js";
 import type { SoftwareGraph } from "./software-graph.types.js";
 
 function emptyGraph(overrides: Partial<SoftwareGraph> = {}): SoftwareGraph {
