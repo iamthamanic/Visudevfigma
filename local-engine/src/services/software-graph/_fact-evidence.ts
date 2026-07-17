@@ -5,6 +5,7 @@
 import type { RawBlueprintFact } from "../../types/api.types.js";
 import { classifyFactKind } from "./_classification.js";
 import { createId, stableUniqueId } from "./_ids.js";
+import { isPrismaSchemaModelFact, prismaTableNodeId } from "./_prisma-models.js";
 import { sanitizeExcerpt, sanitizeMetadata } from "./_sanitize.js";
 import { addEdge, addNode, type GraphBuilderState } from "./_state.js";
 
@@ -36,10 +37,13 @@ export function addFactEvidence(
       : null;
   const inferredLabel = tableLabel ?? pathLabel ?? fact.kind;
 
+  // Prisma schema models share a stable table id so LeaveRequest survives route floods.
   const inferredNodeId = stableUniqueId(
     state.registry,
     "node",
-    createId("inferred", fact.kind, fact.id),
+    tableLabel && isPrismaSchemaModelFact(fact)
+      ? prismaTableNodeId(tableLabel)
+      : createId("inferred", fact.kind, fact.id),
   );
   addNode(state, {
     id: inferredNodeId,
