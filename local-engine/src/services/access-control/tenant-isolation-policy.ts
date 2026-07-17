@@ -67,15 +67,8 @@ export function evaluateTenantIsolationPolicy(
     }
     if (tenant.status !== "missing" && tenant.status !== "partial") continue;
 
-    // MariaDB-style: repo/tenant filter without any bypass warning → treat partial as acceptable.
-    // App-chain marks fully filtered stacks as `protected`; this covers residual partials.
-    if (tenant.status === "partial") {
-      const hasTenantFilter = tenant.mechanisms.some(
-        (m) => m.kind === "repository-filter" || m.kind === "tenant-filter",
-      );
-      if (hasTenantFilter && !tenant.warning) continue;
-    }
-
+    // Emit for both missing and partial. Fully OK stacks must be `protected`
+    // (e.g. MariaDB repository tenant filter from app-chain analyzer).
     policyFindings.push({
       id: `finding-tenant-${routeId}`,
       ruleId: TENANT_ISOLATION_MISSING_RULE_ID,

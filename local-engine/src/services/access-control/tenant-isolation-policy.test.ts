@@ -46,37 +46,25 @@ describe("evaluateTenantIsolationPolicy", () => {
     expect(findings).toHaveLength(0);
   });
 
-  it("partial with tenant filter and no warning is acceptable (MariaDB-style)", () => {
+  it("does not emit for unsupported (unknown DB dialect honesty)", () => {
+    expect(
+      evaluateTenantIsolationPolicy([finding({ id: "t3", status: "unsupported" })]),
+    ).toHaveLength(0);
+  });
+
+  it("emits for partial status (incomplete isolation is not OK)", () => {
     const findings = evaluateTenantIsolationPolicy([
       finding({
         id: "t-partial",
         status: "partial",
-        mechanisms: [
-          { kind: "repository-filter", label: "Repository Query Filter", technology: "mariadb" },
-        ],
-      }),
-    ]);
-    expect(findings).toHaveLength(0);
-  });
-
-  it("partial with warning still emits policy finding", () => {
-    const findings = evaluateTenantIsolationPolicy([
-      finding({
-        id: "t-bypass",
-        status: "partial",
-        warning: "Alternate path may skip tenant filter",
+        warning: "Some paths lack tenant filter",
         mechanisms: [
           { kind: "repository-filter", label: "Repository Query Filter", technology: "app" },
         ],
       }),
     ]);
     expect(findings).toHaveLength(1);
-  });
-
-  it("does not emit for unsupported (unknown DB dialect honesty)", () => {
-    expect(
-      evaluateTenantIsolationPolicy([finding({ id: "t3", status: "unsupported" })]),
-    ).toHaveLength(0);
+    expect(findings[0]?.severity).toBe("medium");
   });
 
   it("normalizes legacy db.rls-missing to abstract rule id", () => {
