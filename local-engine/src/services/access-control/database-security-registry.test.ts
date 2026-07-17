@@ -1,19 +1,14 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { DatabaseSecurityAdapter } from "../../../../shared/access-control-adapter.js";
 import {
   analyzeWithDatabaseSecurityAdapter,
-  registerDatabaseSecurityAdapter,
+  createDatabaseSecurityRegistry,
   resolveDialectFromDatabaseConfig,
   resolveDialectFromHints,
   selectDatabaseSecurityAdapter,
-  unregisterDatabaseSecurityAdapter,
 } from "./database-security-registry.js";
 
 describe("database-security-registry", () => {
-  afterEach(() => {
-    unregisterDatabaseSecurityAdapter("sqlite");
-  });
-
   it("maps resolve-database-config postgres to postgres dialect", () => {
     expect(
       resolveDialectFromDatabaseConfig({
@@ -60,7 +55,13 @@ describe("database-security-registry", () => {
     expect(resolveDialectFromHints({ frameworkHints: ["not-mongo"] })).toBe("unknown");
   });
 
-  it("registerDatabaseSecurityAdapter overrides selection for that dialect", () => {
+  it("parses connection URL schemes", () => {
+    expect(resolveDialectFromHints({ connectionHint: "postgres://localhost/db" })).toBe("postgres");
+    expect(resolveDialectFromHints({ connectionHint: "mongodb+srv://cluster/db" })).toBe("mongodb");
+    expect(resolveDialectFromHints({ connectionHint: "mysql://localhost/app" })).toBe("mysql");
+  });
+
+  it("createDatabaseSecurityRegistry isolates registrations from the default singleton", () => {
     const stub: DatabaseSecurityAdapter = {
       dialect: "sqlite",
       analyze: () => [
@@ -77,15 +78,10 @@ describe("database-security-registry", () => {
         },
       ],
     };
-    registerDatabaseSecurityAdapter(stub);
-    const selected = selectDatabaseSecurityAdapter("sqlite");
-    expect(selected.dialect).toBe("sqlite");
-    const findings = analyzeWithDatabaseSecurityAdapter({
-      projectId: "p1",
-      dialect: "sqlite",
-      facts: [],
-      resourceIds: ["r1"],
-    });
-    expect(findings[0]?.id).toBe("stub");
+    const isolated = createDatabaseSecurityRegistry([stub]);
+    expect(isolated.select("sqlite").dialect).toBe("sqlite");
+    expect(isolated.analyze({ projectId: "p1", dialect: "sqlite", facts: [] })[0]?.id).toBe("stub");
+    // Default singleton remains untouched.
+    expect(selectDatabaseSecurityAdapter("sqlite").dialect).toBe("unknown");
   });
 });
