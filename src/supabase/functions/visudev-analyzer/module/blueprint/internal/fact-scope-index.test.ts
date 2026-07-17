@@ -283,3 +283,20 @@ Deno.test("sanitizeFactMetadataForExport keeps only primitive allowed values", (
   assertEquals("nested" in metadata, false);
   assertEquals("token" in metadata, false);
 });
+
+Deno.test("sanitizeFactMetadataForExport keeps infra-service promotion keys (P3-2b)", () => {
+  const metadata = sanitizeFactMetadataForExport({
+    service: "PostgreSQL",
+    source: "prisma-datasource",
+    provider: "postgresql",
+    framework: "prisma",
+    image: "postgres:16-alpine",
+    password: "secret",
+  });
+  assertEquals(metadata.service, "PostgreSQL");
+  assertEquals(metadata.source, "prisma-datasource");
+  assertEquals(metadata.provider, "postgresql");
+  assertEquals(metadata.framework, "prisma");
+  assertEquals("image" in metadata, false);
+  assertEquals("password" in metadata, false);
+});

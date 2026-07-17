@@ -11,6 +11,10 @@ const ALLOWED_METADATA_KEYS = new Set([
   "table",
   "operation",
   "status",
+  // visudev-gapclose P3-2b: infra-service promotion needs these after export sanitize
+  "service",
+  "source",
+  "provider",
 ]);
 
 function normalizeMetadataKey(key: string): string {

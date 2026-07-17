@@ -21,23 +21,56 @@ export function isPrismaSchemaModelFact(fact: CodeFact): boolean {
   );
 }
 
+/** visudev-gapclose P3-2b: keep compose/datasource infra facts past soft fact cap. */
+export function isInfraServiceExportFact(fact: CodeFact): boolean {
+  return (
+    fact.kind === "infra-service" &&
+    typeof fact.metadata?.service === "string" &&
+    fact.metadata.service.trim().length > 0
+  );
+}
+
+/** Soft bound so malformed floods cannot unbounded-bypass MAX_BLUEPRINT_FACTS. */
+export const MAX_PRESERVED_INFRA_SERVICE_FACTS = 16;
+
 /**
- * Cap facts for export while keeping **all** prisma-model facts from parsed schemas.
- * Soft-cap may drop other facts; model lists from a read schema stay honest.
+ * Cap facts for export while keeping **all** prisma-model facts from parsed schemas
+ * and a bounded set of infra-service engine facts (Postgres/Redis). Soft-cap may drop
+ * other facts.
  */
 export function selectFactsPreservingPrismaModels(
   facts: CodeFact[],
   limit: number = MAX_BLUEPRINT_FACTS,
 ): CodeFact[] {
   const models: CodeFact[] = [];
+  const infra: CodeFact[] = [];
   const rest: CodeFact[] = [];
+  const seenInfraServices = new Set<string>();
   for (const fact of facts) {
-    if (isPrismaSchemaModelFact(fact)) models.push(fact);
-    else rest.push(fact);
+    if (isPrismaSchemaModelFact(fact)) {
+      models.push(fact);
+      continue;
+    }
+    if (isInfraServiceExportFact(fact)) {
+      const service = String(fact.metadata?.service ?? "")
+        .trim()
+        .toLowerCase();
+      if (
+        service &&
+        !seenInfraServices.has(service) &&
+        infra.length < MAX_PRESERVED_INFRA_SERVICE_FACTS
+      ) {
+        seenInfraServices.add(service);
+        infra.push(fact);
+      }
+      continue;
+    }
+    rest.push(fact);
   }
-  // Honesty: keep every model even if models.length > limit.
-  const remaining = Math.max(0, limit - models.length);
-  return [...models, ...rest.slice(0, remaining)];
+  // Honesty: keep every model + bounded infra engines even if over limit.
+  const preserved = [...models, ...infra];
+  const remaining = Math.max(0, limit - preserved.length);
+  return [...preserved, ...rest.slice(0, remaining)];
 }
 
 export function capGraphForExport(input: unknown): VisuDevGraph {
