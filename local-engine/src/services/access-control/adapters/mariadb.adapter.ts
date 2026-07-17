@@ -168,10 +168,10 @@ function factsForResource(
   appFacts: DatabaseSecurityAdapterInput["facts"];
   hasDataTouchingFacts: boolean;
 } {
-  const dbFacts = facts.filter(isSqlSchemaFact);
+  const allDbFacts = facts.filter(isSqlSchemaFact);
   if (resourceId === "*") {
     return {
-      dbFacts,
+      dbFacts: allDbFacts,
       appFacts: facts.filter((f) => !isSqlSchemaFact(f)),
       hasDataTouchingFacts: facts.some(isDataTouchingFact),
     };
@@ -182,11 +182,32 @@ function factsForResource(
     const blob = `${f.id}\n${f.filePath}\n${f.snippet}`.toLowerCase();
     return blob.includes(needle);
   });
+  const tableTokens = new Set<string>();
+  for (const f of appFacts) {
+    const base = f.filePath.split("/").pop()?.replace(/\.\w+$/, "") ?? "";
+    const soft = base.replace(/\.repo$/i, "").replace(/-/g, "_").toLowerCase();
+    if (soft.length >= 3) tableTokens.add(soft);
+    for (const match of f.snippet.matchAll(
+      /\b(?:from|into|update|join|table|view)\s+[`"[]?([a-zA-Z_][\w]*)/gi,
+    )) {
+      tableTokens.add(match[1]!.toLowerCase());
+    }
+  }
+  const dbFacts =
+    tableTokens.size === 0
+      ? allDbFacts.filter((f) => {
+          const blob = `${f.filePath}\n${f.snippet}`.toLowerCase();
+          return blob.includes(needle);
+        })
+      : allDbFacts.filter((f) => {
+          const blob = f.snippet.toLowerCase();
+          return [...tableTokens].some((token) => blob.includes(token));
+        });
   const scopedData = [...dbFacts, ...appFacts];
   return {
     dbFacts,
     appFacts,
-    hasDataTouchingFacts: scopedData.some(isDataTouchingFact),
+    hasDataTouchingFacts: scopedData.some(isDataTouchingFact) || appFacts.length > 0,
   };
 }
 
