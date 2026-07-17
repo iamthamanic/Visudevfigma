@@ -12,6 +12,12 @@ import type {
   SecurityMatrixCell,
   SecurityMatrixRow,
 } from "./blueprint-types";
+import type {
+  AccessControlFinding,
+  AccessControlMatrixCell,
+  AccessControlMatrixRow,
+  AccessControlStatus,
+} from "./access-control-types";
 import { boundedArray, boundedString, isRecord, MAX_STRING_LEN } from "./normalize-graph-guards";
 
 const CONCEPT_STATES = new Set<ConceptState>([
@@ -25,10 +31,20 @@ const CONCEPT_STATES = new Set<ConceptState>([
 
 const FINDING_SEVERITIES = new Set<FindingSeverity>(["info", "low", "medium", "high", "critical"]);
 
+const ACCESS_CONTROL_STATUSES = new Set<AccessControlStatus>([
+  "protected",
+  "partial",
+  "unverified",
+  "missing",
+  "not-applicable",
+  "unsupported",
+]);
+
 const MAX_ROUTES = 2_000;
 const MAX_FINDINGS = 5_000;
 const MAX_FACTS = 10_000;
 const MAX_MATRIX_ROWS = 2_000;
+const MAX_AC_FINDINGS = 5_000;
 
 function isConceptState(value: unknown): value is ConceptState {
   return typeof value === "string" && CONCEPT_STATES.has(value as ConceptState);
@@ -139,6 +155,64 @@ export function sanitizeFindings(value: unknown): BlueprintFinding[] {
 
 export function sanitizeFacts(value: unknown): CodeFact[] {
   return boundedArray(value, MAX_FACTS, isCodeFact);
+}
+
+function isAccessControlStatus(value: unknown): value is AccessControlStatus {
+  return typeof value === "string" && ACCESS_CONTROL_STATUSES.has(value as AccessControlStatus);
+}
+
+function isAccessControlMatrixCell(value: unknown): value is AccessControlMatrixCell {
+  if (!isRecord(value)) return false;
+  return isAccessControlStatus(value.status);
+}
+
+export function isAccessControlMatrixRow(value: unknown): value is AccessControlMatrixRow {
+  if (!isRecord(value)) return false;
+  const routeId = boundedString(value.routeId);
+  const method = boundedString(value.method);
+  const path = boundedString(value.path);
+  if (!routeId || !method || !path) return false;
+  if (
+    !isAccessControlMatrixCell(value.authentication) ||
+    !isAccessControlMatrixCell(value.authorization) ||
+    !isAccessControlMatrixCell(value.resourceScope) ||
+    !isAccessControlMatrixCell(value.tenantIsolation) ||
+    !isAccessControlMatrixCell(value.ownership) ||
+    !isAccessControlMatrixCell(value.validation) ||
+    !isAccessControlMatrixCell(value.rateLimit) ||
+    !isAccessControlMatrixCell(value.audit) ||
+    !isAccessControlStatus(value.overallStatus)
+  ) {
+    return false;
+  }
+  return (
+    typeof value.findingCount === "number" &&
+    Number.isInteger(value.findingCount) &&
+    value.findingCount >= 0
+  );
+}
+
+export function isAccessControlFinding(value: unknown): value is AccessControlFinding {
+  if (!isRecord(value)) return false;
+  const id = boundedString(value.id);
+  const resourceId = boundedString(value.resourceId);
+  if (!id || !resourceId || !isAccessControlStatus(value.status)) return false;
+  if (typeof value.control !== "string" || value.control.length === 0) return false;
+  if (typeof value.resourceKind !== "string" || value.resourceKind.length === 0) return false;
+  if (typeof value.confidence !== "number" || !Number.isFinite(value.confidence)) return false;
+  if (value.confidence < 0 || value.confidence > 100) return false;
+  if (!Array.isArray(value.mechanisms) || !Array.isArray(value.enforcementLayers)) return false;
+  if (!Array.isArray(value.evidence)) return false;
+  return true;
+}
+
+/** Drop malformed AC matrix rows so Diagnostics can fall back to legacy SecurityMatrix. */
+export function sanitizeAccessControlMatrix(value: unknown): AccessControlMatrixRow[] {
+  return boundedArray(value, MAX_MATRIX_ROWS, isAccessControlMatrixRow);
+}
+
+export function sanitizeAccessControlFindings(value: unknown): AccessControlFinding[] {
+  return boundedArray(value, MAX_AC_FINDINGS, isAccessControlFinding);
 }
 
 export function sanitizeStringList(value: unknown, maxItems = 64): string[] {

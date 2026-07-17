@@ -1,10 +1,12 @@
 /**
- * Access-control v2 Security Matrix — AuthN/AuthZ/Scope/Tenant/Ownership columns.
- * Shown when VITE_ACCESS_CONTROL_V2 is enabled and accessControlMatrix is present.
+ * Access-control v2 Security Matrix for Diagnostics.
+ * Why: RLS is not universal — Scope/Tenant/Ownership are the portable columns;
+ * technology mechanisms stay in the Inspector (see blueprint-access-control design).
  * Location: src/modules/blueprint/components/AccessControlMatrix.tsx
  */
 
 import type {
+  AccessControlMatrixCell,
   AccessControlMatrixRow,
   AccessControlStatus,
 } from "../../../lib/visudev/access-control-types";
@@ -38,6 +40,10 @@ function overallBadge(status: AccessControlStatus): {
   return { variant: "warning", label: "Warnung" };
 }
 
+function cellStatus(cell: AccessControlMatrixCell | undefined): AccessControlStatus {
+  return cell?.status ?? "unverified";
+}
+
 export function AccessControlMatrix({
   rows,
   selectedRouteId,
@@ -67,7 +73,17 @@ export function AccessControlMatrix({
         </thead>
         <tbody>
           {rows.map((row) => {
-            const badge = overallBadge(row.overallStatus);
+            const overall =
+              typeof row.overallStatus === "string" ? row.overallStatus : "unverified";
+            const badge = overallBadge(overall);
+            const authN = cellStatus(row.authentication);
+            const authZ = cellStatus(row.authorization);
+            const scope = cellStatus(row.resourceScope);
+            const tenant = cellStatus(row.tenantIsolation);
+            const ownership = cellStatus(row.ownership);
+            const validation = cellStatus(row.validation);
+            const rateLimit = cellStatus(row.rateLimit);
+            const audit = cellStatus(row.audit);
             return (
               <tr
                 key={row.routeId}
@@ -85,31 +101,17 @@ export function AccessControlMatrix({
                     <code className={styles.path}>{row.path}</code>
                   </button>
                 </td>
-                <td className={acStateClass(row.authentication.status)}>
-                  {accessControlStatusSymbol(row.authentication.status)}
+                <td className={acStateClass(authN)}>{accessControlStatusSymbol(authN)}</td>
+                <td className={acStateClass(authZ)}>{accessControlStatusSymbol(authZ)}</td>
+                <td className={acStateClass(scope)}>{accessControlStatusSymbol(scope)}</td>
+                <td className={acStateClass(tenant)}>{accessControlStatusSymbol(tenant)}</td>
+                <td className={acStateClass(ownership)}>{accessControlStatusSymbol(ownership)}</td>
+                <td className={acStateClass(validation)}>
+                  {accessControlStatusSymbol(validation)}
                 </td>
-                <td className={acStateClass(row.authorization.status)}>
-                  {accessControlStatusSymbol(row.authorization.status)}
-                </td>
-                <td className={acStateClass(row.resourceScope.status)}>
-                  {accessControlStatusSymbol(row.resourceScope.status)}
-                </td>
-                <td className={acStateClass(row.tenantIsolation.status)}>
-                  {accessControlStatusSymbol(row.tenantIsolation.status)}
-                </td>
-                <td className={acStateClass(row.ownership.status)}>
-                  {accessControlStatusSymbol(row.ownership.status)}
-                </td>
-                <td className={acStateClass(row.validation.status)}>
-                  {accessControlStatusSymbol(row.validation.status)}
-                </td>
-                <td className={acStateClass(row.rateLimit.status)}>
-                  {accessControlStatusSymbol(row.rateLimit.status)}
-                </td>
-                <td className={acStateClass(row.audit.status)}>
-                  {accessControlStatusSymbol(row.audit.status)}
-                </td>
-                <td>{row.findingCount}</td>
+                <td className={acStateClass(rateLimit)}>{accessControlStatusSymbol(rateLimit)}</td>
+                <td className={acStateClass(audit)}>{accessControlStatusSymbol(audit)}</td>
+                <td>{typeof row.findingCount === "number" ? row.findingCount : 0}</td>
                 <td>
                   <StatusBadge
                     variant={badge.variant}

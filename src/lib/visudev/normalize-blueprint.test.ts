@@ -205,4 +205,13 @@ describe("normalizeBlueprintData", () => {
     expect(normalized.accessControlMatrix).toEqual(accessControlMatrix);
     expect(normalized.accessControlFindings).toEqual(accessControlFindings);
   });
+
+  it("drops malformed accessControlMatrix rows instead of casting", () => {
+    const normalized = normalizeBlueprintData({
+      accessControlMatrix: [{ routeId: "bad" }, null, "x"],
+      accessControlFindings: [{ id: "x" }],
+    });
+    expect(normalized.accessControlMatrix).toBeUndefined();
+    expect(normalized.accessControlFindings).toBeUndefined();
+  });
 });

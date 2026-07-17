@@ -5,6 +5,8 @@
 
 import type { BlueprintData } from "./blueprint-types";
 import {
+  sanitizeAccessControlFindings,
+  sanitizeAccessControlMatrix,
   sanitizeFacts,
   sanitizeFindings,
   sanitizeRoutes,
@@ -66,12 +68,14 @@ export function normalizeBlueprintData(
     analyzedAt: typeof raw.analyzedAt === "string" ? raw.analyzedAt : undefined,
     routes: useLegacyDiagnostics ? legacyRoutes : graphRoutes,
     securityMatrix: useLegacyDiagnostics ? legacySecurityMatrix : graphMatrix,
-    accessControlFindings: Array.isArray(raw.accessControlFindings)
-      ? (raw.accessControlFindings as BlueprintData["accessControlFindings"])
-      : undefined,
-    accessControlMatrix: Array.isArray(raw.accessControlMatrix)
-      ? (raw.accessControlMatrix as BlueprintData["accessControlMatrix"])
-      : undefined,
+    accessControlFindings: (() => {
+      const findings = sanitizeAccessControlFindings(raw.accessControlFindings);
+      return findings.length > 0 ? findings : undefined;
+    })(),
+    accessControlMatrix: (() => {
+      const matrix = sanitizeAccessControlMatrix(raw.accessControlMatrix);
+      return matrix.length > 0 ? matrix : undefined;
+    })(),
     findings: useLegacyDiagnostics ? legacyFindings : graphFindings,
     facts: useLegacyDiagnostics ? legacyFacts : graphFacts,
     frameworkHints: sanitizeStringList(raw.frameworkHints),

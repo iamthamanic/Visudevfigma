@@ -1,5 +1,6 @@
 /**
- * Feature flag helper for Access Control Diagnostics v2 matrix columns.
+ * Gate for Diagnostics Access Control v2 columns during Wave 2 overlap.
+ * Off by default so legacy RLS matrix stays stable until CI/local opt-in.
  */
 
 export function isAccessControlV2Enabled(): boolean {
