@@ -81,8 +81,7 @@ export function prioritizeBlueprintFiles<T extends { path: string }>(
       /(?:^|\/)compose\.(ya?ml)$/.test(path)
     ) {
       s = 97;
-    }
-    else if (/(?:^|\/)schema\.prisma$/.test(path)) s = 78;
+    } else if (/(?:^|\/)schema\.prisma$/.test(path)) s = 78;
     else if (path.endsWith(".prisma")) s = 70;
     else if (/(?:^|\/)manage\.py$/.test(path)) s = 99;
     else if (/(?:^|\/)urls\.py$/.test(path)) s = 98;

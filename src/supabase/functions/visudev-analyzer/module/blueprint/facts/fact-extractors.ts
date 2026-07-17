@@ -123,13 +123,22 @@ function prismaProviderToService(provider: string): string | null {
 /** Compose image line → Redis / PostgreSQL (and valkey→Redis). */
 function composeImageToService(image: string): string | null {
   const normalized = image.trim().toLowerCase();
-  if (/^postgres(?:ql)?(?:[:@/]|$)/.test(normalized) || /\/postgres(?:ql)?(?:[:@/]|$)/.test(normalized)) {
+  if (
+    /^postgres(?:ql)?(?:[:@/]|$)/.test(normalized) ||
+    /\/postgres(?:ql)?(?:[:@/]|$)/.test(normalized)
+  ) {
     return "PostgreSQL";
   }
-  if (/^redis(?:[:@/]|$)/.test(normalized) || /\/redis(?:[:@/]|$)/.test(normalized)) {
+  if (
+    /^redis(?:[:@/]|$)/.test(normalized) ||
+    /\/redis(?:[:@/]|$)/.test(normalized)
+  ) {
     return "Redis";
   }
-  if (/^valkey(?:[:@/]|$)/.test(normalized) || /\/valkey(?:[:@/]|$)/.test(normalized)) {
+  if (
+    /^valkey(?:[:@/]|$)/.test(normalized) ||
+    /\/valkey(?:[:@/]|$)/.test(normalized)
+  ) {
     return "Redis";
   }
   return null;
@@ -180,7 +189,10 @@ function extractPrismaFacts(filePath: string, content: string): CodeFact[] {
 }
 
 /** docker-compose.yml → Postgres/Redis infra facts (visudev-gapclose P3-2). */
-function extractComposeInfraFacts(filePath: string, content: string): CodeFact[] {
+function extractComposeInfraFacts(
+  filePath: string,
+  content: string,
+): CodeFact[] {
   const facts: CodeFact[] = [];
   const seenServices = new Set<string>();
   const lines = content.split("\n");

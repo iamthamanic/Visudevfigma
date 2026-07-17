@@ -307,7 +307,10 @@ services:
     .map((f) => f.metadata?.service)
     .sort();
   assertEquals(services, ["PostgreSQL", "Redis"]);
-  assertEquals(facts.every((f) => f.metadata?.source === "docker-compose"), true);
+  assertEquals(
+    facts.every((f) => f.metadata?.source === "docker-compose"),
+    true,
+  );
 });
 
 Deno.test("extractFactsFromFile maps plane valkey image to Redis (P3-2)", () => {
