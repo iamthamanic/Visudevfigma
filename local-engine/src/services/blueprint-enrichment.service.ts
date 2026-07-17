@@ -1,10 +1,15 @@
 /**
  * Graph-first blueprint enrichment: legacy diagnostics are derived from SoftwareGraph.
+ * Also attaches stack-agnostic accessControlFindings / accessControlMatrix (Phase 1+).
  */
 
 import type { BlueprintDocument, RawBlueprintScan } from "../types/api.types.js";
-import { deriveDiagnosticsFromGraph } from "../../../shared/blueprint.js";
+import {
+  deriveAccessControlMatrixFromFindings,
+  deriveDiagnosticsFromGraph,
+} from "../../../shared/blueprint.js";
 import { enrichSoftwareGraphIfThin } from "../../../shared/demo-graph-thin.js";
+import { analyzeApplicationChain } from "./access-control/app-chain-analyzer.service.js";
 import { buildSoftwareGraph } from "./software-graph-builder.service.js";
 
 const DEFAULT_PROFILE = {
@@ -20,6 +25,12 @@ export function enrichBlueprint(scan: RawBlueprintScan): BlueprintDocument {
   const demoEnrichmentEnabled = process.env.VISUDEV_DEMO_ENRICHMENT === "true";
   const graph = demoEnrichmentEnabled ? enrichSoftwareGraphIfThin(built, scan.projectId) : built;
   const { routes, securityMatrix, findings, facts } = deriveDiagnosticsFromGraph(graph);
+
+  const accessControlFindings = analyzeApplicationChain({ graph });
+  const accessControlMatrix = deriveAccessControlMatrixFromFindings(
+    routes.map((r) => ({ id: r.id, method: r.method, path: r.path })),
+    accessControlFindings,
+  );
 
   return {
     version: 1,
@@ -38,5 +49,7 @@ export function enrichBlueprint(scan: RawBlueprintScan): BlueprintDocument {
     frameworkHints: [scan.providerId],
     providerMetadata: scan.providerMetadata,
     graph,
+    accessControlFindings,
+    accessControlMatrix,
   };
 }
