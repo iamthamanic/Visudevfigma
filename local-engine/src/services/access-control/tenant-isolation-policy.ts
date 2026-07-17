@@ -24,44 +24,40 @@ export interface TenantIsolationPolicyFinding {
   remediation: string;
 }
 
-function worstTenantStatus(
-  findings: AccessControlFinding[],
-  resourceId: string,
-): AccessControlFinding | undefined {
-  const tenant = findings.filter(
-    (f) => f.resourceId === resourceId && f.control === "tenant-isolation",
-  );
-  if (tenant.length === 0) return undefined;
-  const rank: Record<string, number> = {
-    missing: 0,
-    partial: 1,
-    unverified: 2,
-    unsupported: 3,
-    "not-applicable": 4,
-    protected: 5,
-  };
-  return tenant.reduce((worst, current) =>
-    (rank[current.status] ?? 99) < (rank[worst.status] ?? 99) ? current : worst,
-  );
+const STATUS_RANK: Record<string, number> = {
+  missing: 0,
+  partial: 1,
+  unverified: 2,
+  unsupported: 3,
+  "not-applicable": 4,
+  protected: 5,
+};
+
+function pickWorse(
+  current: AccessControlFinding | undefined,
+  next: AccessControlFinding,
+): AccessControlFinding {
+  if (!current) return next;
+  return (STATUS_RANK[next.status] ?? 99) < (STATUS_RANK[current.status] ?? 99) ? next : current;
 }
 
 /**
  * Emit policy findings when tenant-isolation is missing on data-touching routes.
  * Protected / not-applicable / unsupported (unknown DB) do not emit.
+ * Single-pass O(n) over findings.
  */
 export function evaluateTenantIsolationPolicy(
   accessControlFindings: AccessControlFinding[],
 ): TenantIsolationPolicyFinding[] {
-  const routeIds = [
-    ...new Set(
-      accessControlFindings.filter((f) => f.resourceKind === "route").map((f) => f.resourceId),
-    ),
-  ];
+  const worstByRoute = new Map<string, AccessControlFinding>();
 
-  const out: TenantIsolationPolicyFinding[] = [];
-  for (const routeId of routeIds) {
-    const tenant = worstTenantStatus(accessControlFindings, routeId);
-    if (!tenant) continue;
+  for (const finding of accessControlFindings) {
+    if (finding.resourceKind !== "route" || finding.control !== "tenant-isolation") continue;
+    worstByRoute.set(finding.resourceId, pickWorse(worstByRoute.get(finding.resourceId), finding));
+  }
+
+  const policyFindings: TenantIsolationPolicyFinding[] = [];
+  for (const [routeId, tenant] of worstByRoute) {
     if (
       tenant.status === "protected" ||
       tenant.status === "not-applicable" ||
@@ -79,7 +75,7 @@ export function evaluateTenantIsolationPolicy(
       continue;
     }
 
-    out.push({
+    policyFindings.push({
       id: `finding-tenant-${routeId}`,
       ruleId: TENANT_ISOLATION_MISSING_RULE_ID,
       category: "security",
@@ -97,7 +93,7 @@ export function evaluateTenantIsolationPolicy(
         "Tenant-/Org-Filter in Repository/Query sicherstellen oder DB-native Row Policy (z. B. PostgreSQL RLS) ergänzen. RLS ist nicht universell erforderlich.",
     });
   }
-  return out;
+  return policyFindings;
 }
 
 /** Map legacy rule ids in UI/fixtures to the abstract tenant-isolation rule. */
