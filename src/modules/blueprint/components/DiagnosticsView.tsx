@@ -85,7 +85,7 @@ export function DiagnosticsView({ blueprint }: DiagnosticsViewProps) {
     selectRoute(routeId);
   };
 
-  const handleSelectFinding = (findingId: string) => {
+  const handleSelectFinding = (findingId: string | null) => {
     setSelectedAcColumn(null);
     setSelectedFindingId(findingId);
   };
