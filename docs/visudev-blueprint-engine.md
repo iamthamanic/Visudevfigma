@@ -51,11 +51,11 @@ Blueprint zeigt:
 
 - Runtime
 - API Routes
-- Auth
-- Rollen/Rechte
+- Auth / AuthZ
+- Resource Scope, Tenant-Isolation, Ownership
 - Validierung
 - Rate Limit
-- Datenbankzugriffe
+- Datenbankzugriffe (Mechanismen im Inspector, z. B. RLS nur für PostgreSQL)
 - Storage
 - externe APIs
 - Secrets
@@ -445,15 +445,21 @@ Zeigt eine konkrete Route oder Aktion:
 
 Request → Auth → Role Check → Validation → Handler → DB Write → Audit → External Hook
 
-### 10.5 Security Matrix
+### 10.5 Security Matrix (Access Control)
 
-Tabellarische Übersicht:
+Die Diagnostics-Matrix zeigt **abstrakte Controls**, nicht technologie-spezifische Mechanismen:
 
-Route | Auth | Role | Validation | Rate Limit | DB | RLS | Audit | Findings
+| Spalte (Access Control v2)      | Bedeutung                                |
+| ------------------------------- | ---------------------------------------- |
+| AuthN / AuthZ                   | Authentifizierung / Autorisierung        |
+| Scope / Tenant / Ownership      | Resource-, Tenant- und Ownership-Grenzen |
+| Validation / Rate Limit / Audit | Eingabeprüfung, Drosselung, Audit        |
 
-Beispiel:
+**Mechanismen** (z. B. PostgreSQL RLS, MariaDB SECURITY VIEW, Repository-Filter, MongoDB Collection Roles) erscheinen im **Access Control Inspector**, nicht als feste Matrix-Spalten.
 
-POST /employees | ✓ | ✓ | ✕ | ? | Write | ✓ | ✕ | 2 Findings
+Die Legacy-Tabelle `securityMatrix` (Auth | Role | Validation | Rate Limit | DB | Audit) bleibt für Kompatibilität; die frühere **RLS-Spalte ist entfernt**. Fehlt `securityMatrix` im Payload, synthetisiert `normalizeBlueprintData` sie aus `accessControlMatrix` (mit `rls: n/a`).
+
+Route | AuthN | AuthZ | Scope | Tenant | Ownership | Validation | Rate Limit | Audit | Findings
 
 ### 10.6 Finding Inspector
 

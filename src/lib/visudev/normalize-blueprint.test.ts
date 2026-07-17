@@ -165,7 +165,7 @@ describe("normalizeBlueprintData", () => {
     expect(normalized.routes?.[0]?.id).toBe("legacy");
   });
 
-  it("preserves accessControlMatrix and accessControlFindings from payloads", () => {
+  it("preserves accessControlMatrix and synthesizes legacy securityMatrix when absent", () => {
     const accessControlMatrix = [
       {
         routeId: "r1",
@@ -183,27 +183,14 @@ describe("normalizeBlueprintData", () => {
         findingCount: 1,
       },
     ];
-    const accessControlFindings = [
-      {
-        id: "acf-1",
-        resourceId: "r1",
-        resourceKind: "route" as const,
-        control: "tenant-isolation" as const,
-        status: "missing" as const,
-        mechanisms: [],
-        enforcementLayers: ["database" as const],
-        evidence: [],
-        confidence: 80,
-      },
-    ];
     const normalized = normalizeBlueprintData({
       routes: [],
       securityMatrix: [],
       accessControlMatrix,
-      accessControlFindings,
     });
     expect(normalized.accessControlMatrix).toEqual(accessControlMatrix);
-    expect(normalized.accessControlFindings).toEqual(accessControlFindings);
+    expect(normalized.securityMatrix?.[0]?.rls.state).toBe("n/a");
+    expect(normalized.securityMatrix?.[0]?.auth.state).toBe("confirmed");
   });
 
   it("drops malformed accessControlMatrix rows instead of casting", () => {
