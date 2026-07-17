@@ -108,4 +108,32 @@ describe("analyzeApplicationChain", () => {
     const tenant = findings.find((f) => f.control === "tenant-isolation");
     expect(tenant?.status).toBe("not-applicable");
   });
+
+  it("does not mark resource-scope protected from repository reachability alone", () => {
+    const graph = graphFixture({
+      evidence: [
+        {
+          id: "ev-auth",
+          factId: "fa",
+          kind: "auth-check",
+          filePath: "src/middleware/auth.ts",
+          line: 10,
+          excerpt: "requireAuth(session)",
+          nodeId: "svc:auth",
+        },
+        {
+          id: "ev-repo",
+          factId: "fr",
+          kind: "repo-read",
+          filePath: "src/repos/employee.ts",
+          line: 20,
+          excerpt: "findMany()",
+          nodeId: "repo:emp",
+        },
+      ],
+    });
+    const findings = analyzeApplicationChain({ graph });
+    const scope = findings.find((f) => f.control === "resource-scope");
+    expect(scope?.status).toBe("missing");
+  });
 });
