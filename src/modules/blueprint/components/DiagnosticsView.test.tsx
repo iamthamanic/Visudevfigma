@@ -122,6 +122,27 @@ describe("DiagnosticsView", () => {
           findingCount: 1,
         },
       ],
+      accessControlFindings: [
+        {
+          id: "acf-1",
+          resourceId: "route-1",
+          resourceKind: "route",
+          control: "tenant-isolation",
+          status: "missing",
+          mechanisms: [{ kind: "database-row-policy", label: "PostgreSQL RLS" }],
+          enforcementLayers: ["database"],
+          evidence: [
+            {
+              id: "ev-1",
+              kind: "sql",
+              filePath: "db/policy.sql",
+              line: 4,
+              excerpt: "ENABLE ROW LEVEL SECURITY",
+            },
+          ],
+          confidence: 88,
+        },
+      ],
     };
     render(<FlaggedDiagnosticsView blueprint={acBlueprint} />);
     expect(screen.getByTestId("security-matrix")).toHaveAttribute("data-access-control-v2", "true");
@@ -129,6 +150,10 @@ describe("DiagnosticsView", () => {
     expect(screen.getByRole("columnheader", { name: "Tenant" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Ownership" })).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "RLS" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("ac-matrix-cell-tenantIsolation"));
+    expect(screen.getByTestId("access-control-inspector")).toBeInTheDocument();
+    expect(screen.getByTestId("ac-mechanisms")).toHaveTextContent("PostgreSQL RLS");
     vi.doUnmock("../access-control-flag.js");
   });
 

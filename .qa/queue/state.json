@@ -1,23 +1,24 @@
 {
   "version": 2,
   "repo": "iamthamanic/visudev-app",
-  "activeIssue": 138,
-  "featureSlug": "abstract-security-matrix-ui",
+  "activeIssue": 139,
+  "featureSlug": "access-control-inspector",
   "phase": "implement",
-  "branch": "issue/138-abstract-security-matrix-ui",
+  "branch": "issue/139-access-control-inspector",
   "prUrl": null,
   "milestoneFilter": "blueprint-access-control",
   "paused": false,
   "runMode": "loop",
-  "queue": [138, 139, 142, 140, 141],
+  "queue": [139, 142, 140, 141],
   "completedIssues": [
     67, 68, 69, 70, 71, 72, 73, 74, 75, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 105, 106, 107, 108,
-    109, 110, 111, 112, 113, 123, 124, 125, 126, 127, 128, 129, 130, 133, 134, 135, 136, 137, 149,
-    150, 151, 152, 153, 154, 195, 196, 197, 198, 203, 204, 205, 209, 210, 213
+    109, 110, 111, 112, 113, 123, 124, 125, 126, 127, 128, 129, 130, 133, 134, 135, 136, 137, 138,
+    149, 150, 151, 152, 153, 154, 195, 196, 197, 198, 203, 204, 205, 209, 210, 213
   ],
   "mergedIssues": [
     105, 106, 107, 108, 109, 110, 111, 112, 113, 123, 124, 125, 126, 127, 128, 129, 130, 133, 134,
-    135, 136, 137, 149, 150, 151, 152, 153, 154, 195, 196, 197, 198, 203, 204, 205, 209, 210, 213
+    135, 136, 137, 138, 149, 150, 151, 152, 153, 154, 195, 196, 197, 198, 203, 204, 205, 209, 210,
+    213
   ],
   "prUrls": {
     "195": "https://github.com/iamthamanic/visudev-app/pull/199",
@@ -34,7 +35,8 @@
     "134": "https://github.com/iamthamanic/visudev-app/pull/218",
     "135": "https://github.com/iamthamanic/visudev-app/pull/219",
     "136": "https://github.com/iamthamanic/visudev-app/pull/220",
-    "137": "https://github.com/iamthamanic/visudev-app/pull/221"
+    "137": "https://github.com/iamthamanic/visudev-app/pull/221",
+    "138": "https://github.com/iamthamanic/visudev-app/pull/222"
   },
   "retries": {
     "implement": 0,
@@ -51,9 +53,9 @@
   },
   "lastError": null,
   "lastErrorCount": 0,
-  "issuesProcessedInSession": 5,
-  "updatedAt": "2026-07-17T09:16:56.000Z",
-  "notes": "loop continue: #138\u2013#141",
-  "currentIssue": 138,
-  "lastCompletedIssue": 137
+  "issuesProcessedInSession": 6,
+  "updatedAt": "2026-07-17T09:22:17.000Z",
+  "notes": "loop continue: #139\u2013#141",
+  "currentIssue": 139,
+  "lastCompletedIssue": 138
 }
