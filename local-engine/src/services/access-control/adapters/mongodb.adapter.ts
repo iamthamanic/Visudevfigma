@@ -185,16 +185,28 @@ function isolationStatus(signals: MongodbSignals): AccessControlStatus {
   return "missing";
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Exact resource identity: fact id, path segment, or whole-word token — not substring route-1⊂route-10. */
+function factMatchesResource(
+  fact: DatabaseSecurityAdapterInput["facts"][number],
+  resourceId: string,
+): boolean {
+  if (fact.id === resourceId) return true;
+  const segments = fact.filePath.split(/[/\\]/).filter(Boolean);
+  if (segments.includes(resourceId)) return true;
+  const boundary = new RegExp(`(^|[^A-Za-z0-9_-])${escapeRegExp(resourceId)}([^A-Za-z0-9_-]|$)`);
+  return boundary.test(fact.snippet) || boundary.test(fact.filePath);
+}
+
 function factsForResource(
   facts: DatabaseSecurityAdapterInput["facts"],
   resourceId: string,
 ): DatabaseSecurityAdapterInput["facts"] {
   if (resourceId === "*") return facts;
-  const needle = resourceId.toLowerCase();
-  return facts.filter((f) => {
-    const blob = `${f.id}\n${f.filePath}\n${f.snippet}`.toLowerCase();
-    return blob.includes(needle);
-  });
+  return facts.filter((f) => factMatchesResource(f, resourceId));
 }
 
 function buildFindings(resourceId: string, signals: MongodbSignals): AccessControlFinding[] {

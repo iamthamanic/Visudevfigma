@@ -102,6 +102,26 @@ describe("mongodb.adapter", () => {
     ).toBe(true);
   });
 
+  it("does not match route-10 facts when scoping route-1", () => {
+    const findings = mongodbDatabaseSecurityAdapter.analyze({
+      projectId: "p1",
+      dialect: "mongodb",
+      facts: [
+        {
+          id: "f10",
+          kind: "repository",
+          filePath: "src/routes/route-10/users.repo.ts",
+          line: 8,
+          snippet: "return db.collection('users').find({ tenantId: ctx.tenantId });",
+        },
+      ],
+      resourceIds: ["route-1"],
+    });
+    const tenant = findings.find((f) => f.control === "tenant-isolation");
+    expect(tenant?.status).toBe("unverified");
+    expect(tenant?.mechanisms.some((m) => m.label === MONGO_TENANT_FILTER_LABEL)).toBe(false);
+  });
+
   it("registers mongodb in registry", () => {
     const registry = createDatabaseSecurityRegistry([mongodbDatabaseSecurityAdapter]);
     expect(registry.select("mongodb").dialect).toBe("mongodb");
