@@ -23,13 +23,14 @@ function createDefaultRegistry(): Map<DatabaseSecurityDialect, DatabaseSecurityA
 
 let adaptersByDialect = createDefaultRegistry();
 
-/** Test-only: restore default registry after mutating registrations. */
-export function resetDatabaseSecurityAdapterRegistry(): void {
-  adaptersByDialect = createDefaultRegistry();
-}
-
 export function registerDatabaseSecurityAdapter(adapter: DatabaseSecurityAdapter): void {
   adaptersByDialect.set(adapter.dialect, adapter);
+}
+
+/** Remove a non-unknown adapter registration (tests / hot-reload). */
+export function unregisterDatabaseSecurityAdapter(dialect: DatabaseSecurityDialect): void {
+  if (dialect === "unknown") return;
+  adaptersByDialect.delete(dialect);
 }
 
 export function resolveDialectFromDatabaseConfig(
@@ -46,14 +47,14 @@ export function resolveDialectFromDatabaseConfig(
 }
 
 const HINT_RULES: Array<{ dialect: DatabaseSecurityDialect; pattern: RegExp }> = [
-  { dialect: "supabase", pattern: /\bsupabase\b/i },
-  { dialect: "postgres", pattern: /\bpostgres(?:ql)?\b/i },
-  { dialect: "mariadb", pattern: /\bmariadb\b/i },
-  { dialect: "mysql", pattern: /\bmysql\b/i },
-  { dialect: "mongodb", pattern: /\bmongo(?:db)?\b/i },
-  { dialect: "sqlite", pattern: /\bsqlite\b/i },
-  { dialect: "firestore", pattern: /\bfirestore\b/i },
-  { dialect: "dynamodb", pattern: /\bdynamodb\b/i },
+  { dialect: "supabase", pattern: /^supabase$/i },
+  { dialect: "postgres", pattern: /^postgres(?:ql)?$/i },
+  { dialect: "mariadb", pattern: /^mariadb$/i },
+  { dialect: "mysql", pattern: /^mysql$/i },
+  { dialect: "mongodb", pattern: /^mongo(?:db)?$/i },
+  { dialect: "sqlite", pattern: /^sqlite$/i },
+  { dialect: "firestore", pattern: /^firestore$/i },
+  { dialect: "dynamodb", pattern: /^dynamodb$/i },
 ];
 
 export function resolveDialectFromHints(hints: {
@@ -61,12 +62,14 @@ export function resolveDialectFromHints(hints: {
   connectionHint?: string;
 }): DatabaseSecurityDialect {
   const tokens = [...(hints.frameworkHints ?? []), hints.connectionHint ?? ""]
+    .flatMap((t) => t.split(/[\s,;/|]+/))
     .map((t) => t.trim())
     .filter(Boolean);
   if (tokens.length === 0) return "unknown";
-  const blob = tokens.join(" ");
-  for (const rule of HINT_RULES) {
-    if (rule.pattern.test(blob)) return rule.dialect;
+  for (const token of tokens) {
+    for (const rule of HINT_RULES) {
+      if (rule.pattern.test(token)) return rule.dialect;
+    }
   }
   return "unknown";
 }

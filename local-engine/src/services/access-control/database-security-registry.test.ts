@@ -3,15 +3,15 @@ import type { DatabaseSecurityAdapter } from "../../../../shared/access-control-
 import {
   analyzeWithDatabaseSecurityAdapter,
   registerDatabaseSecurityAdapter,
-  resetDatabaseSecurityAdapterRegistry,
   resolveDialectFromDatabaseConfig,
   resolveDialectFromHints,
   selectDatabaseSecurityAdapter,
+  unregisterDatabaseSecurityAdapter,
 } from "./database-security-registry.js";
 
 describe("database-security-registry", () => {
   afterEach(() => {
-    resetDatabaseSecurityAdapterRegistry();
+    unregisterDatabaseSecurityAdapter("sqlite");
   });
 
   it("maps resolve-database-config postgres to postgres dialect", () => {
