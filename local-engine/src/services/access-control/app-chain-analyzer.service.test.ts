@@ -302,4 +302,86 @@ describe("analyzeApplicationChain", () => {
     expect(auth?.mechanisms).toEqual([]);
     expect(auth?.evidence).toEqual([]);
   });
+
+  it("bridges leave auth-check snippets when authenticates edges are absent (browo parity)", () => {
+    const graph: SoftwareGraph = {
+      version: 1,
+      projectId: "browo",
+      analyzedAt: "2026-07-17T00:00:00.000Z",
+      scopes: [],
+      nodes: [
+        {
+          id: "file:leaves",
+          kind: "file",
+          label: "leaves.routes.ts",
+          filePath: "backend/app/modules/leaves/leaves.routes.ts",
+          metadata: {},
+        },
+        {
+          id: "route:leave",
+          kind: "route",
+          label: "GET /api/leaves",
+          filePath: "backend/app/modules/leaves/leaves.routes.ts",
+          line: 61,
+          scopeId: "file:leaves",
+          metadata: {
+            routeId: "legacy-route-180",
+            method: "GET",
+            path: "/api/leaves",
+          },
+        },
+        {
+          id: "table:leave",
+          kind: "table",
+          label: "leaveRequest",
+          filePath: "backend/prisma/schema.prisma",
+          metadata: {},
+        },
+      ],
+      edges: [
+        {
+          id: "e-db",
+          kind: "data",
+          sourceId: "file:leaves",
+          targetId: "table:leave",
+          metadata: { reason: "leave-route-db-fact" },
+        },
+      ],
+      evidence: [
+        {
+          id: "ev-auth",
+          factId: "fact-auth",
+          kind: "auth-check",
+          filePath: "backend/app/modules/leaves/leaves.routes.ts",
+          line: 32,
+          excerpt: "authorize('hr.calendar.leave.request')",
+        },
+        {
+          id: "ev-route",
+          factId: "fact-route",
+          kind: "api-route",
+          filePath: "backend/app/modules/leaves/leaves.routes.ts",
+          line: 61,
+          excerpt:
+            "router.get('/', authorize('hr.calendar.leave.request'), asyncHandler(controller.list.bind(controller)));",
+        },
+      ],
+      groups: [],
+      metrics: [],
+      condensed: false,
+      limits: { maxNodes: 500, maxEdges: 2000 },
+    };
+
+    const findings = analyzeApplicationChain({ graph });
+    const auth = findings.find(
+      (f) => f.resourceId === "legacy-route-180" && f.control === "authentication",
+    );
+    const authz = findings.find(
+      (f) => f.resourceId === "legacy-route-180" && f.control === "authorization",
+    );
+    expect(auth?.status).toBe("protected");
+    expect(auth?.evidence.length).toBeGreaterThan(0);
+    expect(authz?.status).toBe("protected");
+    expect(authz?.evidence.length).toBeGreaterThan(0);
+  });
 });
