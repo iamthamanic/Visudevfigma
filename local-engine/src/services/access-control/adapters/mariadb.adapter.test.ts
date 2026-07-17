@@ -57,8 +57,7 @@ describe("mariadb.adapter", () => {
       facts: dualFacts,
       resourceIds: ["route-other"],
     });
-    // Global SQL view still applies → partial without repo filter for this route
-    expect(findings[0]?.status).toBe("partial");
+    expect(findings[0]?.status).toBe("unverified");
     expect(findings[0]?.mechanisms.some((m) => m.label === MARIADB_REPO_FILTER_LABEL)).toBe(false);
   });
 
@@ -75,7 +74,7 @@ describe("mariadb.adapter", () => {
           snippet: "CREATE TABLE employees (id INT, tenant_id INT);",
         },
       ],
-      resourceIds: ["route-1"],
+      resourceIds: ["*"],
     });
     expect(findings[0]?.status).toBe("missing");
   });

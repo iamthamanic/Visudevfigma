@@ -22,6 +22,7 @@ import {
   mariadbDatabaseSecurityAdapter,
   mysqlDatabaseSecurityAdapter,
 } from "./adapters/mariadb.adapter.js";
+import { mongodbDatabaseSecurityAdapter } from "./adapters/mongodb.adapter.js";
 
 function createDefaultAdapters(): Map<DatabaseSecurityDialect, DatabaseSecurityAdapter> {
   return new Map<DatabaseSecurityDialect, DatabaseSecurityAdapter>([
@@ -30,6 +31,7 @@ function createDefaultAdapters(): Map<DatabaseSecurityDialect, DatabaseSecurityA
     ["supabase", supabaseDatabaseSecurityAdapter],
     ["mariadb", mariadbDatabaseSecurityAdapter],
     ["mysql", mysqlDatabaseSecurityAdapter],
+    ["mongodb", mongodbDatabaseSecurityAdapter],
   ]);
 }
 

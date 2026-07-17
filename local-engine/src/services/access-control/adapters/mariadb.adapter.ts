@@ -19,7 +19,7 @@ export const MARIADB_REPO_FILTER_LABEL = "Repository Query Filter";
 
 const SECURITY_VIEW_RE =
   /\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:SQL\s+SECURITY\s+\w+\s+)?VIEW\b|\bSQL\s+SECURITY\s+(?:DEFINER|INVOKER)\b/i;
-const GRANT_RE = /\bGRANT\s+\w+/i;
+const GRANT_RE = /\bGRANT\s+(?:SELECT|INSERT|UPDATE|DELETE|ALL|EXECUTE)\b/i;
 const PROCEDURE_RE = /\bCREATE\s+(?:DEFINER\s*=\s*\S+\s+)?(?:PROCEDURE|FUNCTION)\b/i;
 const TENANT_FILTER_RE = /\b(?:tenant_id|org_id|organization_id)\b\s*(?::|=|IN\s*\(|\.equals\()/i;
 
@@ -184,8 +184,15 @@ function factsForResource(
   });
   const tableTokens = new Set<string>();
   for (const f of appFacts) {
-    const base = f.filePath.split("/").pop()?.replace(/\.\w+$/, "") ?? "";
-    const soft = base.replace(/\.repo$/i, "").replace(/-/g, "_").toLowerCase();
+    const base =
+      f.filePath
+        .split("/")
+        .pop()
+        ?.replace(/\.\w+$/, "") ?? "";
+    const soft = base
+      .replace(/\.repo$/i, "")
+      .replace(/-/g, "_")
+      .toLowerCase();
     if (soft.length >= 3) tableTokens.add(soft);
     for (const match of f.snippet.matchAll(
       /\b(?:from|into|update|join|table|view)\s+[`"[]?([a-zA-Z_][\w]*)/gi,
@@ -277,7 +284,7 @@ function createMariadbAdapter(dialect: "mariadb" | "mysql"): DatabaseSecurityAda
   return {
     dialect,
     analyze(input: DatabaseSecurityAdapterInput): AccessControlFinding[] {
-      if (input.dialect !== "mariadb" && input.dialect !== "mysql") return [];
+      if (input.dialect !== dialect) return [];
       const facts = sanitizeFacts(input.facts);
       const resourceIds = sanitizeResourceIds(input.resourceIds);
       return resourceIds.flatMap((id) => {
