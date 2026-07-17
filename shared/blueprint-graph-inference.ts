@@ -216,7 +216,8 @@ export function routeExecutionHasTable(
   if (routeNodeIds.size === 0) return false;
 
   for (const group of graph.groups ?? []) {
-    if (group.kind !== "route" && !String(group.id).startsWith("execution:")) continue;
+    // Only execution pipeline groups — never invent db from unrelated route clusters.
+    if (!String(group.id).startsWith("execution:")) continue;
     const hasRoute = group.nodeIds.some((id) => routeNodeIds.has(id));
     if (!hasRoute) continue;
     if (group.nodeIds.some((id) => nodesById.get(id)?.kind === "table")) return true;
