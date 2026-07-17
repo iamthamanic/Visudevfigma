@@ -66,6 +66,12 @@ export function normalizeBlueprintData(
     analyzedAt: typeof raw.analyzedAt === "string" ? raw.analyzedAt : undefined,
     routes: useLegacyDiagnostics ? legacyRoutes : graphRoutes,
     securityMatrix: useLegacyDiagnostics ? legacySecurityMatrix : graphMatrix,
+    accessControlFindings: Array.isArray(raw.accessControlFindings)
+      ? (raw.accessControlFindings as BlueprintData["accessControlFindings"])
+      : undefined,
+    accessControlMatrix: Array.isArray(raw.accessControlMatrix)
+      ? (raw.accessControlMatrix as BlueprintData["accessControlMatrix"])
+      : undefined,
     findings: useLegacyDiagnostics ? legacyFindings : graphFindings,
     facts: useLegacyDiagnostics ? legacyFacts : graphFacts,
     frameworkHints: sanitizeStringList(raw.frameworkHints),

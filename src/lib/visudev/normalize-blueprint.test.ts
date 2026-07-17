@@ -164,4 +164,45 @@ describe("normalizeBlueprintData", () => {
     expect(normalized.routes?.length).toBe(1);
     expect(normalized.routes?.[0]?.id).toBe("legacy");
   });
+
+  it("preserves accessControlMatrix and accessControlFindings from payloads", () => {
+    const accessControlMatrix = [
+      {
+        routeId: "r1",
+        method: "GET",
+        path: "/api/x",
+        authentication: { status: "protected" as const },
+        authorization: { status: "protected" as const },
+        resourceScope: { status: "partial" as const },
+        tenantIsolation: { status: "missing" as const },
+        ownership: { status: "unverified" as const },
+        validation: { status: "protected" as const },
+        rateLimit: { status: "unverified" as const },
+        audit: { status: "unverified" as const },
+        overallStatus: "missing" as const,
+        findingCount: 1,
+      },
+    ];
+    const accessControlFindings = [
+      {
+        id: "acf-1",
+        resourceId: "r1",
+        resourceKind: "route" as const,
+        control: "tenant-isolation" as const,
+        status: "missing" as const,
+        mechanisms: [],
+        enforcementLayers: ["database" as const],
+        evidence: [],
+        confidence: 80,
+      },
+    ];
+    const normalized = normalizeBlueprintData({
+      routes: [],
+      securityMatrix: [],
+      accessControlMatrix,
+      accessControlFindings,
+    });
+    expect(normalized.accessControlMatrix).toEqual(accessControlMatrix);
+    expect(normalized.accessControlFindings).toEqual(accessControlFindings);
+  });
 });

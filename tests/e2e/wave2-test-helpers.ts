@@ -106,6 +106,23 @@ export function buildWave3DiagnosticsMock(projectId: string) {
     findingCount: index === 0 ? 3 : 1,
   }));
 
+  const cell = (status: "protected" | "missing" | "partial" | "unverified") => ({ status });
+  const accessControlMatrix = routeSpecs.map((spec, index) => ({
+    routeId: spec.id,
+    method: spec.method,
+    path: spec.path,
+    authentication: cell(index % 3 === 0 ? "missing" : "protected"),
+    authorization: cell(index % 4 === 0 ? "partial" : "protected"),
+    resourceScope: cell(index % 2 === 0 ? "partial" : "protected"),
+    tenantIsolation: cell(index === 0 ? "missing" : "protected"),
+    ownership: cell(index % 5 === 0 ? "unverified" : "protected"),
+    validation: cell("protected"),
+    rateLimit: cell(index % 5 === 0 ? "unverified" : "protected"),
+    audit: cell(index % 3 === 1 ? "partial" : "protected"),
+    overallStatus: (index === 0 ? "missing" : "partial") as "missing" | "partial",
+    findingCount: index === 0 ? 3 : 1,
+  }));
+
   const severities = ["critical", "high", "medium", "low"] as const;
   const findings = Array.from({ length: 24 }, (_, index) => {
     const route = routeSpecs[index % routeSpecs.length];
@@ -166,6 +183,7 @@ employees | f`,
     analyzedAt: new Date().toISOString(),
     routes,
     securityMatrix,
+    accessControlMatrix,
     findings,
     facts,
     filesAnalyzed: 1872,

@@ -92,8 +92,56 @@ describe("DiagnosticsView", () => {
     render(<DiagnosticsView blueprint={blueprint} />);
     expect(screen.getByRole("tab", { name: "Security", selected: true })).toBeInTheDocument();
     expect(screen.getByText("Sicherheits-Matrix")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "RLS" })).toBeInTheDocument();
     expect(screen.getAllByText("Auth fehlt auf Route").length).toBeGreaterThan(0);
     expect(screen.getByRole("columnheader", { name: "Schwere" })).toBeInTheDocument();
+  });
+
+  it("renders Access Control v2 columns when flag enabled and matrix present", async () => {
+    vi.resetModules();
+    vi.doMock("../access-control-flag.js", () => ({
+      isAccessControlV2Enabled: () => true,
+    }));
+    const { DiagnosticsView: FlaggedDiagnosticsView } = await import("./DiagnosticsView");
+    const acBlueprint: BlueprintData = {
+      ...blueprint,
+      accessControlMatrix: [
+        {
+          routeId: "route-1",
+          method: "GET",
+          path: "/users",
+          authentication: { status: "missing" },
+          authorization: { status: "unverified" },
+          resourceScope: { status: "partial" },
+          tenantIsolation: { status: "missing" },
+          ownership: { status: "unverified" },
+          validation: { status: "protected" },
+          rateLimit: { status: "unverified" },
+          audit: { status: "unverified" },
+          overallStatus: "missing",
+          findingCount: 1,
+        },
+      ],
+    };
+    render(<FlaggedDiagnosticsView blueprint={acBlueprint} />);
+    expect(screen.getByTestId("security-matrix")).toHaveAttribute("data-access-control-v2", "true");
+    expect(screen.getByRole("columnheader", { name: "Scope" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Tenant" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Ownership" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "RLS" })).not.toBeInTheDocument();
+    vi.doUnmock("../access-control-flag.js");
+  });
+
+  it("falls back to legacy matrix when accessControlMatrix is absent", async () => {
+    vi.resetModules();
+    vi.doMock("../access-control-flag.js", () => ({
+      isAccessControlV2Enabled: () => true,
+    }));
+    const { DiagnosticsView: FlaggedDiagnosticsView } = await import("./DiagnosticsView");
+    render(<FlaggedDiagnosticsView blueprint={blueprint} />);
+    expect(screen.getByRole("columnheader", { name: "RLS" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Tenant" })).not.toBeInTheDocument();
+    vi.doUnmock("../access-control-flag.js");
   });
 
   it("opens Problem-Inspektor with artifacts and SQL evidence when selecting a finding", async () => {

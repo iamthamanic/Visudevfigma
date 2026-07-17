@@ -36,6 +36,18 @@ test.describe("Wave 2 diagnostics viz parity", () => {
     await expect(findingsTable).toBeVisible();
     await expect(page.getByTestId("findings-pagination")).toBeVisible();
 
+    // Access Control v2 (VITE_ACCESS_CONTROL_V2): Scope/Tenant/Ownership replace RLS.
+    // Legacy matrix still accepted when flag off or accessControlMatrix absent.
+    const isAccessControlV2 = (await matrix.getAttribute("data-access-control-v2")) === "true";
+    if (isAccessControlV2) {
+      await expect(matrix.getByRole("columnheader", { name: "Scope" })).toBeVisible();
+      await expect(matrix.getByRole("columnheader", { name: "Tenant" })).toBeVisible();
+      await expect(matrix.getByRole("columnheader", { name: "Ownership" })).toBeVisible();
+      await expect(matrix.getByRole("columnheader", { name: "RLS" })).toHaveCount(0);
+    } else {
+      await expect(matrix.getByRole("columnheader", { name: "RLS" })).toBeVisible();
+    }
+
     const matrixBox = await matrix.boundingBox();
     const tableBox = await findingsTable.boundingBox();
     expect(matrixBox).not.toBeNull();

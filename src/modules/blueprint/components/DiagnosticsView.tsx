@@ -5,6 +5,8 @@
 import { useMemo, useState } from "react";
 import { RouteBlueprintCanvas } from "./RouteBlueprintCanvas";
 import { SecurityMatrix } from "./SecurityMatrix";
+import { AccessControlMatrix } from "./AccessControlMatrix";
+import { isAccessControlV2Enabled } from "../access-control-flag.js";
 import { useDiagnosticsSelection } from "./useDiagnosticsSelection";
 import { useDiagnosticsFindingResolution } from "./useDiagnosticsFindingResolution";
 import { BlueprintViewLayout } from "./ui/BlueprintViewLayout.js";
@@ -56,6 +58,9 @@ export function DiagnosticsView({ blueprint }: DiagnosticsViewProps) {
     return matrix.find((row) => row.routeId === selectedFinding.scopeId) ?? selectedMatrixRow;
   }, [matrix, selectedFinding, selectedMatrixRow]);
 
+  const accessControlRows = blueprint.accessControlMatrix ?? [];
+  const useAccessControlV2 = isAccessControlV2Enabled() && accessControlRows.length > 0;
+
   return (
     <div className={styles.root}>
       <DiagnosticsSubTabs activeTab={activeTab} onSelectTab={setActiveTab} />
@@ -66,11 +71,19 @@ export function DiagnosticsView({ blueprint }: DiagnosticsViewProps) {
             <div className={styles.securityCanvas}>
               <section aria-labelledby="matrix-title">
                 <ViewSectionTitle>Sicherheits-Matrix</ViewSectionTitle>
-                <SecurityMatrix
-                  rows={matrix}
-                  selectedRouteId={selectedRouteId}
-                  onSelectRoute={selectRoute}
-                />
+                {useAccessControlV2 ? (
+                  <AccessControlMatrix
+                    rows={accessControlRows}
+                    selectedRouteId={selectedRouteId}
+                    onSelectRoute={selectRoute}
+                  />
+                ) : (
+                  <SecurityMatrix
+                    rows={matrix}
+                    selectedRouteId={selectedRouteId}
+                    onSelectRoute={selectRoute}
+                  />
+                )}
               </section>
               <section aria-label="Findings" className={styles.findingsSection}>
                 <DiagnosticsFindingsTable
