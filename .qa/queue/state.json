@@ -1,23 +1,23 @@
 {
   "version": 2,
   "repo": "iamthamanic/visudev-app",
-  "activeIssue": 135,
-  "featureSlug": "db-security-adapter-registry",
-  "phase": "commit",
-  "branch": "issue/135-db-security-adapter-registry",
+  "activeIssue": 136,
+  "featureSlug": "postgres-security-adapter",
+  "phase": "implement",
+  "branch": "issue/136-postgres-security-adapter",
   "prUrl": null,
   "milestoneFilter": "blueprint-access-control",
   "paused": false,
   "runMode": "loop",
-  "queue": [135, 136, 137, 138, 139, 142, 140, 141],
+  "queue": [136, 137, 138, 139, 142, 140, 141],
   "completedIssues": [
     67, 68, 69, 70, 71, 72, 73, 74, 75, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 105, 106, 107, 108,
-    109, 110, 111, 112, 113, 123, 124, 125, 126, 127, 128, 129, 130, 133, 134, 149, 150, 151, 152,
-    153, 154, 195, 196, 197, 198, 203, 204, 205, 209, 210, 213
+    109, 110, 111, 112, 113, 123, 124, 125, 126, 127, 128, 129, 130, 133, 134, 135, 149, 150, 151,
+    152, 153, 154, 195, 196, 197, 198, 203, 204, 205, 209, 210, 213
   ],
   "mergedIssues": [
     105, 106, 107, 108, 109, 110, 111, 112, 113, 123, 124, 125, 126, 127, 128, 129, 130, 133, 134,
-    149, 150, 151, 152, 153, 154, 195, 196, 197, 198, 203, 204, 205, 209, 210, 213
+    135, 149, 150, 151, 152, 153, 154, 195, 196, 197, 198, 203, 204, 205, 209, 210, 213
   ],
   "prUrls": {
     "195": "https://github.com/iamthamanic/visudev-app/pull/199",
@@ -31,7 +31,8 @@
     "210": "https://github.com/iamthamanic/visudev-app/pull/212",
     "213": "https://github.com/iamthamanic/visudev-app/pull/214",
     "133": "https://github.com/iamthamanic/visudev-app/pull/217",
-    "134": "https://github.com/iamthamanic/visudev-app/pull/218"
+    "134": "https://github.com/iamthamanic/visudev-app/pull/218",
+    "135": "https://github.com/iamthamanic/visudev-app/pull/219"
   },
   "retries": {
     "implement": 0,
@@ -48,9 +49,9 @@
   },
   "lastError": null,
   "lastErrorCount": 0,
-  "issuesProcessedInSession": 2,
-  "updatedAt": "2026-07-17T09:00:47.000Z",
-  "notes": "loop: blueprint-access-control — #133–#134 merged",
-  "currentIssue": 135,
-  "lastCompletedIssue": 134
+  "issuesProcessedInSession": 3,
+  "updatedAt": "2026-07-17T09:05:02.000Z",
+  "notes": "loop continue: #136–#141",
+  "currentIssue": 136,
+  "lastCompletedIssue": 135
 }

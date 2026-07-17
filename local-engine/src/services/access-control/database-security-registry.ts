@@ -14,11 +14,16 @@ import type {
 } from "../../../../shared/access-control.types.js";
 import type { ResolvedDatabaseConfig } from "../../lib/resolve-database-config.js";
 import { unknownDatabaseSecurityAdapter } from "./adapters/unknown.adapter.js";
+import {
+  postgresDatabaseSecurityAdapter,
+  supabaseDatabaseSecurityAdapter,
+} from "./adapters/postgres.adapter.js";
 
 function createDefaultAdapters(): Map<DatabaseSecurityDialect, DatabaseSecurityAdapter> {
   return new Map<DatabaseSecurityDialect, DatabaseSecurityAdapter>([
     ["unknown", unknownDatabaseSecurityAdapter],
-    // Concrete adapters land in later issues (#136 postgres, #140 mariadb, #141 mongodb).
+    ["postgres", postgresDatabaseSecurityAdapter],
+    ["supabase", supabaseDatabaseSecurityAdapter],
   ]);
 }
 
