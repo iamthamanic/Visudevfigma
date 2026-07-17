@@ -315,6 +315,41 @@ describe("buildSoftwareGraph", () => {
     ).toBe(true);
   });
 
+  it("promotes all Prisma schema models to table nodes before route flood (P2-1)", () => {
+    const modelNames = Array.from({ length: 40 }, (_, i) =>
+      i === 35 ? "LeaveRequest" : `Model${i}`,
+    );
+    const prismaFacts = modelNames.map((table, i) => ({
+      id: `fact:prisma:${table}`,
+      kind: "db-write" as const,
+      filePath: "prisma/schema.prisma",
+      line: i + 1,
+      snippet: `model ${table} { id String }`,
+      metadata: { table, operation: "prisma-model", framework: "prisma" },
+    }));
+    const routes = Array.from({ length: 200 }, (_, i) => ({
+      id: `GET /api/r${i}`,
+      method: "GET",
+      path: `/api/r${i}`,
+      filePath: `app/modules/m${i % 50}/routes-${i}.ts`,
+      line: 1,
+    }));
+
+    const graph = buildSoftwareGraph(
+      makeScan({
+        filesAnalyzed: 250,
+        routes,
+        facts: prismaFacts,
+      }),
+    );
+
+    const tableLabels = graph.nodes.filter((n) => n.kind === "table").map((n) => n.label);
+    expect(tableLabels.length).toBe(40);
+    expect(tableLabels).toContain("LeaveRequest");
+    expect(tableLabels).toContain("Model0");
+    expect(tableLabels).toContain("Model39");
+  });
+
   it("emits honest non-http execution group when no routes exist", () => {
     const scan = makeScan({
       filesAnalyzed: 1,
