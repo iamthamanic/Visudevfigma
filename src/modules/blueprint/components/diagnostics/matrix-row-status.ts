@@ -19,7 +19,7 @@ function collectStates(row: SecurityMatrixRow): MatrixCellState[] {
     row.validation.state,
     row.rateLimit.state,
     row.db.state,
-    row.rls.state,
+    // rls deprecated as matrix column — ignored for overall badge
     row.audit.state,
   ];
 }

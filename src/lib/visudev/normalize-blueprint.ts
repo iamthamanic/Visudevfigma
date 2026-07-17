@@ -3,6 +3,7 @@
  * Location: src/lib/visudev/normalize-blueprint.ts
  */
 
+import { synthesizeSecurityMatrixFromAccessControl } from "../../../shared/synthesize-security-matrix.js";
 import type { BlueprintData } from "./blueprint-types";
 import {
   sanitizeAccessControlFindings,
@@ -60,6 +61,20 @@ export function normalizeBlueprintData(
     graphRoutes.length + graphMatrix.length + graphFindings.length + graphFacts.length;
   const useLegacyDiagnostics = !graph || legacyDiagnosticsScore > graphDiagnosticsScore;
 
+  const accessControlMatrix = (() => {
+    const matrix = sanitizeAccessControlMatrix(raw.accessControlMatrix);
+    return matrix.length > 0 ? matrix : undefined;
+  })();
+  const accessControlFindings = (() => {
+    const findings = sanitizeAccessControlFindings(raw.accessControlFindings);
+    return findings.length > 0 ? findings : undefined;
+  })();
+
+  let securityMatrix = useLegacyDiagnostics ? legacySecurityMatrix : graphMatrix;
+  if (securityMatrix.length === 0 && accessControlMatrix) {
+    securityMatrix = synthesizeSecurityMatrixFromAccessControl(accessControlMatrix);
+  }
+
   return {
     version: raw.version === 1 ? 1 : 1,
     projectId: typeof raw.projectId === "string" ? raw.projectId : undefined,
@@ -67,15 +82,9 @@ export function normalizeBlueprintData(
     commitSha: typeof raw.commitSha === "string" ? raw.commitSha : undefined,
     analyzedAt: typeof raw.analyzedAt === "string" ? raw.analyzedAt : undefined,
     routes: useLegacyDiagnostics ? legacyRoutes : graphRoutes,
-    securityMatrix: useLegacyDiagnostics ? legacySecurityMatrix : graphMatrix,
-    accessControlFindings: (() => {
-      const findings = sanitizeAccessControlFindings(raw.accessControlFindings);
-      return findings.length > 0 ? findings : undefined;
-    })(),
-    accessControlMatrix: (() => {
-      const matrix = sanitizeAccessControlMatrix(raw.accessControlMatrix);
-      return matrix.length > 0 ? matrix : undefined;
-    })(),
+    securityMatrix,
+    accessControlFindings,
+    accessControlMatrix,
     findings: useLegacyDiagnostics ? legacyFindings : graphFindings,
     facts: useLegacyDiagnostics ? legacyFacts : graphFacts,
     frameworkHints: sanitizeStringList(raw.frameworkHints),

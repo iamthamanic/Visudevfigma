@@ -92,7 +92,8 @@ describe("DiagnosticsView", () => {
     render(<DiagnosticsView blueprint={blueprint} />);
     expect(screen.getByRole("tab", { name: "Security", selected: true })).toBeInTheDocument();
     expect(screen.getByText("Sicherheits-Matrix")).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "RLS" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "RLS" })).not.toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "DB" })).toBeInTheDocument();
     expect(screen.getAllByText("Auth fehlt auf Route").length).toBeGreaterThan(0);
     expect(screen.getByRole("columnheader", { name: "Schwere" })).toBeInTheDocument();
   });
@@ -164,7 +165,8 @@ describe("DiagnosticsView", () => {
     }));
     const { DiagnosticsView: FlaggedDiagnosticsView } = await import("./DiagnosticsView");
     render(<FlaggedDiagnosticsView blueprint={blueprint} />);
-    expect(screen.getByRole("columnheader", { name: "RLS" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "RLS" })).not.toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "DB" })).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Tenant" })).not.toBeInTheDocument();
     vi.doUnmock("../access-control-flag.js");
   });

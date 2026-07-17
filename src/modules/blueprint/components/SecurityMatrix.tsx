@@ -32,7 +32,6 @@ export function SecurityMatrix({ rows, selectedRouteId, onSelectRoute }: Securit
             <th>Validation</th>
             <th>Rate Limit</th>
             <th>DB</th>
-            <th>RLS</th>
             <th>Audit</th>
             <th>Findings</th>
             <th>Status</th>
@@ -67,7 +66,6 @@ export function SecurityMatrix({ rows, selectedRouteId, onSelectRoute }: Securit
                   {cellSymbol(row.rateLimit.state)}
                 </td>
                 <td className={stateClass(row.db.state)}>{cellSymbol(row.db.state)}</td>
-                <td className={stateClass(row.rls.state)}>{cellSymbol(row.rls.state)}</td>
                 <td className={stateClass(row.audit.state)}>{cellSymbol(row.audit.state)}</td>
                 <td>{row.findingCount}</td>
                 <td>

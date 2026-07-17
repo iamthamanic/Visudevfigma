@@ -10,6 +10,7 @@ export {
   deriveSecurityMatrixFromGraph,
 } from "./blueprint-graph-projections.js";
 
+export { synthesizeSecurityMatrixFromAccessControl } from "./synthesize-security-matrix.js";
 export { deriveAccessControlMatrixFromFindings } from "./access-control-matrix.js";
 export type {
   AccessControlControl,
