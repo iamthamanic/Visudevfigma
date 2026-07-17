@@ -4,7 +4,7 @@
  */
 
 import { createId } from "./_ids.js";
-import { addEdge, type GraphBuilderState } from "./_state.js";
+import { addEdgePrefer, type GraphBuilderState } from "./_state.js";
 
 function isLeaveSurface(text: string): boolean {
   const normalized = String(text || "")
@@ -107,7 +107,8 @@ export function ensureLeaveRouteDataEdges(
     if (!fileId || !state.nodes.has(fileId)) continue;
 
     for (const table of tablesForRoute(routeNode, leaveTables)) {
-      addEdge(state, {
+      // Prefer past node-cap condensation so matrix/execution share the same edge.
+      addEdgePrefer(state, {
         id: createId("edge", fileId, table.id, "data", "leave"),
         kind: "data",
         sourceId: fileId,

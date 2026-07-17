@@ -72,6 +72,21 @@ export function addEdge(state: GraphBuilderState, edge: SoftwareGraphEdge): void
   state.edgeCount += 1;
 }
 
+/**
+ * Prefer critical edges (e.g. leave→LeaveRequest) even when node-cap set `condensed`.
+ * Still respects maxEdges and skips duplicates.
+ */
+export function addEdgePrefer(state: GraphBuilderState, edge: SoftwareGraphEdge): void {
+  state.attemptedEdges += 1;
+  if (state.edges.has(edge.id)) return;
+  if (state.edgeCount >= DEFAULT_LIMITS.maxEdges) {
+    state.condensed = true;
+    return;
+  }
+  state.edges.set(edge.id, edge);
+  state.edgeCount += 1;
+}
+
 export function addScope(state: GraphBuilderState, scope: SoftwareGraphScope): void {
   if (!state.scopes.has(scope.id)) {
     state.scopes.set(scope.id, scope);

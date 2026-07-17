@@ -196,10 +196,38 @@ function preferConfirmed(a: MatrixState, b: MatrixState): MatrixState {
   return a !== "unknown" && a !== "n/a" ? a : b;
 }
 
+/** True when an execution group for this route includes a confirmed table node. */
+export function routeExecutionHasTable(
+  graph: SoftwareGraph,
+  route: { id: string; filePath: string; line: number },
+  nodeById?: Map<string, SoftwareGraph["nodes"][number]>,
+): boolean {
+  const nodesById = nodeById ?? new Map(graph.nodes.map((node) => [node.id, node] as const));
+  const routeNodeIds = new Set(
+    graph.nodes
+      .filter((node) => {
+        if (node.kind !== "route") return false;
+        if (node.filePath !== route.filePath) return false;
+        const metaId = typeof node.metadata.routeId === "string" ? node.metadata.routeId : "";
+        return node.id === route.id || metaId === route.id || node.line === route.line;
+      })
+      .map((node) => node.id),
+  );
+  if (routeNodeIds.size === 0) return false;
+
+  for (const group of graph.groups ?? []) {
+    if (group.kind !== "route" && !String(group.id).startsWith("execution:")) continue;
+    const hasRoute = group.nodeIds.some((id) => routeNodeIds.has(id));
+    if (!hasRoute) continue;
+    if (group.nodeIds.some((id) => nodesById.get(id)?.kind === "table")) return true;
+  }
+  return false;
+}
+
 /** Outgoing control/data edges scoped to a route via evidence line ownership. */
 export function collectRouteEdgeSignals(
   graph: SoftwareGraph,
-  route: { filePath: string; line: number },
+  route: { id?: string; filePath: string; line: number },
   siblingRoutes: Array<{ filePath: string; line: number }> = [],
   nodeById?: Map<string, SoftwareGraph["nodes"][number]>,
 ): { hasAuth: boolean; hasValidation: boolean; hasDb: boolean } {
@@ -247,6 +275,8 @@ export function collectRouteEdgeSignals(
       Boolean(sourcePath) &&
       dirnameOfFile(sourcePath) === routeDir &&
       /\.(service|repository|repo)\.[jt]sx?$/i.test(sourcePath);
+    const leaveRouteDbFact =
+      edge.kind === "data" && fromRouteFile && edge.metadata?.reason === "leave-route-db-fact";
 
     if (!fromRouteFile && !sameModuleData) continue;
 
@@ -255,8 +285,8 @@ export function collectRouteEdgeSignals(
     const evidence = evidenceFactId ? evidenceByFactId.get(evidenceFactId) : undefined;
 
     let applies = false;
-    if (sameModuleData) {
-      // Shared module service DB facts apply to all routes in the module file.
+    if (sameModuleData || leaveRouteDbFact) {
+      // Shared module service DB / leave→LeaveRequest edges apply to routes in the file.
       applies = true;
     } else if (routesInFile <= 1) {
       applies = true;
@@ -269,6 +299,19 @@ export function collectRouteEdgeSignals(
     else if (edge.kind === "validates") hasValidation = true;
     else if (edge.kind === "data") hasDb = true;
   }
+
+  if (
+    !hasDb &&
+    route.id &&
+    routeExecutionHasTable(
+      graph,
+      { id: route.id, filePath: route.filePath, line: route.line },
+      nodesById,
+    )
+  ) {
+    hasDb = true;
+  }
+
   return { hasAuth, hasValidation, hasDb };
 }
 
@@ -305,7 +348,12 @@ export function inferRouteStates(
     );
 
     const edgeSignals = graph
-      ? collectRouteEdgeSignals(graph, route, siblingRoutes, nodeById)
+      ? collectRouteEdgeSignals(
+          graph,
+          { id: route.id, filePath: route.filePath, line: route.line },
+          siblingRoutes,
+          nodeById,
+        )
       : { hasAuth: false, hasValidation: false, hasDb: false };
 
     const auth = preferConfirmed(

@@ -1,16 +1,17 @@
 {
   "version": 2,
   "repo": "iamthamanic/visudev-app",
-  "activeIssue": 205,
-  "featureSlug": "gapclose-p2-meteor-method-label",
+  "activeIssue": 209,
+  "featureSlug": "gapclose-p3-leave-matrix-db",
   "phase": "implement",
-  "branch": "fix/gapclose-p2-205-meteor-method-label",
+  "branch": "fix/gapclose-p3-leave-matrix-db",
   "prUrl": null,
-  "milestoneFilter": "visudev-gapclose-p2",
+  "milestoneFilter": "visudev-gapclose-p3",
   "paused": false,
   "runMode": "loop",
   "queue": [
-    205
+    209,
+    210
   ],
   "completedIssues": [
     67,
@@ -60,7 +61,8 @@
     197,
     198,
     203,
-    204
+    204,
+    205
   ],
   "mergedIssues": [
     105,
@@ -91,7 +93,8 @@
     197,
     198,
     203,
-    204
+    204,
+    205
   ],
   "prUrls": {
     "195": "https://github.com/iamthamanic/visudev-app/pull/199",
@@ -99,7 +102,8 @@
     "197": "https://github.com/iamthamanic/visudev-app/pull/201",
     "198": "https://github.com/iamthamanic/visudev-app/pull/202",
     "203": "https://github.com/iamthamanic/visudev-app/pull/206",
-    "204": "https://github.com/iamthamanic/visudev-app/pull/207"
+    "204": "https://github.com/iamthamanic/visudev-app/pull/207",
+    "205": "https://github.com/iamthamanic/visudev-app/pull/208"
   },
   "retries": {
     "implement": 0,
@@ -116,9 +120,9 @@
   },
   "lastError": null,
   "lastErrorCount": 0,
-  "issuesProcessedInSession": 4,
-  "updatedAt": "2026-07-17T00:13:49.000Z",
-  "notes": "loop: #203 merged PR #206; next #204/#205",
-  "currentIssue": 205,
-  "lastCompletedIssue": 204
+  "issuesProcessedInSession": 0,
+  "updatedAt": "2026-07-17T07:40:00.000Z",
+  "notes": "loop p3: implementing #209 leave-matrix-db",
+  "currentIssue": 209,
+  "lastCompletedIssue": 205
 }
