@@ -39,6 +39,9 @@
       evidence: "Belege (technisch)",
       screenshots: "Screenshots",
       back: "Zurück zur Timeline",
+      timelineHint: "Links = neueste Änderung · nach rechts scrollen für ältere",
+      timelineNewest: "Jetzt",
+      timelineOldest: "Anfang",
       loadError: "Daten konnten nicht geladen werden. Bitte data/*.json prüfen.",
       decisionsEmpty: "Noch keine Entscheidungen erfasst.",
       architecture: "Architektur",
@@ -75,6 +78,9 @@
       evidence: "Evidence (technical)",
       screenshots: "Screenshots",
       back: "Back to timeline",
+      timelineHint: "Left = newest change · scroll right for older",
+      timelineNewest: "Now",
+      timelineOldest: "Start",
       loadError: "Could not load data. Check data/*.json.",
       decisionsEmpty: "No decisions recorded yet.",
       architecture: "Architecture",
@@ -110,12 +116,12 @@
     return obj[state.lang] || obj.en || obj.de || [];
   }
 
-  /** Display dates as MM.DD.YYYY (ISO YYYY-MM-DD stays in data for sorting). */
+  /** Display dates as DD.MM.YYYY (ISO YYYY-MM-DD stays in data for sorting). */
   function formatDate(value) {
     if (!value) return "";
     const s = String(value).trim();
     const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (m) return `${m[2]}.${m[3]}.${m[1]}`;
+    if (m) return `${m[3]}.${m[2]}.${m[1]}`;
     const m2 = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
     if (m2) return s;
     return s;
@@ -421,21 +427,43 @@
       });
       return;
     }
+    // Newest first (left). state.changes already sorted date desc on load.
+    const items = state.changes;
+    if (!items.length) {
+      el.innerHTML = reviewHelpCard() + `<p class="muted">${t("empty")}</p>`;
+      return;
+    }
     el.innerHTML =
       reviewHelpCard() +
-      `<ul class="list">${state.changes
-        .map((c) => {
-          const teaser = bi(c.plain_language) || bi(c.summary);
-          return `
-      <li><button type="button" class="linkish" data-id="${escapeAttr(c.id)}">
-        <strong>${escapeHtml(formatDate(c.date))}</strong> · ${escapeHtml(bi(c.title) || c.id)}
-        <div class="meta">${reviewPill(c.review_status)} <span class="pill">${escapeHtml(c.type || "")}</span>
-          ${(c.packages || []).map((p) => `<span class="pill">${escapeHtml(p)}</span>`).join("")}
+      `<p class="timeline-hint muted">${escapeHtml(t("timelineHint"))}</p>
+      <div class="timeline-scroll" role="region" aria-label="Changes timeline">
+        <div class="timeline-rail">
+          <span class="timeline-end newest">${escapeHtml(t("timelineNewest"))}</span>
+          <ol class="timeline">
+            ${items
+              .map((c, i) => {
+                const teaser = bi(c.plain_language) || bi(c.summary);
+                return `
+              <li class="timeline-item">
+                <button type="button" class="timeline-node" data-id="${escapeAttr(c.id)}">
+                  <span class="timeline-dot" aria-hidden="true"></span>
+                  <time class="timeline-date" datetime="${escapeAttr(c.date || "")}">${escapeHtml(
+                    formatDate(c.date),
+                  )}</time>
+                  <strong class="timeline-title">${escapeHtml(bi(c.title) || c.id)}</strong>
+                  <div class="timeline-meta">${reviewPill(c.review_status)}
+                    <span class="pill">${escapeHtml(c.type || "")}</span>
+                  </div>
+                  <p class="timeline-teaser muted">${escapeHtml(teaser)}</p>
+                </button>
+                ${i < items.length - 1 ? `<span class="timeline-connector" aria-hidden="true"></span>` : ""}
+              </li>`;
+              })
+              .join("")}
+          </ol>
+          <span class="timeline-end oldest">${escapeHtml(t("timelineOldest"))}</span>
         </div>
-        <p class="muted">${escapeHtml(teaser)}</p>
-      </button></li>`;
-        })
-        .join("")}</ul>`;
+      </div>`;
     el.querySelectorAll("button[data-id]").forEach((btn) => {
       btn.addEventListener("click", () => {
         state.selectedChangeId = btn.getAttribute("data-id");

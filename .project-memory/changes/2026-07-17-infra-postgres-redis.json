@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "status": "recorded",
+  "packages": [
+    "src",
+    "local-engine"
+  ],
+  "breaking_changes": [],
+  "migration_required": false,
+  "screenshots": [],
+  "confidence": 0.8,
+  "review_status": "needs-review",
+  "operational_impact": {
+    "de": [],
+    "en": []
+  },
+  "id": "2026-07-17-infra-postgres-redis",
+  "date": "2026-07-17",
+  "type": "feature",
+  "title": {
+    "de": "Infra: Postgres/Redis aus Compose + Prisma",
+    "en": "Infra: Postgres/Redis from compose + Prisma"
+  },
+  "summary": {
+    "de": "Infrastructure-View erkennt Postgres/Redis aus docker-compose und Prisma-Datasource; Metadaten bleiben an Nodes erhalten.",
+    "en": "Infrastructure view detects Postgres/Redis from docker-compose and Prisma datasource; node metadata preserved."
+  },
+  "plain_language": {
+    "de": "Die Infrastruktur-Karte zeigt echte Dienste (Datenbank, Cache), die im Projekt konfiguriert sind — nicht nur generische Kästchen.",
+    "en": "The infrastructure map shows real services (database, cache) configured in the project — not only generic boxes."
+  },
+  "why_it_matters": {
+    "de": "Deployment- und Datenfragen brauchen sichtbare Infra, nicht nur Routen.",
+    "en": "Deploy and data questions need visible infra, not only routes."
+  },
+  "user_impact": {
+    "de": [
+      "Postgres/Redis-Knoten in Infrastructure"
+    ],
+    "en": [
+      "Postgres/Redis nodes in Infrastructure"
+    ]
+  },
+  "developer_impact": {
+    "de": [
+      "compose + Prisma infra extraction"
+    ],
+    "en": [
+      "compose + Prisma infra extraction"
+    ]
+  },
+  "security_relevant": false,
+  "git": {
+    "base": "a874b4b2",
+    "head": "68a0f5c7",
+    "branch": "main",
+    "pull_request": null
+  },
+  "affected_features": [
+    "blueprint-views",
+    "local-engine"
+  ],
+  "affected_components": [
+    "local-engine",
+    "src/modules/blueprint"
+  ],
+  "evidence": [
+    {
+      "kind": "commit",
+      "path": "a874b4b2"
+    },
+    {
+      "kind": "commit",
+      "path": "68a0f5c7"
+    }
+  ]
+}

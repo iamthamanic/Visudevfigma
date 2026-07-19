@@ -31,7 +31,13 @@
     "2026-07-19-bootstrap",
     "2026-07-07-blueprint-engine-mvp",
     "2026-07-14-blueprint-multiview",
-    "2026-07-15-wave2-viz-parity"
+    "2026-07-15-wave2-viz-parity",
+    "2026-07-14-blueprint-shell-rebuild",
+    "2026-07-15-wave3-shell-viz",
+    "2026-07-16-softort-analyzer-honesty",
+    "2026-07-16-wave5-view-polish",
+    "2026-07-17-meteor-mongo-extractors",
+    "2026-07-17-infra-postgres-redis"
   ],
   "review_status": "needs-review",
   "confidence": 0.7,

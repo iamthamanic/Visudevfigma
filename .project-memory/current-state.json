@@ -4,8 +4,8 @@
   "commit": "42d12fe7391ff2dad2c284b947ef4b5da747be63",
   "branch": "main",
   "product_status": {
-    "de": "VisuDEV seit 01.2026: von Figma-Make-UI über Live App Flow und gesicherte Edge-APIs bis Blueprint Multi-View und stack-agnostisches Access Control. Living Memory auf GitHub Pages.",
-    "en": "VisuDEV since 01.2026: from Figma Make UI through live App Flow and hardened Edge APIs to Blueprint multi-view and stack-agnostic access control. Living memory on GitHub Pages."
+    "de": "VisuDEV seit 01.2026: Figma-Make → Live App Flow → gesicherte APIs → Blueprint Multi-View inkl. Shell-/Wave-Umbauten, Softort-Ehrlichkeit, Meteor/Infra-Extractors und stack-agnostischem Access Control. Living Memory auf GitHub Pages.",
+    "en": "VisuDEV since 01.2026: Figma Make → live App Flow → hardened APIs → Blueprint multi-view including shell/wave rebuilds, Softort honesty, Meteor/infra extractors, and stack-agnostic access control. Living memory on GitHub Pages."
   },
   "active_focus": {
     "de": [
@@ -21,12 +21,12 @@
   },
   "known_gaps": {
     "de": [
-      "Nicht jeder Commit ist als Change-Event erfasst — Meilensteine seit 01.2026 sind nachgezogen",
+      "Juli-Umbau-Eras (Shell, Softort, Wave 3/5, Extractors) nachgezogen — Einzelfixes nicht alle als Events",
       "Screenshots im Memory-Viewer fehlen noch",
       "Viele Einträge noch needs-review"
     ],
     "en": [
-      "Not every commit is a change event — milestones since 01.2026 are backfilled",
+      "July rebuild eras (shell, Softort, Wave 3/5, extractors) backfilled — not every fix is its own event",
       "Memory viewer screenshots still missing",
       "Many entries still needs-review"
     ]

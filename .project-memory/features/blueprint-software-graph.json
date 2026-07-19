@@ -29,7 +29,9 @@
   "related_changes": [
     "2026-07-19-bootstrap",
     "2026-07-08-local-first-graph",
-    "2026-07-14-blueprint-multiview"
+    "2026-07-14-blueprint-multiview",
+    "2026-07-16-softort-analyzer-honesty",
+    "2026-07-17-meteor-mongo-extractors"
   ],
   "review_status": "needs-review",
   "confidence": 0.65,

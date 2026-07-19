@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "status": "recorded",
+  "packages": [
+    "src",
+    "local-engine"
+  ],
+  "breaking_changes": [],
+  "migration_required": false,
+  "screenshots": [],
+  "confidence": 0.8,
+  "review_status": "needs-review",
+  "operational_impact": {
+    "de": [],
+    "en": []
+  },
+  "id": "2026-07-16-softort-analyzer-honesty",
+  "date": "2026-07-16",
+  "type": "architecture",
+  "title": {
+    "de": "Softort: ehrlichere Analyzer-Abdeckung",
+    "en": "Softort: more honest analyzer coverage"
+  },
+  "summary": {
+    "de": "Analyzer-Coverage für Django/Prisma/Monorepo; Architecture/Infra zeigen ehrlicher, was wirklich erkannt wurde; Soft-Cap-Ranking bevorzugt App-Code.",
+    "en": "Analyzer coverage for Django/Prisma/monorepo; architecture/infra more honestly show what was detected; soft-cap ranking prefers app code."
+  },
+  "plain_language": {
+    "de": "VisuDEV lügt weniger über die Analyse: Was nicht sicher erkannt ist, wird nicht als fertige Architektur verkauft. App-Code zählt mehr als Spec-Dateien.",
+    "en": "VisuDEV lies less about analysis: uncertain detections are not sold as finished architecture. App code ranks above spec files."
+  },
+  "why_it_matters": {
+    "de": "Vertrauen in Blueprint hängt davon ab, dass leere oder falsche Graphen nicht als Wahrheit wirken.",
+    "en": "Trust in Blueprint depends on empty or wrong graphs not looking like truth."
+  },
+  "user_impact": {
+    "de": [
+      "Glaubwürdigere Architecture/Infra-Views",
+      "Bessere Treffer bei Django/Prisma-Projekten"
+    ],
+    "en": [
+      "More credible architecture/infra views",
+      "Better hits on Django/Prisma projects"
+    ]
+  },
+  "developer_impact": {
+    "de": [
+      "softort / soft-cap ranking",
+      "monorepo + Prisma coverage"
+    ],
+    "en": [
+      "softort / soft-cap ranking",
+      "monorepo + Prisma coverage"
+    ]
+  },
+  "security_relevant": false,
+  "git": {
+    "base": "5ee4a404",
+    "head": "7be57a9c",
+    "branch": "main",
+    "pull_request": null
+  },
+  "affected_features": [
+    "blueprint-software-graph",
+    "local-engine",
+    "blueprint-views"
+  ],
+  "affected_components": [
+    "local-engine",
+    "shared"
+  ],
+  "evidence": [
+    {
+      "kind": "commit",
+      "path": "5ee4a404"
+    },
+    {
+      "kind": "commit",
+      "path": "7be57a9c"
+    }
+  ]
+}

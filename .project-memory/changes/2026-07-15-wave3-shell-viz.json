@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "status": "recorded",
+  "packages": [
+    "src",
+    "local-engine"
+  ],
+  "breaking_changes": [],
+  "migration_required": false,
+  "screenshots": [],
+  "confidence": 0.8,
+  "review_status": "needs-review",
+  "operational_impact": {
+    "de": [],
+    "en": []
+  },
+  "id": "2026-07-15-wave3-shell-viz",
+  "date": "2026-07-15",
+  "type": "feature",
+  "title": {
+    "de": "Wave 3: Shell & Viz-Parity",
+    "en": "Wave 3: shell & viz parity"
+  },
+  "summary": {
+    "de": "Wave-3-UI: Auto-Select, Execution/Atlas/Diagnostics-Parity; Runner-Badges auf Blueprint-Views ausgeblendet.",
+    "en": "Wave 3 UI: auto-select, execution/atlas/diagnostics parity; runner badges hidden on Blueprint views."
+  },
+  "plain_language": {
+    "de": "Die Blueprint-Oberfläche wird dichter und konsistenter: Views fühlen sich wie ein Set an, nicht wie einzelne Prototypen.",
+    "en": "The Blueprint UI gets denser and more consistent: views feel like one set, not separate prototypes."
+  },
+  "why_it_matters": {
+    "de": "Schließt die Lücke zwischen Design-Zielbild und dem, was man im Produkt sieht.",
+    "en": "Closes the gap between design targets and what you see in the product."
+  },
+  "user_impact": {
+    "de": [
+      "Stabilere View-Umschaltung",
+      "Reichere Execution/Atlas/Diagnostics"
+    ],
+    "en": [
+      "More stable view switching",
+      "Richer execution/atlas/diagnostics"
+    ]
+  },
+  "developer_impact": {
+    "de": [
+      "Wave 3 viz parity",
+      "shell runner badge rules"
+    ],
+    "en": [
+      "Wave 3 viz parity",
+      "shell runner badge rules"
+    ]
+  },
+  "security_relevant": false,
+  "git": {
+    "base": "ba5604c8",
+    "head": "e4dd0f74",
+    "branch": "main",
+    "pull_request": "https://github.com/iamthamanic/visudev-app/pull/155"
+  },
+  "affected_features": [
+    "blueprint-views"
+  ],
+  "affected_components": [
+    "src/modules/blueprint",
+    "src/modules/shell"
+  ],
+  "evidence": [
+    {
+      "kind": "pr",
+      "url": "https://github.com/iamthamanic/visudev-app/pull/155"
+    },
+    {
+      "kind": "commit",
+      "path": "ba5604c8"
+    }
+  ]
+}

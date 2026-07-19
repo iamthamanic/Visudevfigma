@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "status": "recorded",
+  "packages": [
+    "src",
+    "local-engine"
+  ],
+  "breaking_changes": [],
+  "migration_required": false,
+  "screenshots": [],
+  "confidence": 0.8,
+  "review_status": "needs-review",
+  "operational_impact": {
+    "de": [],
+    "en": []
+  },
+  "id": "2026-07-17-meteor-mongo-extractors",
+  "date": "2026-07-17",
+  "type": "feature",
+  "title": {
+    "de": "Meteor/Mongo-Extractors (Rocket.Chat)",
+    "en": "Meteor/Mongo extractors (Rocket.Chat)"
+  },
+  "summary": {
+    "de": "Meteor Methods + Mongo-Modelle extrahieren; Schema/Prisma-Seeding vor FILE_LIMIT; LeaveRequest-/Execution-Pfade verdrahtet.",
+    "en": "Extract Meteor methods + Mongo models; schema/Prisma seeding before FILE_LIMIT; LeaveRequest/execution paths wired."
+  },
+  "plain_language": {
+    "de": "VisuDEV versteht Stacks wie Rocket.Chat besser: Methoden, Modelle und Datenbank-Kontakte erscheinen in Blueprint statt als leere Fläche.",
+    "en": "VisuDEV understands stacks like Rocket.Chat better: methods, models, and DB contacts show up in Blueprint instead of empty space."
+  },
+  "why_it_matters": {
+    "de": "Ohne Stack-Extractors bleibt Blueprint bei Non-HTTP-Apps blind.",
+    "en": "Without stack extractors, Blueprint stays blind on non-HTTP apps."
+  },
+  "user_impact": {
+    "de": [
+      "Mehr sichtbare Methoden/Modelle bei Meteor-Apps"
+    ],
+    "en": [
+      "More visible methods/models on Meteor apps"
+    ]
+  },
+  "developer_impact": {
+    "de": [
+      "RC-W2 extractors",
+      "FILE_LIMIT seeding order"
+    ],
+    "en": [
+      "RC-W2 extractors",
+      "FILE_LIMIT seeding order"
+    ]
+  },
+  "security_relevant": false,
+  "git": {
+    "base": "694cbb70",
+    "head": "3e182a4f",
+    "branch": "main",
+    "pull_request": null
+  },
+  "affected_features": [
+    "blueprint-software-graph",
+    "local-engine"
+  ],
+  "affected_components": [
+    "local-engine"
+  ],
+  "evidence": [
+    {
+      "kind": "commit",
+      "path": "3e182a4f"
+    },
+    {
+      "kind": "commit",
+      "path": "694cbb70"
+    }
+  ]
+}
