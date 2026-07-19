@@ -169,9 +169,17 @@ code, pre {
   white-space: pre-wrap;
   color: var(--muted);
 }
-.error {
-  border: 1px solid var(--danger);
-  background: color-mix(in srgb, var(--danger) 12%, var(--bg));
-  padding: 1rem;
-  border-radius: var(--radius);
+.help-card {
+  border-style: dashed;
+}
+.help-card h3 {
+  font-size: 1rem;
+}
+details {
+  margin-top: 0.65rem;
+  color: var(--muted);
+}
+details summary {
+  cursor: pointer;
+  color: var(--accent);
 }

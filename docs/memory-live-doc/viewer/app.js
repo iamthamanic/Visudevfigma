@@ -1,6 +1,6 @@
 /**
- * memory-live-doc viewer — Status / Features / Changes / Decisions / Architecture.
- * Theme from ./data/theme.json; architecture Mermaid from ./data/architecture.json.
+ * memory-live-doc viewer — Status / Features / Changes / Decisions / Architecture (+ history).
+ * Plain-language first; needs-review explained; architecture date filter.
  */
 (function () {
   const state = {
@@ -12,6 +12,8 @@
     decisions: [],
     current: null,
     architecture: null,
+    architectureHistory: [],
+    selectedArchId: null,
     theme: null,
     selectedChangeId: null,
     mermaidReady: false,
@@ -31,10 +33,10 @@
       filterStatus: "Status",
       all: "Alle",
       impacts: "Auswirkungen",
-      user: "Nutzer",
-      developer: "Entwicklung",
-      operational: "Betrieb",
-      evidence: "Evidenz",
+      user: "Für Nutzerinnen & Nutzer",
+      developer: "Für die Entwicklung",
+      operational: "Für Betrieb & Deployment",
+      evidence: "Belege (technisch)",
       screenshots: "Screenshots",
       back: "Zurück zur Timeline",
       loadError: "Daten konnten nicht geladen werden. Bitte data/*.json prüfen.",
@@ -43,6 +45,16 @@
       architectureEmpty: "Kein Architektur-Diagramm im Snapshot.",
       architectureSource: "Mermaid-Quelle",
       architectureRenderError: "Diagramm konnte nicht gerendert werden — Quelle unten.",
+      architectureVersion: "Stand / Datum",
+      why: "Warum das wichtig ist",
+      techSummary: "Technische Kurzfassung",
+      plainIntro: "In einfachen Worten",
+      reviewHelpTitle: "Was bedeutet „needs-review“?",
+      reviewHelpBody:
+        "Das ist kein Fehler der App. Es heißt: Dieser Text wurde automatisch aus Code/Commits abgeleitet und sollte von einem Menschen geprüft werden. „accepted“ = freigegeben, „rejected“ = verworfen.",
+      reviewNeeds: "Prüfung offen",
+      reviewOk: "Geprüft",
+      reviewBad: "Verworfen",
     },
     en: {
       eyebrow: "Project memory",
@@ -57,10 +69,10 @@
       filterStatus: "Status",
       all: "All",
       impacts: "Impacts",
-      user: "User",
-      developer: "Developer",
-      operational: "Operational",
-      evidence: "Evidence",
+      user: "For users",
+      developer: "For developers",
+      operational: "For ops / deploy",
+      evidence: "Evidence (technical)",
       screenshots: "Screenshots",
       back: "Back to timeline",
       loadError: "Could not load data. Check data/*.json.",
@@ -69,6 +81,16 @@
       architectureEmpty: "No architecture diagram in snapshot.",
       architectureSource: "Mermaid source",
       architectureRenderError: "Could not render diagram — source below.",
+      architectureVersion: "Version / date",
+      why: "Why it matters",
+      techSummary: "Technical summary",
+      plainIntro: "In plain language",
+      reviewHelpTitle: "What does “needs-review” mean?",
+      reviewHelpBody:
+        "Not an app bug. It means this text was drafted automatically from code/commits and should be checked by a human. “accepted” = approved, “rejected” = discarded.",
+      reviewNeeds: "Needs review",
+      reviewOk: "Accepted",
+      reviewBad: "Rejected",
     },
   };
 
@@ -92,7 +114,7 @@
     if (!payload) return [];
     if (Array.isArray(payload)) return payload;
     if (Array.isArray(payload.items)) return payload.items;
-    const keys = preferredKeys || ["features", "changes", "decisions"];
+    const keys = preferredKeys || ["features", "changes", "decisions", "versions"];
     for (const key of keys) {
       if (Array.isArray(payload[key])) return payload[key];
     }
@@ -102,7 +124,16 @@
   function reviewPill(status) {
     const s = status || "needs-review";
     const cls = s === "accepted" ? "ok" : s === "rejected" ? "bad" : "warn";
-    return `<span class="pill ${cls}">${s}</span>`;
+    const label =
+      s === "accepted" ? t("reviewOk") : s === "rejected" ? t("reviewBad") : t("reviewNeeds");
+    return `<span class="pill ${cls}" title="${escapeAttr(s)}">${escapeHtml(label)}</span>`;
+  }
+
+  function reviewHelpCard() {
+    return `<article class="card help-card" style="margin-bottom:1rem">
+      <h3>${escapeHtml(t("reviewHelpTitle"))}</h3>
+      <p class="muted">${escapeHtml(t("reviewHelpBody"))}</p>
+    </article>`;
   }
 
   async function loadJson(path) {
@@ -158,16 +189,25 @@
 
   async function boot() {
     try {
-      const [project, features, changes, current, decisions, architecture, theme] =
-        await Promise.all([
-          loadJson("./data/project.json"),
-          loadJson("./data/features.json"),
-          loadJson("./data/changes.json"),
-          loadJson("./data/current-state.json"),
-          loadJson("./data/decisions.json").catch(() => ({ decisions: [] })),
-          loadJson("./data/architecture.json").catch(() => ({ mermaid: "" })),
-          loadJson("./data/theme.json").catch(() => null),
-        ]);
+      const [
+        project,
+        features,
+        changes,
+        current,
+        decisions,
+        architecture,
+        archHistory,
+        theme,
+      ] = await Promise.all([
+        loadJson("./data/project.json"),
+        loadJson("./data/features.json"),
+        loadJson("./data/changes.json"),
+        loadJson("./data/current-state.json"),
+        loadJson("./data/decisions.json").catch(() => ({ decisions: [] })),
+        loadJson("./data/architecture.json").catch(() => ({ mermaid: "" })),
+        loadJson("./data/architecture-history.json").catch(() => ({ versions: [] })),
+        loadJson("./data/theme.json").catch(() => null),
+      ]);
       applyTheme(theme);
       initMermaid();
       state.project = project;
@@ -178,6 +218,21 @@
       state.decisions = asArray(decisions, ["decisions", "items"]);
       state.current = current;
       state.architecture = architecture;
+      state.architectureHistory = asArray(archHistory, ["versions", "items"]);
+      if (!state.architectureHistory.length && architecture && architecture.mermaid) {
+        state.architectureHistory = [
+          {
+            id: "overview-current",
+            date: architecture.date || "",
+            title: architecture.title || { de: "Aktuell", en: "Current" },
+            mermaid: architecture.mermaid,
+            is_current: true,
+          },
+        ];
+      }
+      state.selectedArchId =
+        (state.architectureHistory.find((v) => v.is_current) || state.architectureHistory[0] || {})
+          .id || null;
       bind();
       renderChrome();
       showView(state.view);
@@ -250,6 +305,7 @@
     const product = bi(c.product_status);
     const el = document.getElementById("view-status");
     el.innerHTML = `
+      ${reviewHelpCard()}
       ${
         product
           ? `<article class="card" style="margin-bottom:1rem"><h3>${escapeHtml(t("product"))}</h3><p>${escapeHtml(product)}</p>
@@ -267,11 +323,37 @@
     `;
   }
 
+  function featureBody(f) {
+    const plain = bi(f.plain_language);
+    const why = bi(f.why_it_matters);
+    const summary = bi(f.summary);
+    const impacts = biList(f.user_impact);
+    let html = "";
+    if (plain) {
+      html += `<p><strong>${escapeHtml(t("plainIntro"))}:</strong> ${escapeHtml(plain)}</p>`;
+    } else if (summary) {
+      html += `<p>${escapeHtml(summary)}</p>`;
+    }
+    if (why) {
+      html += `<p class="meta"><strong>${escapeHtml(t("why"))}:</strong> ${escapeHtml(why)}</p>`;
+    }
+    if (impacts.length) {
+      html += `<ul>${impacts.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul>`;
+    }
+    if (plain && summary) {
+      html += `<details><summary>${escapeHtml(t("techSummary"))}</summary><p class="muted">${escapeHtml(
+        summary,
+      )}</p></details>`;
+    }
+    return html || `<p class="muted">${t("empty")}</p>`;
+  }
+
   function renderFeatures() {
     const el = document.getElementById("view-features");
     const packages = [...new Set(state.features.flatMap((f) => f.packages || []))].sort();
     const statuses = [...new Set(state.features.map((f) => f.status).filter(Boolean))].sort();
     el.innerHTML = `
+      ${reviewHelpCard()}
       <div class="toolbar">
         <label class="filter">${t("filterPkg")}
           <select id="feat-pkg"><option value="">${t("all")}</option>${packages
@@ -303,7 +385,7 @@
           <p class="meta">${reviewPill(f.review_status)} <span class="pill">${escapeHtml(f.status || "")}</span>
             ${(f.packages || []).map((p) => `<span class="pill">${escapeHtml(p)}</span>`).join("")}
           </p>
-          <p>${escapeHtml(bi(f.summary))}</p>
+          ${featureBody(f)}
         </article>`,
           )
           .join("") || `<p class="muted">${t("empty")}</p>`;
@@ -328,18 +410,21 @@
       });
       return;
     }
-    el.innerHTML = `<ul class="list">${state.changes
-      .map(
-        (c) => `
+    el.innerHTML =
+      reviewHelpCard() +
+      `<ul class="list">${state.changes
+        .map((c) => {
+          const teaser = bi(c.plain_language) || bi(c.summary);
+          return `
       <li><button type="button" class="linkish" data-id="${escapeAttr(c.id)}">
         <strong>${escapeHtml(c.date || "")}</strong> · ${escapeHtml(bi(c.title) || c.id)}
         <div class="meta">${reviewPill(c.review_status)} <span class="pill">${escapeHtml(c.type || "")}</span>
           ${(c.packages || []).map((p) => `<span class="pill">${escapeHtml(p)}</span>`).join("")}
         </div>
-        <p class="muted">${escapeHtml(bi(c.summary))}</p>
-      </button></li>`,
-      )
-      .join("")}</ul>`;
+        <p class="muted">${escapeHtml(teaser)}</p>
+      </button></li>`;
+        })
+        .join("")}</ul>`;
     el.querySelectorAll("button[data-id]").forEach((btn) => {
       btn.addEventListener("click", () => {
         state.selectedChangeId = btn.getAttribute("data-id");
@@ -369,13 +454,27 @@
         return `<li>${escapeHtml(cap)} — <em>${escapeHtml(s.status || "missing")}</em></li>`;
       })
       .join("");
+    const plain = bi(ch.plain_language);
+    const why = bi(ch.why_it_matters);
     return `
       <button type="button" class="tab" data-back>${t("back")}</button>
       <article class="card detail">
         <h2>${escapeHtml(bi(ch.title) || ch.id)}</h2>
         <p class="meta">${escapeHtml(ch.date || "")} · ${reviewPill(ch.review_status)}
           <span class="pill">${escapeHtml(ch.type || "")}</span></p>
-        <p>${escapeHtml(bi(ch.summary))}</p>
+        ${
+          plain
+            ? `<p><strong>${escapeHtml(t("plainIntro"))}:</strong> ${escapeHtml(plain)}</p>`
+            : `<p>${escapeHtml(bi(ch.summary))}</p>`
+        }
+        ${why ? `<p><strong>${escapeHtml(t("why"))}:</strong> ${escapeHtml(why)}</p>` : ""}
+        ${
+          plain
+            ? `<details><summary>${escapeHtml(t("techSummary"))}</summary><p class="muted">${escapeHtml(
+                bi(ch.summary),
+              )}</p></details>`
+            : ""
+        }
         <h3>${t("impacts")}</h3>
         ${impact(t("user"), ch.user_impact)}
         ${impact(t("developer"), ch.developer_impact)}
@@ -394,59 +493,98 @@
     );
     const decisions = state.decisions.length ? state.decisions : fromChanges;
     if (!decisions.length) {
-      el.innerHTML = `<p class="muted">${t("decisionsEmpty")}</p>`;
+      el.innerHTML = reviewHelpCard() + `<p class="muted">${t("decisionsEmpty")}</p>`;
       return;
     }
-    el.innerHTML = `<div class="grid">${decisions
-      .map(
-        (d) => `
+    el.innerHTML =
+      reviewHelpCard() +
+      `<div class="grid">${decisions
+        .map((d) => {
+          const body = bi(d.plain_language) || bi(d.summary);
+          return `
       <article class="card">
         <h3>${escapeHtml(bi(d.title) || d.id)}</h3>
         <p class="meta">${escapeHtml(d.date || "")} · ${reviewPill(d.review_status)}
           ${d.status ? `<span class="pill">${escapeHtml(d.status)}</span>` : ""}</p>
-        <p>${escapeHtml(bi(d.summary))}</p>
-      </article>`,
-      )
-      .join("")}</div>`;
+        <p>${escapeHtml(body)}</p>
+      </article>`;
+        })
+        .join("")}</div>`;
   }
 
   async function renderArchitecture() {
     const el = document.getElementById("view-architecture");
-    const arch = state.architecture || {};
-    const source = (arch.mermaid || "").trim();
-    const title = bi(arch.title) || t("architecture");
-
-    if (!source) {
+    const versions = state.architectureHistory || [];
+    if (!versions.length) {
       el.innerHTML = `<p class="muted">${t("architectureEmpty")}</p>`;
       return;
     }
 
+    const selected =
+      versions.find((v) => v.id === state.selectedArchId) || versions[0];
+    state.selectedArchId = selected.id;
+    const source = (selected.mermaid || "").trim();
+    const title = bi(selected.title) || t("architecture");
+
+    const options = versions
+      .map((v) => {
+        const label = `${v.date || "?"} — ${bi(v.title) || v.id}${v.is_current ? " ★" : ""}`;
+        const sel = v.id === selected.id ? " selected" : "";
+        return `<option value="${escapeAttr(v.id)}"${sel}>${escapeHtml(label)}</option>`;
+      })
+      .join("");
+
     el.innerHTML = `
+      <div class="toolbar">
+        <label class="filter">${t("architectureVersion")}
+          <select id="arch-version">${options}</select>
+        </label>
+      </div>
       <article class="card">
         <h3>${escapeHtml(title)}</h3>
-        <p class="meta"><code>${escapeHtml(arch.source_path || "architecture")}</code></p>
-        <div class="architecture-diagram">
-          <pre class="mermaid" id="arch-mermaid">${escapeHtml(source)}</pre>
+        <p class="meta">${escapeHtml(selected.date || "")}
+          ${selected.commit ? ` · <code>${escapeHtml(String(selected.commit).slice(0, 8))}</code>` : ""}
+          ${bi(selected.summary) ? ` · ${escapeHtml(bi(selected.summary))}` : ""}
+        </p>
+        <div class="architecture-diagram" id="arch-diagram-host">
+          ${
+            source
+              ? `<pre class="mermaid" id="arch-mermaid">${escapeHtml(source)}</pre>`
+              : `<p class="muted">${t("architectureEmpty")}</p>`
+          }
         </div>
-        <details class="architecture-source">
+        ${
+          source
+            ? `<details class="architecture-source">
           <summary>${escapeHtml(t("architectureSource"))}</summary>
           <pre>${escapeHtml(source)}</pre>
-        </details>
+        </details>`
+            : ""
+        }
       </article>
     `;
 
+    document.getElementById("arch-version").addEventListener("change", (e) => {
+      state.selectedArchId = e.target.value;
+      renderArchitecture();
+    });
+
+    if (!source) return;
     if (!state.mermaidReady || typeof mermaid === "undefined") {
-      el.querySelector(".architecture-diagram").innerHTML =
-        `<p class="muted">${t("architectureRenderError")}</p>`;
+      const host = document.getElementById("arch-diagram-host");
+      if (host) host.innerHTML = `<p class="muted">${t("architectureRenderError")}</p>`;
       return;
     }
 
     try {
       const node = el.querySelector("#arch-mermaid");
-      const { svg } = await mermaid.render("arch-svg-" + Date.now(), source);
-      node.outerHTML = svg;
+      const { svg } = await mermaid.render(
+        "arch-svg-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+        source,
+      );
+      if (node) node.outerHTML = svg;
     } catch (err) {
-      const box = el.querySelector(".architecture-diagram");
+      const box = document.getElementById("arch-diagram-host");
       if (box) {
         box.innerHTML = `<p class="muted">${t("architectureRenderError")}</p><p class="muted">${escapeHtml(
           String(err),

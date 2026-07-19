@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "versions": [
+    {
+      "id": "2026-07-19-access-control",
+      "date": "2026-07-19",
+      "title": {
+        "de": "Access Control + Living Docs",
+        "en": "Access control + living docs"
+      },
+      "summary": {
+        "de": "Sicherheit stack-agnostisch im Blueprint; Living Memory und GitHub-Pages-Viewer.",
+        "en": "Stack-agnostic security in Blueprint; living memory and GitHub Pages viewer."
+      },
+      "commit": "644d461c",
+      "mermaid": "%% VisuDEV architecture overview (bootstrap, needs-review)\nflowchart TB\n  subgraph ui [Frontend Vite React]\n    Shell[Shell]\n    Projects[Projects]\n    AppFlow[App Flow]\n    Blueprint[Blueprint Views]\n    Data[Data ERD]\n    Settings[Settings]\n  end\n\n  subgraph analysis [Analysis]\n    LocalEngine[Local Engine]\n    Graph[Software Graph]\n    AC[Access Control Analyzers]\n    Enrich[Blueprint Enrichment]\n  end\n\n  subgraph runtime [Runtime]\n    Preview[Preview Runner]\n    Supabase[Supabase Edge + Auth]\n  end\n\n  Shell --> Projects\n  Shell --> AppFlow\n  Shell --> Blueprint\n  Shell --> Data\n  Shell --> Settings\n  Projects --> LocalEngine\n  Projects --> Supabase\n  LocalEngine --> Graph\n  Graph --> Enrich\n  Graph --> AC\n  Enrich --> Blueprint\n  AC --> Blueprint\n  AppFlow --> Preview\n",
+      "change_ids": [
+        "2026-07-19-bootstrap"
+      ],
+      "review_status": "needs-review",
+      "schema_version": 1,
+      "content_hash": "7230e1b45376a2770ba7537488b4bbc73693b152e663af5d8ff990549a78c095",
+      "is_current": false
+    },
+    {
+      "id": "2026-07-14-blueprint-graph",
+      "date": "2026-07-14",
+      "title": {
+        "de": "Blueprint Multi-View + Software Graph",
+        "en": "Blueprint multi-view + Software Graph"
+      },
+      "summary": {
+        "de": "Blueprint wird zur Architektur-Röntgenaufnahme mit mehreren Views und einem gemeinsamen Graphen.",
+        "en": "Blueprint becomes an architecture X-ray with multiple views and a shared graph."
+      },
+      "commit": "blueprint-v2",
+      "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Shell[Shell]\n    Projects[Projects]\n    AppFlow[App Flow]\n    Blueprint[Blueprint Views]\n    Data[Data ERD]\n    Settings[Settings]\n  end\n  subgraph analysis [Analysis]\n    LocalEngine[Local Engine]\n    Graph[Software Graph]\n    Enrich[Blueprint Enrichment]\n  end\n  subgraph runtime [Runtime]\n    Preview[Preview Runner]\n    Supabase[Supabase]\n  end\n  Shell --> Projects\n  Shell --> AppFlow\n  Shell --> Blueprint\n  Shell --> Data\n  Projects --> LocalEngine\n  LocalEngine --> Graph\n  Graph --> Enrich\n  Enrich --> Blueprint\n  AppFlow --> Preview",
+      "change_ids": [],
+      "review_status": "needs-review",
+      "schema_version": 1,
+      "content_hash": "71391e4dc807456305233b6731dc6454658597a3f0c72f69ff6f07cc7737cead",
+      "is_current": false
+    },
+    {
+      "id": "2026-07-07-shell-appflow",
+      "date": "2026-07-07",
+      "title": {
+        "de": "Frühe App: Shell & App Flow",
+        "en": "Early app: Shell & App Flow"
+      },
+      "summary": {
+        "de": "Bevor Blueprint viele Views hatte: Projekte, App Flow und Preview im Vordergrund.",
+        "en": "Before multi-view Blueprint: projects, App Flow, and preview front and center."
+      },
+      "commit": "early",
+      "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Shell[Shell]\n    Projects[Projects]\n    AppFlow[App Flow]\n    Settings[Settings]\n  end\n  subgraph runtime [Runtime]\n    Preview[Preview Runner]\n    Supabase[Supabase]\n  end\n  Shell --> Projects\n  Shell --> AppFlow\n  Shell --> Settings\n  Projects --> Supabase\n  AppFlow --> Preview",
+      "change_ids": [],
+      "review_status": "needs-review",
+      "schema_version": 1,
+      "content_hash": "2daf79ac6ebf56f24be8fbbe160b6541a1ce3fbd265578aeb5cfd6d5da5d0515",
+      "is_current": false
+    }
+  ]
+}

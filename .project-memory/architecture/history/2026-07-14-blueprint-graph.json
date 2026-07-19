@@ -1,0 +1,18 @@
+{
+  "id": "2026-07-14-blueprint-graph",
+  "date": "2026-07-14",
+  "title": {
+    "de": "Blueprint Multi-View + Software Graph",
+    "en": "Blueprint multi-view + Software Graph"
+  },
+  "summary": {
+    "de": "Blueprint wird zur Architektur-Röntgenaufnahme mit mehreren Views und einem gemeinsamen Graphen.",
+    "en": "Blueprint becomes an architecture X-ray with multiple views and a shared graph."
+  },
+  "commit": "blueprint-v2",
+  "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Shell[Shell]\n    Projects[Projects]\n    AppFlow[App Flow]\n    Blueprint[Blueprint Views]\n    Data[Data ERD]\n    Settings[Settings]\n  end\n  subgraph analysis [Analysis]\n    LocalEngine[Local Engine]\n    Graph[Software Graph]\n    Enrich[Blueprint Enrichment]\n  end\n  subgraph runtime [Runtime]\n    Preview[Preview Runner]\n    Supabase[Supabase]\n  end\n  Shell --> Projects\n  Shell --> AppFlow\n  Shell --> Blueprint\n  Shell --> Data\n  Projects --> LocalEngine\n  LocalEngine --> Graph\n  Graph --> Enrich\n  Enrich --> Blueprint\n  AppFlow --> Preview",
+  "change_ids": [],
+  "review_status": "needs-review",
+  "schema_version": 1,
+  "content_hash": "71391e4dc807456305233b6731dc6454658597a3f0c72f69ff6f07cc7737cead"
+}

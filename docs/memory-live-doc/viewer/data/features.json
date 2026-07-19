@@ -34,7 +34,15 @@
       ],
       "review_status": "needs-review",
       "confidence": 0.6,
-      "locked": false
+      "locked": false,
+      "plain_language": {
+        "de": "App Flow zeigt die App wie eine Landkarte der Bildschirme: welche Seiten es gibt, welche Buttons wohin führen, und wie man live in die App hineinschauen kann.",
+        "en": "App Flow shows the app as a map of screens: which pages exist, which buttons lead where, and how to peek into the live app."
+      },
+      "why_it_matters": {
+        "de": "So verstehst du die Nutzerreise, ohne den gesamten Code lesen zu müssen.",
+        "en": "You can understand the user journey without reading all the code."
+      }
     },
     {
       "id": "blueprint-access-control",
@@ -74,7 +82,15 @@
       ],
       "review_status": "needs-review",
       "confidence": 0.75,
-      "locked": false
+      "locked": false,
+      "plain_language": {
+        "de": "Diese Sicherheitsansicht fragt nicht „Gibt es PostgreSQL-RLS?“, sondern: Wer darf welche Daten sehen? Ist der Mandant getrennt? Wird Eigentum geprüft? Die konkrete Technik (RLS, Filter, Views) erscheint erst in den Details.",
+        "en": "This security view does not ask “Is there PostgreSQL RLS?” but: Who may see which data? Are tenants isolated? Is ownership checked? Concrete tech (RLS, filters, views) appears only in the details."
+      },
+      "why_it_matters": {
+        "de": "So werden auch Projekte mit MariaDB oder MongoDB fair bewertet — fehlendes RLS allein ist kein automatischer Alarm.",
+        "en": "Projects on MariaDB or MongoDB are judged fairly — missing RLS alone is not an automatic alarm."
+      }
     },
     {
       "id": "blueprint-software-graph",
@@ -109,7 +125,15 @@
       ],
       "review_status": "needs-review",
       "confidence": 0.65,
-      "locked": false
+      "locked": false,
+      "plain_language": {
+        "de": "Im Hintergrund baut VisuDEV einen gemeinsamen „Stadtplan“ der Software (Software Graph). Alle Blueprint-Ansichten lesen denselben Plan.",
+        "en": "Under the hood VisuDEV builds a shared city map of the software (Software Graph). All Blueprint views read the same map."
+      },
+      "why_it_matters": {
+        "de": "Dadurch bleiben die Views konsistent und können später erweitert werden, ohne alles neu zu erfinden.",
+        "en": "Views stay consistent and can grow later without reinventing everything."
+      }
     },
     {
       "id": "blueprint-views",
@@ -145,7 +169,15 @@
       ],
       "review_status": "needs-review",
       "confidence": 0.7,
-      "locked": false
+      "locked": false,
+      "plain_language": {
+        "de": "Blueprint ist die technische Röntgenaufnahme: mehrere Ansichten (Architektur, Abhängigkeiten, Sicherheit, …) erklären, wie die Software innen aufgebaut ist.",
+        "en": "Blueprint is the technical X-ray: several views (architecture, dependencies, security, …) explain how the software is built inside."
+      },
+      "why_it_matters": {
+        "de": "Hilft, Risiken und fehlende Absicherungen zu sehen — nicht nur schöne Diagramme.",
+        "en": "Helps spot risks and missing safeguards — not just pretty diagrams."
+      }
     },
     {
       "id": "data-erd",
@@ -179,7 +211,15 @@
       ],
       "review_status": "needs-review",
       "confidence": 0.55,
-      "locked": false
+      "locked": false,
+      "plain_language": {
+        "de": "Die Daten-Ansicht zeigt Tabellen und Beziehungen wie ein Schaubild der Datenbank — was gespeichert wird und wie es zusammenhängt.",
+        "en": "The Data view shows tables and relationships like a diagram of the database — what is stored and how it connects."
+      },
+      "why_it_matters": {
+        "de": "Wichtig, um zu verstehen, welche Informationen die App überhaupt verwaltet.",
+        "en": "Important to understand which information the app actually manages."
+      }
     },
     {
       "id": "local-engine",
@@ -213,7 +253,15 @@
       ],
       "review_status": "needs-review",
       "confidence": 0.65,
-      "locked": false
+      "locked": false,
+      "plain_language": {
+        "de": "Die Local Engine analysiert dein Projekt auf dem eigenen Rechner: Code lesen, Blueprint erzeugen, Graph und Sicherheit ableiten — auch offline.",
+        "en": "The Local Engine analyzes your project on your machine: read code, build Blueprint, derive graph and security — including offline."
+      },
+      "why_it_matters": {
+        "de": "Schnelle Iteration ohne alles in die Cloud schicken zu müssen.",
+        "en": "Fast iteration without sending everything to the cloud."
+      }
     },
     {
       "id": "logs",
@@ -245,7 +293,15 @@
       ],
       "review_status": "needs-review",
       "confidence": 0.4,
-      "locked": false
+      "locked": false,
+      "plain_language": {
+        "de": "Das Logs-Modul soll Lauf- und Analyse-Ereignisse sichtbar machen. Der Umfang ist noch nicht fertig dokumentiert.",
+        "en": "The Logs module should surface run and analysis events. Scope is not fully documented yet."
+      },
+      "why_it_matters": {
+        "de": "Wichtig für Fehlersuche, wenn Scans oder Previews scheitern.",
+        "en": "Important for debugging when scans or previews fail."
+      }
     },
     {
       "id": "preview-runner",
@@ -278,7 +334,15 @@
       ],
       "review_status": "needs-review",
       "confidence": 0.6,
-      "locked": false
+      "locked": false,
+      "plain_language": {
+        "de": "Der Preview Runner startet die verknüpfte App lokal, damit VisuDEV echte Bildschirme und Vorschauen zeigen kann — nicht nur Theorie.",
+        "en": "The Preview Runner starts the linked app locally so VisuDEV can show real screens and previews — not theory only."
+      },
+      "why_it_matters": {
+        "de": "Ohne laufende Vorschau bleiben viele Karten leer oder veraltet.",
+        "en": "Without a running preview many cards stay empty or outdated."
+      }
     },
     {
       "id": "projects",
@@ -310,7 +374,15 @@
       ],
       "review_status": "needs-review",
       "confidence": 0.6,
-      "locked": false
+      "locked": false,
+      "plain_language": {
+        "de": "Hier legst du fest, welches Software-Projekt VisuDEV untersuchen soll — z. B. ein GitHub-Repo oder einen Ordner auf deinem Rechner. Ohne Projekt gibt es nichts zu zeigen.",
+        "en": "This is where you choose which software project VisuDEV should inspect — e.g. a GitHub repo or a local folder. Without a project, there is nothing to show."
+      },
+      "why_it_matters": {
+        "de": "Alles andere (App Flow, Blueprint, Daten) hängt davon ab, dass das richtige Projekt verbunden ist.",
+        "en": "Everything else (App Flow, Blueprint, Data) depends on connecting the right project."
+      }
     },
     {
       "id": "settings-connections",
@@ -342,7 +414,15 @@
       ],
       "review_status": "needs-review",
       "confidence": 0.5,
-      "locked": false
+      "locked": false,
+      "plain_language": {
+        "de": "Unter Einstellungen verbindest du GitHub und optional KI-Anbieter — damit VisuDEV Repos laden und erweiterte Hilfe nutzen kann.",
+        "en": "In Settings you connect GitHub and optional AI providers — so VisuDEV can load repos and use advanced help."
+      },
+      "why_it_matters": {
+        "de": "Ohne Verbindungen bleiben viele Analyse- und Login-Funktionen unvollständig.",
+        "en": "Without connections many analysis and login features stay incomplete."
+      }
     }
   ]
 }

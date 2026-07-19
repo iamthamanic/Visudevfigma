@@ -24,7 +24,15 @@
         }
       ],
       "review_status": "needs-review",
-      "confidence": 0.8
+      "confidence": 0.8,
+      "plain_language": {
+        "de": "Sicherheit wird abstrakt beschrieben (Wer darf was?), nicht an eine spezielle Datenbank-Technik gebunden. Ob PostgreSQL, MariaDB oder MongoDB: entscheidend ist nachweisbarer Schutz, nicht das Label „RLS“.",
+        "en": "Security is described abstractly (who may do what?), not tied to one database feature. Whether PostgreSQL, MariaDB, or MongoDB: proven protection matters, not the label “RLS”."
+      },
+      "why_it_matters": {
+        "de": "Verhindert falsche Alarme bei Teams, die kein PostgreSQL nutzen, und macht echte Lücken (fehlende Mandantentrennung) sichtbarer.",
+        "en": "Avoids false alarms for teams not on PostgreSQL and makes real gaps (missing tenant isolation) more visible."
+      }
     }
   ]
 }
