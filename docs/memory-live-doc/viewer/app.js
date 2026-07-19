@@ -37,6 +37,11 @@
       developer: "Für die Entwicklung",
       operational: "Für Betrieb & Deployment",
       evidence: "Belege (technisch)",
+      codebase: "Im Code (GitHub)",
+      codebaseCommit: "Commit",
+      codebaseCompare: "Diff / Compare",
+      codebasePr: "Pull Request",
+      codebasePath: "Pfad",
       screenshots: "Screenshots",
       back: "Zurück zur Timeline",
       timelineHint: "Links = neueste Änderung · nach rechts scrollen für ältere",
@@ -76,6 +81,11 @@
       developer: "For developers",
       operational: "For ops / deploy",
       evidence: "Evidence (technical)",
+      codebase: "In the codebase (GitHub)",
+      codebaseCommit: "Commit",
+      codebaseCompare: "Diff / compare",
+      codebasePr: "Pull request",
+      codebasePath: "Path",
       screenshots: "Screenshots",
       back: "Back to timeline",
       timelineHint: "Left = newest change · scroll right for older",
@@ -472,16 +482,107 @@
     });
   }
 
+  function repoBaseUrl() {
+    const url = (state.project && state.project.repository && state.project.repository.url) || "";
+    return String(url).replace(/\.git$/i, "").replace(/\/$/, "");
+  }
+
+  function githubCommitUrl(sha) {
+    const base = repoBaseUrl();
+    if (!base || !sha || String(sha).replace(/0/g, "") === "") return null;
+    return `${base}/commit/${sha}`;
+  }
+
+  function githubCompareUrl(baseSha, headSha) {
+    const base = repoBaseUrl();
+    if (!base || !baseSha || !headSha || baseSha === headSha) return null;
+    if (String(baseSha).replace(/0/g, "") === "") return null;
+    return `${base}/compare/${baseSha}...${headSha}`;
+  }
+
+  function githubPathUrl(ref, filePath) {
+    const base = repoBaseUrl();
+    const p = String(filePath || "").replace(/^\.\//, "").replace(/^\/+/, "");
+    if (!base || !p) return null;
+    const sha = ref || (state.project && state.project.repository && state.project.repository.default_branch) || "main";
+    // directories (trailing slash or no extension-ish) → tree; else blob
+    const isDir = /\/$/.test(p) || !/\.[a-z0-9]{1,8}$/i.test(p.split("/").pop() || "");
+    const kind = isDir ? "tree" : "blob";
+    return `${base}/${kind}/${sha}/${p.replace(/\/$/, "")}`;
+  }
+
+  function resolveEvidenceHref(e, preferredSha) {
+    if (e && e.url) return e.url;
+    if (!e) return null;
+    const kind = e.kind || "";
+    if (kind === "pr" && e.url) return e.url;
+    if (kind === "commit" || (/^[0-9a-f]{7,40}$/i.test(String(e.path || "")) && !String(e.path).includes("/"))) {
+      return githubCommitUrl(e.sha || e.path);
+    }
+    if (e.path) return githubPathUrl(preferredSha || e.ref, e.path);
+    return null;
+  }
+
+  function renderCodebaseLinks(ch) {
+    const git = ch.git || {};
+    const head = git.head || "";
+    const base = git.base || "";
+    const links = [];
+
+    const compare = githubCompareUrl(base, head);
+    if (compare) {
+      links.push({
+        href: compare,
+        label: `${t("codebaseCompare")}: ${String(base).slice(0, 8)}…${String(head).slice(0, 8)}`,
+      });
+    }
+    const headUrl = githubCommitUrl(head);
+    if (headUrl) {
+      links.push({ href: headUrl, label: `${t("codebaseCommit")}: ${String(head).slice(0, 8)}` });
+    }
+    if (git.pull_request) {
+      links.push({ href: git.pull_request, label: t("codebasePr") });
+    }
+
+    const seen = new Set(links.map((l) => l.href));
+    for (const p of ch.affected_components || []) {
+      const href = githubPathUrl(head || undefined, p);
+      if (href && !seen.has(href)) {
+        seen.add(href);
+        links.push({ href, label: `${t("codebasePath")}: ${p}` });
+      }
+    }
+    for (const e of ch.evidence || []) {
+      const href = resolveEvidenceHref(e, head);
+      if (!href || seen.has(href)) continue;
+      seen.add(href);
+      const label =
+        e.kind === "commit" || (/^[0-9a-f]{7,40}$/i.test(String(e.path || "")) && !String(e.path || "").includes("/"))
+          ? `${t("codebaseCommit")}: ${String(e.sha || e.path).slice(0, 8)}`
+          : `${t("codebasePath")}: ${e.path || e.url || e.kind}`;
+      links.push({ href, label });
+    }
+
+    if (!links.length) return `<p class="muted">${t("empty")}</p>`;
+    return `<ul class="codebase-links">${links
+      .map(
+        (l) =>
+          `<li><a href="${escapeAttr(l.href)}" target="_blank" rel="noopener">${escapeHtml(l.label)}</a></li>`,
+      )
+      .join("")}</ul>`;
+  }
+
   function renderChangeDetail(ch) {
     const impact = (label, list) => {
       const items = biList(list);
       if (!items.length) return "";
       return `<h3>${label}</h3><ul>${items.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul>`;
     };
+    const head = (ch.git && ch.git.head) || "";
     const evidence = (ch.evidence || [])
       .map((e) => {
+        const href = resolveEvidenceHref(e, head);
         const label = e.path || e.url || e.kind;
-        const href = e.url || null;
         return href
           ? `<li><a href="${escapeAttr(href)}" target="_blank" rel="noopener">${escapeHtml(label)}</a></li>`
           : `<li>${escapeHtml(label)}</li>`;
@@ -514,6 +615,8 @@
               )}</p></details>`
             : ""
         }
+        <h3>${t("codebase")}</h3>
+        ${renderCodebaseLinks(ch)}
         <h3>${t("impacts")}</h3>
         ${impact(t("user"), ch.user_impact)}
         ${impact(t("developer"), ch.developer_impact)}

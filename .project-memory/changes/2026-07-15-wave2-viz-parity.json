@@ -66,8 +66,25 @@
   "security_relevant": false,
   "evidence": [
     {
+      "kind": "commit",
+      "path": "main",
+      "sha": "main",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/main"
+    },
+    {
       "kind": "file",
-      "path": ".qa/acceptance/wave2-diagnostics-viz-parity.md"
+      "path": "src/modules/blueprint",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/main/src/modules/blueprint"
+    },
+    {
+      "kind": "file",
+      "path": "tests/e2e",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/main/tests/e2e"
+    },
+    {
+      "kind": "file",
+      "path": ".qa/acceptance/wave2-diagnostics-viz-parity.md",
+      "url": "https://github.com/iamthamanic/visudev-app/blob/main/.qa/acceptance/wave2-diagnostics-viz-parity.md"
     }
   ],
   "screenshots": [],

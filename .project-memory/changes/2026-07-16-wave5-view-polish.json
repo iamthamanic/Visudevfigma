@@ -71,20 +71,43 @@
   ],
   "evidence": [
     {
-      "kind": "commit",
-      "path": "5097ddc1"
+      "kind": "compare",
+      "path": "5097ddc1...9cafe6dd",
+      "url": "https://github.com/iamthamanic/visudev-app/compare/5097ddc1...9cafe6dd"
     },
     {
       "kind": "commit",
-      "path": "1594d5d8"
+      "path": "9cafe6dd",
+      "sha": "9cafe6dd",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/9cafe6dd"
+    },
+    {
+      "kind": "file",
+      "path": "src/modules/blueprint",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/9cafe6dd/src/modules/blueprint"
+    },
+    {
+      "kind": "file",
+      "path": "src/modules/shell",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/9cafe6dd/src/modules/shell"
     },
     {
       "kind": "commit",
-      "path": "1aa6f458"
+      "path": "5097ddc1",
+      "sha": "5097ddc1",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/5097ddc1"
     },
     {
       "kind": "commit",
-      "path": "9cafe6dd"
+      "path": "1594d5d8",
+      "sha": "1594d5d8",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/1594d5d8"
+    },
+    {
+      "kind": "commit",
+      "path": "1aa6f458",
+      "sha": "1aa6f458",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/1aa6f458"
     }
   ]
 }

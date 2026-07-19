@@ -69,8 +69,20 @@
   "security_relevant": false,
   "evidence": [
     {
+      "kind": "commit",
+      "path": "main",
+      "sha": "main",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/main"
+    },
+    {
       "kind": "file",
-      "path": "shared/software-graph.types.ts"
+      "path": "shared/software-graph.types.ts",
+      "url": "https://github.com/iamthamanic/visudev-app/blob/main/shared/software-graph.types.ts"
+    },
+    {
+      "kind": "file",
+      "path": "local-engine",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/main/local-engine"
     }
   ],
   "screenshots": [],

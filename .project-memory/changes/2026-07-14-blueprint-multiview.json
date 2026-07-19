@@ -67,8 +67,20 @@
   "security_relevant": false,
   "evidence": [
     {
+      "kind": "commit",
+      "path": "main",
+      "sha": "main",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/main"
+    },
+    {
       "kind": "file",
-      "path": ".qa/design/blueprint-v2.md"
+      "path": "src/modules/blueprint",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/main/src/modules/blueprint"
+    },
+    {
+      "kind": "file",
+      "path": ".qa/design/blueprint-v2.md",
+      "url": "https://github.com/iamthamanic/visudev-app/blob/main/.qa/design/blueprint-v2.md"
     }
   ],
   "screenshots": [],

@@ -72,8 +72,25 @@
   "security_relevant": true,
   "evidence": [
     {
+      "kind": "commit",
+      "path": "main",
+      "sha": "main",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/main"
+    },
+    {
       "kind": "pr",
+      "path": "https://github.com/iamthamanic/visudev-app/pull/8",
       "url": "https://github.com/iamthamanic/visudev-app/pull/8"
+    },
+    {
+      "kind": "file",
+      "path": "src/modules/blueprint",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/main/src/modules/blueprint"
+    },
+    {
+      "kind": "file",
+      "path": "local-engine",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/main/local-engine"
     }
   ],
   "screenshots": [],

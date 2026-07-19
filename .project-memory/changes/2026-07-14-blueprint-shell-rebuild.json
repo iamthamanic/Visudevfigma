@@ -70,16 +70,32 @@
   ],
   "evidence": [
     {
-      "kind": "commit",
-      "path": "32d1d7f6"
+      "kind": "compare",
+      "path": "32d1d7f6...19b3ae0c",
+      "url": "https://github.com/iamthamanic/visudev-app/compare/32d1d7f6...19b3ae0c"
     },
     {
       "kind": "commit",
-      "path": "f0cd7da6"
+      "path": "19b3ae0c",
+      "sha": "19b3ae0c",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/19b3ae0c"
+    },
+    {
+      "kind": "file",
+      "path": "src/modules/blueprint",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/19b3ae0c/src/modules/blueprint"
     },
     {
       "kind": "commit",
-      "path": "19b3ae0c"
+      "path": "32d1d7f6",
+      "sha": "32d1d7f6",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/32d1d7f6"
+    },
+    {
+      "kind": "commit",
+      "path": "f0cd7da6",
+      "sha": "f0cd7da6",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/f0cd7da6"
     }
   ]
 }
