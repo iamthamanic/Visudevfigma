@@ -151,6 +151,15 @@ src/supabase/functions/<domain>/
 4. **Runner (optional):** Für AppFlow/Preview: `npx visudev-runner` starten (oder im Repo `npm run dev`, dann startet der Runner mit). Keine weiteren Code-Änderungen nötig.
 5. **Push mit Checks:** `npm run push` oder `git push` — beides läuft über Checks; bei Push ist AI-Review Pflicht (kein Skip). Bei Problemen: `npm run checks` einzeln ausführen und Fehler beheben.
 
+## Living documentation
+
+After material changes, run `@memory-live-doc` (or rely on `@implement` / `@ecc-check` / `@commit-push-safe` / `@project-setup` integration).
+
+- Do not invent features in docs without evidence.
+- Storage: `.project-memory/` (bilingual DE+EN JSON; human docs under `docs/` + `docs/en/`).
+- Interactive viewer: `docs/memory-live-doc/viewer/` (GitHub Pages).
+- First setup: `@project-setup` Step 9 or `@memory-live-doc bootstrap`.
+
 ## Notes
 
 - Backend stack is Deno/Hono + Supabase (NOT Prisma/Next). Translate generic DDD rules accordingly.

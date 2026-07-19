@@ -1,0 +1,19 @@
+{
+  "id": "appflow",
+  "title": { "de": "App Flow", "en": "App Flow" },
+  "summary": {
+    "de": "Screen-zentrierte Sitemap: Screens, Navigation, UI-Aktionen und Preview-Anbindung.",
+    "en": "Screen-centric sitemap: screens, navigation, UI actions, and preview integration."
+  },
+  "status": "active",
+  "packages": ["src", "preview-runner", "local-engine"],
+  "paths": ["src/modules/appflow/**", "docs/APPFLOW_*.md"],
+  "user_impact": {
+    "de": ["Zeigt, welche Screens existieren und wohin Aktionen führen."],
+    "en": ["Shows which screens exist and where actions lead."]
+  },
+  "related_changes": ["2026-07-19-bootstrap"],
+  "review_status": "needs-review",
+  "confidence": 0.6,
+  "locked": false
+}

@@ -1,0 +1,23 @@
+{
+  "id": "blueprint-views",
+  "title": { "de": "Blueprint Multi-Views", "en": "Blueprint multi-views" },
+  "summary": {
+    "de": "Sieben Blueprint-Views (Atlas, Architecture, Dependencies, Execution, Infrastructure, Diagnostics, Evolution) über einem gemeinsamen Software Graph.",
+    "en": "Seven Blueprint views (Atlas, Architecture, Dependencies, Execution, Infrastructure, Diagnostics, Evolution) over a shared Software Graph."
+  },
+  "status": "active",
+  "packages": ["src", "shared", "local-engine"],
+  "paths": [
+    "src/modules/blueprint/**",
+    "shared/software-graph.types.ts",
+    ".qa/design/blueprint-v2.md"
+  ],
+  "user_impact": {
+    "de": ["Technische Architektur und Diagnosen neben Security-Matrix."],
+    "en": ["Technical architecture and diagnostics alongside the security matrix."]
+  },
+  "related_changes": ["2026-07-19-bootstrap"],
+  "review_status": "needs-review",
+  "confidence": 0.7,
+  "locked": false
+}

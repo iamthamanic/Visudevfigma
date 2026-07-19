@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "remote": "https://github.com/iamthamanic/visudev-app",
+  "default_branch": "main",
+  "head": "527e2cb2d17cf6826b3d8fbd163b713cee5a1efc",
+  "collected_at": "2026-07-19T08:32:27Z",
+  "recent_commits_sample": [
+    "527e2cb2 fix(access-control): prefer authorize/auth-check evidence for AuthN (#232)",
+    "4ecdf350 fix(access-control): bridge leave auth snippets into AC v2 (#231)",
+    "2c6ac742 feat(access-control): bridge leave file-edge signals into AC v2 matrix (#230)",
+    "029a2ca5 chore(queue): mark blueprint-access-control queue drained after #141 (#227)",
+    "fe9ed4b4 feat(access-control): MongoDB security adapter (#226)",
+    "1fc52b49 feat(access-control): MariaDB/MySQL security adapter (#225)",
+    "2ddf11df feat(access-control): deprecate RLS matrix column and document AC model (#224)",
+    "1d8e3211 feat(access-control): Access Control Inspector for matrix cells (#223)",
+    "1bbd2549 feat(access-control): abstract Security Matrix UI (VITE_ACCESS_CONTROL_V2) (#222)",
+    "7e9f5dfb feat(access-control): tenant-isolation rule replaces db.rls-missing (#221)"
+  ]
+}

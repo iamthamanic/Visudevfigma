@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "changes": [
+    {
+      "id": "2026-07-19-bootstrap",
+      "date": "2026-07-19",
+      "type": "bootstrap",
+      "status": "recorded",
+      "title": {
+        "de": "Living Memory Bootstrap",
+        "en": "Living memory bootstrap"
+      },
+      "summary": {
+        "de": "Erstaufbau von .project-memory mit Features, Architektur-Überblick, bilingualen Docs und Viewer. Reflektiert den Stand nach Blueprint v2 und dem gemergten Access-Control-Epic (stack-agnostische Security Diagnostics).",
+        "en": "Initial .project-memory setup with features, architecture overview, bilingual docs, and viewer. Reflects state after Blueprint v2 and the merged access-control epic (stack-agnostic security diagnostics)."
+      },
+      "user_impact": {
+        "de": [
+          "Projektstatus und Features sind in docs/ und dem Memory-Viewer nachvollziehbar.",
+          "Keine Laufzeitänderung an der VisuDEV-App durch diesen Bootstrap."
+        ],
+        "en": [
+          "Project status and features are traceable in docs/ and the memory viewer.",
+          "No VisuDEV app runtime change from this bootstrap."
+        ]
+      },
+      "developer_impact": {
+        "de": [
+          "Nach materialen Änderungen @memory-live-doc (oder Pipeline-Integration) nutzen.",
+          "Claims sind needs-review — vor Product-Claims verifizieren."
+        ],
+        "en": [
+          "After material changes use @memory-live-doc (or pipeline integration).",
+          "Claims are needs-review — verify before treating as product truth."
+        ]
+      },
+      "operational_impact": {
+        "de": [
+          "GitHub Pages kann docs/memory-live-doc/viewer/ hosten (optional)."
+        ],
+        "en": [
+          "GitHub Pages can host docs/memory-live-doc/viewer/ (optional)."
+        ]
+      },
+      "git": {
+        "base": "527e2cb2d17cf6826b3d8fbd163b713cee5a1efc",
+        "head": "527e2cb2d17cf6826b3d8fbd163b713cee5a1efc",
+        "branch": "main",
+        "pull_request": null
+      },
+      "packages": [
+        "src",
+        "local-engine",
+        "preview-runner",
+        "shared"
+      ],
+      "affected_features": [
+        "projects",
+        "appflow",
+        "blueprint-views",
+        "blueprint-software-graph",
+        "blueprint-access-control",
+        "data-erd",
+        "preview-runner",
+        "local-engine",
+        "settings-connections",
+        "logs"
+      ],
+      "affected_components": [
+        ".project-memory/",
+        "docs/PROJECT-STATUS.md",
+        "docs/memory-live-doc/viewer/"
+      ],
+      "breaking_changes": [],
+      "migration_required": false,
+      "security_relevant": false,
+      "evidence": [
+        {
+          "kind": "file",
+          "path": "README.md",
+          "url": "https://github.com/iamthamanic/visudev-app/blob/527e2cb2d17cf6826b3d8fbd163b713cee5a1efc/README.md"
+        },
+        {
+          "kind": "file",
+          "path": ".qa/design/blueprint-access-control.md",
+          "url": "https://github.com/iamthamanic/visudev-app/blob/527e2cb2d17cf6826b3d8fbd163b713cee5a1efc/.qa/design/blueprint-access-control.md"
+        },
+        {
+          "kind": "file",
+          "path": "shared/access-control.types.ts",
+          "url": "https://github.com/iamthamanic/visudev-app/blob/527e2cb2d17cf6826b3d8fbd163b713cee5a1efc/shared/access-control.types.ts"
+        },
+        {
+          "kind": "file",
+          "path": "docs/visudev-blueprint-engine.md",
+          "url": "https://github.com/iamthamanic/visudev-app/blob/527e2cb2d17cf6826b3d8fbd163b713cee5a1efc/docs/visudev-blueprint-engine.md"
+        }
+      ],
+      "screenshots": [
+        {
+          "id": "shot-appflow",
+          "path": "docs/memory-live-doc/assets/2026-07-19-bootstrap/appflow.png",
+          "status": "missing",
+          "caption": {
+            "de": "App Flow Hauptansicht",
+            "en": "App Flow main view"
+          }
+        },
+        {
+          "id": "shot-diagnostics-ac",
+          "path": "docs/memory-live-doc/assets/2026-07-19-bootstrap/diagnostics-access-control.png",
+          "status": "missing",
+          "caption": {
+            "de": "Blueprint Diagnostics Access-Control-Matrix",
+            "en": "Blueprint Diagnostics access-control matrix"
+          }
+        },
+        {
+          "id": "shot-data-erd",
+          "path": "docs/memory-live-doc/assets/2026-07-19-bootstrap/data-erd.png",
+          "status": "missing",
+          "caption": {
+            "de": "Data ERD",
+            "en": "Data ERD"
+          }
+        },
+        {
+          "id": "shot-projects",
+          "path": "docs/memory-live-doc/assets/2026-07-19-bootstrap/projects.png",
+          "status": "missing",
+          "caption": {
+            "de": "Projekte-Seite",
+            "en": "Projects page"
+          }
+        }
+      ],
+      "confidence": 0.6,
+      "review_status": "needs-review"
+    }
+  ]
+}

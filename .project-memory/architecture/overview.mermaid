@@ -1,0 +1,36 @@
+%% VisuDEV architecture overview (bootstrap, needs-review)
+flowchart TB
+  subgraph ui [Frontend Vite React]
+    Shell[Shell]
+    Projects[Projects]
+    AppFlow[App Flow]
+    Blueprint[Blueprint Views]
+    Data[Data ERD]
+    Settings[Settings]
+  end
+
+  subgraph analysis [Analysis]
+    LocalEngine[Local Engine]
+    Graph[Software Graph]
+    AC[Access Control Analyzers]
+    Enrich[Blueprint Enrichment]
+  end
+
+  subgraph runtime [Runtime]
+    Preview[Preview Runner]
+    Supabase[Supabase Edge + Auth]
+  end
+
+  Shell --> Projects
+  Shell --> AppFlow
+  Shell --> Blueprint
+  Shell --> Data
+  Shell --> Settings
+  Projects --> LocalEngine
+  Projects --> Supabase
+  LocalEngine --> Graph
+  Graph --> Enrich
+  Graph --> AC
+  Enrich --> Blueprint
+  AC --> Blueprint
+  AppFlow --> Preview
