@@ -1,5 +1,5 @@
 /**
- * memory-live-doc viewer — Status / Features / Changes / Decisions / Architecture (+ history).
+ * memory-live-doc viewer - Status / Features / Changes / Decisions / Architecture (+ history).
  * Plain-language first; needs-review explained; architecture date filter.
  */
 (function () {
@@ -44,7 +44,7 @@
       codebasePath: "Pfad",
       screenshots: "Screenshots",
       back: "Zurück zur Timeline",
-      timelineHint: "Links = neueste Änderung · nach rechts scrollen für ältere",
+      timelineHint: "Links = neueste · nach rechts scrollen · grüne Chips öffnen GitHub",
       timelineNewest: "Jetzt",
       timelineOldest: "Anfang",
       loadError: "Daten konnten nicht geladen werden. Bitte data/*.json prüfen.",
@@ -52,7 +52,7 @@
       architecture: "Architektur",
       architectureEmpty: "Kein Architektur-Diagramm im Snapshot.",
       architectureSource: "Mermaid-Quelle",
-      architectureRenderError: "Diagramm konnte nicht gerendert werden — Quelle unten.",
+      architectureRenderError: "Diagramm konnte nicht gerendert werden - Quelle unten.",
       architectureVersion: "Stand / Datum",
       why: "Warum das wichtig ist",
       techSummary: "Technische Kurzfassung",
@@ -63,6 +63,13 @@
       reviewNeeds: "Prüfung offen",
       reviewOk: "Geprüft",
       reviewBad: "Verworfen",
+      openDetails: "Details",
+      codebaseLead: "Klick öffnet GitHub im neuen Tab (Diff, Commit, Ordner/Dateien).",
+      kindDiff: "Diff",
+      kindCommit: "Commit",
+      kindPath: "Code",
+      kindPr: "PR",
+      moreOnGithub: "Mehr auf GitHub",
     },
     en: {
       eyebrow: "Project memory",
@@ -88,7 +95,7 @@
       codebasePath: "Path",
       screenshots: "Screenshots",
       back: "Back to timeline",
-      timelineHint: "Left = newest change · scroll right for older",
+      timelineHint: "Left = newest · scroll right for older · green chips open GitHub",
       timelineNewest: "Now",
       timelineOldest: "Start",
       loadError: "Could not load data. Check data/*.json.",
@@ -96,7 +103,7 @@
       architecture: "Architecture",
       architectureEmpty: "No architecture diagram in snapshot.",
       architectureSource: "Mermaid source",
-      architectureRenderError: "Could not render diagram — source below.",
+      architectureRenderError: "Could not render diagram - source below.",
       architectureVersion: "Version / date",
       why: "Why it matters",
       techSummary: "Technical summary",
@@ -107,6 +114,13 @@
       reviewNeeds: "Needs review",
       reviewOk: "Accepted",
       reviewBad: "Rejected",
+      openDetails: "Details",
+      codebaseLead: "Click opens GitHub in a new tab (diff, commit, folders/files).",
+      kindDiff: "Diff",
+      kindCommit: "Commit",
+      kindPath: "Code",
+      kindPr: "PR",
+      moreOnGithub: "More on GitHub",
     },
   };
 
@@ -262,6 +276,7 @@
           .id || null;
       bind();
       renderChrome();
+      applyHash(false);
       showView(state.view);
     } catch (err) {
       document.querySelector("main").innerHTML =
@@ -280,8 +295,32 @@
       btn.addEventListener("click", () => {
         state.selectedChangeId = null;
         showView(btn.getAttribute("data-view"));
+        syncHash();
       });
     });
+    window.addEventListener("hashchange", () => applyHash(false));
+  }
+
+  function syncHash() {
+    let hash = "#/" + state.view;
+    if (state.view === "changes" && state.selectedChangeId) {
+      hash += "/" + encodeURIComponent(state.selectedChangeId);
+    }
+    if (location.hash !== hash) {
+      history.replaceState(null, "", hash);
+    }
+  }
+
+  function applyHash(renderIfNeeded) {
+    const raw = (location.hash || "").replace(/^#\/?/, "");
+    const parts = raw.split("/").filter(Boolean);
+    const view = parts[0];
+    const valid = ["status", "features", "changes", "decisions", "architecture"];
+    if (valid.includes(view)) {
+      state.view = view;
+      state.selectedChangeId = view === "changes" && parts[1] ? decodeURIComponent(parts[1]) : null;
+      if (renderIfNeeded !== false) showView(state.view);
+    }
   }
 
   function renderChrome() {
@@ -300,7 +339,9 @@
   function showView(name) {
     state.view = name;
     document.querySelectorAll(".tab").forEach((btn) => {
-      btn.classList.toggle("is-active", btn.getAttribute("data-view") === name);
+      const on = btn.getAttribute("data-view") === name;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
     });
     document.querySelectorAll(".view").forEach((el) => {
       const on = el.id === "view-" + name;
@@ -312,6 +353,7 @@
     if (name === "changes") renderChanges();
     if (name === "decisions") renderDecisions();
     if (name === "architecture") renderArchitecture();
+    syncHash();
   }
 
   function listBlock(title, items) {
@@ -428,16 +470,17 @@
       const ch = state.changes.find((c) => c.id === state.selectedChangeId);
       if (!ch) {
         state.selectedChangeId = null;
+        syncHash();
         return renderChanges();
       }
       el.innerHTML = renderChangeDetail(ch);
       el.querySelector("[data-back]")?.addEventListener("click", () => {
         state.selectedChangeId = null;
+        syncHash();
         renderChanges();
       });
       return;
     }
-    // Newest first (left). state.changes already sorted date desc on load.
     const items = state.changes;
     if (!items.length) {
       el.innerHTML = reviewHelpCard() + `<p class="muted">${t("empty")}</p>`;
@@ -453,19 +496,26 @@
             ${items
               .map((c, i) => {
                 const teaser = bi(c.plain_language) || bi(c.summary);
+                const links = collectCodebaseLinks(c).slice(0, 3);
                 return `
               <li class="timeline-item">
-                <button type="button" class="timeline-node" data-id="${escapeAttr(c.id)}">
+                <article class="timeline-card">
                   <span class="timeline-dot" aria-hidden="true"></span>
                   <time class="timeline-date" datetime="${escapeAttr(c.date || "")}">${escapeHtml(
                     formatDate(c.date),
                   )}</time>
-                  <strong class="timeline-title">${escapeHtml(bi(c.title) || c.id)}</strong>
+                  <h3 class="timeline-title">${escapeHtml(bi(c.title) || c.id)}</h3>
                   <div class="timeline-meta">${reviewPill(c.review_status)}
                     <span class="pill">${escapeHtml(c.type || "")}</span>
                   </div>
-                  <p class="timeline-teaser muted">${escapeHtml(teaser)}</p>
-                </button>
+                  <p class="timeline-teaser">${escapeHtml(teaser)}</p>
+                  ${renderGhChips(links, true)}
+                  <div class="timeline-actions">
+                    <button type="button" class="btn btn-primary timeline-open" data-id="${escapeAttr(
+                      c.id,
+                    )}">${escapeHtml(t("openDetails"))}</button>
+                  </div>
+                </article>
                 ${i < items.length - 1 ? `<span class="timeline-connector" aria-hidden="true"></span>` : ""}
               </li>`;
               })
@@ -477,6 +527,7 @@
     el.querySelectorAll("button[data-id]").forEach((btn) => {
       btn.addEventListener("click", () => {
         state.selectedChangeId = btn.getAttribute("data-id");
+        syncHash();
         renderChanges();
       });
     });
@@ -504,8 +555,10 @@
     const base = repoBaseUrl();
     const p = String(filePath || "").replace(/^\.\//, "").replace(/^\/+/, "");
     if (!base || !p) return null;
-    const sha = ref || (state.project && state.project.repository && state.project.repository.default_branch) || "main";
-    // directories (trailing slash or no extension-ish) → tree; else blob
+    const sha =
+      ref ||
+      (state.project && state.project.repository && state.project.repository.default_branch) ||
+      "main";
     const isDir = /\/$/.test(p) || !/\.[a-z0-9]{1,8}$/i.test(p.split("/").pop() || "");
     const kind = isDir ? "tree" : "blob";
     return `${base}/${kind}/${sha}/${p.replace(/\/$/, "")}`;
@@ -514,62 +567,96 @@
   function resolveEvidenceHref(e, preferredSha) {
     if (e && e.url) return e.url;
     if (!e) return null;
-    const kind = e.kind || "";
-    if (kind === "pr" && e.url) return e.url;
-    if (kind === "commit" || (/^[0-9a-f]{7,40}$/i.test(String(e.path || "")) && !String(e.path).includes("/"))) {
+    if (e.kind === "pr" && e.url) return e.url;
+    if (
+      e.kind === "commit" ||
+      (/^[0-9a-f]{7,40}$/i.test(String(e.path || "")) && !String(e.path).includes("/"))
+    ) {
       return githubCommitUrl(e.sha || e.path);
     }
     if (e.path) return githubPathUrl(preferredSha || e.ref, e.path);
     return null;
   }
 
-  function renderCodebaseLinks(ch) {
+  function collectCodebaseLinks(ch) {
     const git = ch.git || {};
     const head = git.head || "";
     const base = git.base || "";
     const links = [];
+    const seen = new Set();
+    const push = (item) => {
+      if (!item || !item.href || seen.has(item.href)) return;
+      seen.add(item.href);
+      links.push(item);
+    };
 
     const compare = githubCompareUrl(base, head);
     if (compare) {
-      links.push({
+      push({
         href: compare,
-        label: `${t("codebaseCompare")}: ${String(base).slice(0, 8)}…${String(head).slice(0, 8)}`,
+        kind: t("kindDiff"),
+        label: `${String(base).slice(0, 7)}…${String(head).slice(0, 7)}`,
+        primary: true,
       });
     }
     const headUrl = githubCommitUrl(head);
     if (headUrl) {
-      links.push({ href: headUrl, label: `${t("codebaseCommit")}: ${String(head).slice(0, 8)}` });
+      push({
+        href: headUrl,
+        kind: t("kindCommit"),
+        label: String(head).slice(0, 8),
+        primary: !compare,
+      });
     }
     if (git.pull_request) {
-      links.push({ href: git.pull_request, label: t("codebasePr") });
+      push({ href: git.pull_request, kind: t("kindPr"), label: t("codebasePr"), primary: false });
     }
-
-    const seen = new Set(links.map((l) => l.href));
     for (const p of ch.affected_components || []) {
       const href = githubPathUrl(head || undefined, p);
-      if (href && !seen.has(href)) {
-        seen.add(href);
-        links.push({ href, label: `${t("codebasePath")}: ${p}` });
-      }
+      push({ href, kind: t("kindPath"), label: p, primary: false });
     }
     for (const e of ch.evidence || []) {
       const href = resolveEvidenceHref(e, head);
-      if (!href || seen.has(href)) continue;
-      seen.add(href);
-      const label =
-        e.kind === "commit" || (/^[0-9a-f]{7,40}$/i.test(String(e.path || "")) && !String(e.path || "").includes("/"))
-          ? `${t("codebaseCommit")}: ${String(e.sha || e.path).slice(0, 8)}`
-          : `${t("codebasePath")}: ${e.path || e.url || e.kind}`;
-      links.push({ href, label });
+      if (!href) continue;
+      let kind = t("kindPath");
+      let label = e.path || e.url || e.kind;
+      if (e.kind === "compare") {
+        kind = t("kindDiff");
+        label = String(e.path || "").replace(/\.\.\./g, "…");
+      } else if (
+        e.kind === "commit" ||
+        e.kind === "pr" ||
+        (/^[0-9a-f]{7,40}$/i.test(String(e.path || "")) && !String(e.path || "").includes("/"))
+      ) {
+        kind = e.kind === "pr" ? t("kindPr") : t("kindCommit");
+        label = String(e.sha || e.path || "").slice(0, 12);
+      }
+      push({ href, kind, label, primary: false });
     }
+    return links;
+  }
 
+  function renderGhChips(links, compact) {
+    if (!links.length) return "";
+    return `<div class="gh-row" role="list">${links
+      .map((l) => {
+        const cls = l.primary ? "gh-chip is-primary" : "gh-chip";
+        return `<a class="${cls}" role="listitem" href="${escapeAttr(l.href)}" target="_blank" rel="noopener noreferrer">
+          <span class="gh-chip-kind">${escapeHtml(l.kind)}</span>
+          <span class="gh-chip-label" translate="no">${escapeHtml(l.label)}</span>
+        </a>`;
+      })
+      .join("")}</div>`;
+  }
+
+  function renderCodebasePanel(ch) {
+    const links = collectCodebaseLinks(ch);
     if (!links.length) return `<p class="muted">${t("empty")}</p>`;
-    return `<ul class="codebase-links">${links
-      .map(
-        (l) =>
-          `<li><a href="${escapeAttr(l.href)}" target="_blank" rel="noopener">${escapeHtml(l.label)}</a></li>`,
-      )
-      .join("")}</ul>`;
+    return `<div class="codebase-panel">
+      <h3>${escapeHtml(t("codebase"))}</h3>
+      <p class="panel-lead">${escapeHtml(t("codebaseLead"))}</p>
+      ${renderGhChips(links, false)}
+    </div>`;
   }
 
   function renderChangeDetail(ch) {
@@ -578,26 +665,18 @@
       if (!items.length) return "";
       return `<h3>${label}</h3><ul>${items.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul>`;
     };
-    const head = (ch.git && ch.git.head) || "";
-    const evidence = (ch.evidence || [])
-      .map((e) => {
-        const href = resolveEvidenceHref(e, head);
-        const label = e.path || e.url || e.kind;
-        return href
-          ? `<li><a href="${escapeAttr(href)}" target="_blank" rel="noopener">${escapeHtml(label)}</a></li>`
-          : `<li>${escapeHtml(label)}</li>`;
-      })
-      .join("");
     const shots = (ch.screenshots || [])
       .map((s) => {
         const cap = bi(s.caption) || s.id || s.path;
-        return `<li>${escapeHtml(cap)} — <em>${escapeHtml(s.status || "missing")}</em></li>`;
+        return `<li>${escapeHtml(cap)} - <em>${escapeHtml(s.status || "missing")}</em></li>`;
       })
       .join("");
     const plain = bi(ch.plain_language);
     const why = bi(ch.why_it_matters);
     return `
-      <button type="button" class="tab" data-back>${t("back")}</button>
+      <div class="detail-bar">
+        <button type="button" class="btn btn-ghost" data-back>${t("back")}</button>
+      </div>
       <article class="card detail">
         <h2>${escapeHtml(bi(ch.title) || ch.id)}</h2>
         <p class="meta">${escapeHtml(formatDate(ch.date))} · ${reviewPill(ch.review_status)}
@@ -615,14 +694,11 @@
               )}</p></details>`
             : ""
         }
-        <h3>${t("codebase")}</h3>
-        ${renderCodebaseLinks(ch)}
+        ${renderCodebasePanel(ch)}
         <h3>${t("impacts")}</h3>
         ${impact(t("user"), ch.user_impact)}
         ${impact(t("developer"), ch.developer_impact)}
         ${impact(t("operational"), ch.operational_impact)}
-        <h3>${t("evidence")}</h3>
-        ${evidence ? `<ul>${evidence}</ul>` : `<p class="muted">${t("empty")}</p>`}
         <h3>${t("screenshots")}</h3>
         ${shots ? `<ul>${shots}</ul>` : `<p class="muted">${t("empty")}</p>`}
       </article>`;
@@ -670,7 +746,7 @@
 
     const options = versions
       .map((v) => {
-        const label = `${formatDate(v.date) || "?"} — ${bi(v.title) || v.id}${v.is_current ? " ★" : ""}`;
+        const label = `${formatDate(v.date) || "?"} - ${bi(v.title) || v.id}${v.is_current ? " ★" : ""}`;
         const sel = v.id === selected.id ? " selected" : "";
         return `<option value="${escapeAttr(v.id)}"${sel}>${escapeHtml(label)}</option>`;
       })
