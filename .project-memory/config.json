@@ -31,5 +31,6 @@
     "can_change_pages": true,
     "action_taken": "enabled_docs_legacy",
     "private_note": null
-  }
+  },
+  "theme_id": "visudev"
 }

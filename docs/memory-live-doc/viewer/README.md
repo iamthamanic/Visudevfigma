@@ -5,14 +5,19 @@
 From the **repo root**:
 
 ```bash
-# 1) Detect: memory viewer vs other Pages site
+# Export viewer (theme + architecture + data) after memory apply
+bash ~/.cursor/skills/memory-live-doc/scripts/export-viewer-snapshot.sh
+
+# Detect: memory viewer vs other Pages site
 bash ~/.cursor/skills/memory-live-doc/scripts/github-pages-memory.sh status --write-config
 
-# 2) Enable ONLY if status is not_enabled (never overwrites other sites)
+# Enable ONLY if status is not_enabled (never overwrites other sites)
 bash ~/.cursor/skills/memory-live-doc/scripts/github-pages-memory.sh enable --write-config
 ```
 
-Policy: [references/github-pages-policy.md](../../../references/github-pages-policy.md) (in the skill package).
+Policy: skill `references/github-pages-policy.md`.  
+Theme: skill `references/theme-resolution.md`.  
+Viewer tabs: Status, Features, Changes, Decisions, **Architecture** (Mermaid).
 
 ### Status meanings (short)
 
@@ -33,20 +38,11 @@ Policy: [references/github-pages-policy.md](../../../references/github-pages-pol
 
 Do **not** change Pages to `/docs` if the repo already publishes `/` or an Actions site.
 
-### Alternative: viewer as Pages root
-
-Set Pages folder to `/docs/memory-live-doc/viewer` if your host supports a nested docs path. Then the site URL is the viewer root and `./data/*.json` still works. Only do this when Pages is free or already that path.
-
-## Private repositories
-
-GitHub Pages on private repos may require a paid plan and has visibility limits. Prefer a public docs site or export the viewer elsewhere if Pages is unavailable.
-
 ## Local smoke check
 
-From the skill package or a repo copy:
-
 ```bash
-cd ~/.cursor/skills/memory-live-doc/assets/viewer
+bash ~/.cursor/skills/memory-live-doc/scripts/export-viewer-snapshot.sh
+cd docs/memory-live-doc/viewer
 python3 -m http.server 8765
 # open http://127.0.0.1:8765/
 ```
@@ -55,11 +51,4 @@ python3 -m http.server 8765
 
 ## Data snapshot
 
-On `@memory-live-doc apply`, the skill writes:
-
-- `data/project.json`
-- `data/features.json`
-- `data/changes.json`
-- `data/current-state.json`
-
-Keep the viewer self-contained; do not rely on fetching `.project-memory/` outside `docs/` from Pages.
+`export-viewer-snapshot.sh` writes project, features, changes, current-state, decisions, **architecture**, **theme**. Keep the viewer self-contained.

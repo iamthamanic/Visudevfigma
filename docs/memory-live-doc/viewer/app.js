@@ -1,5 +1,6 @@
 /**
- * memory-live-doc viewer — loads ./data/*.json, bilingual toggle, Status/Features/Changes/Decisions.
+ * memory-live-doc viewer — Status / Features / Changes / Decisions / Architecture.
+ * Theme from ./data/theme.json; architecture Mermaid from ./data/architecture.json.
  */
 (function () {
   const state = {
@@ -10,7 +11,10 @@
     changes: [],
     decisions: [],
     current: null,
+    architecture: null,
+    theme: null,
     selectedChangeId: null,
+    mermaidReady: false,
   };
 
   const ui = {
@@ -35,7 +39,10 @@
       back: "Zurück zur Timeline",
       loadError: "Daten konnten nicht geladen werden. Bitte data/*.json prüfen.",
       decisionsEmpty: "Noch keine Entscheidungen erfasst.",
-      mermaidHint: "Architektur-Mermaid liegt im Repo unter .project-memory/architecture/.",
+      architecture: "Architektur",
+      architectureEmpty: "Kein Architektur-Diagramm im Snapshot.",
+      architectureSource: "Mermaid-Quelle",
+      architectureRenderError: "Diagramm konnte nicht gerendert werden — Quelle unten.",
     },
     en: {
       eyebrow: "Project memory",
@@ -58,7 +65,10 @@
       back: "Back to timeline",
       loadError: "Could not load data. Check data/*.json.",
       decisionsEmpty: "No decisions recorded yet.",
-      mermaidHint: "Architecture Mermaid lives in the repo under .project-memory/architecture/.",
+      architecture: "Architecture",
+      architectureEmpty: "No architecture diagram in snapshot.",
+      architectureSource: "Mermaid source",
+      architectureRenderError: "Could not render diagram — source below.",
     },
   };
 
@@ -101,15 +111,65 @@
     return res.json();
   }
 
+  function applyTheme(theme) {
+    state.theme = theme || null;
+    const tokens = (theme && theme.tokens) || {};
+    const root = document.documentElement;
+    const map = {
+      bg: "--bg",
+      bgElev: "--bg-elev",
+      ink: "--ink",
+      muted: "--muted",
+      line: "--line",
+      accent: "--accent",
+      accent2: "--accent-2",
+      danger: "--danger",
+      radius: "--radius",
+      tabRadius: "--tab-radius",
+      fontDisplay: "--font-display",
+      fontBody: "--font-body",
+      fontMono: "--font-mono",
+      bgGlow1: "--bg-glow-1",
+      bgGlow2: "--bg-glow-2",
+    };
+    Object.keys(map).forEach((k) => {
+      if (tokens[k]) root.style.setProperty(map[k], tokens[k]);
+    });
+    const fontLink = document.getElementById("theme-fonts");
+    if (fontLink && theme && theme.fonts && theme.fonts.google) {
+      fontLink.href = theme.fonts.google;
+    }
+  }
+
+  function initMermaid() {
+    if (typeof mermaid === "undefined") return;
+    const vars =
+      (state.theme && state.theme.mermaid && state.theme.mermaid.themeVariables) || {};
+    const themeName =
+      (state.theme && state.theme.mermaid && state.theme.mermaid.theme) || "dark";
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: themeName,
+      themeVariables: vars,
+      securityLevel: "strict",
+    });
+    state.mermaidReady = true;
+  }
+
   async function boot() {
     try {
-      const [project, features, changes, current, decisions] = await Promise.all([
-        loadJson("./data/project.json"),
-        loadJson("./data/features.json"),
-        loadJson("./data/changes.json"),
-        loadJson("./data/current-state.json"),
-        loadJson("./data/decisions.json").catch(() => ({ decisions: [] })),
-      ]);
+      const [project, features, changes, current, decisions, architecture, theme] =
+        await Promise.all([
+          loadJson("./data/project.json"),
+          loadJson("./data/features.json"),
+          loadJson("./data/changes.json"),
+          loadJson("./data/current-state.json"),
+          loadJson("./data/decisions.json").catch(() => ({ decisions: [] })),
+          loadJson("./data/architecture.json").catch(() => ({ mermaid: "" })),
+          loadJson("./data/theme.json").catch(() => null),
+        ]);
+      applyTheme(theme);
+      initMermaid();
       state.project = project;
       state.features = asArray(features, ["features", "items"]);
       state.changes = asArray(changes, ["changes", "items"])
@@ -117,6 +177,7 @@
         .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
       state.decisions = asArray(decisions, ["decisions", "items"]);
       state.current = current;
+      state.architecture = architecture;
       bind();
       renderChrome();
       showView(state.view);
@@ -145,6 +206,9 @@
     document.querySelectorAll("[data-i18n]").forEach((el) => {
       el.textContent = t(el.getAttribute("data-i18n"));
     });
+    document.querySelectorAll("[data-i18n-tab]").forEach((el) => {
+      el.textContent = t(el.getAttribute("data-i18n-tab"));
+    });
     const p = state.project || {};
     document.getElementById("project-title").textContent = bi(p.title) || p.id || "Project";
     document.getElementById("project-summary").textContent = bi(p.summary);
@@ -165,10 +229,13 @@
     if (name === "features") renderFeatures();
     if (name === "changes") renderChanges();
     if (name === "decisions") renderDecisions();
+    if (name === "architecture") renderArchitecture();
   }
 
   function listBlock(title, items) {
-    const rows = (items || []).map((x) => `<li>${escapeHtml(typeof x === "string" ? x : bi(x))}</li>`).join("");
+    const rows = (items || [])
+      .map((x) => `<li>${escapeHtml(typeof x === "string" ? x : bi(x))}</li>`)
+      .join("");
     return `<article class="card"><h3>${escapeHtml(title)}</h3>${
       rows ? `<ul>${rows}</ul>` : `<p class="muted">${t("empty")}</p>`
     }</article>`;
@@ -186,7 +253,9 @@
       ${
         product
           ? `<article class="card" style="margin-bottom:1rem"><h3>${escapeHtml(t("product"))}</h3><p>${escapeHtml(product)}</p>
-             <p class="meta">${reviewPill(c.review_status)} ${escapeHtml(c.as_of || "")} · <code>${escapeHtml(c.commit || "").slice(0, 8)}</code></p></article>`
+             <p class="meta">${reviewPill(c.review_status)} ${escapeHtml(c.as_of || "")} · <code>${escapeHtml(
+               (c.commit || "").slice(0, 8),
+             )}</code></p></article>`
           : ""
       }
       <div class="grid cols-2">
@@ -195,7 +264,6 @@
         ${listBlock(t("incomplete"), incomplete)}
         ${listBlock(t("risks"), risks)}
       </div>
-      <p class="muted" style="margin-top:1rem">${t("mermaidHint")}</p>
     `;
   }
 
@@ -226,18 +294,19 @@
         if (st && f.status !== st) return false;
         return true;
       });
-      document.getElementById("feat-grid").innerHTML = items
-        .map(
-          (f) => `
+      document.getElementById("feat-grid").innerHTML =
+        items
+          .map(
+            (f) => `
         <article class="card">
           <h3>${escapeHtml(bi(f.title) || f.id)}</h3>
           <p class="meta">${reviewPill(f.review_status)} <span class="pill">${escapeHtml(f.status || "")}</span>
             ${(f.packages || []).map((p) => `<span class="pill">${escapeHtml(p)}</span>`).join("")}
           </p>
           <p>${escapeHtml(bi(f.summary))}</p>
-        </article>`
-        )
-        .join("") || `<p class="muted">${t("empty")}</p>`;
+        </article>`,
+          )
+          .join("") || `<p class="muted">${t("empty")}</p>`;
     };
     document.getElementById("feat-pkg").addEventListener("change", draw);
     document.getElementById("feat-status").addEventListener("change", draw);
@@ -268,7 +337,7 @@
           ${(c.packages || []).map((p) => `<span class="pill">${escapeHtml(p)}</span>`).join("")}
         </div>
         <p class="muted">${escapeHtml(bi(c.summary))}</p>
-      </button></li>`
+      </button></li>`,
       )
       .join("")}</ul>`;
     el.querySelectorAll("button[data-id]").forEach((btn) => {
@@ -297,9 +366,6 @@
     const shots = (ch.screenshots || [])
       .map((s) => {
         const cap = bi(s.caption) || s.id || s.path;
-        if (s.status === "present" && s.path) {
-          return `<li><img src="../../assets/${escapeAttr((s.path || "").split("/").slice(-2).join("/"))}" alt="" style="max-width:100%;border-radius:8px" /><br/>${escapeHtml(cap)} (${escapeHtml(s.status)})</li>`;
-        }
         return `<li>${escapeHtml(cap)} — <em>${escapeHtml(s.status || "missing")}</em></li>`;
       })
       .join("");
@@ -318,17 +384,14 @@
         ${evidence ? `<ul>${evidence}</ul>` : `<p class="muted">${t("empty")}</p>`}
         <h3>${t("screenshots")}</h3>
         ${shots ? `<ul>${shots}</ul>` : `<p class="muted">${t("empty")}</p>`}
-        ${
-          ch.git && ch.git.pull_request
-            ? `<p><a href="${escapeAttr(ch.git.pull_request)}" target="_blank" rel="noopener">Pull request</a></p>`
-            : ""
-        }
       </article>`;
   }
 
   function renderDecisions() {
     const el = document.getElementById("view-decisions");
-    const fromChanges = state.changes.filter((c) => c.type === "decision" || c.type === "architecture");
+    const fromChanges = state.changes.filter(
+      (c) => c.type === "decision" || c.type === "architecture",
+    );
     const decisions = state.decisions.length ? state.decisions : fromChanges;
     if (!decisions.length) {
       el.innerHTML = `<p class="muted">${t("decisionsEmpty")}</p>`;
@@ -342,9 +405,54 @@
         <p class="meta">${escapeHtml(d.date || "")} · ${reviewPill(d.review_status)}
           ${d.status ? `<span class="pill">${escapeHtml(d.status)}</span>` : ""}</p>
         <p>${escapeHtml(bi(d.summary))}</p>
-      </article>`
+      </article>`,
       )
       .join("")}</div>`;
+  }
+
+  async function renderArchitecture() {
+    const el = document.getElementById("view-architecture");
+    const arch = state.architecture || {};
+    const source = (arch.mermaid || "").trim();
+    const title = bi(arch.title) || t("architecture");
+
+    if (!source) {
+      el.innerHTML = `<p class="muted">${t("architectureEmpty")}</p>`;
+      return;
+    }
+
+    el.innerHTML = `
+      <article class="card">
+        <h3>${escapeHtml(title)}</h3>
+        <p class="meta"><code>${escapeHtml(arch.source_path || "architecture")}</code></p>
+        <div class="architecture-diagram">
+          <pre class="mermaid" id="arch-mermaid">${escapeHtml(source)}</pre>
+        </div>
+        <details class="architecture-source">
+          <summary>${escapeHtml(t("architectureSource"))}</summary>
+          <pre>${escapeHtml(source)}</pre>
+        </details>
+      </article>
+    `;
+
+    if (!state.mermaidReady || typeof mermaid === "undefined") {
+      el.querySelector(".architecture-diagram").innerHTML =
+        `<p class="muted">${t("architectureRenderError")}</p>`;
+      return;
+    }
+
+    try {
+      const node = el.querySelector("#arch-mermaid");
+      const { svg } = await mermaid.render("arch-svg-" + Date.now(), source);
+      node.outerHTML = svg;
+    } catch (err) {
+      const box = el.querySelector(".architecture-diagram");
+      if (box) {
+        box.innerHTML = `<p class="muted">${t("architectureRenderError")}</p><p class="muted">${escapeHtml(
+          String(err),
+        )}</p>`;
+      }
+    }
   }
 
   function escapeHtml(s) {
