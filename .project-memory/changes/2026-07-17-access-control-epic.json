@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "status": "recorded",
+  "id": "2026-07-17-access-control-epic",
+  "date": "2026-07-17",
+  "type": "security",
+  "title": {
+    "de": "Stack-agnostisches Access Control",
+    "en": "Stack-agnostic access control"
+  },
+  "summary": {
+    "de": "Abstract controls, App-Chain, DB-Adapter (Postgres/MariaDB/MongoDB), neue Matrix-UI, Inspector.",
+    "en": "Abstract controls, app chain, DB adapters (Postgres/MariaDB/MongoDB), new matrix UI, inspector."
+  },
+  "plain_language": {
+    "de": "Sicherheit fragt jetzt: Wer darf welche Daten? — nicht nur „fehlt RLS?“. MariaDB/MongoDB werden fair behandelt; Mechanismen stehen im Inspector.",
+    "en": "Security now asks: who may access which data? — not only “is RLS missing?”. MariaDB/MongoDB are judged fairly; mechanisms show in the inspector."
+  },
+  "why_it_matters": {
+    "de": "Verhindert falsche Alarme und macht echte Mandanten-/Ownership-Lücken sichtbar.",
+    "en": "Avoids false alarms and surfaces real tenant/ownership gaps."
+  },
+  "user_impact": {
+    "de": [
+      "Neue Security-Matrix-Spalten",
+      "Inspector mit Mechanismen"
+    ],
+    "en": [
+      "New security matrix columns",
+      "Inspector with mechanisms"
+    ]
+  },
+  "developer_impact": {
+    "de": [
+      "shared/access-control*",
+      "local-engine access-control adapters"
+    ],
+    "en": [
+      "shared/access-control*",
+      "local-engine access-control adapters"
+    ]
+  },
+  "operational_impact": {
+    "de": [],
+    "en": []
+  },
+  "git": {
+    "base": "118e837f",
+    "head": "527e2cb2",
+    "branch": "main",
+    "pull_request": null
+  },
+  "packages": [
+    "shared",
+    "local-engine",
+    "src"
+  ],
+  "affected_features": [
+    "blueprint-access-control"
+  ],
+  "affected_components": [
+    "shared/access-control.types.ts",
+    "local-engine/src/services/access-control"
+  ],
+  "breaking_changes": [],
+  "migration_required": false,
+  "security_relevant": true,
+  "evidence": [
+    {
+      "kind": "file",
+      "path": ".qa/design/blueprint-access-control.md"
+    }
+  ],
+  "screenshots": [],
+  "confidence": 0.9,
+  "review_status": "needs-review"
+}

@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "status": "recorded",
+  "id": "2026-07-08-local-first-graph",
+  "date": "2026-07-08",
+  "type": "architecture",
+  "title": {
+    "de": "Local-First & Software Graph IR",
+    "en": "Local-first & Software Graph IR"
+  },
+  "summary": {
+    "de": "Local-First Phase 1; VisuDevGraph / Software Graph als neutrales Zwischenformat.",
+    "en": "Local-first phase 1; VisuDevGraph / Software Graph as neutral IR."
+  },
+  "plain_language": {
+    "de": "Analysen können stärker lokal laufen. Alle Blueprint-Ansichten teilen sich einen gemeinsamen „Stadtplan“ der Software.",
+    "en": "Analyses can run more locally. All Blueprint views share one city map of the software."
+  },
+  "why_it_matters": {
+    "de": "Grundlage für die vielen Blueprint-Views und für stack-agnostische Sicherheit.",
+    "en": "Foundation for many Blueprint views and stack-agnostic security."
+  },
+  "user_impact": {
+    "de": [
+      "Zuverlässigere lokale Scans"
+    ],
+    "en": [
+      "More reliable local scans"
+    ]
+  },
+  "developer_impact": {
+    "de": [
+      "Software Graph builder",
+      "pluggable providers vorbereitet"
+    ],
+    "en": [
+      "Software Graph builder",
+      "pluggable providers prepared"
+    ]
+  },
+  "operational_impact": {
+    "de": [
+      "Local Engine zentral"
+    ],
+    "en": [
+      "Local Engine central"
+    ]
+  },
+  "git": {
+    "base": "",
+    "head": "",
+    "branch": "main",
+    "pull_request": null
+  },
+  "packages": [
+    "local-engine",
+    "shared"
+  ],
+  "affected_features": [
+    "blueprint-software-graph",
+    "local-engine"
+  ],
+  "affected_components": [
+    "shared/software-graph.types.ts",
+    "local-engine"
+  ],
+  "breaking_changes": [],
+  "migration_required": false,
+  "security_relevant": false,
+  "evidence": [
+    {
+      "kind": "file",
+      "path": "shared/software-graph.types.ts"
+    }
+  ],
+  "screenshots": [],
+  "confidence": 0.75,
+  "review_status": "needs-review"
+}

@@ -2,62 +2,150 @@
   "schema_version": 1,
   "versions": [
     {
-      "id": "2026-07-19-access-control",
+      "schema_version": 1,
+      "content_hash": "7230e1b45376a2770ba7537488b4bbc73693b152e663af5d8ff990549a78c095",
+      "review_status": "needs-review",
+      "id": "2026-07-19-living-docs",
       "date": "2026-07-19",
       "title": {
-        "de": "Access Control + Living Docs",
-        "en": "Access control + living docs"
+        "de": "Living Docs + Pages Viewer",
+        "en": "Living docs + Pages viewer"
       },
       "summary": {
-        "de": "Sicherheit stack-agnostisch im Blueprint; Living Memory und GitHub-Pages-Viewer.",
-        "en": "Stack-agnostic security in Blueprint; living memory and GitHub Pages viewer."
+        "de": "Projektgedächtnis auf GitHub Pages.",
+        "en": "Project memory on GitHub Pages."
       },
-      "commit": "644d461c",
+      "commit": "42d12fe7",
       "mermaid": "%% VisuDEV architecture overview (bootstrap, needs-review)\nflowchart TB\n  subgraph ui [Frontend Vite React]\n    Shell[Shell]\n    Projects[Projects]\n    AppFlow[App Flow]\n    Blueprint[Blueprint Views]\n    Data[Data ERD]\n    Settings[Settings]\n  end\n\n  subgraph analysis [Analysis]\n    LocalEngine[Local Engine]\n    Graph[Software Graph]\n    AC[Access Control Analyzers]\n    Enrich[Blueprint Enrichment]\n  end\n\n  subgraph runtime [Runtime]\n    Preview[Preview Runner]\n    Supabase[Supabase Edge + Auth]\n  end\n\n  Shell --> Projects\n  Shell --> AppFlow\n  Shell --> Blueprint\n  Shell --> Data\n  Shell --> Settings\n  Projects --> LocalEngine\n  Projects --> Supabase\n  LocalEngine --> Graph\n  Graph --> Enrich\n  Graph --> AC\n  Enrich --> Blueprint\n  AC --> Blueprint\n  AppFlow --> Preview\n",
       "change_ids": [
         "2026-07-19-bootstrap"
       ],
-      "review_status": "needs-review",
-      "schema_version": 1,
-      "content_hash": "7230e1b45376a2770ba7537488b4bbc73693b152e663af5d8ff990549a78c095",
       "is_current": false
     },
     {
-      "id": "2026-07-14-blueprint-graph",
+      "schema_version": 1,
+      "content_hash": "a8e195ef6bea7f079e940d8e9ba6f99bdc0837a4901ee639dd11d683e1ac4f1b",
+      "review_status": "needs-review",
+      "id": "2026-07-17-access-control",
+      "date": "2026-07-17",
+      "title": {
+        "de": "Access Control Layer",
+        "en": "Access control layer"
+      },
+      "summary": {
+        "de": "Abstract controls + DB adapters.",
+        "en": "Abstract controls + DB adapters."
+      },
+      "commit": "527e2cb2",
+      "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Diag[Diagnostics / AC Matrix]\n  end\n  subgraph analysis [Analysis]\n    Graph[Software Graph]\n    Chain[App Chain Analyzer]\n    Adapters[DB Security Adapters]\n    Findings[AccessControlFindings]\n  end\n  Graph --> Chain\n  Graph --> Adapters\n  Chain --> Findings\n  Adapters --> Findings\n  Findings --> Diag",
+      "is_current": false
+    },
+    {
+      "schema_version": 1,
+      "content_hash": "45097f13b3f5a2b4c37f53ef7ea8c06ecd3e73040dd05f28d8f76fe36de7f3bf",
+      "review_status": "needs-review",
+      "id": "2026-07-14-multiview",
       "date": "2026-07-14",
       "title": {
-        "de": "Blueprint Multi-View + Software Graph",
-        "en": "Blueprint multi-view + Software Graph"
+        "de": "Sieben Blueprint-Views",
+        "en": "Seven Blueprint views"
       },
       "summary": {
-        "de": "Blueprint wird zur Architektur-Röntgenaufnahme mit mehreren Views und einem gemeinsamen Graphen.",
-        "en": "Blueprint becomes an architecture X-ray with multiple views and a shared graph."
+        "de": "Architecture bis Atlas über dem Graph.",
+        "en": "Architecture through Atlas on the graph."
       },
-      "commit": "blueprint-v2",
-      "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Shell[Shell]\n    Projects[Projects]\n    AppFlow[App Flow]\n    Blueprint[Blueprint Views]\n    Data[Data ERD]\n    Settings[Settings]\n  end\n  subgraph analysis [Analysis]\n    LocalEngine[Local Engine]\n    Graph[Software Graph]\n    Enrich[Blueprint Enrichment]\n  end\n  subgraph runtime [Runtime]\n    Preview[Preview Runner]\n    Supabase[Supabase]\n  end\n  Shell --> Projects\n  Shell --> AppFlow\n  Shell --> Blueprint\n  Shell --> Data\n  Projects --> LocalEngine\n  LocalEngine --> Graph\n  Graph --> Enrich\n  Enrich --> Blueprint\n  AppFlow --> Preview",
-      "change_ids": [],
-      "review_status": "needs-review",
-      "schema_version": 1,
-      "content_hash": "71391e4dc807456305233b6731dc6454658597a3f0c72f69ff6f07cc7737cead",
+      "commit": "multiview",
+      "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Shell[Shell]\n    BP[Blueprint Shell]\n    V1[Architecture]\n    V2[Dependencies]\n    V3[Execution]\n    V4[Infrastructure]\n    V5[Diagnostics]\n    V6[Evolution]\n    V7[Atlas]\n  end\n  subgraph analysis [Analysis]\n    Graph[Software Graph]\n  end\n  Shell --> BP\n  BP --> V1 & V2 & V3 & V4 & V5 & V6 & V7\n  Graph --> BP",
       "is_current": false
     },
     {
-      "id": "2026-07-07-shell-appflow",
-      "date": "2026-07-07",
+      "schema_version": 1,
+      "content_hash": "f1321d9b09d70d8138be77a1fdd2fcc527863e292dd26344fd352740270c4442",
+      "review_status": "needs-review",
+      "id": "2026-07-08-software-graph",
+      "date": "2026-07-08",
       "title": {
-        "de": "Frühe App: Shell & App Flow",
-        "en": "Early app: Shell & App Flow"
+        "de": "Software Graph IR",
+        "en": "Software Graph IR"
       },
       "summary": {
-        "de": "Bevor Blueprint viele Views hatte: Projekte, App Flow und Preview im Vordergrund.",
-        "en": "Before multi-view Blueprint: projects, App Flow, and preview front and center."
+        "de": "Neutraler Graph als Source of Truth.",
+        "en": "Neutral graph as source of truth."
       },
-      "commit": "early",
-      "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Shell[Shell]\n    Projects[Projects]\n    AppFlow[App Flow]\n    Settings[Settings]\n  end\n  subgraph runtime [Runtime]\n    Preview[Preview Runner]\n    Supabase[Supabase]\n  end\n  Shell --> Projects\n  Shell --> AppFlow\n  Shell --> Settings\n  Projects --> Supabase\n  AppFlow --> Preview",
-      "change_ids": [],
-      "review_status": "needs-review",
+      "commit": "graph-ir",
+      "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Blueprint[Blueprint Views]\n  end\n  subgraph analysis [Analysis]\n    Engine[Local Engine]\n    Graph[Software Graph]\n    Enrich[Enrichment]\n  end\n  Engine --> Graph\n  Graph --> Enrich\n  Enrich --> Blueprint",
+      "is_current": false
+    },
+    {
       "schema_version": 1,
-      "content_hash": "2daf79ac6ebf56f24be8fbbe160b6541a1ce3fbd265578aeb5cfd6d5da5d0515",
+      "content_hash": "31ca4cb58faa4a9f2b851892179b612a2ea079da648421d219d8cce55478e8b8",
+      "review_status": "needs-review",
+      "id": "2026-07-07-blueprint-mvp",
+      "date": "2026-07-07",
+      "title": {
+        "de": "Blueprint Engine MVP",
+        "en": "Blueprint Engine MVP"
+      },
+      "summary": {
+        "de": "Security Matrix + lokaler Runner.",
+        "en": "Security matrix + local runner."
+      },
+      "commit": "blueprint-mvp",
+      "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Shell[Shell]\n    AppFlow[App Flow]\n    Blueprint[Blueprint Diagnostics]\n  end\n  subgraph analysis [Analysis]\n    Local[Local / Edge Analyzer]\n    Matrix[Security Matrix]\n  end\n  subgraph runtime [Runtime]\n    Preview[Preview Runner]\n    Supabase[Supabase]\n  end\n  Shell --> AppFlow\n  Shell --> Blueprint\n  Blueprint --> Local\n  Local --> Matrix\n  AppFlow --> Preview",
+      "is_current": false
+    },
+    {
+      "schema_version": 1,
+      "content_hash": "f4943f359693a01ddb4a78a38a1ee45625ad1a7a7b7a6582ca65d8a0564b9557",
+      "review_status": "needs-review",
+      "id": "2026-02-10-secure-backend",
+      "date": "2026-02-10",
+      "title": {
+        "de": "Gesicherte Edge-APIs",
+        "en": "Hardened Edge APIs"
+      },
+      "summary": {
+        "de": "Ownership und Redaction auf Projekt-Routen.",
+        "en": "Ownership and redaction on project routes."
+      },
+      "commit": "856dd23c",
+      "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Shell[Shell]\n    Auth[Auth Gate]\n    Modules[App Modules]\n  end\n  subgraph api [Edge]\n    Routes[Project-scoped Routes]\n    Own[Ownership Checks]\n    Redact[Redaction]\n  end\n  subgraph data [Data]\n    Supabase[Supabase]\n  end\n  Auth --> Modules\n  Modules --> Routes\n  Routes --> Own\n  Own --> Redact\n  Redact --> Supabase",
+      "is_current": false
+    },
+    {
+      "schema_version": 1,
+      "content_hash": "b86d6f521080c00dceae600f95c45a3adbbfc10884b7c386016cd8087b5086f4",
+      "review_status": "needs-review",
+      "id": "2026-02-04-live-preview",
+      "date": "2026-02-04",
+      "title": {
+        "de": "Live Preview + Analyzer",
+        "en": "Live preview + analyzer"
+      },
+      "summary": {
+        "de": "Preview Runner und Screen-Analyse kommen hinzu.",
+        "en": "Preview Runner and screen analysis added."
+      },
+      "commit": "f2fff86a",
+      "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Shell[Shell]\n    Projects[Projects]\n    AppFlow[App Flow Live]\n    Settings[Settings]\n  end\n  subgraph runtime [Runtime]\n    Preview[Preview Runner]\n    Edge[Edge Functions]\n    Supabase[Supabase]\n  end\n  Shell --> Projects\n  Shell --> AppFlow\n  Projects --> Edge\n  Edge --> Supabase\n  AppFlow --> Preview",
+      "is_current": false
+    },
+    {
+      "schema_version": 1,
+      "content_hash": "0dda66327a7490730f6c21b524379e378746716604c53229ce377dd9a9b4b023",
+      "review_status": "needs-review",
+      "id": "2026-01-26-figma-ui",
+      "date": "2026-01-26",
+      "title": {
+        "de": "Figma-Make UI-Kern",
+        "en": "Figma Make UI core"
+      },
+      "summary": {
+        "de": "Frontend-Module ohne Analyse-Pipeline.",
+        "en": "Frontend modules without analysis pipeline."
+      },
+      "commit": "2b776765",
+      "mermaid": "flowchart TB\n  subgraph ui [Frontend Figma Make]\n    Shell[Shell]\n    Projects[Projects]\n    AppFlow[App Flow]\n    Data[Data]\n    Settings[Settings]\n  end\n  Shell --> Projects\n  Shell --> AppFlow\n  Shell --> Data\n  Shell --> Settings",
       "is_current": false
     }
   ]

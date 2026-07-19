@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "content_hash": "b86d6f521080c00dceae600f95c45a3adbbfc10884b7c386016cd8087b5086f4",
+  "review_status": "needs-review",
+  "id": "2026-02-04-live-preview",
+  "date": "2026-02-04",
+  "title": {
+    "de": "Live Preview + Analyzer",
+    "en": "Live preview + analyzer"
+  },
+  "summary": {
+    "de": "Preview Runner und Screen-Analyse kommen hinzu.",
+    "en": "Preview Runner and screen analysis added."
+  },
+  "commit": "f2fff86a",
+  "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Shell[Shell]\n    Projects[Projects]\n    AppFlow[App Flow Live]\n    Settings[Settings]\n  end\n  subgraph runtime [Runtime]\n    Preview[Preview Runner]\n    Edge[Edge Functions]\n    Supabase[Supabase]\n  end\n  Shell --> Projects\n  Shell --> AppFlow\n  Projects --> Edge\n  Edge --> Supabase\n  AppFlow --> Preview"
+}

@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "status": "recorded",
+  "id": "2026-03-01-runner-analyzer-polish",
+  "date": "2026-03-01",
+  "type": "feature",
+  "title": {
+    "de": "Runner-Robustheit & Analyzer",
+    "en": "Runner robustness & analyzer"
+  },
+  "summary": {
+    "de": "Clean-before-build, Port-Cleanup, Screen-Priorisierung; App-Flow-iframe-Verbesserungen.",
+    "en": "Clean-before-build, port cleanup, screen prioritization; App Flow iframe improvements."
+  },
+  "plain_language": {
+    "de": "Die Live-Vorschau und die Screen-Erkennung werden zuverlässiger: Ports werden aufgeräumt, Builds neu gestartet, unterschiedliche Screens in den Karten sichtbar.",
+    "en": "Live preview and screen detection get more reliable: ports cleaned up, builds restarted, distinct screens visible on cards."
+  },
+  "why_it_matters": {
+    "de": "Weniger „leere“ oder hängende Previews im Alltag.",
+    "en": "Fewer empty or stuck previews in daily use."
+  },
+  "user_impact": {
+    "de": [
+      "Stabilere Preview",
+      "Klarere Screen-Karten"
+    ],
+    "en": [
+      "More stable preview",
+      "Clearer screen cards"
+    ]
+  },
+  "developer_impact": {
+    "de": [
+      "preview-runner cleanup",
+      "analyzer heuristics"
+    ],
+    "en": [
+      "preview-runner cleanup",
+      "analyzer heuristics"
+    ]
+  },
+  "operational_impact": {
+    "de": [
+      "Pre-push Single-Commit-Regel"
+    ],
+    "en": [
+      "Pre-push single-commit rule"
+    ]
+  },
+  "git": {
+    "base": "2026-03",
+    "head": "2026-03",
+    "branch": "main",
+    "pull_request": null
+  },
+  "packages": [
+    "preview-runner",
+    "src"
+  ],
+  "affected_features": [
+    "preview-runner",
+    "appflow"
+  ],
+  "affected_components": [
+    "preview-runner",
+    "src/modules/appflow"
+  ],
+  "breaking_changes": [],
+  "migration_required": false,
+  "security_relevant": false,
+  "evidence": [
+    {
+      "kind": "file",
+      "path": "docs/PREVIEW_RUNNER.md"
+    }
+  ],
+  "screenshots": [],
+  "confidence": 0.65,
+  "review_status": "needs-review"
+}

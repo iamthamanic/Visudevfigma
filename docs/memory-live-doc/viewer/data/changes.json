@@ -2,6 +2,795 @@
   "schema_version": 1,
   "changes": [
     {
+      "schema_version": 1,
+      "status": "recorded",
+      "id": "2026-01-26-figma-make-bootstrap",
+      "date": "2026-01-26",
+      "type": "feature",
+      "title": {
+        "de": "Start aus Figma Make",
+        "en": "Start from Figma Make"
+      },
+      "summary": {
+        "de": "Erstes Repo: UI und Grundgerüst aus Figma Make importiert.",
+        "en": "Initial repo: UI and scaffold imported from Figma Make."
+      },
+      "plain_language": {
+        "de": "VisuDEV beginnt als Design-zu-Code-Projekt: Erste Screens und Struktur kommen aus Figma Make nach GitHub.",
+        "en": "VisuDEV begins as a design-to-code project: first screens and structure land on GitHub from Figma Make."
+      },
+      "why_it_matters": {
+        "de": "Das ist der Projektstart — alles Spätere baut darauf auf.",
+        "en": "This is project day one — everything later builds on it."
+      },
+      "user_impact": {
+        "de": [
+          "Erste klickbare Oberfläche existiert."
+        ],
+        "en": [
+          "A first clickable UI exists."
+        ]
+      },
+      "developer_impact": {
+        "de": [
+          "Vite/React-Codebasis aus Figma-Export."
+        ],
+        "en": [
+          "Vite/React codebase from Figma export."
+        ]
+      },
+      "operational_impact": {
+        "de": [
+          "Repo auf GitHub angelegt."
+        ],
+        "en": [
+          "Repo created on GitHub."
+        ]
+      },
+      "git": {
+        "base": "2b776765",
+        "head": "da93b228",
+        "branch": "main",
+        "pull_request": null
+      },
+      "packages": [
+        "src"
+      ],
+      "affected_features": [
+        "projects",
+        "appflow",
+        "settings-connections"
+      ],
+      "affected_components": [
+        "src/"
+      ],
+      "breaking_changes": [],
+      "migration_required": false,
+      "security_relevant": false,
+      "evidence": [
+        {
+          "kind": "file",
+          "path": "README.md"
+        }
+      ],
+      "screenshots": [],
+      "confidence": 0.7,
+      "review_status": "needs-review"
+    },
+    {
+      "schema_version": 1,
+      "status": "recorded",
+      "id": "2026-02-03-auth-github",
+      "date": "2026-02-03",
+      "type": "security",
+      "title": {
+        "de": "Login & GitHub-Anbindung",
+        "en": "Login & GitHub connection"
+      },
+      "summary": {
+        "de": "AuthGate, AuthContext und GitHub-OAuth; Secrets-Doku.",
+        "en": "AuthGate, AuthContext, and GitHub OAuth; secrets docs."
+      },
+      "plain_language": {
+        "de": "Nutzer können sich anmelden und GitHub verbinden — damit VisuDEV Repositories laden und geschützt arbeiten kann.",
+        "en": "Users can sign in and connect GitHub — so VisuDEV can load repositories and work securely."
+      },
+      "why_it_matters": {
+        "de": "Ohne Login und GitHub gibt es keine echten Projektanalysen.",
+        "en": "Without login and GitHub there are no real project analyses."
+      },
+      "user_impact": {
+        "de": [
+          "Anmelden",
+          "GitHub in den Einstellungen verbinden"
+        ],
+        "en": [
+          "Sign in",
+          "Connect GitHub in settings"
+        ]
+      },
+      "developer_impact": {
+        "de": [
+          "Auth-Modul, GitHub secrets docs"
+        ],
+        "en": [
+          "Auth module, GitHub secrets docs"
+        ]
+      },
+      "operational_impact": {
+        "de": [
+          "Supabase Auth / Edge Secrets nötig"
+        ],
+        "en": [
+          "Supabase Auth / Edge secrets required"
+        ]
+      },
+      "git": {
+        "base": "6ae11c0a",
+        "head": "6ae11c0a",
+        "branch": "main",
+        "pull_request": null
+      },
+      "packages": [
+        "src",
+        "supabase/functions"
+      ],
+      "affected_features": [
+        "settings-connections",
+        "projects"
+      ],
+      "affected_components": [
+        "src/modules/settings",
+        "AuthGate"
+      ],
+      "breaking_changes": [],
+      "migration_required": false,
+      "security_relevant": true,
+      "evidence": [
+        {
+          "kind": "file",
+          "path": "docs/GITHUB_SECRETS.md"
+        }
+      ],
+      "screenshots": [],
+      "confidence": 0.75,
+      "review_status": "needs-review"
+    },
+    {
+      "schema_version": 1,
+      "status": "recorded",
+      "id": "2026-02-04-live-app-preview",
+      "date": "2026-02-04",
+      "type": "feature",
+      "title": {
+        "de": "Live App: Preview Runner & App Flow",
+        "en": "Live App: Preview Runner & App Flow"
+      },
+      "summary": {
+        "de": "Preview Runner, Live-Iframes, Sitemap/Flow Graph — App Flow wird zur Live-Ansicht.",
+        "en": "Preview Runner, live iframes, sitemap/flow graph — App Flow becomes a live view."
+      },
+      "plain_language": {
+        "de": "VisuDEV kann die verknüpfte App lokal starten und als lebendige Bildschirm-Karte zeigen — inklusive Navigation zwischen Screens.",
+        "en": "VisuDEV can start the linked app locally and show it as a living screen map — including navigation between screens."
+      },
+      "why_it_matters": {
+        "de": "Aus einer toten Sitemap wird ein echtes Produktverständnis.",
+        "en": "A dead sitemap becomes real product understanding."
+      },
+      "user_impact": {
+        "de": [
+          "Live-Vorschau in App Flow",
+          "Sitemap und Flow Graph"
+        ],
+        "en": [
+          "Live preview in App Flow",
+          "Sitemap and flow graph"
+        ]
+      },
+      "developer_impact": {
+        "de": [
+          "preview-runner",
+          "visudev-preview Edge Function",
+          "LiveFlowCanvas"
+        ],
+        "en": [
+          "preview-runner",
+          "visudev-preview Edge Function",
+          "LiveFlowCanvas"
+        ]
+      },
+      "operational_impact": {
+        "de": [
+          "Lokaler Runner-Port (z. B. 4000)"
+        ],
+        "en": [
+          "Local runner port (e.g. 4000)"
+        ]
+      },
+      "git": {
+        "base": "f2fff86a",
+        "head": "77c43446",
+        "branch": "main",
+        "pull_request": null
+      },
+      "packages": [
+        "src",
+        "preview-runner"
+      ],
+      "affected_features": [
+        "appflow",
+        "preview-runner"
+      ],
+      "affected_components": [
+        "preview-runner",
+        "src/modules/appflow"
+      ],
+      "breaking_changes": [],
+      "migration_required": false,
+      "security_relevant": false,
+      "evidence": [
+        {
+          "kind": "file",
+          "path": "docs/PREVIEW_RUNNER.md"
+        }
+      ],
+      "screenshots": [],
+      "confidence": 0.8,
+      "review_status": "needs-review"
+    },
+    {
+      "schema_version": 1,
+      "status": "recorded",
+      "id": "2026-02-10-security-idor",
+      "date": "2026-02-10",
+      "type": "security",
+      "title": {
+        "de": "Sicherheits-Härte: IDOR & Redaction",
+        "en": "Security hardening: IDOR & redaction"
+      },
+      "summary": {
+        "de": "Ownership-Checks und Redaction über Edge Functions; AI-Review-Pipeline verschärft.",
+        "en": "Ownership checks and redaction across Edge Functions; stricter AI review pipeline."
+      },
+      "plain_language": {
+        "de": "Nur wer ein Projekt besitzt, darf dessen Daten sehen oder ändern. Geheime Schlüssel werden in Antworten ausgeblendet. Qualitätstor mit KI-Review vor dem Push.",
+        "en": "Only project owners may see or change that project’s data. Secrets are redacted in responses. AI review quality gate before push."
+      },
+      "why_it_matters": {
+        "de": "Schützt Nutzerdaten und erzwingt sauberen Code vor dem Deploy.",
+        "en": "Protects user data and enforces cleaner code before deploy."
+      },
+      "user_impact": {
+        "de": [
+          "Fremde Projekte sind nicht mehr zugreifbar (IDOR-Schutz)"
+        ],
+        "en": [
+          "Other users’ projects are no longer accessible (IDOR protection)"
+        ]
+      },
+      "developer_impact": {
+        "de": [
+          "requireProjectOwner auf vielen Routes",
+          "npm run checks / AI review"
+        ],
+        "en": [
+          "requireProjectOwner on many routes",
+          "npm run checks / AI review"
+        ]
+      },
+      "operational_impact": {
+        "de": [
+          "Pre-Push-Hooks und Review-Scores"
+        ],
+        "en": [
+          "Pre-push hooks and review scores"
+        ]
+      },
+      "git": {
+        "base": "856dd23c",
+        "head": "4edb8971",
+        "branch": "main",
+        "pull_request": null
+      },
+      "packages": [
+        "src",
+        "supabase/functions"
+      ],
+      "affected_features": [
+        "projects",
+        "settings-connections"
+      ],
+      "affected_components": [
+        "visudev-server",
+        "visudev-projects"
+      ],
+      "breaking_changes": [],
+      "migration_required": false,
+      "security_relevant": true,
+      "evidence": [
+        {
+          "kind": "file",
+          "path": "AGENTS.md"
+        }
+      ],
+      "screenshots": [],
+      "confidence": 0.75,
+      "review_status": "needs-review"
+    },
+    {
+      "schema_version": 1,
+      "status": "recorded",
+      "id": "2026-03-01-runner-analyzer-polish",
+      "date": "2026-03-01",
+      "type": "feature",
+      "title": {
+        "de": "Runner-Robustheit & Analyzer",
+        "en": "Runner robustness & analyzer"
+      },
+      "summary": {
+        "de": "Clean-before-build, Port-Cleanup, Screen-Priorisierung; App-Flow-iframe-Verbesserungen.",
+        "en": "Clean-before-build, port cleanup, screen prioritization; App Flow iframe improvements."
+      },
+      "plain_language": {
+        "de": "Die Live-Vorschau und die Screen-Erkennung werden zuverlässiger: Ports werden aufgeräumt, Builds neu gestartet, unterschiedliche Screens in den Karten sichtbar.",
+        "en": "Live preview and screen detection get more reliable: ports cleaned up, builds restarted, distinct screens visible on cards."
+      },
+      "why_it_matters": {
+        "de": "Weniger „leere“ oder hängende Previews im Alltag.",
+        "en": "Fewer empty or stuck previews in daily use."
+      },
+      "user_impact": {
+        "de": [
+          "Stabilere Preview",
+          "Klarere Screen-Karten"
+        ],
+        "en": [
+          "More stable preview",
+          "Clearer screen cards"
+        ]
+      },
+      "developer_impact": {
+        "de": [
+          "preview-runner cleanup",
+          "analyzer heuristics"
+        ],
+        "en": [
+          "preview-runner cleanup",
+          "analyzer heuristics"
+        ]
+      },
+      "operational_impact": {
+        "de": [
+          "Pre-push Single-Commit-Regel"
+        ],
+        "en": [
+          "Pre-push single-commit rule"
+        ]
+      },
+      "git": {
+        "base": "2026-03",
+        "head": "2026-03",
+        "branch": "main",
+        "pull_request": null
+      },
+      "packages": [
+        "preview-runner",
+        "src"
+      ],
+      "affected_features": [
+        "preview-runner",
+        "appflow"
+      ],
+      "affected_components": [
+        "preview-runner",
+        "src/modules/appflow"
+      ],
+      "breaking_changes": [],
+      "migration_required": false,
+      "security_relevant": false,
+      "evidence": [
+        {
+          "kind": "file",
+          "path": "docs/PREVIEW_RUNNER.md"
+        }
+      ],
+      "screenshots": [],
+      "confidence": 0.65,
+      "review_status": "needs-review"
+    },
+    {
+      "schema_version": 1,
+      "status": "recorded",
+      "id": "2026-07-07-blueprint-engine-mvp",
+      "date": "2026-07-07",
+      "type": "feature",
+      "title": {
+        "de": "Blueprint Engine MVP & Local Runner",
+        "en": "Blueprint Engine MVP & local runner"
+      },
+      "summary": {
+        "de": "Analyse-Pipeline, Blueprint-UI, Security-Härtung; lokaler Blueprint-Runner und Gastmodus.",
+        "en": "Analysis pipeline, Blueprint UI, security hardening; local Blueprint runner and guest mode."
+      },
+      "plain_language": {
+        "de": "Neben App Flow gibt es jetzt Blueprint: eine technische Diagnose der Routen und Schutzmechanismen — auch lokal und im Gastmodus.",
+        "en": "Besides App Flow there is now Blueprint: a technical diagnosis of routes and safeguards — including local and guest mode."
+      },
+      "why_it_matters": {
+        "de": "VisuDEV wird vom Screen-Tool zum Architektur-/Sicherheits-Röntgen.",
+        "en": "VisuDEV grows from a screen tool into an architecture/security X-ray."
+      },
+      "user_impact": {
+        "de": [
+          "Blueprint-Workspace",
+          "Lokale Projekte analysieren"
+        ],
+        "en": [
+          "Blueprint workspace",
+          "Analyze local projects"
+        ]
+      },
+      "developer_impact": {
+        "de": [
+          "visudev-analyzer blueprint",
+          "local runner"
+        ],
+        "en": [
+          "visudev-analyzer blueprint",
+          "local runner"
+        ]
+      },
+      "operational_impact": {
+        "de": [
+          "npm run dev startet lokales Supabase + Runner"
+        ],
+        "en": [
+          "npm run dev starts local Supabase + runner"
+        ]
+      },
+      "git": {
+        "base": "",
+        "head": "",
+        "branch": "main",
+        "pull_request": "https://github.com/iamthamanic/visudev-app/pull/8"
+      },
+      "packages": [
+        "src",
+        "local-engine",
+        "shared"
+      ],
+      "affected_features": [
+        "blueprint-views",
+        "local-engine"
+      ],
+      "affected_components": [
+        "src/modules/blueprint",
+        "local-engine"
+      ],
+      "breaking_changes": [],
+      "migration_required": false,
+      "security_relevant": true,
+      "evidence": [
+        {
+          "kind": "pr",
+          "url": "https://github.com/iamthamanic/visudev-app/pull/8"
+        }
+      ],
+      "screenshots": [],
+      "confidence": 0.8,
+      "review_status": "needs-review"
+    },
+    {
+      "schema_version": 1,
+      "status": "recorded",
+      "id": "2026-07-08-local-first-graph",
+      "date": "2026-07-08",
+      "type": "architecture",
+      "title": {
+        "de": "Local-First & Software Graph IR",
+        "en": "Local-first & Software Graph IR"
+      },
+      "summary": {
+        "de": "Local-First Phase 1; VisuDevGraph / Software Graph als neutrales Zwischenformat.",
+        "en": "Local-first phase 1; VisuDevGraph / Software Graph as neutral IR."
+      },
+      "plain_language": {
+        "de": "Analysen können stärker lokal laufen. Alle Blueprint-Ansichten teilen sich einen gemeinsamen „Stadtplan“ der Software.",
+        "en": "Analyses can run more locally. All Blueprint views share one city map of the software."
+      },
+      "why_it_matters": {
+        "de": "Grundlage für die vielen Blueprint-Views und für stack-agnostische Sicherheit.",
+        "en": "Foundation for many Blueprint views and stack-agnostic security."
+      },
+      "user_impact": {
+        "de": [
+          "Zuverlässigere lokale Scans"
+        ],
+        "en": [
+          "More reliable local scans"
+        ]
+      },
+      "developer_impact": {
+        "de": [
+          "Software Graph builder",
+          "pluggable providers vorbereitet"
+        ],
+        "en": [
+          "Software Graph builder",
+          "pluggable providers prepared"
+        ]
+      },
+      "operational_impact": {
+        "de": [
+          "Local Engine zentral"
+        ],
+        "en": [
+          "Local Engine central"
+        ]
+      },
+      "git": {
+        "base": "",
+        "head": "",
+        "branch": "main",
+        "pull_request": null
+      },
+      "packages": [
+        "local-engine",
+        "shared"
+      ],
+      "affected_features": [
+        "blueprint-software-graph",
+        "local-engine"
+      ],
+      "affected_components": [
+        "shared/software-graph.types.ts",
+        "local-engine"
+      ],
+      "breaking_changes": [],
+      "migration_required": false,
+      "security_relevant": false,
+      "evidence": [
+        {
+          "kind": "file",
+          "path": "shared/software-graph.types.ts"
+        }
+      ],
+      "screenshots": [],
+      "confidence": 0.75,
+      "review_status": "needs-review"
+    },
+    {
+      "schema_version": 1,
+      "status": "recorded",
+      "id": "2026-07-14-blueprint-multiview",
+      "date": "2026-07-14",
+      "type": "feature",
+      "title": {
+        "de": "Blueprint Multi-Views (v2 Phases)",
+        "en": "Blueprint multi-views (v2 phases)"
+      },
+      "summary": {
+        "de": "Architecture, Dependencies, Execution, Infrastructure, Diagnostics, Evolution, Atlas — Figma-aligned.",
+        "en": "Architecture, Dependencies, Execution, Infrastructure, Diagnostics, Evolution, Atlas — Figma-aligned."
+      },
+      "plain_language": {
+        "de": "Blueprint bekommt sieben Perspektiven auf dasselbe System: Aufbau, Abhängigkeiten, Ablauf, Infrastruktur, Diagnosen, Evolution und Atlas.",
+        "en": "Blueprint gains seven perspectives on the same system: structure, dependencies, flow, infrastructure, diagnostics, evolution, and atlas."
+      },
+      "why_it_matters": {
+        "de": "Unterschiedliche Fragen (Sicherheit vs. Deployment vs. Abhängigkeiten) haben eigene, klare Ansichten.",
+        "en": "Different questions (security vs deploy vs dependencies) get clear dedicated views."
+      },
+      "user_impact": {
+        "de": [
+          "View-Umschalter im Blueprint",
+          "Reichere Inspektoren"
+        ],
+        "en": [
+          "View switcher in Blueprint",
+          "Richer inspectors"
+        ]
+      },
+      "developer_impact": {
+        "de": [
+          "Phases 0–8",
+          "Cytoscape / view components"
+        ],
+        "en": [
+          "Phases 0–8",
+          "Cytoscape / view components"
+        ]
+      },
+      "operational_impact": {
+        "de": [],
+        "en": []
+      },
+      "git": {
+        "base": "",
+        "head": "",
+        "branch": "main",
+        "pull_request": null
+      },
+      "packages": [
+        "src",
+        "shared",
+        "local-engine"
+      ],
+      "affected_features": [
+        "blueprint-views",
+        "blueprint-software-graph"
+      ],
+      "affected_components": [
+        "src/modules/blueprint"
+      ],
+      "breaking_changes": [],
+      "migration_required": false,
+      "security_relevant": false,
+      "evidence": [
+        {
+          "kind": "file",
+          "path": ".qa/design/blueprint-v2.md"
+        }
+      ],
+      "screenshots": [],
+      "confidence": 0.85,
+      "review_status": "needs-review"
+    },
+    {
+      "schema_version": 1,
+      "status": "recorded",
+      "id": "2026-07-15-wave2-viz-parity",
+      "date": "2026-07-15",
+      "type": "feature",
+      "title": {
+        "de": "Wave 2/3 Visualization Parity",
+        "en": "Wave 2/3 visualization parity"
+      },
+      "summary": {
+        "de": "Viz-Parity zu Zielbildern: Diagnostics-Matrix, Atlas, Infrastructure, Execution, E2E-Gates.",
+        "en": "Viz parity to Zielbilder: diagnostics matrix, atlas, infrastructure, execution, E2E gates."
+      },
+      "plain_language": {
+        "de": "Die Blueprint-Ansichten werden an die Design-Zielbilder angeglichen und per Tests abgesichert — weniger leere Canvas, klarere Inspektoren.",
+        "en": "Blueprint views are aligned to design targets and guarded by tests — fewer empty canvases, clearer inspectors."
+      },
+      "why_it_matters": {
+        "de": "Die UI wirkt fertig und vertrauenswürdig, nicht wie ein Prototyp.",
+        "en": "The UI feels finished and trustworthy, not like a prototype."
+      },
+      "user_impact": {
+        "de": [
+          "Vollere Blueprint-Views",
+          "Stabilere Darstellung"
+        ],
+        "en": [
+          "Richer Blueprint views",
+          "More stable rendering"
+        ]
+      },
+      "developer_impact": {
+        "de": [
+          "Playwright Wave 2/3 gates",
+          "demo enrichment"
+        ],
+        "en": [
+          "Playwright Wave 2/3 gates",
+          "demo enrichment"
+        ]
+      },
+      "operational_impact": {
+        "de": [],
+        "en": []
+      },
+      "git": {
+        "base": "",
+        "head": "",
+        "branch": "main",
+        "pull_request": null
+      },
+      "packages": [
+        "src",
+        "tests"
+      ],
+      "affected_features": [
+        "blueprint-views"
+      ],
+      "affected_components": [
+        "src/modules/blueprint",
+        "tests/e2e"
+      ],
+      "breaking_changes": [],
+      "migration_required": false,
+      "security_relevant": false,
+      "evidence": [
+        {
+          "kind": "file",
+          "path": ".qa/acceptance/wave2-diagnostics-viz-parity.md"
+        }
+      ],
+      "screenshots": [],
+      "confidence": 0.8,
+      "review_status": "needs-review"
+    },
+    {
+      "schema_version": 1,
+      "status": "recorded",
+      "id": "2026-07-17-access-control-epic",
+      "date": "2026-07-17",
+      "type": "security",
+      "title": {
+        "de": "Stack-agnostisches Access Control",
+        "en": "Stack-agnostic access control"
+      },
+      "summary": {
+        "de": "Abstract controls, App-Chain, DB-Adapter (Postgres/MariaDB/MongoDB), neue Matrix-UI, Inspector.",
+        "en": "Abstract controls, app chain, DB adapters (Postgres/MariaDB/MongoDB), new matrix UI, inspector."
+      },
+      "plain_language": {
+        "de": "Sicherheit fragt jetzt: Wer darf welche Daten? — nicht nur „fehlt RLS?“. MariaDB/MongoDB werden fair behandelt; Mechanismen stehen im Inspector.",
+        "en": "Security now asks: who may access which data? — not only “is RLS missing?”. MariaDB/MongoDB are judged fairly; mechanisms show in the inspector."
+      },
+      "why_it_matters": {
+        "de": "Verhindert falsche Alarme und macht echte Mandanten-/Ownership-Lücken sichtbar.",
+        "en": "Avoids false alarms and surfaces real tenant/ownership gaps."
+      },
+      "user_impact": {
+        "de": [
+          "Neue Security-Matrix-Spalten",
+          "Inspector mit Mechanismen"
+        ],
+        "en": [
+          "New security matrix columns",
+          "Inspector with mechanisms"
+        ]
+      },
+      "developer_impact": {
+        "de": [
+          "shared/access-control*",
+          "local-engine access-control adapters"
+        ],
+        "en": [
+          "shared/access-control*",
+          "local-engine access-control adapters"
+        ]
+      },
+      "operational_impact": {
+        "de": [],
+        "en": []
+      },
+      "git": {
+        "base": "118e837f",
+        "head": "527e2cb2",
+        "branch": "main",
+        "pull_request": null
+      },
+      "packages": [
+        "shared",
+        "local-engine",
+        "src"
+      ],
+      "affected_features": [
+        "blueprint-access-control"
+      ],
+      "affected_components": [
+        "shared/access-control.types.ts",
+        "local-engine/src/services/access-control"
+      ],
+      "breaking_changes": [],
+      "migration_required": false,
+      "security_relevant": true,
+      "evidence": [
+        {
+          "kind": "file",
+          "path": ".qa/design/blueprint-access-control.md"
+        }
+      ],
+      "screenshots": [],
+      "confidence": 0.9,
+      "review_status": "needs-review"
+    },
+    {
       "id": "2026-07-19-bootstrap",
       "date": "2026-07-19",
       "type": "bootstrap",

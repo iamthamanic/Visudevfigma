@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "status": "recorded",
+  "id": "2026-07-14-blueprint-multiview",
+  "date": "2026-07-14",
+  "type": "feature",
+  "title": {
+    "de": "Blueprint Multi-Views (v2 Phases)",
+    "en": "Blueprint multi-views (v2 phases)"
+  },
+  "summary": {
+    "de": "Architecture, Dependencies, Execution, Infrastructure, Diagnostics, Evolution, Atlas — Figma-aligned.",
+    "en": "Architecture, Dependencies, Execution, Infrastructure, Diagnostics, Evolution, Atlas — Figma-aligned."
+  },
+  "plain_language": {
+    "de": "Blueprint bekommt sieben Perspektiven auf dasselbe System: Aufbau, Abhängigkeiten, Ablauf, Infrastruktur, Diagnosen, Evolution und Atlas.",
+    "en": "Blueprint gains seven perspectives on the same system: structure, dependencies, flow, infrastructure, diagnostics, evolution, and atlas."
+  },
+  "why_it_matters": {
+    "de": "Unterschiedliche Fragen (Sicherheit vs. Deployment vs. Abhängigkeiten) haben eigene, klare Ansichten.",
+    "en": "Different questions (security vs deploy vs dependencies) get clear dedicated views."
+  },
+  "user_impact": {
+    "de": [
+      "View-Umschalter im Blueprint",
+      "Reichere Inspektoren"
+    ],
+    "en": [
+      "View switcher in Blueprint",
+      "Richer inspectors"
+    ]
+  },
+  "developer_impact": {
+    "de": [
+      "Phases 0–8",
+      "Cytoscape / view components"
+    ],
+    "en": [
+      "Phases 0–8",
+      "Cytoscape / view components"
+    ]
+  },
+  "operational_impact": {
+    "de": [],
+    "en": []
+  },
+  "git": {
+    "base": "",
+    "head": "",
+    "branch": "main",
+    "pull_request": null
+  },
+  "packages": [
+    "src",
+    "shared",
+    "local-engine"
+  ],
+  "affected_features": [
+    "blueprint-views",
+    "blueprint-software-graph"
+  ],
+  "affected_components": [
+    "src/modules/blueprint"
+  ],
+  "breaking_changes": [],
+  "migration_required": false,
+  "security_relevant": false,
+  "evidence": [
+    {
+      "kind": "file",
+      "path": ".qa/design/blueprint-v2.md"
+    }
+  ],
+  "screenshots": [],
+  "confidence": 0.85,
+  "review_status": "needs-review"
+}

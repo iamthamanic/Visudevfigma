@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "content_hash": "0dda66327a7490730f6c21b524379e378746716604c53229ce377dd9a9b4b023",
+  "review_status": "needs-review",
+  "id": "2026-01-26-figma-ui",
+  "date": "2026-01-26",
+  "title": {
+    "de": "Figma-Make UI-Kern",
+    "en": "Figma Make UI core"
+  },
+  "summary": {
+    "de": "Frontend-Module ohne Analyse-Pipeline.",
+    "en": "Frontend modules without analysis pipeline."
+  },
+  "commit": "2b776765",
+  "mermaid": "flowchart TB\n  subgraph ui [Frontend Figma Make]\n    Shell[Shell]\n    Projects[Projects]\n    AppFlow[App Flow]\n    Data[Data]\n    Settings[Settings]\n  end\n  Shell --> Projects\n  Shell --> AppFlow\n  Shell --> Data\n  Shell --> Settings"
+}

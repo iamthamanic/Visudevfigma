@@ -110,6 +110,17 @@
     return obj[state.lang] || obj.en || obj.de || [];
   }
 
+  /** Display dates as MM.DD.YYYY (ISO YYYY-MM-DD stays in data for sorting). */
+  function formatDate(value) {
+    if (!value) return "";
+    const s = String(value).trim();
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[2]}.${m[3]}.${m[1]}`;
+    const m2 = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    if (m2) return s;
+    return s;
+  }
+
   function asArray(payload, preferredKeys) {
     if (!payload) return [];
     if (Array.isArray(payload)) return payload;
@@ -309,7 +320,7 @@
       ${
         product
           ? `<article class="card" style="margin-bottom:1rem"><h3>${escapeHtml(t("product"))}</h3><p>${escapeHtml(product)}</p>
-             <p class="meta">${reviewPill(c.review_status)} ${escapeHtml(c.as_of || "")} · <code>${escapeHtml(
+             <p class="meta">${reviewPill(c.review_status)} ${escapeHtml(formatDate(c.as_of))} · <code>${escapeHtml(
                (c.commit || "").slice(0, 8),
              )}</code></p></article>`
           : ""
@@ -417,7 +428,7 @@
           const teaser = bi(c.plain_language) || bi(c.summary);
           return `
       <li><button type="button" class="linkish" data-id="${escapeAttr(c.id)}">
-        <strong>${escapeHtml(c.date || "")}</strong> · ${escapeHtml(bi(c.title) || c.id)}
+        <strong>${escapeHtml(formatDate(c.date))}</strong> · ${escapeHtml(bi(c.title) || c.id)}
         <div class="meta">${reviewPill(c.review_status)} <span class="pill">${escapeHtml(c.type || "")}</span>
           ${(c.packages || []).map((p) => `<span class="pill">${escapeHtml(p)}</span>`).join("")}
         </div>
@@ -460,7 +471,7 @@
       <button type="button" class="tab" data-back>${t("back")}</button>
       <article class="card detail">
         <h2>${escapeHtml(bi(ch.title) || ch.id)}</h2>
-        <p class="meta">${escapeHtml(ch.date || "")} · ${reviewPill(ch.review_status)}
+        <p class="meta">${escapeHtml(formatDate(ch.date))} · ${reviewPill(ch.review_status)}
           <span class="pill">${escapeHtml(ch.type || "")}</span></p>
         ${
           plain
@@ -504,7 +515,7 @@
           return `
       <article class="card">
         <h3>${escapeHtml(bi(d.title) || d.id)}</h3>
-        <p class="meta">${escapeHtml(d.date || "")} · ${reviewPill(d.review_status)}
+        <p class="meta">${escapeHtml(formatDate(d.date))} · ${reviewPill(d.review_status)}
           ${d.status ? `<span class="pill">${escapeHtml(d.status)}</span>` : ""}</p>
         <p>${escapeHtml(body)}</p>
       </article>`;
@@ -528,7 +539,7 @@
 
     const options = versions
       .map((v) => {
-        const label = `${v.date || "?"} — ${bi(v.title) || v.id}${v.is_current ? " ★" : ""}`;
+        const label = `${formatDate(v.date) || "?"} — ${bi(v.title) || v.id}${v.is_current ? " ★" : ""}`;
         const sel = v.id === selected.id ? " selected" : "";
         return `<option value="${escapeAttr(v.id)}"${sel}>${escapeHtml(label)}</option>`;
       })
@@ -542,7 +553,7 @@
       </div>
       <article class="card">
         <h3>${escapeHtml(title)}</h3>
-        <p class="meta">${escapeHtml(selected.date || "")}
+        <p class="meta">${escapeHtml(formatDate(selected.date))}
           ${selected.commit ? ` · <code>${escapeHtml(String(selected.commit).slice(0, 8))}</code>` : ""}
           ${bi(selected.summary) ? ` · ${escapeHtml(bi(selected.summary))}` : ""}
         </p>

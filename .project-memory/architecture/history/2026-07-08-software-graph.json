@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "content_hash": "f1321d9b09d70d8138be77a1fdd2fcc527863e292dd26344fd352740270c4442",
+  "review_status": "needs-review",
+  "id": "2026-07-08-software-graph",
+  "date": "2026-07-08",
+  "title": {
+    "de": "Software Graph IR",
+    "en": "Software Graph IR"
+  },
+  "summary": {
+    "de": "Neutraler Graph als Source of Truth.",
+    "en": "Neutral graph as source of truth."
+  },
+  "commit": "graph-ir",
+  "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Blueprint[Blueprint Views]\n  end\n  subgraph analysis [Analysis]\n    Engine[Local Engine]\n    Graph[Software Graph]\n    Enrich[Enrichment]\n  end\n  Engine --> Graph\n  Graph --> Enrich\n  Enrich --> Blueprint"
+}

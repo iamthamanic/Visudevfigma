@@ -1,20 +1,20 @@
 {
-  "id": "2026-07-19-access-control",
+  "schema_version": 1,
+  "content_hash": "7230e1b45376a2770ba7537488b4bbc73693b152e663af5d8ff990549a78c095",
+  "review_status": "needs-review",
+  "id": "2026-07-19-living-docs",
   "date": "2026-07-19",
   "title": {
-    "de": "Access Control + Living Docs",
-    "en": "Access control + living docs"
+    "de": "Living Docs + Pages Viewer",
+    "en": "Living docs + Pages viewer"
   },
   "summary": {
-    "de": "Sicherheit stack-agnostisch im Blueprint; Living Memory und GitHub-Pages-Viewer.",
-    "en": "Stack-agnostic security in Blueprint; living memory and GitHub Pages viewer."
+    "de": "Projektgedächtnis auf GitHub Pages.",
+    "en": "Project memory on GitHub Pages."
   },
-  "commit": "644d461c",
+  "commit": "42d12fe7",
   "mermaid": "%% VisuDEV architecture overview (bootstrap, needs-review)\nflowchart TB\n  subgraph ui [Frontend Vite React]\n    Shell[Shell]\n    Projects[Projects]\n    AppFlow[App Flow]\n    Blueprint[Blueprint Views]\n    Data[Data ERD]\n    Settings[Settings]\n  end\n\n  subgraph analysis [Analysis]\n    LocalEngine[Local Engine]\n    Graph[Software Graph]\n    AC[Access Control Analyzers]\n    Enrich[Blueprint Enrichment]\n  end\n\n  subgraph runtime [Runtime]\n    Preview[Preview Runner]\n    Supabase[Supabase Edge + Auth]\n  end\n\n  Shell --> Projects\n  Shell --> AppFlow\n  Shell --> Blueprint\n  Shell --> Data\n  Shell --> Settings\n  Projects --> LocalEngine\n  Projects --> Supabase\n  LocalEngine --> Graph\n  Graph --> Enrich\n  Graph --> AC\n  Enrich --> Blueprint\n  AC --> Blueprint\n  AppFlow --> Preview\n",
   "change_ids": [
     "2026-07-19-bootstrap"
-  ],
-  "review_status": "needs-review",
-  "schema_version": 1,
-  "content_hash": "7230e1b45376a2770ba7537488b4bbc73693b152e663af5d8ff990549a78c095"
+  ]
 }
