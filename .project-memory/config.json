@@ -13,15 +13,15 @@
   "pages": {
     "schema_version": 1,
     "kind": "memory-live-doc-pages",
-    "status": "not_enabled",
-    "reason": "GitHub Pages is not configured for this repository.",
+    "status": "memory_viewer_active",
+    "reason": "Enabled GitHub Pages: branch main, path /docs. Viewer: https://iamthamanic.github.io/visudev-app/memory-live-doc/viewer/ (after push).",
     "repo": "iamthamanic/visudev-app",
     "default_branch": "main",
-    "has_pages": false,
-    "build_type": null,
+    "has_pages": true,
+    "build_type": "legacy",
     "source": {
-      "branch": null,
-      "path": null
+      "branch": "main",
+      "path": "/docs"
     },
     "html_url": null,
     "github_pages_status": null,
@@ -29,7 +29,7 @@
     "local_viewer_present": true,
     "can_enable": true,
     "can_change_pages": true,
-    "action_taken": "none",
+    "action_taken": "enabled_docs_legacy",
     "private_note": null
   }
 }
