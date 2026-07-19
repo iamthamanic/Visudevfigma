@@ -1,10 +1,11 @@
 {
   "schema_version": 1,
-  "id": "visudev",
-  "source": "src/STYLEGUIDE.md",
+  "id": "project-derived",
+  "source": "src/STYLEGUIDE.md; src/styles/globals.css (css:root)",
+  "locked": false,
   "tokens": {
     "bg": "#000000",
-    "bgElev": "#111111",
+    "bgElev": "#0a0a0a",
     "ink": "#ffffff",
     "muted": "#a0a0a0",
     "line": "#222222",
@@ -12,12 +13,12 @@
     "accent2": "#00d4ff",
     "danger": "#ff3b30",
     "radius": "8px",
-    "fontDisplay": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-    "fontBody": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-    "fontMono": "JetBrains Mono, Fira Code, Consolas, monospace",
-    "tabRadius": "6px",
-    "bgGlow1": "#0a1a14",
-    "bgGlow2": "#0a0a12"
+    "fontDisplay": "Inter",
+    "fontBody": "Inter",
+    "fontMono": "JetBrains Mono",
+    "tabRadius": "8px",
+    "bgGlow1": "#03ffa3",
+    "bgGlow2": "#000000"
   },
   "fonts": {
     "google": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
@@ -25,18 +26,18 @@
   "mermaid": {
     "theme": "dark",
     "themeVariables": {
-      "primaryColor": "#0a2a20",
+      "primaryColor": "#0a0a0a",
       "primaryTextColor": "#ffffff",
       "primaryBorderColor": "#03ffa3",
       "lineColor": "#a0a0a0",
-      "secondaryColor": "#111111",
-      "tertiaryColor": "#0a0a0a",
+      "secondaryColor": "#0a0a0a",
+      "tertiaryColor": "#000000",
       "background": "#000000",
-      "mainBkg": "#111111",
+      "mainBkg": "#0a0a0a",
       "nodeBorder": "#03ffa3",
-      "clusterBkg": "#0a0a0a",
+      "clusterBkg": "#000000",
       "titleColor": "#ffffff",
-      "edgeLabelBackground": "#111111"
+      "edgeLabelBackground": "#0a0a0a"
     }
   }
 }
