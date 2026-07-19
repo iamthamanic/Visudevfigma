@@ -4,10 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Project Memory</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
+  <link id="theme-fonts" rel="stylesheet" href="" />
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>
   <div class="shell">
@@ -30,6 +29,7 @@
           <button type="button" class="tab" data-view="features" role="tab">Features</button>
           <button type="button" class="tab" data-view="changes" role="tab">Changes</button>
           <button type="button" class="tab" data-view="decisions" role="tab">Decisions</button>
+          <button type="button" class="tab" data-view="architecture" role="tab" data-i18n-tab="architecture">Architecture</button>
         </nav>
       </div>
     </header>
@@ -39,6 +39,7 @@
       <section id="view-features" class="view" hidden></section>
       <section id="view-changes" class="view" hidden></section>
       <section id="view-decisions" class="view" hidden></section>
+      <section id="view-architecture" class="view" hidden></section>
     </main>
 
     <footer class="foot">

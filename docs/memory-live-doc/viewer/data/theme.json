@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "id": "visudev",
+  "source": "src/STYLEGUIDE.md",
+  "tokens": {
+    "bg": "#000000",
+    "bgElev": "#111111",
+    "ink": "#ffffff",
+    "muted": "#a0a0a0",
+    "line": "#222222",
+    "accent": "#03ffa3",
+    "accent2": "#00d4ff",
+    "danger": "#ff3b30",
+    "radius": "8px",
+    "fontDisplay": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+    "fontBody": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+    "fontMono": "JetBrains Mono, Fira Code, Consolas, monospace",
+    "tabRadius": "6px",
+    "bgGlow1": "#0a1a14",
+    "bgGlow2": "#0a0a12"
+  },
+  "fonts": {
+    "google": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+  },
+  "mermaid": {
+    "theme": "dark",
+    "themeVariables": {
+      "primaryColor": "#0a2a20",
+      "primaryTextColor": "#ffffff",
+      "primaryBorderColor": "#03ffa3",
+      "lineColor": "#a0a0a0",
+      "secondaryColor": "#111111",
+      "tertiaryColor": "#0a0a0a",
+      "background": "#000000",
+      "mainBkg": "#111111",
+      "nodeBorder": "#03ffa3",
+      "clusterBkg": "#0a0a0a",
+      "titleColor": "#ffffff",
+      "edgeLabelBackground": "#111111"
+    }
+  }
+}

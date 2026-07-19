@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "overview",
+  "title": {
+    "de": "Architektur",
+    "en": "Architecture"
+  },
+  "mermaid": "%% VisuDEV architecture overview (bootstrap, needs-review)\nflowchart TB\n  subgraph ui [Frontend Vite React]\n    Shell[Shell]\n    Projects[Projects]\n    AppFlow[App Flow]\n    Blueprint[Blueprint Views]\n    Data[Data ERD]\n    Settings[Settings]\n  end\n\n  subgraph analysis [Analysis]\n    LocalEngine[Local Engine]\n    Graph[Software Graph]\n    AC[Access Control Analyzers]\n    Enrich[Blueprint Enrichment]\n  end\n\n  subgraph runtime [Runtime]\n    Preview[Preview Runner]\n    Supabase[Supabase Edge + Auth]\n  end\n\n  Shell --> Projects\n  Shell --> AppFlow\n  Shell --> Blueprint\n  Shell --> Data\n  Shell --> Settings\n  Projects --> LocalEngine\n  Projects --> Supabase\n  LocalEngine --> Graph\n  Graph --> Enrich\n  Graph --> AC\n  Enrich --> Blueprint\n  AC --> Blueprint\n  AppFlow --> Preview\n",
+  "source_path": ".project-memory/architecture/overview.mermaid"
+}
