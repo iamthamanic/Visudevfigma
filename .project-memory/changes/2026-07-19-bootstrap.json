@@ -73,6 +73,27 @@
   "security_relevant": false,
   "evidence": [
     {
+      "kind": "commit",
+      "path": "527e2cb2d17cf6826b3d8fbd163b713cee5a1efc",
+      "sha": "527e2cb2d17cf6826b3d8fbd163b713cee5a1efc",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/527e2cb2d17cf6826b3d8fbd163b713cee5a1efc"
+    },
+    {
+      "kind": "file",
+      "path": ".project-memory/",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/527e2cb2d17cf6826b3d8fbd163b713cee5a1efc/.project-memory"
+    },
+    {
+      "kind": "file",
+      "path": "docs/PROJECT-STATUS.md",
+      "url": "https://github.com/iamthamanic/visudev-app/blob/527e2cb2d17cf6826b3d8fbd163b713cee5a1efc/docs/PROJECT-STATUS.md"
+    },
+    {
+      "kind": "file",
+      "path": "docs/memory-live-doc/viewer/",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/527e2cb2d17cf6826b3d8fbd163b713cee5a1efc/docs/memory-live-doc/viewer"
+    },
+    {
       "kind": "file",
       "path": "README.md",
       "url": "https://github.com/iamthamanic/visudev-app/blob/527e2cb2d17cf6826b3d8fbd163b713cee5a1efc/README.md"

@@ -71,12 +71,31 @@
   ],
   "evidence": [
     {
-      "kind": "commit",
-      "path": "5ee4a404"
+      "kind": "compare",
+      "path": "5ee4a404...7be57a9c",
+      "url": "https://github.com/iamthamanic/visudev-app/compare/5ee4a404...7be57a9c"
     },
     {
       "kind": "commit",
-      "path": "7be57a9c"
+      "path": "7be57a9c",
+      "sha": "7be57a9c",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/7be57a9c"
+    },
+    {
+      "kind": "file",
+      "path": "local-engine",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/7be57a9c/local-engine"
+    },
+    {
+      "kind": "file",
+      "path": "shared",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/7be57a9c/shared"
+    },
+    {
+      "kind": "commit",
+      "path": "5ee4a404",
+      "sha": "5ee4a404",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/5ee4a404"
     }
   ]
 }

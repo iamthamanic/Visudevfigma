@@ -66,8 +66,25 @@
   "security_relevant": false,
   "evidence": [
     {
+      "kind": "compare",
+      "path": "2b776765...da93b228",
+      "url": "https://github.com/iamthamanic/visudev-app/compare/2b776765...da93b228"
+    },
+    {
+      "kind": "commit",
+      "path": "da93b228",
+      "sha": "da93b228",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/da93b228"
+    },
+    {
       "kind": "file",
-      "path": "README.md"
+      "path": "src/",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/da93b228/src"
+    },
+    {
+      "kind": "file",
+      "path": "README.md",
+      "url": "https://github.com/iamthamanic/visudev-app/blob/da93b228/README.md"
     }
   ],
   "screenshots": [],

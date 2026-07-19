@@ -69,8 +69,25 @@
   "security_relevant": true,
   "evidence": [
     {
+      "kind": "commit",
+      "path": "6ae11c0a",
+      "sha": "6ae11c0a",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/6ae11c0a"
+    },
+    {
       "kind": "file",
-      "path": "docs/GITHUB_SECRETS.md"
+      "path": "src/modules/settings",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/6ae11c0a/src/modules/settings"
+    },
+    {
+      "kind": "file",
+      "path": "AuthGate",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/6ae11c0a/AuthGate"
+    },
+    {
+      "kind": "file",
+      "path": "docs/GITHUB_SECRETS.md",
+      "url": "https://github.com/iamthamanic/visudev-app/blob/6ae11c0a/docs/GITHUB_SECRETS.md"
     }
   ],
   "screenshots": [],

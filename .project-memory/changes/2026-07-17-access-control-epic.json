@@ -67,8 +67,30 @@
   "security_relevant": true,
   "evidence": [
     {
+      "kind": "compare",
+      "path": "118e837f...527e2cb2",
+      "url": "https://github.com/iamthamanic/visudev-app/compare/118e837f...527e2cb2"
+    },
+    {
+      "kind": "commit",
+      "path": "527e2cb2",
+      "sha": "527e2cb2",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/527e2cb2"
+    },
+    {
       "kind": "file",
-      "path": ".qa/design/blueprint-access-control.md"
+      "path": "shared/access-control.types.ts",
+      "url": "https://github.com/iamthamanic/visudev-app/blob/527e2cb2/shared/access-control.types.ts"
+    },
+    {
+      "kind": "file",
+      "path": "local-engine/src/services/access-control",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/527e2cb2/local-engine/src/services/access-control"
+    },
+    {
+      "kind": "file",
+      "path": ".qa/design/blueprint-access-control.md",
+      "url": "https://github.com/iamthamanic/visudev-app/blob/527e2cb2/.qa/design/blueprint-access-control.md"
     }
   ],
   "screenshots": [],

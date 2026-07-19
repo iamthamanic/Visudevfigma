@@ -76,6 +76,27 @@
       "security_relevant": false,
       "evidence": [
         {
+          "kind": "commit",
+          "path": "527e2cb2d17cf6826b3d8fbd163b713cee5a1efc",
+          "sha": "527e2cb2d17cf6826b3d8fbd163b713cee5a1efc",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/527e2cb2d17cf6826b3d8fbd163b713cee5a1efc"
+        },
+        {
+          "kind": "file",
+          "path": ".project-memory/",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/527e2cb2d17cf6826b3d8fbd163b713cee5a1efc/.project-memory"
+        },
+        {
+          "kind": "file",
+          "path": "docs/PROJECT-STATUS.md",
+          "url": "https://github.com/iamthamanic/visudev-app/blob/527e2cb2d17cf6826b3d8fbd163b713cee5a1efc/docs/PROJECT-STATUS.md"
+        },
+        {
+          "kind": "file",
+          "path": "docs/memory-live-doc/viewer/",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/527e2cb2d17cf6826b3d8fbd163b713cee5a1efc/docs/memory-live-doc/viewer"
+        },
+        {
           "kind": "file",
           "path": "README.md",
           "url": "https://github.com/iamthamanic/visudev-app/blob/527e2cb2d17cf6826b3d8fbd163b713cee5a1efc/README.md"
@@ -214,8 +235,30 @@
       "security_relevant": true,
       "evidence": [
         {
+          "kind": "compare",
+          "path": "118e837f...527e2cb2",
+          "url": "https://github.com/iamthamanic/visudev-app/compare/118e837f...527e2cb2"
+        },
+        {
+          "kind": "commit",
+          "path": "527e2cb2",
+          "sha": "527e2cb2",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/527e2cb2"
+        },
+        {
           "kind": "file",
-          "path": ".qa/design/blueprint-access-control.md"
+          "path": "shared/access-control.types.ts",
+          "url": "https://github.com/iamthamanic/visudev-app/blob/527e2cb2/shared/access-control.types.ts"
+        },
+        {
+          "kind": "file",
+          "path": "local-engine/src/services/access-control",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/527e2cb2/local-engine/src/services/access-control"
+        },
+        {
+          "kind": "file",
+          "path": ".qa/design/blueprint-access-control.md",
+          "url": "https://github.com/iamthamanic/visudev-app/blob/527e2cb2/.qa/design/blueprint-access-control.md"
         }
       ],
       "screenshots": [],
@@ -290,12 +333,31 @@
       ],
       "evidence": [
         {
-          "kind": "commit",
-          "path": "a874b4b2"
+          "kind": "compare",
+          "path": "a874b4b2...68a0f5c7",
+          "url": "https://github.com/iamthamanic/visudev-app/compare/a874b4b2...68a0f5c7"
         },
         {
           "kind": "commit",
-          "path": "68a0f5c7"
+          "path": "68a0f5c7",
+          "sha": "68a0f5c7",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/68a0f5c7"
+        },
+        {
+          "kind": "file",
+          "path": "local-engine",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/68a0f5c7/local-engine"
+        },
+        {
+          "kind": "file",
+          "path": "src/modules/blueprint",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/68a0f5c7/src/modules/blueprint"
+        },
+        {
+          "kind": "commit",
+          "path": "a874b4b2",
+          "sha": "a874b4b2",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/a874b4b2"
         }
       ]
     },
@@ -368,12 +430,26 @@
       ],
       "evidence": [
         {
-          "kind": "commit",
-          "path": "3e182a4f"
+          "kind": "compare",
+          "path": "694cbb70...3e182a4f",
+          "url": "https://github.com/iamthamanic/visudev-app/compare/694cbb70...3e182a4f"
         },
         {
           "kind": "commit",
-          "path": "694cbb70"
+          "path": "3e182a4f",
+          "sha": "3e182a4f",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/3e182a4f"
+        },
+        {
+          "kind": "file",
+          "path": "local-engine",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/3e182a4f/local-engine"
+        },
+        {
+          "kind": "commit",
+          "path": "694cbb70",
+          "sha": "694cbb70",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/694cbb70"
         }
       ]
     },
@@ -450,12 +526,31 @@
       ],
       "evidence": [
         {
-          "kind": "commit",
-          "path": "5ee4a404"
+          "kind": "compare",
+          "path": "5ee4a404...7be57a9c",
+          "url": "https://github.com/iamthamanic/visudev-app/compare/5ee4a404...7be57a9c"
         },
         {
           "kind": "commit",
-          "path": "7be57a9c"
+          "path": "7be57a9c",
+          "sha": "7be57a9c",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/7be57a9c"
+        },
+        {
+          "kind": "file",
+          "path": "local-engine",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/7be57a9c/local-engine"
+        },
+        {
+          "kind": "file",
+          "path": "shared",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/7be57a9c/shared"
+        },
+        {
+          "kind": "commit",
+          "path": "5ee4a404",
+          "sha": "5ee4a404",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/5ee4a404"
         }
       ]
     },
@@ -532,20 +627,43 @@
       ],
       "evidence": [
         {
-          "kind": "commit",
-          "path": "5097ddc1"
+          "kind": "compare",
+          "path": "5097ddc1...9cafe6dd",
+          "url": "https://github.com/iamthamanic/visudev-app/compare/5097ddc1...9cafe6dd"
         },
         {
           "kind": "commit",
-          "path": "1594d5d8"
+          "path": "9cafe6dd",
+          "sha": "9cafe6dd",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/9cafe6dd"
+        },
+        {
+          "kind": "file",
+          "path": "src/modules/blueprint",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/9cafe6dd/src/modules/blueprint"
+        },
+        {
+          "kind": "file",
+          "path": "src/modules/shell",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/9cafe6dd/src/modules/shell"
         },
         {
           "kind": "commit",
-          "path": "1aa6f458"
+          "path": "5097ddc1",
+          "sha": "5097ddc1",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/5097ddc1"
         },
         {
           "kind": "commit",
-          "path": "9cafe6dd"
+          "path": "1594d5d8",
+          "sha": "1594d5d8",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/1594d5d8"
+        },
+        {
+          "kind": "commit",
+          "path": "1aa6f458",
+          "sha": "1aa6f458",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/1aa6f458"
         }
       ]
     },
@@ -617,8 +735,25 @@
       "security_relevant": false,
       "evidence": [
         {
+          "kind": "commit",
+          "path": "main",
+          "sha": "main",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/main"
+        },
+        {
           "kind": "file",
-          "path": ".qa/acceptance/wave2-diagnostics-viz-parity.md"
+          "path": "src/modules/blueprint",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/main/src/modules/blueprint"
+        },
+        {
+          "kind": "file",
+          "path": "tests/e2e",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/main/tests/e2e"
+        },
+        {
+          "kind": "file",
+          "path": ".qa/acceptance/wave2-diagnostics-viz-parity.md",
+          "url": "https://github.com/iamthamanic/visudev-app/blob/main/.qa/acceptance/wave2-diagnostics-viz-parity.md"
         }
       ],
       "screenshots": [],
@@ -696,12 +831,36 @@
       ],
       "evidence": [
         {
-          "kind": "pr",
-          "url": "https://github.com/iamthamanic/visudev-app/pull/155"
+          "kind": "compare",
+          "path": "ba5604c8...e4dd0f74",
+          "url": "https://github.com/iamthamanic/visudev-app/compare/ba5604c8...e4dd0f74"
         },
         {
           "kind": "commit",
-          "path": "ba5604c8"
+          "path": "e4dd0f74",
+          "sha": "e4dd0f74",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/e4dd0f74"
+        },
+        {
+          "kind": "pr",
+          "path": "https://github.com/iamthamanic/visudev-app/pull/155",
+          "url": "https://github.com/iamthamanic/visudev-app/pull/155"
+        },
+        {
+          "kind": "file",
+          "path": "src/modules/blueprint",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/e4dd0f74/src/modules/blueprint"
+        },
+        {
+          "kind": "file",
+          "path": "src/modules/shell",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/e4dd0f74/src/modules/shell"
+        },
+        {
+          "kind": "commit",
+          "path": "ba5604c8",
+          "sha": "ba5604c8",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/ba5604c8"
         }
       ]
     },
@@ -774,8 +933,20 @@
       "security_relevant": false,
       "evidence": [
         {
+          "kind": "commit",
+          "path": "main",
+          "sha": "main",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/main"
+        },
+        {
           "kind": "file",
-          "path": ".qa/design/blueprint-v2.md"
+          "path": "src/modules/blueprint",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/main/src/modules/blueprint"
+        },
+        {
+          "kind": "file",
+          "path": ".qa/design/blueprint-v2.md",
+          "url": "https://github.com/iamthamanic/visudev-app/blob/main/.qa/design/blueprint-v2.md"
         }
       ],
       "screenshots": [],
@@ -854,16 +1025,32 @@
       ],
       "evidence": [
         {
-          "kind": "commit",
-          "path": "32d1d7f6"
+          "kind": "compare",
+          "path": "32d1d7f6...19b3ae0c",
+          "url": "https://github.com/iamthamanic/visudev-app/compare/32d1d7f6...19b3ae0c"
         },
         {
           "kind": "commit",
-          "path": "f0cd7da6"
+          "path": "19b3ae0c",
+          "sha": "19b3ae0c",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/19b3ae0c"
+        },
+        {
+          "kind": "file",
+          "path": "src/modules/blueprint",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/19b3ae0c/src/modules/blueprint"
         },
         {
           "kind": "commit",
-          "path": "19b3ae0c"
+          "path": "32d1d7f6",
+          "sha": "32d1d7f6",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/32d1d7f6"
+        },
+        {
+          "kind": "commit",
+          "path": "f0cd7da6",
+          "sha": "f0cd7da6",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/f0cd7da6"
         }
       ]
     },
@@ -938,8 +1125,20 @@
       "security_relevant": false,
       "evidence": [
         {
+          "kind": "commit",
+          "path": "main",
+          "sha": "main",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/main"
+        },
+        {
           "kind": "file",
-          "path": "shared/software-graph.types.ts"
+          "path": "shared/software-graph.types.ts",
+          "url": "https://github.com/iamthamanic/visudev-app/blob/main/shared/software-graph.types.ts"
+        },
+        {
+          "kind": "file",
+          "path": "local-engine",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/main/local-engine"
         }
       ],
       "screenshots": [],
@@ -1020,8 +1219,25 @@
       "security_relevant": true,
       "evidence": [
         {
+          "kind": "commit",
+          "path": "main",
+          "sha": "main",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/main"
+        },
+        {
           "kind": "pr",
+          "path": "https://github.com/iamthamanic/visudev-app/pull/8",
           "url": "https://github.com/iamthamanic/visudev-app/pull/8"
+        },
+        {
+          "kind": "file",
+          "path": "src/modules/blueprint",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/main/src/modules/blueprint"
+        },
+        {
+          "kind": "file",
+          "path": "local-engine",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/main/local-engine"
         }
       ],
       "screenshots": [],
@@ -1101,8 +1317,25 @@
       "security_relevant": false,
       "evidence": [
         {
+          "kind": "commit",
+          "path": "2026-03",
+          "sha": "2026-03",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/2026-03"
+        },
+        {
           "kind": "file",
-          "path": "docs/PREVIEW_RUNNER.md"
+          "path": "preview-runner",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/2026-03/preview-runner"
+        },
+        {
+          "kind": "file",
+          "path": "src/modules/appflow",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/2026-03/src/modules/appflow"
+        },
+        {
+          "kind": "file",
+          "path": "docs/PREVIEW_RUNNER.md",
+          "url": "https://github.com/iamthamanic/visudev-app/blob/2026-03/docs/PREVIEW_RUNNER.md"
         }
       ],
       "screenshots": [],
@@ -1180,8 +1413,30 @@
       "security_relevant": true,
       "evidence": [
         {
+          "kind": "compare",
+          "path": "856dd23c...4edb8971",
+          "url": "https://github.com/iamthamanic/visudev-app/compare/856dd23c...4edb8971"
+        },
+        {
+          "kind": "commit",
+          "path": "4edb8971",
+          "sha": "4edb8971",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/4edb8971"
+        },
+        {
           "kind": "file",
-          "path": "AGENTS.md"
+          "path": "visudev-server",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/4edb8971/visudev-server"
+        },
+        {
+          "kind": "file",
+          "path": "visudev-projects",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/4edb8971/visudev-projects"
+        },
+        {
+          "kind": "file",
+          "path": "AGENTS.md",
+          "url": "https://github.com/iamthamanic/visudev-app/blob/4edb8971/AGENTS.md"
         }
       ],
       "screenshots": [],
@@ -1263,8 +1518,30 @@
       "security_relevant": false,
       "evidence": [
         {
+          "kind": "compare",
+          "path": "f2fff86a...77c43446",
+          "url": "https://github.com/iamthamanic/visudev-app/compare/f2fff86a...77c43446"
+        },
+        {
+          "kind": "commit",
+          "path": "77c43446",
+          "sha": "77c43446",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/77c43446"
+        },
+        {
           "kind": "file",
-          "path": "docs/PREVIEW_RUNNER.md"
+          "path": "preview-runner",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/77c43446/preview-runner"
+        },
+        {
+          "kind": "file",
+          "path": "src/modules/appflow",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/77c43446/src/modules/appflow"
+        },
+        {
+          "kind": "file",
+          "path": "docs/PREVIEW_RUNNER.md",
+          "url": "https://github.com/iamthamanic/visudev-app/blob/77c43446/docs/PREVIEW_RUNNER.md"
         }
       ],
       "screenshots": [],
@@ -1342,8 +1619,25 @@
       "security_relevant": true,
       "evidence": [
         {
+          "kind": "commit",
+          "path": "6ae11c0a",
+          "sha": "6ae11c0a",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/6ae11c0a"
+        },
+        {
           "kind": "file",
-          "path": "docs/GITHUB_SECRETS.md"
+          "path": "src/modules/settings",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/6ae11c0a/src/modules/settings"
+        },
+        {
+          "kind": "file",
+          "path": "AuthGate",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/6ae11c0a/AuthGate"
+        },
+        {
+          "kind": "file",
+          "path": "docs/GITHUB_SECRETS.md",
+          "url": "https://github.com/iamthamanic/visudev-app/blob/6ae11c0a/docs/GITHUB_SECRETS.md"
         }
       ],
       "screenshots": [],
@@ -1418,8 +1712,25 @@
       "security_relevant": false,
       "evidence": [
         {
+          "kind": "compare",
+          "path": "2b776765...da93b228",
+          "url": "https://github.com/iamthamanic/visudev-app/compare/2b776765...da93b228"
+        },
+        {
+          "kind": "commit",
+          "path": "da93b228",
+          "sha": "da93b228",
+          "url": "https://github.com/iamthamanic/visudev-app/commit/da93b228"
+        },
+        {
           "kind": "file",
-          "path": "README.md"
+          "path": "src/",
+          "url": "https://github.com/iamthamanic/visudev-app/tree/da93b228/src"
+        },
+        {
+          "kind": "file",
+          "path": "README.md",
+          "url": "https://github.com/iamthamanic/visudev-app/blob/da93b228/README.md"
         }
       ],
       "screenshots": [],

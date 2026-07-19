@@ -71,8 +71,25 @@
   "security_relevant": false,
   "evidence": [
     {
+      "kind": "commit",
+      "path": "2026-03",
+      "sha": "2026-03",
+      "url": "https://github.com/iamthamanic/visudev-app/commit/2026-03"
+    },
+    {
       "kind": "file",
-      "path": "docs/PREVIEW_RUNNER.md"
+      "path": "preview-runner",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/2026-03/preview-runner"
+    },
+    {
+      "kind": "file",
+      "path": "src/modules/appflow",
+      "url": "https://github.com/iamthamanic/visudev-app/tree/2026-03/src/modules/appflow"
+    },
+    {
+      "kind": "file",
+      "path": "docs/PREVIEW_RUNNER.md",
+      "url": "https://github.com/iamthamanic/visudev-app/blob/2026-03/docs/PREVIEW_RUNNER.md"
     }
   ],
   "screenshots": [],
