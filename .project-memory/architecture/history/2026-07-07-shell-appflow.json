@@ -1,0 +1,18 @@
+{
+  "id": "2026-07-07-shell-appflow",
+  "date": "2026-07-07",
+  "title": {
+    "de": "Frühe App: Shell & App Flow",
+    "en": "Early app: Shell & App Flow"
+  },
+  "summary": {
+    "de": "Bevor Blueprint viele Views hatte: Projekte, App Flow und Preview im Vordergrund.",
+    "en": "Before multi-view Blueprint: projects, App Flow, and preview front and center."
+  },
+  "commit": "early",
+  "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Shell[Shell]\n    Projects[Projects]\n    AppFlow[App Flow]\n    Settings[Settings]\n  end\n  subgraph runtime [Runtime]\n    Preview[Preview Runner]\n    Supabase[Supabase]\n  end\n  Shell --> Projects\n  Shell --> AppFlow\n  Shell --> Settings\n  Projects --> Supabase\n  AppFlow --> Preview",
+  "change_ids": [],
+  "review_status": "needs-review",
+  "schema_version": 1,
+  "content_hash": "2daf79ac6ebf56f24be8fbbe160b6541a1ce3fbd265578aeb5cfd6d5da5d0515"
+}

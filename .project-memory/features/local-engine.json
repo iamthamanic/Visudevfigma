@@ -1,19 +1,42 @@
 {
   "id": "local-engine",
-  "title": { "de": "Local Engine", "en": "Local Engine" },
+  "title": {
+    "de": "Local Engine",
+    "en": "Local Engine"
+  },
   "summary": {
     "de": "Lokaler Analyse-Server: Blueprint-Provider, Enrichment, Software Graph, Access Control.",
     "en": "Local analysis server: Blueprint providers, enrichment, Software Graph, access control."
   },
   "status": "active",
-  "packages": ["local-engine", "shared"],
-  "paths": ["local-engine/**", "docs/LOCAL_ENGINE.md"],
+  "packages": [
+    "local-engine",
+    "shared"
+  ],
+  "paths": [
+    "local-engine/**",
+    "docs/LOCAL_ENGINE.md"
+  ],
   "user_impact": {
-    "de": ["Analyse ohne Cloud für lokale Projekte."],
-    "en": ["Analysis without cloud for local projects."]
+    "de": [
+      "Analyse ohne Cloud für lokale Projekte."
+    ],
+    "en": [
+      "Analysis without cloud for local projects."
+    ]
   },
-  "related_changes": ["2026-07-19-bootstrap"],
+  "related_changes": [
+    "2026-07-19-bootstrap"
+  ],
   "review_status": "needs-review",
   "confidence": 0.65,
-  "locked": false
+  "locked": false,
+  "plain_language": {
+    "de": "Die Local Engine analysiert dein Projekt auf dem eigenen Rechner: Code lesen, Blueprint erzeugen, Graph und Sicherheit ableiten — auch offline.",
+    "en": "The Local Engine analyzes your project on your machine: read code, build Blueprint, derive graph and security — including offline."
+  },
+  "why_it_matters": {
+    "de": "Schnelle Iteration ohne alles in die Cloud schicken zu müssen.",
+    "en": "Fast iteration without sending everything to the cloud."
+  }
 }

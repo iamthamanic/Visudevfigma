@@ -1,23 +1,44 @@
 {
   "id": "blueprint-views",
-  "title": { "de": "Blueprint Multi-Views", "en": "Blueprint multi-views" },
+  "title": {
+    "de": "Blueprint Multi-Views",
+    "en": "Blueprint multi-views"
+  },
   "summary": {
     "de": "Sieben Blueprint-Views (Atlas, Architecture, Dependencies, Execution, Infrastructure, Diagnostics, Evolution) über einem gemeinsamen Software Graph.",
     "en": "Seven Blueprint views (Atlas, Architecture, Dependencies, Execution, Infrastructure, Diagnostics, Evolution) over a shared Software Graph."
   },
   "status": "active",
-  "packages": ["src", "shared", "local-engine"],
+  "packages": [
+    "src",
+    "shared",
+    "local-engine"
+  ],
   "paths": [
     "src/modules/blueprint/**",
     "shared/software-graph.types.ts",
     ".qa/design/blueprint-v2.md"
   ],
   "user_impact": {
-    "de": ["Technische Architektur und Diagnosen neben Security-Matrix."],
-    "en": ["Technical architecture and diagnostics alongside the security matrix."]
+    "de": [
+      "Technische Architektur und Diagnosen neben Security-Matrix."
+    ],
+    "en": [
+      "Technical architecture and diagnostics alongside the security matrix."
+    ]
   },
-  "related_changes": ["2026-07-19-bootstrap"],
+  "related_changes": [
+    "2026-07-19-bootstrap"
+  ],
   "review_status": "needs-review",
   "confidence": 0.7,
-  "locked": false
+  "locked": false,
+  "plain_language": {
+    "de": "Blueprint ist die technische Röntgenaufnahme: mehrere Ansichten (Architektur, Abhängigkeiten, Sicherheit, …) erklären, wie die Software innen aufgebaut ist.",
+    "en": "Blueprint is the technical X-ray: several views (architecture, dependencies, security, …) explain how the software is built inside."
+  },
+  "why_it_matters": {
+    "de": "Hilft, Risiken und fehlende Absicherungen zu sehen — nicht nur schöne Diagramme.",
+    "en": "Helps spot risks and missing safeguards — not just pretty diagrams."
+  }
 }

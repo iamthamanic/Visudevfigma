@@ -1,19 +1,40 @@
 {
   "id": "projects",
-  "title": { "de": "Projekte & Verbindungen", "en": "Projects & connections" },
+  "title": {
+    "de": "Projekte & Verbindungen",
+    "en": "Projects & connections"
+  },
   "summary": {
     "de": "Projekte anlegen/verwalten, GitHub-Repos oder lokalen Pfad verbinden, Analyse starten.",
     "en": "Create/manage projects, connect GitHub repos or local paths, start analysis."
   },
   "status": "active",
-  "packages": ["src"],
-  "paths": ["src/modules/projects/**"],
+  "packages": [
+    "src"
+  ],
+  "paths": [
+    "src/modules/projects/**"
+  ],
   "user_impact": {
-    "de": ["Projektliste und Auswahl steuern App Flow, Blueprint und Data."],
-    "en": ["Project list and selection drive App Flow, Blueprint, and Data."]
+    "de": [
+      "Projektliste und Auswahl steuern App Flow, Blueprint und Data."
+    ],
+    "en": [
+      "Project list and selection drive App Flow, Blueprint, and Data."
+    ]
   },
-  "related_changes": ["2026-07-19-bootstrap"],
+  "related_changes": [
+    "2026-07-19-bootstrap"
+  ],
   "review_status": "needs-review",
   "confidence": 0.6,
-  "locked": false
+  "locked": false,
+  "plain_language": {
+    "de": "Hier legst du fest, welches Software-Projekt VisuDEV untersuchen soll — z. B. ein GitHub-Repo oder einen Ordner auf deinem Rechner. Ohne Projekt gibt es nichts zu zeigen.",
+    "en": "This is where you choose which software project VisuDEV should inspect — e.g. a GitHub repo or a local folder. Without a project, there is nothing to show."
+  },
+  "why_it_matters": {
+    "de": "Alles andere (App Flow, Blueprint, Daten) hängt davon ab, dass das richtige Projekt verbunden ist.",
+    "en": "Everything else (App Flow, Blueprint, Data) depends on connecting the right project."
+  }
 }

@@ -13,12 +13,12 @@
   },
   "user_impact": {
     "de": [
-      "Projektstatus und Features sind in docs/ und dem Memory-Viewer nachvollziehbar.",
-      "Keine Laufzeitänderung an der VisuDEV-App durch diesen Bootstrap."
+      "Interaktive Übersicht unter dem Memory-Viewer (Status, Features, Changes, Decisions, Architecture).",
+      "Keine Änderung am Alltag in der VisuDEV-App selbst — nur Dokumentation und Transparenz."
     ],
     "en": [
-      "Project status and features are traceable in docs/ and the memory viewer.",
-      "No VisuDEV app runtime change from this bootstrap."
+      "Interactive overview in the memory viewer (Status, Features, Changes, Decisions, Architecture).",
+      "No change to day-to-day VisuDEV app usage — documentation and transparency only."
     ]
   },
   "developer_impact": {
@@ -45,7 +45,12 @@
     "branch": "main",
     "pull_request": null
   },
-  "packages": ["src", "local-engine", "preview-runner", "shared"],
+  "packages": [
+    "src",
+    "local-engine",
+    "preview-runner",
+    "shared"
+  ],
   "affected_features": [
     "projects",
     "appflow",
@@ -93,7 +98,10 @@
       "id": "shot-appflow",
       "path": "docs/memory-live-doc/assets/2026-07-19-bootstrap/appflow.png",
       "status": "missing",
-      "caption": { "de": "App Flow Hauptansicht", "en": "App Flow main view" }
+      "caption": {
+        "de": "App Flow Hauptansicht",
+        "en": "App Flow main view"
+      }
     },
     {
       "id": "shot-diagnostics-ac",
@@ -108,15 +116,29 @@
       "id": "shot-data-erd",
       "path": "docs/memory-live-doc/assets/2026-07-19-bootstrap/data-erd.png",
       "status": "missing",
-      "caption": { "de": "Data ERD", "en": "Data ERD" }
+      "caption": {
+        "de": "Data ERD",
+        "en": "Data ERD"
+      }
     },
     {
       "id": "shot-projects",
       "path": "docs/memory-live-doc/assets/2026-07-19-bootstrap/projects.png",
       "status": "missing",
-      "caption": { "de": "Projekte-Seite", "en": "Projects page" }
+      "caption": {
+        "de": "Projekte-Seite",
+        "en": "Projects page"
+      }
     }
   ],
   "confidence": 0.6,
-  "review_status": "needs-review"
+  "review_status": "needs-review",
+  "plain_language": {
+    "de": "Wir haben ein „Projektgedächtnis“ eingerichtet: eine übersichtliche Website (auch auf GitHub Pages), die erklärt, was VisuDEV kann, was sich geändert hat und wie die Architektur aussieht — in Deutsch und Englisch.",
+    "en": "We set up a project memory: a clear website (also on GitHub Pages) that explains what VisuDEV can do, what changed, and how the architecture looks — in German and English."
+  },
+  "why_it_matters": {
+    "de": "Neue Teammitglieder und nicht-technische Stakeholder sollen den Stand verstehen, ohne im Code zu graben.",
+    "en": "New teammates and non-technical stakeholders can understand the state without digging through code."
+  }
 }

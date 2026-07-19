@@ -1,19 +1,41 @@
 {
   "id": "preview-runner",
-  "title": { "de": "Preview Runner", "en": "Preview Runner" },
+  "title": {
+    "de": "Preview Runner",
+    "en": "Preview Runner"
+  },
   "summary": {
     "de": "Baut und startet verknüpfte Apps lokal für Live-Preview und Crawls (Port 4000).",
     "en": "Builds and runs linked apps locally for live preview and crawls (port 4000)."
   },
   "status": "active",
-  "packages": ["preview-runner"],
-  "paths": ["preview-runner/**", "docs/PREVIEW_RUNNER.md"],
+  "packages": [
+    "preview-runner"
+  ],
+  "paths": [
+    "preview-runner/**",
+    "docs/PREVIEW_RUNNER.md"
+  ],
   "user_impact": {
-    "de": ["Live-Iframes und Screenshots aus dem analysierten Repo."],
-    "en": ["Live iframes and screenshots from the analyzed repo."]
+    "de": [
+      "Live-Iframes und Screenshots aus dem analysierten Repo."
+    ],
+    "en": [
+      "Live iframes and screenshots from the analyzed repo."
+    ]
   },
-  "related_changes": ["2026-07-19-bootstrap"],
+  "related_changes": [
+    "2026-07-19-bootstrap"
+  ],
   "review_status": "needs-review",
   "confidence": 0.6,
-  "locked": false
+  "locked": false,
+  "plain_language": {
+    "de": "Der Preview Runner startet die verknüpfte App lokal, damit VisuDEV echte Bildschirme und Vorschauen zeigen kann — nicht nur Theorie.",
+    "en": "The Preview Runner starts the linked app locally so VisuDEV can show real screens and previews — not theory only."
+  },
+  "why_it_matters": {
+    "de": "Ohne laufende Vorschau bleiben viele Karten leer oder veraltet.",
+    "en": "Without a running preview many cards stay empty or outdated."
+  }
 }

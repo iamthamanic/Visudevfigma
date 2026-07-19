@@ -9,7 +9,11 @@
     "en": "Abstract controls (AuthN, AuthZ, Scope, Tenant, Ownership, Validation, Audit); mechanisms (RLS, views, query filters) only in inspector/adapters. Expectations without DB type; detection optionally stack-specific."
   },
   "status": "active",
-  "packages": ["shared", "local-engine", "src"],
+  "packages": [
+    "shared",
+    "local-engine",
+    "src"
+  ],
   "paths": [
     "shared/access-control.types.ts",
     "shared/access-control-matrix.ts",
@@ -27,8 +31,18 @@
       "MariaDB/MongoDB without native RLS are not falsely marked critical when scope is evidenced."
     ]
   },
-  "related_changes": ["2026-07-19-bootstrap"],
+  "related_changes": [
+    "2026-07-19-bootstrap"
+  ],
   "review_status": "needs-review",
   "confidence": 0.75,
-  "locked": false
+  "locked": false,
+  "plain_language": {
+    "de": "Diese Sicherheitsansicht fragt nicht „Gibt es PostgreSQL-RLS?“, sondern: Wer darf welche Daten sehen? Ist der Mandant getrennt? Wird Eigentum geprüft? Die konkrete Technik (RLS, Filter, Views) erscheint erst in den Details.",
+    "en": "This security view does not ask “Is there PostgreSQL RLS?” but: Who may see which data? Are tenants isolated? Is ownership checked? Concrete tech (RLS, filters, views) appears only in the details."
+  },
+  "why_it_matters": {
+    "de": "So werden auch Projekte mit MariaDB oder MongoDB fair bewertet — fehlendes RLS allein ist kein automatischer Alarm.",
+    "en": "Projects on MariaDB or MongoDB are judged fairly — missing RLS alone is not an automatic alarm."
+  }
 }
