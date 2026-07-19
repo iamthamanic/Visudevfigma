@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "status": "recorded",
+  "packages": [
+    "src",
+    "local-engine"
+  ],
+  "breaking_changes": [],
+  "migration_required": false,
+  "screenshots": [],
+  "confidence": 0.8,
+  "review_status": "needs-review",
+  "operational_impact": {
+    "de": [],
+    "en": []
+  },
+  "id": "2026-07-16-wave5-view-polish",
+  "date": "2026-07-16",
+  "type": "feature",
+  "title": {
+    "de": "Wave 5: View-Polish (Diagnostics→Footer)",
+    "en": "Wave 5: view polish (diagnostics→footer)"
+  },
+  "summary": {
+    "de": "Diagnostics-Filter/Badges, Evolution-Timeline, Execution-Panels, Atlas-Glow, Footer-Health-Zeile.",
+    "en": "Diagnostics filters/badges, evolution timeline, execution panels, atlas glow, footer health line."
+  },
+  "plain_language": {
+    "de": "Die einzelnen Blueprint-Views werden „fertig“: Filter, Zeitachsen, Payload-Panels und ein Footer, der den Gesundheitszustand zeigt.",
+    "en": "Individual Blueprint views feel finished: filters, timelines, payload panels, and a footer showing health status."
+  },
+  "why_it_matters": {
+    "de": "Aus Diagnose-Rohdaten wird eine bedienbare Oberfläche.",
+    "en": "Raw diagnostic data becomes a usable interface."
+  },
+  "user_impact": {
+    "de": [
+      "Filterbare Findings",
+      "Execution-Timeline",
+      "Footer „Keine kritischen Probleme“"
+    ],
+    "en": [
+      "Filterable findings",
+      "Execution timeline",
+      "Footer “no critical issues”"
+    ]
+  },
+  "developer_impact": {
+    "de": [
+      "Wave 5 issues #166–#170",
+      "shell footer health"
+    ],
+    "en": [
+      "Wave 5 issues #166–#170",
+      "shell footer health"
+    ]
+  },
+  "security_relevant": false,
+  "git": {
+    "base": "5097ddc1",
+    "head": "9cafe6dd",
+    "branch": "main",
+    "pull_request": null
+  },
+  "affected_features": [
+    "blueprint-views"
+  ],
+  "affected_components": [
+    "src/modules/blueprint",
+    "src/modules/shell"
+  ],
+  "evidence": [
+    {
+      "kind": "commit",
+      "path": "5097ddc1"
+    },
+    {
+      "kind": "commit",
+      "path": "1594d5d8"
+    },
+    {
+      "kind": "commit",
+      "path": "1aa6f458"
+    },
+    {
+      "kind": "commit",
+      "path": "9cafe6dd"
+    }
+  ]
+}
