@@ -8,6 +8,7 @@
     project: null,
     features: [],
     changes: [],
+    decisions: [],
     current: null,
     selectedChangeId: null,
   };
@@ -19,7 +20,8 @@
       focus: "Aktueller Fokus",
       recent: "Kürzlich erledigt",
       incomplete: "Unvollständig",
-      risks: "Risiken",
+      risks: "Risiken / Lücken",
+      product: "Produktstatus",
       empty: "Keine Einträge",
       filterPkg: "Paket",
       filterStatus: "Status",
@@ -41,7 +43,8 @@
       focus: "Current focus",
       recent: "Recently completed",
       incomplete: "Incomplete",
-      risks: "Risks",
+      risks: "Risks / gaps",
+      product: "Product status",
       empty: "No entries",
       filterPkg: "Package",
       filterStatus: "Status",
@@ -75,10 +78,14 @@
     return obj[state.lang] || obj.en || obj.de || [];
   }
 
-  function asArray(payload) {
+  function asArray(payload, preferredKeys) {
     if (!payload) return [];
     if (Array.isArray(payload)) return payload;
     if (Array.isArray(payload.items)) return payload.items;
+    const keys = preferredKeys || ["features", "changes", "decisions"];
+    for (const key of keys) {
+      if (Array.isArray(payload[key])) return payload[key];
+    }
     return [];
   }
 
@@ -96,15 +103,19 @@
 
   async function boot() {
     try {
-      const [project, features, changes, current] = await Promise.all([
+      const [project, features, changes, current, decisions] = await Promise.all([
         loadJson("./data/project.json"),
         loadJson("./data/features.json"),
         loadJson("./data/changes.json"),
         loadJson("./data/current-state.json"),
+        loadJson("./data/decisions.json").catch(() => ({ decisions: [] })),
       ]);
       state.project = project;
-      state.features = asArray(features);
-      state.changes = asArray(changes).slice().sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+      state.features = asArray(features, ["features", "items"]);
+      state.changes = asArray(changes, ["changes", "items"])
+        .slice()
+        .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+      state.decisions = asArray(decisions, ["decisions", "items"]);
       state.current = current;
       bind();
       renderChrome();
@@ -165,12 +176,19 @@
 
   function renderStatus() {
     const c = state.current || {};
-    const focus = c.focus || c.current_focus || [];
-    const recent = c.recently_completed || c.recent || [];
-    const incomplete = c.incomplete || [];
-    const risks = c.risks || [];
+    const focus = biList(c.active_focus || c.focus || c.current_focus);
+    const recent = biList(c.recently_completed || c.recent);
+    const incomplete = biList(c.incomplete);
+    const risks = biList(c.known_gaps || c.risks);
+    const product = bi(c.product_status);
     const el = document.getElementById("view-status");
     el.innerHTML = `
+      ${
+        product
+          ? `<article class="card" style="margin-bottom:1rem"><h3>${escapeHtml(t("product"))}</h3><p>${escapeHtml(product)}</p>
+             <p class="meta">${reviewPill(c.review_status)} ${escapeHtml(c.as_of || "")} · <code>${escapeHtml(c.commit || "").slice(0, 8)}</code></p></article>`
+          : ""
+      }
       <div class="grid cols-2">
         ${listBlock(t("focus"), focus)}
         ${listBlock(t("recent"), recent)}
@@ -310,7 +328,8 @@
 
   function renderDecisions() {
     const el = document.getElementById("view-decisions");
-    const decisions = state.changes.filter((c) => c.type === "decision" || c.type === "architecture");
+    const fromChanges = state.changes.filter((c) => c.type === "decision" || c.type === "architecture");
+    const decisions = state.decisions.length ? state.decisions : fromChanges;
     if (!decisions.length) {
       el.innerHTML = `<p class="muted">${t("decisionsEmpty")}</p>`;
       return;
@@ -320,7 +339,8 @@
         (d) => `
       <article class="card">
         <h3>${escapeHtml(bi(d.title) || d.id)}</h3>
-        <p class="meta">${escapeHtml(d.date || "")} · ${reviewPill(d.review_status)}</p>
+        <p class="meta">${escapeHtml(d.date || "")} · ${reviewPill(d.review_status)}
+          ${d.status ? `<span class="pill">${escapeHtml(d.status)}</span>` : ""}</p>
         <p>${escapeHtml(bi(d.summary))}</p>
       </article>`
       )
