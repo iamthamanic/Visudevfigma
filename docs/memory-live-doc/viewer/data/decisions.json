@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "decisions": [
+    {
+      "id": "access-control-stack-agnostic",
+      "date": "2026-07-19",
+      "title": {
+        "de": "Access Control: Expectation generisch, Mechanismen stack-spezifisch",
+        "en": "Access control: generic expectations, stack-specific mechanisms"
+      },
+      "summary": {
+        "de": "Blueprint fragt abstrakt nach AuthN/AuthZ/Scope/Tenant/Ownership — nicht nach RLS. DB-Adapter (Postgres, MariaDB, MongoDB, …) liefern Mechanismen und Evidence für den Inspector. MariaDB ohne RLS ist kein automatischer Fehler.",
+        "en": "Blueprint asks abstractly about AuthN/AuthZ/Scope/Tenant/Ownership — not RLS. DB adapters (Postgres, MariaDB, MongoDB, …) supply mechanisms and evidence for the inspector. MariaDB without RLS is not an automatic failure."
+      },
+      "status": "accepted",
+      "related_features": [
+        "blueprint-access-control"
+      ],
+      "evidence": [
+        {
+          "kind": "file",
+          "path": ".qa/design/blueprint-access-control.md",
+          "url": "https://github.com/iamthamanic/visudev-app/blob/527e2cb2d17cf6826b3d8fbd163b713cee5a1efc/.qa/design/blueprint-access-control.md"
+        }
+      ],
+      "review_status": "needs-review",
+      "confidence": 0.8
+    }
+  ]
+}
