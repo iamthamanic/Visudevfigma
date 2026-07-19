@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "content_hash": "45097f13b3f5a2b4c37f53ef7ea8c06ecd3e73040dd05f28d8f76fe36de7f3bf",
+  "review_status": "needs-review",
+  "id": "2026-07-14-multiview",
+  "date": "2026-07-14",
+  "title": {
+    "de": "Sieben Blueprint-Views",
+    "en": "Seven Blueprint views"
+  },
+  "summary": {
+    "de": "Architecture bis Atlas über dem Graph.",
+    "en": "Architecture through Atlas on the graph."
+  },
+  "commit": "multiview",
+  "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Shell[Shell]\n    BP[Blueprint Shell]\n    V1[Architecture]\n    V2[Dependencies]\n    V3[Execution]\n    V4[Infrastructure]\n    V5[Diagnostics]\n    V6[Evolution]\n    V7[Atlas]\n  end\n  subgraph analysis [Analysis]\n    Graph[Software Graph]\n  end\n  Shell --> BP\n  BP --> V1 & V2 & V3 & V4 & V5 & V6 & V7\n  Graph --> BP"
+}

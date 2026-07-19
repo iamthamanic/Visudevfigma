@@ -43,3 +43,5 @@ Never delete history entries (append-only).
 ## Viewer
 
 Architecture tab: date filter / select → render selected Mermaid.
+
+Dates are stored as ISO `YYYY-MM-DD` and shown in the viewer as **`MM.DD.YYYY`**.

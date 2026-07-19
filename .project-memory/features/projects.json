@@ -24,7 +24,10 @@
     ]
   },
   "related_changes": [
-    "2026-07-19-bootstrap"
+    "2026-07-19-bootstrap",
+    "2026-01-26-figma-make-bootstrap",
+    "2026-02-03-auth-github",
+    "2026-02-10-security-idor"
   ],
   "review_status": "needs-review",
   "confidence": 0.6,

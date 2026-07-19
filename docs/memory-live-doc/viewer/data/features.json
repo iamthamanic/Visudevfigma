@@ -30,7 +30,10 @@
         ]
       },
       "related_changes": [
-        "2026-07-19-bootstrap"
+        "2026-07-19-bootstrap",
+        "2026-01-26-figma-make-bootstrap",
+        "2026-02-04-live-app-preview",
+        "2026-03-01-runner-analyzer-polish"
       ],
       "review_status": "needs-review",
       "confidence": 0.6,
@@ -78,7 +81,8 @@
         ]
       },
       "related_changes": [
-        "2026-07-19-bootstrap"
+        "2026-07-19-bootstrap",
+        "2026-07-17-access-control-epic"
       ],
       "review_status": "needs-review",
       "confidence": 0.75,
@@ -121,7 +125,9 @@
         ]
       },
       "related_changes": [
-        "2026-07-19-bootstrap"
+        "2026-07-19-bootstrap",
+        "2026-07-08-local-first-graph",
+        "2026-07-14-blueprint-multiview"
       ],
       "review_status": "needs-review",
       "confidence": 0.65,
@@ -165,7 +171,10 @@
         ]
       },
       "related_changes": [
-        "2026-07-19-bootstrap"
+        "2026-07-19-bootstrap",
+        "2026-07-07-blueprint-engine-mvp",
+        "2026-07-14-blueprint-multiview",
+        "2026-07-15-wave2-viz-parity"
       ],
       "review_status": "needs-review",
       "confidence": 0.7,
@@ -249,7 +258,9 @@
         ]
       },
       "related_changes": [
-        "2026-07-19-bootstrap"
+        "2026-07-19-bootstrap",
+        "2026-07-07-blueprint-engine-mvp",
+        "2026-07-08-local-first-graph"
       ],
       "review_status": "needs-review",
       "confidence": 0.65,
@@ -330,7 +341,9 @@
         ]
       },
       "related_changes": [
-        "2026-07-19-bootstrap"
+        "2026-07-19-bootstrap",
+        "2026-02-04-live-app-preview",
+        "2026-03-01-runner-analyzer-polish"
       ],
       "review_status": "needs-review",
       "confidence": 0.6,
@@ -370,7 +383,10 @@
         ]
       },
       "related_changes": [
-        "2026-07-19-bootstrap"
+        "2026-07-19-bootstrap",
+        "2026-01-26-figma-make-bootstrap",
+        "2026-02-03-auth-github",
+        "2026-02-10-security-idor"
       ],
       "review_status": "needs-review",
       "confidence": 0.6,
@@ -410,7 +426,9 @@
         ]
       },
       "related_changes": [
-        "2026-07-19-bootstrap"
+        "2026-07-19-bootstrap",
+        "2026-02-03-auth-github",
+        "2026-02-10-security-idor"
       ],
       "review_status": "needs-review",
       "confidence": 0.5,

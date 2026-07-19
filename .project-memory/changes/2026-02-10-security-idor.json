@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "status": "recorded",
+  "id": "2026-02-10-security-idor",
+  "date": "2026-02-10",
+  "type": "security",
+  "title": {
+    "de": "Sicherheits-Härte: IDOR & Redaction",
+    "en": "Security hardening: IDOR & redaction"
+  },
+  "summary": {
+    "de": "Ownership-Checks und Redaction über Edge Functions; AI-Review-Pipeline verschärft.",
+    "en": "Ownership checks and redaction across Edge Functions; stricter AI review pipeline."
+  },
+  "plain_language": {
+    "de": "Nur wer ein Projekt besitzt, darf dessen Daten sehen oder ändern. Geheime Schlüssel werden in Antworten ausgeblendet. Qualitätstor mit KI-Review vor dem Push.",
+    "en": "Only project owners may see or change that project’s data. Secrets are redacted in responses. AI review quality gate before push."
+  },
+  "why_it_matters": {
+    "de": "Schützt Nutzerdaten und erzwingt sauberen Code vor dem Deploy.",
+    "en": "Protects user data and enforces cleaner code before deploy."
+  },
+  "user_impact": {
+    "de": [
+      "Fremde Projekte sind nicht mehr zugreifbar (IDOR-Schutz)"
+    ],
+    "en": [
+      "Other users’ projects are no longer accessible (IDOR protection)"
+    ]
+  },
+  "developer_impact": {
+    "de": [
+      "requireProjectOwner auf vielen Routes",
+      "npm run checks / AI review"
+    ],
+    "en": [
+      "requireProjectOwner on many routes",
+      "npm run checks / AI review"
+    ]
+  },
+  "operational_impact": {
+    "de": [
+      "Pre-Push-Hooks und Review-Scores"
+    ],
+    "en": [
+      "Pre-push hooks and review scores"
+    ]
+  },
+  "git": {
+    "base": "856dd23c",
+    "head": "4edb8971",
+    "branch": "main",
+    "pull_request": null
+  },
+  "packages": [
+    "src",
+    "supabase/functions"
+  ],
+  "affected_features": [
+    "projects",
+    "settings-connections"
+  ],
+  "affected_components": [
+    "visudev-server",
+    "visudev-projects"
+  ],
+  "breaking_changes": [],
+  "migration_required": false,
+  "security_relevant": true,
+  "evidence": [
+    {
+      "kind": "file",
+      "path": "AGENTS.md"
+    }
+  ],
+  "screenshots": [],
+  "confidence": 0.75,
+  "review_status": "needs-review"
+}

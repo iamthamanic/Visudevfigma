@@ -32,7 +32,8 @@
     ]
   },
   "related_changes": [
-    "2026-07-19-bootstrap"
+    "2026-07-19-bootstrap",
+    "2026-07-17-access-control-epic"
   ],
   "review_status": "needs-review",
   "confidence": 0.75,

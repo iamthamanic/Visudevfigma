@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "content_hash": "f4943f359693a01ddb4a78a38a1ee45625ad1a7a7b7a6582ca65d8a0564b9557",
+  "review_status": "needs-review",
+  "id": "2026-02-10-secure-backend",
+  "date": "2026-02-10",
+  "title": {
+    "de": "Gesicherte Edge-APIs",
+    "en": "Hardened Edge APIs"
+  },
+  "summary": {
+    "de": "Ownership und Redaction auf Projekt-Routen.",
+    "en": "Ownership and redaction on project routes."
+  },
+  "commit": "856dd23c",
+  "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Shell[Shell]\n    Auth[Auth Gate]\n    Modules[App Modules]\n  end\n  subgraph api [Edge]\n    Routes[Project-scoped Routes]\n    Own[Ownership Checks]\n    Redact[Redaction]\n  end\n  subgraph data [Data]\n    Supabase[Supabase]\n  end\n  Auth --> Modules\n  Modules --> Routes\n  Routes --> Own\n  Own --> Redact\n  Redact --> Supabase"
+}

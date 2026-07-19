@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "status": "recorded",
+  "id": "2026-01-26-figma-make-bootstrap",
+  "date": "2026-01-26",
+  "type": "feature",
+  "title": {
+    "de": "Start aus Figma Make",
+    "en": "Start from Figma Make"
+  },
+  "summary": {
+    "de": "Erstes Repo: UI und Grundgerüst aus Figma Make importiert.",
+    "en": "Initial repo: UI and scaffold imported from Figma Make."
+  },
+  "plain_language": {
+    "de": "VisuDEV beginnt als Design-zu-Code-Projekt: Erste Screens und Struktur kommen aus Figma Make nach GitHub.",
+    "en": "VisuDEV begins as a design-to-code project: first screens and structure land on GitHub from Figma Make."
+  },
+  "why_it_matters": {
+    "de": "Das ist der Projektstart — alles Spätere baut darauf auf.",
+    "en": "This is project day one — everything later builds on it."
+  },
+  "user_impact": {
+    "de": [
+      "Erste klickbare Oberfläche existiert."
+    ],
+    "en": [
+      "A first clickable UI exists."
+    ]
+  },
+  "developer_impact": {
+    "de": [
+      "Vite/React-Codebasis aus Figma-Export."
+    ],
+    "en": [
+      "Vite/React codebase from Figma export."
+    ]
+  },
+  "operational_impact": {
+    "de": [
+      "Repo auf GitHub angelegt."
+    ],
+    "en": [
+      "Repo created on GitHub."
+    ]
+  },
+  "git": {
+    "base": "2b776765",
+    "head": "da93b228",
+    "branch": "main",
+    "pull_request": null
+  },
+  "packages": [
+    "src"
+  ],
+  "affected_features": [
+    "projects",
+    "appflow",
+    "settings-connections"
+  ],
+  "affected_components": [
+    "src/"
+  ],
+  "breaking_changes": [],
+  "migration_required": false,
+  "security_relevant": false,
+  "evidence": [
+    {
+      "kind": "file",
+      "path": "README.md"
+    }
+  ],
+  "screenshots": [],
+  "confidence": 0.7,
+  "review_status": "needs-review"
+}

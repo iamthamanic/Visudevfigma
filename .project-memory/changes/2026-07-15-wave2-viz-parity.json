@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "status": "recorded",
+  "id": "2026-07-15-wave2-viz-parity",
+  "date": "2026-07-15",
+  "type": "feature",
+  "title": {
+    "de": "Wave 2/3 Visualization Parity",
+    "en": "Wave 2/3 visualization parity"
+  },
+  "summary": {
+    "de": "Viz-Parity zu Zielbildern: Diagnostics-Matrix, Atlas, Infrastructure, Execution, E2E-Gates.",
+    "en": "Viz parity to Zielbilder: diagnostics matrix, atlas, infrastructure, execution, E2E gates."
+  },
+  "plain_language": {
+    "de": "Die Blueprint-Ansichten werden an die Design-Zielbilder angeglichen und per Tests abgesichert — weniger leere Canvas, klarere Inspektoren.",
+    "en": "Blueprint views are aligned to design targets and guarded by tests — fewer empty canvases, clearer inspectors."
+  },
+  "why_it_matters": {
+    "de": "Die UI wirkt fertig und vertrauenswürdig, nicht wie ein Prototyp.",
+    "en": "The UI feels finished and trustworthy, not like a prototype."
+  },
+  "user_impact": {
+    "de": [
+      "Vollere Blueprint-Views",
+      "Stabilere Darstellung"
+    ],
+    "en": [
+      "Richer Blueprint views",
+      "More stable rendering"
+    ]
+  },
+  "developer_impact": {
+    "de": [
+      "Playwright Wave 2/3 gates",
+      "demo enrichment"
+    ],
+    "en": [
+      "Playwright Wave 2/3 gates",
+      "demo enrichment"
+    ]
+  },
+  "operational_impact": {
+    "de": [],
+    "en": []
+  },
+  "git": {
+    "base": "",
+    "head": "",
+    "branch": "main",
+    "pull_request": null
+  },
+  "packages": [
+    "src",
+    "tests"
+  ],
+  "affected_features": [
+    "blueprint-views"
+  ],
+  "affected_components": [
+    "src/modules/blueprint",
+    "tests/e2e"
+  ],
+  "breaking_changes": [],
+  "migration_required": false,
+  "security_relevant": false,
+  "evidence": [
+    {
+      "kind": "file",
+      "path": ".qa/acceptance/wave2-diagnostics-viz-parity.md"
+    }
+  ],
+  "screenshots": [],
+  "confidence": 0.8,
+  "review_status": "needs-review"
+}

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "content_hash": "a8e195ef6bea7f079e940d8e9ba6f99bdc0837a4901ee639dd11d683e1ac4f1b",
+  "review_status": "needs-review",
+  "id": "2026-07-17-access-control",
+  "date": "2026-07-17",
+  "title": {
+    "de": "Access Control Layer",
+    "en": "Access control layer"
+  },
+  "summary": {
+    "de": "Abstract controls + DB adapters.",
+    "en": "Abstract controls + DB adapters."
+  },
+  "commit": "527e2cb2",
+  "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Diag[Diagnostics / AC Matrix]\n  end\n  subgraph analysis [Analysis]\n    Graph[Software Graph]\n    Chain[App Chain Analyzer]\n    Adapters[DB Security Adapters]\n    Findings[AccessControlFindings]\n  end\n  Graph --> Chain\n  Graph --> Adapters\n  Chain --> Findings\n  Adapters --> Findings\n  Findings --> Diag"
+}

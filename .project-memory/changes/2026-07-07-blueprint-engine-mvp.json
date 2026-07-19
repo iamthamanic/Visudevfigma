@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "status": "recorded",
+  "id": "2026-07-07-blueprint-engine-mvp",
+  "date": "2026-07-07",
+  "type": "feature",
+  "title": {
+    "de": "Blueprint Engine MVP & Local Runner",
+    "en": "Blueprint Engine MVP & local runner"
+  },
+  "summary": {
+    "de": "Analyse-Pipeline, Blueprint-UI, Security-Härtung; lokaler Blueprint-Runner und Gastmodus.",
+    "en": "Analysis pipeline, Blueprint UI, security hardening; local Blueprint runner and guest mode."
+  },
+  "plain_language": {
+    "de": "Neben App Flow gibt es jetzt Blueprint: eine technische Diagnose der Routen und Schutzmechanismen — auch lokal und im Gastmodus.",
+    "en": "Besides App Flow there is now Blueprint: a technical diagnosis of routes and safeguards — including local and guest mode."
+  },
+  "why_it_matters": {
+    "de": "VisuDEV wird vom Screen-Tool zum Architektur-/Sicherheits-Röntgen.",
+    "en": "VisuDEV grows from a screen tool into an architecture/security X-ray."
+  },
+  "user_impact": {
+    "de": [
+      "Blueprint-Workspace",
+      "Lokale Projekte analysieren"
+    ],
+    "en": [
+      "Blueprint workspace",
+      "Analyze local projects"
+    ]
+  },
+  "developer_impact": {
+    "de": [
+      "visudev-analyzer blueprint",
+      "local runner"
+    ],
+    "en": [
+      "visudev-analyzer blueprint",
+      "local runner"
+    ]
+  },
+  "operational_impact": {
+    "de": [
+      "npm run dev startet lokales Supabase + Runner"
+    ],
+    "en": [
+      "npm run dev starts local Supabase + runner"
+    ]
+  },
+  "git": {
+    "base": "",
+    "head": "",
+    "branch": "main",
+    "pull_request": "https://github.com/iamthamanic/visudev-app/pull/8"
+  },
+  "packages": [
+    "src",
+    "local-engine",
+    "shared"
+  ],
+  "affected_features": [
+    "blueprint-views",
+    "local-engine"
+  ],
+  "affected_components": [
+    "src/modules/blueprint",
+    "local-engine"
+  ],
+  "breaking_changes": [],
+  "migration_required": false,
+  "security_relevant": true,
+  "evidence": [
+    {
+      "kind": "pr",
+      "url": "https://github.com/iamthamanic/visudev-app/pull/8"
+    }
+  ],
+  "screenshots": [],
+  "confidence": 0.8,
+  "review_status": "needs-review"
+}

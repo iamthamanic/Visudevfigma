@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "content_hash": "31ca4cb58faa4a9f2b851892179b612a2ea079da648421d219d8cce55478e8b8",
+  "review_status": "needs-review",
+  "id": "2026-07-07-blueprint-mvp",
+  "date": "2026-07-07",
+  "title": {
+    "de": "Blueprint Engine MVP",
+    "en": "Blueprint Engine MVP"
+  },
+  "summary": {
+    "de": "Security Matrix + lokaler Runner.",
+    "en": "Security matrix + local runner."
+  },
+  "commit": "blueprint-mvp",
+  "mermaid": "flowchart TB\n  subgraph ui [Frontend]\n    Shell[Shell]\n    AppFlow[App Flow]\n    Blueprint[Blueprint Diagnostics]\n  end\n  subgraph analysis [Analysis]\n    Local[Local / Edge Analyzer]\n    Matrix[Security Matrix]\n  end\n  subgraph runtime [Runtime]\n    Preview[Preview Runner]\n    Supabase[Supabase]\n  end\n  Shell --> AppFlow\n  Shell --> Blueprint\n  Blueprint --> Local\n  Local --> Matrix\n  AppFlow --> Preview"
+}

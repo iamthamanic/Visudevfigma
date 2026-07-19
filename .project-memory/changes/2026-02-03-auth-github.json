@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "status": "recorded",
+  "id": "2026-02-03-auth-github",
+  "date": "2026-02-03",
+  "type": "security",
+  "title": {
+    "de": "Login & GitHub-Anbindung",
+    "en": "Login & GitHub connection"
+  },
+  "summary": {
+    "de": "AuthGate, AuthContext und GitHub-OAuth; Secrets-Doku.",
+    "en": "AuthGate, AuthContext, and GitHub OAuth; secrets docs."
+  },
+  "plain_language": {
+    "de": "Nutzer können sich anmelden und GitHub verbinden — damit VisuDEV Repositories laden und geschützt arbeiten kann.",
+    "en": "Users can sign in and connect GitHub — so VisuDEV can load repositories and work securely."
+  },
+  "why_it_matters": {
+    "de": "Ohne Login und GitHub gibt es keine echten Projektanalysen.",
+    "en": "Without login and GitHub there are no real project analyses."
+  },
+  "user_impact": {
+    "de": [
+      "Anmelden",
+      "GitHub in den Einstellungen verbinden"
+    ],
+    "en": [
+      "Sign in",
+      "Connect GitHub in settings"
+    ]
+  },
+  "developer_impact": {
+    "de": [
+      "Auth-Modul, GitHub secrets docs"
+    ],
+    "en": [
+      "Auth module, GitHub secrets docs"
+    ]
+  },
+  "operational_impact": {
+    "de": [
+      "Supabase Auth / Edge Secrets nötig"
+    ],
+    "en": [
+      "Supabase Auth / Edge secrets required"
+    ]
+  },
+  "git": {
+    "base": "6ae11c0a",
+    "head": "6ae11c0a",
+    "branch": "main",
+    "pull_request": null
+  },
+  "packages": [
+    "src",
+    "supabase/functions"
+  ],
+  "affected_features": [
+    "settings-connections",
+    "projects"
+  ],
+  "affected_components": [
+    "src/modules/settings",
+    "AuthGate"
+  ],
+  "breaking_changes": [],
+  "migration_required": false,
+  "security_relevant": true,
+  "evidence": [
+    {
+      "kind": "file",
+      "path": "docs/GITHUB_SECRETS.md"
+    }
+  ],
+  "screenshots": [],
+  "confidence": 0.75,
+  "review_status": "needs-review"
+}

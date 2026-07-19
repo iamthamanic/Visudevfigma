@@ -1,36 +1,34 @@
 {
   "schema_version": 1,
   "as_of": "2026-07-19",
-  "commit": "527e2cb2d17cf6826b3d8fbd163b713cee5a1efc",
+  "commit": "42d12fe7391ff2dad2c284b947ef4b5da747be63",
   "branch": "main",
   "product_status": {
-    "de": "Blueprint v2 Multi-View + stack-agnostisches Access-Control-Modell (Epic gemerged). Wave-2-Viz und Access-Control-Queue weitgehend abgeschlossen. Living Memory Bootstrap neu.",
-    "en": "Blueprint v2 multi-view + stack-agnostic access-control model (epic merged). Wave-2 viz and access-control queue largely complete. Living memory bootstrap new."
+    "de": "VisuDEV seit 01.2026: von Figma-Make-UI über Live App Flow und gesicherte Edge-APIs bis Blueprint Multi-View und stack-agnostisches Access Control. Living Memory auf GitHub Pages.",
+    "en": "VisuDEV since 01.2026: from Figma Make UI through live App Flow and hardened Edge APIs to Blueprint multi-view and stack-agnostic access control. Living memory on GitHub Pages."
   },
   "active_focus": {
     "de": [
-      "Gapclose / VisuDEV Qualitäts- und Screenshot-Pipeline",
-      "Access-Control Evidence-Bridging Feinschliff",
-      "Living documentation Review"
+      "Living documentation Timeline seit Projektstart pflegen",
+      "Access-Control Evidence weiter schärfen",
+      "Gapclose / Screenshot-Qualität"
     ],
     "en": [
-      "Gapclose / VisuDEV quality and screenshot pipeline",
-      "Access-control evidence bridging polish",
-      "Living documentation review"
+      "Keep living documentation timeline since project start",
+      "Sharpen access-control evidence",
+      "Gapclose / screenshot quality"
     ]
   },
   "known_gaps": {
     "de": [
-      "Data-Scan nur Postgres/SQLite (kein vollständiges MariaDB/MongoDB-Introspection für ERD)",
-      "Screenshots für Memory-Viewer noch fehlend",
-      "Projektprofil/Expectation Engine noch mit Defaults (dataSensitivity oft low)",
-      "README Recent changes noch nicht auf Access-Control-Epic aktualisiert"
+      "Nicht jeder Commit ist als Change-Event erfasst — Meilensteine seit 01.2026 sind nachgezogen",
+      "Screenshots im Memory-Viewer fehlen noch",
+      "Viele Einträge noch needs-review"
     ],
     "en": [
-      "Data scan only Postgres/SQLite (no full MariaDB/MongoDB ERD introspection)",
-      "Screenshots for memory viewer still missing",
-      "Project profile / expectation engine still on defaults (dataSensitivity often low)",
-      "README Recent changes not yet updated for access-control epic"
+      "Not every commit is a change event — milestones since 01.2026 are backfilled",
+      "Memory viewer screenshots still missing",
+      "Many entries still needs-review"
     ]
   },
   "review_status": "needs-review",

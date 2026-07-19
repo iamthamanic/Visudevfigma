@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "status": "recorded",
+  "id": "2026-02-04-live-app-preview",
+  "date": "2026-02-04",
+  "type": "feature",
+  "title": {
+    "de": "Live App: Preview Runner & App Flow",
+    "en": "Live App: Preview Runner & App Flow"
+  },
+  "summary": {
+    "de": "Preview Runner, Live-Iframes, Sitemap/Flow Graph — App Flow wird zur Live-Ansicht.",
+    "en": "Preview Runner, live iframes, sitemap/flow graph — App Flow becomes a live view."
+  },
+  "plain_language": {
+    "de": "VisuDEV kann die verknüpfte App lokal starten und als lebendige Bildschirm-Karte zeigen — inklusive Navigation zwischen Screens.",
+    "en": "VisuDEV can start the linked app locally and show it as a living screen map — including navigation between screens."
+  },
+  "why_it_matters": {
+    "de": "Aus einer toten Sitemap wird ein echtes Produktverständnis.",
+    "en": "A dead sitemap becomes real product understanding."
+  },
+  "user_impact": {
+    "de": [
+      "Live-Vorschau in App Flow",
+      "Sitemap und Flow Graph"
+    ],
+    "en": [
+      "Live preview in App Flow",
+      "Sitemap and flow graph"
+    ]
+  },
+  "developer_impact": {
+    "de": [
+      "preview-runner",
+      "visudev-preview Edge Function",
+      "LiveFlowCanvas"
+    ],
+    "en": [
+      "preview-runner",
+      "visudev-preview Edge Function",
+      "LiveFlowCanvas"
+    ]
+  },
+  "operational_impact": {
+    "de": [
+      "Lokaler Runner-Port (z. B. 4000)"
+    ],
+    "en": [
+      "Local runner port (e.g. 4000)"
+    ]
+  },
+  "git": {
+    "base": "f2fff86a",
+    "head": "77c43446",
+    "branch": "main",
+    "pull_request": null
+  },
+  "packages": [
+    "src",
+    "preview-runner"
+  ],
+  "affected_features": [
+    "appflow",
+    "preview-runner"
+  ],
+  "affected_components": [
+    "preview-runner",
+    "src/modules/appflow"
+  ],
+  "breaking_changes": [],
+  "migration_required": false,
+  "security_relevant": false,
+  "evidence": [
+    {
+      "kind": "file",
+      "path": "docs/PREVIEW_RUNNER.md"
+    }
+  ],
+  "screenshots": [],
+  "confidence": 0.8,
+  "review_status": "needs-review"
+}
