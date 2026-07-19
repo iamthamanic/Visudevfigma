@@ -32,7 +32,6 @@
     "action_taken": "enabled_docs_legacy",
     "private_note": null
   },
-  "theme_id": "visudev",
   "history_coverage": {
     "status": "complete",
     "method": "git-milestone-synthesis",
@@ -42,5 +41,6 @@
     "architecture_versions": 8,
     "completed_at": "2026-07-19T10:43:24.998Z",
     "notes": "Includes July rebuild eras (shell, softort, wave3/5, meteor, infra)"
-  }
+  },
+  "theme_prefer": "auto"
 }
