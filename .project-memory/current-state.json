@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-07-19",
+  "commit": "527e2cb2d17cf6826b3d8fbd163b713cee5a1efc",
+  "branch": "main",
+  "product_status": {
+    "de": "Blueprint v2 Multi-View + stack-agnostisches Access-Control-Modell (Epic gemerged). Wave-2-Viz und Access-Control-Queue weitgehend abgeschlossen. Living Memory Bootstrap neu.",
+    "en": "Blueprint v2 multi-view + stack-agnostic access-control model (epic merged). Wave-2 viz and access-control queue largely complete. Living memory bootstrap new."
+  },
+  "active_focus": {
+    "de": [
+      "Gapclose / VisuDEV Qualitäts- und Screenshot-Pipeline",
+      "Access-Control Evidence-Bridging Feinschliff",
+      "Living documentation Review"
+    ],
+    "en": [
+      "Gapclose / VisuDEV quality and screenshot pipeline",
+      "Access-control evidence bridging polish",
+      "Living documentation review"
+    ]
+  },
+  "known_gaps": {
+    "de": [
+      "Data-Scan nur Postgres/SQLite (kein vollständiges MariaDB/MongoDB-Introspection für ERD)",
+      "Screenshots für Memory-Viewer noch fehlend",
+      "Projektprofil/Expectation Engine noch mit Defaults (dataSensitivity oft low)",
+      "README Recent changes noch nicht auf Access-Control-Epic aktualisiert"
+    ],
+    "en": [
+      "Data scan only Postgres/SQLite (no full MariaDB/MongoDB ERD introspection)",
+      "Screenshots for memory viewer still missing",
+      "Project profile / expectation engine still on defaults (dataSensitivity often low)",
+      "README Recent changes not yet updated for access-control epic"
+    ]
+  },
+  "review_status": "needs-review",
+  "confidence": 0.55
+}

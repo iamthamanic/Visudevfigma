@@ -1,0 +1,22 @@
+{
+  "id": "data-erd",
+  "title": { "de": "Data / ERD", "en": "Data / ERD" },
+  "summary": {
+    "de": "Datenbankschema und ERD; lokale Introspection für PostgreSQL und SQLite.",
+    "en": "Database schema and ERD; local introspection for PostgreSQL and SQLite."
+  },
+  "status": "active",
+  "packages": ["src", "local-engine"],
+  "paths": [
+    "src/modules/data/**",
+    "local-engine/src/services/data-introspection.service.ts"
+  ],
+  "user_impact": {
+    "de": ["Tabellen, Spalten und Beziehungen sichtbar machen."],
+    "en": ["Make tables, columns, and relationships visible."]
+  },
+  "related_changes": ["2026-07-19-bootstrap"],
+  "review_status": "needs-review",
+  "confidence": 0.55,
+  "locked": false
+}

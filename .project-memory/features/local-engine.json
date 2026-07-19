@@ -1,0 +1,19 @@
+{
+  "id": "local-engine",
+  "title": { "de": "Local Engine", "en": "Local Engine" },
+  "summary": {
+    "de": "Lokaler Analyse-Server: Blueprint-Provider, Enrichment, Software Graph, Access Control.",
+    "en": "Local analysis server: Blueprint providers, enrichment, Software Graph, access control."
+  },
+  "status": "active",
+  "packages": ["local-engine", "shared"],
+  "paths": ["local-engine/**", "docs/LOCAL_ENGINE.md"],
+  "user_impact": {
+    "de": ["Analyse ohne Cloud für lokale Projekte."],
+    "en": ["Analysis without cloud for local projects."]
+  },
+  "related_changes": ["2026-07-19-bootstrap"],
+  "review_status": "needs-review",
+  "confidence": 0.65,
+  "locked": false
+}

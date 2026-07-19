@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "languages": {
+    "json": [
+      "de",
+      "en"
+    ],
+    "markdown_primary": "de",
+    "markdown_en_dir": "docs/en"
+  },
+  "viewer_path": "docs/memory-live-doc/viewer",
+  "storage_root": ".project-memory",
+  "pages": {
+    "schema_version": 1,
+    "kind": "memory-live-doc-pages",
+    "status": "not_enabled",
+    "reason": "GitHub Pages is not configured for this repository.",
+    "repo": "iamthamanic/visudev-app",
+    "default_branch": "main",
+    "has_pages": false,
+    "build_type": null,
+    "source": {
+      "branch": null,
+      "path": null
+    },
+    "html_url": null,
+    "github_pages_status": null,
+    "viewer_url": "https://iamthamanic.github.io/visudev-app/memory-live-doc/viewer/",
+    "local_viewer_present": true,
+    "can_enable": true,
+    "can_change_pages": true,
+    "action_taken": "none",
+    "private_note": null
+  }
+}

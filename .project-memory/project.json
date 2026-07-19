@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "visudev-app",
+  "title": {
+    "de": "VisuDEV",
+    "en": "VisuDEV"
+  },
+  "summary": {
+    "de": "Entwickler-Tool zur Visualisierung deterministischer Flows von UI-Elementen über Code, API und Datenbank-/Sicherheitsmechanismen bis zu Backend-Systemen. Screen-zentriert; GitHub als Source of Truth; Supabase + Local Engine.",
+    "en": "Developer tool that visualizes deterministic flows from UI elements through code, API, and database/security mechanisms to backend systems. Screen-centric; GitHub as source of truth; Supabase + Local Engine."
+  },
+  "packages": [
+    "src",
+    "local-engine",
+    "preview-runner",
+    "shared",
+    "supabase/functions"
+  ],
+  "repository": {
+    "url": "https://github.com/iamthamanic/visudev-app",
+    "default_branch": "main"
+  },
+  "review_status": "needs-review",
+  "confidence": 0.65
+}

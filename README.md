@@ -59,6 +59,7 @@ Der Vite-Dev-Server und `npm run preview` laufen fest auf **Port 3005** (`vite.c
 
 ## Recent changes
 
+- **2026-07-19** — Living documentation Bootstrap (`.project-memory/`, Status/Features/Changelog, Memory-Viewer)
 - **2026-07-07** — Local Blueprint: `visudev-blueprint` basePath + Gastmodus; lokale Projekte mit `local_path` (`issue/7-blueprint-local-runner`)
 - **2026-07-07** — `npm run dev` Fast-Start: Vite parallel zu Edge Functions (kein blockierender Health-Wait) (`issue/1-blueprint-engine-core`)
 - **2026-07-07** — Fix `npm run dev` wenn Supabase-CLI Text vor/nach `status -o json` ausgibt (`issue/1-blueprint-engine-core`)

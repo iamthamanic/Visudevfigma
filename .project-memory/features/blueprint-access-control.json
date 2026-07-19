@@ -1,0 +1,34 @@
+{
+  "id": "blueprint-access-control",
+  "title": {
+    "de": "Stack-agnostisches Access Control",
+    "en": "Stack-agnostic access control"
+  },
+  "summary": {
+    "de": "Abstrakte Controls (AuthN, AuthZ, Scope, Tenant, Ownership, Validation, Audit); Mechanismen (RLS, Views, Query-Filter) nur im Inspector/Adapter. Expectation ohne DB-Typ; Detection optional stack-spezifisch.",
+    "en": "Abstract controls (AuthN, AuthZ, Scope, Tenant, Ownership, Validation, Audit); mechanisms (RLS, views, query filters) only in inspector/adapters. Expectations without DB type; detection optionally stack-specific."
+  },
+  "status": "active",
+  "packages": ["shared", "local-engine", "src"],
+  "paths": [
+    "shared/access-control.types.ts",
+    "shared/access-control-matrix.ts",
+    "local-engine/src/services/access-control/**",
+    "src/modules/blueprint/components/AccessControlMatrix.tsx",
+    ".qa/design/blueprint-access-control.md"
+  ],
+  "user_impact": {
+    "de": [
+      "Security Matrix ohne feste RLS-Spalte (Feature-Flag VITE_ACCESS_CONTROL_V2).",
+      "MariaDB/MongoDB ohne native RLS werden nicht fälschlich als kritisch bewertet, wenn Scope belegt ist."
+    ],
+    "en": [
+      "Security matrix without a fixed RLS column (feature flag VITE_ACCESS_CONTROL_V2).",
+      "MariaDB/MongoDB without native RLS are not falsely marked critical when scope is evidenced."
+    ]
+  },
+  "related_changes": ["2026-07-19-bootstrap"],
+  "review_status": "needs-review",
+  "confidence": 0.75,
+  "locked": false
+}
