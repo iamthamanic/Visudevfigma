@@ -17,21 +17,17 @@ import type {
 } from "../lib/visudev/llm-providers";
 import type { RuntimeCrawlResult } from "../lib/visudev/runtime-crawl";
 import type { PreviewMode, Project } from "../lib/visudev/types";
-import type {
-  AppFlowCreateInput,
-  AppFlowRecord,
-  AppFlowUpdateInput,
-} from "../modules/appflow/types";
-import type { BlueprintData, BlueprintUpdateInput } from "../modules/blueprint/types";
+import type { AppFlowCreateInput, AppFlowRecord, AppFlowUpdateInput } from "../modules/appflow";
+import type { BlueprintData, BlueprintUpdateInput } from "../modules/blueprint";
 import type {
   DataSchema,
   DataSchemaUpdateInput,
   ERDData,
   ERDUpdateInput,
   MigrationEntry,
-} from "../modules/data/types";
-import type { LogCreateInput, LogEntry } from "../modules/logs/types";
-import type { ProjectCreateInput, ProjectUpdateInput } from "../modules/projects/types";
+} from "../modules/data";
+import type { LogCreateInput, LogEntry } from "../modules/logs";
+import type { ProjectCreateInput, ProjectUpdateInput } from "../modules/projects";
 import { guestRequestHeader } from "../lib/visudev/guest-mode";
 import { publicAnonKey, supabaseUrl } from "./supabase/info";
 
