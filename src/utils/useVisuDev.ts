@@ -5,98 +5,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { IntegrationsState } from "../lib/visudev/integrations";
-import type { Project } from "../lib/visudev/types";
 import type { BlueprintData, BlueprintUpdateInput } from "../modules/blueprint/types";
-import type { ProjectCreateInput, ProjectUpdateInput } from "../modules/projects/types";
 import { api } from "./api";
 
-// ==================== PROJECTS ====================
-
-export function useProjects() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchProjects = useCallback(async () => {
-    setLoading(true);
-    const result = await api.projects.getAll();
-    if (result.success) {
-      setProjects(result.data || []);
-      setError(null);
-    } else {
-      setError(result.error || "Failed to fetch projects");
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    void fetchProjects();
-  }, [fetchProjects]);
-
-  const createProject = async (data: ProjectCreateInput) => {
-    const result = await api.projects.create(data);
-    if (result.success) {
-      await fetchProjects();
-    }
-    return result;
-  };
-
-  const updateProject = async (id: string, data: ProjectUpdateInput) => {
-    const result = await api.projects.update(id, data);
-    if (result.success) {
-      await fetchProjects();
-    }
-    return result;
-  };
-
-  const deleteProject = async (id: string) => {
-    const result = await api.projects.delete(id);
-    if (result.success) {
-      await fetchProjects();
-    }
-    return result;
-  };
-
-  return {
-    projects,
-    loading,
-    error,
-    refresh: fetchProjects,
-    createProject,
-    updateProject,
-    deleteProject,
-  };
-}
-
-export function useProject(projectId: string | null) {
-  const [project, setProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!projectId) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchProject = async () => {
-      setLoading(true);
-      const result = await api.projects.get(projectId);
-      if (result.success && result.data) {
-        setProject(result.data);
-        setError(null);
-      } else {
-        setProject(null);
-        setError(result.error || "Failed to fetch project");
-      }
-      setLoading(false);
-    };
-
-    fetchProject();
-  }, [projectId]);
-
-  return { project, loading, error };
-}
+/** Projects hooks live in `src/modules/projects` — import from the slice public entry. */
 
 /** Appflow hooks live in `src/modules/appflow` — import from the slice public entry. */
 
