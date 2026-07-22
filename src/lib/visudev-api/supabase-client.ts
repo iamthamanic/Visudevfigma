@@ -7,7 +7,7 @@ import { api, previewAPI } from "../../utils/api";
 import { runBlueprintScan, BlueprintScanError } from "../visudev/blueprint-scan";
 import { browseLocalFolderViaRunner } from "../../utils/preview-runner-browse-path";
 import type { Project, PreviewMode } from "../visudev/types";
-import type { ProjectCreateInput, ProjectUpdateInput } from "../../modules/projects/types";
+import type { ProjectCreateInput, ProjectUpdateInput } from "../../modules/projects";
 import type { VisuDevApiClient } from "./client";
 import { VisuDevApiError } from "./errors";
 import type {

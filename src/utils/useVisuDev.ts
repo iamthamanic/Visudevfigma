@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { IntegrationsState } from "../lib/visudev/integrations";
-import type { BlueprintData, BlueprintUpdateInput } from "../modules/blueprint/types";
+import type { BlueprintData, BlueprintUpdateInput } from "../modules/blueprint";
 import { api } from "./api";
 
 /** Projects hooks live in `src/modules/projects` — import from the slice public entry. */

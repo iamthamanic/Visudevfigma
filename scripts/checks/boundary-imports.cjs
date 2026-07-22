@@ -184,6 +184,7 @@ function main() {
     for (const spec of extractSpecifiers(abs)) {
       const resolved = resolveToSlice(rel, spec, slices);
       if (!resolved) continue;
+      if (isPublicEntry(resolved.slice, resolved.rel)) continue;
       found.add(`reverse\t${rel}\t${spec}`);
     }
   }
