@@ -6,11 +6,6 @@
 import { useState, useEffect, useCallback } from "react";
 import type { IntegrationsState } from "../lib/visudev/integrations";
 import type { Project } from "../lib/visudev/types";
-import type {
-  AppFlowCreateInput,
-  AppFlowRecord,
-  AppFlowUpdateInput,
-} from "../modules/appflow/types";
 import type { BlueprintData, BlueprintUpdateInput } from "../modules/blueprint/types";
 import type { ProjectCreateInput, ProjectUpdateInput } from "../modules/projects/types";
 import { api } from "./api";
@@ -103,67 +98,7 @@ export function useProject(projectId: string | null) {
   return { project, loading, error };
 }
 
-// ==================== APPFLOW ====================
-
-export function useFlows(projectId: string | null) {
-  const [flows, setFlows] = useState<AppFlowRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchFlows = useCallback(async () => {
-    if (!projectId) return;
-    setLoading(true);
-    const result = await api.appflow.getAll(projectId);
-    if (result.success) {
-      setFlows(result.data || []);
-      setError(null);
-    } else {
-      setError(result.error || "Failed to fetch flows");
-    }
-    setLoading(false);
-  }, [projectId]);
-
-  useEffect(() => {
-    void fetchFlows();
-  }, [fetchFlows]);
-
-  const createFlow = async (data: AppFlowCreateInput) => {
-    if (!projectId) return { success: false, error: "No project ID" };
-    const result = await api.appflow.create(projectId, data);
-    if (result.success) {
-      await fetchFlows();
-    }
-    return result;
-  };
-
-  const updateFlow = async (flowId: string, data: AppFlowUpdateInput) => {
-    if (!projectId) return { success: false, error: "No project ID" };
-    const result = await api.appflow.update(projectId, flowId, data);
-    if (result.success) {
-      await fetchFlows();
-    }
-    return result;
-  };
-
-  const deleteFlow = async (flowId: string) => {
-    if (!projectId) return { success: false, error: "No project ID" };
-    const result = await api.appflow.delete(projectId, flowId);
-    if (result.success) {
-      await fetchFlows();
-    }
-    return result;
-  };
-
-  return {
-    flows,
-    loading,
-    error,
-    refresh: fetchFlows,
-    createFlow,
-    updateFlow,
-    deleteFlow,
-  };
-}
+/** Appflow hooks live in `src/modules/appflow` — import from the slice public entry. */
 
 // ==================== BLUEPRINT ====================
 

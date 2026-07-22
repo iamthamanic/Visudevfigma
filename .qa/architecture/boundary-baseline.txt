@@ -11,6 +11,5 @@ reverse	src/utils/api.ts	../modules/blueprint/types
 reverse	src/utils/api.ts	../modules/data/types
 reverse	src/utils/api.ts	../modules/logs/types
 reverse	src/utils/api.ts	../modules/projects/types
-reverse	src/utils/useVisuDev.ts	../modules/appflow/types
 reverse	src/utils/useVisuDev.ts	../modules/blueprint/types
 reverse	src/utils/useVisuDev.ts	../modules/projects/types
