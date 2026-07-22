@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, Loader2, Search, ToggleLeft, ToggleRight } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
-import { useLogs } from "../../../utils/useVisuDev";
+import { useLogs } from "../hooks/useLogs";
 import type { LogEntry } from "../types";
 import styles from "../styles/LogsPage.module.css";
 
