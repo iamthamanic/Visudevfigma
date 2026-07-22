@@ -4,7 +4,6 @@
 # New violations NOT listed here fail scripts/checks/boundary-imports.sh.
 # Remove a line only when the corresponding import is fixed (cleanup issues).
 
-deep	src/modules/settings/pages/SettingsPage.tsx	../../projects/services/githubAuth
 reverse	src/lib/visudev-api/supabase-client.ts	../../modules/projects/types
 reverse	src/utils/api.ts	../modules/appflow/types
 reverse	src/utils/api.ts	../modules/blueprint/types

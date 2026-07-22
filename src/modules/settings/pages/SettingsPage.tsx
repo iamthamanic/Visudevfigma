@@ -28,11 +28,7 @@ import { Input } from "../../../components/ui/input";
 import { useAuth } from "../../../contexts/useAuth";
 import type { Project } from "../../../lib/visudev/types";
 import { checkScreenshotsHealth } from "../../../lib/services/screenshots";
-import {
-  disconnectGitHub,
-  getGitHubAuthorizeUrl,
-  getGitHubStatus,
-} from "../../projects/services/githubAuth";
+import { disconnectGitHub, getGitHubAuthorizeUrl, getGitHubStatus } from "../../projects";
 import {
   Dialog,
   DialogContent,
