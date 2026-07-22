@@ -1,25 +1,25 @@
 {
   "version": 2,
   "repo": "iamthamanic/visudev-app",
-  "activeIssue": 247,
-  "featureSlug": "vss-projects-public-entry",
+  "activeIssue": 248,
+  "featureSlug": "vss-settings-strangler",
   "phase": "pr",
-  "branch": "issue-247-vss-projects-public-entry",
+  "branch": "issue-248-vss-settings-githubauth-public",
   "prUrl": null,
   "milestoneFilter": "vertical-slice-strangler",
   "paused": false,
   "runMode": "loop",
-  "queue": [247, 248],
+  "queue": [248, 249, 250],
   "completedIssues": [
     67, 68, 69, 70, 71, 72, 73, 74, 75, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 105, 106, 107, 108,
     109, 110, 111, 112, 113, 123, 124, 125, 126, 127, 128, 129, 130, 133, 134, 135, 136, 137, 138,
     139, 140, 141, 142, 149, 150, 151, 152, 153, 154, 195, 196, 197, 198, 203, 204, 205, 209, 210,
-    213, 243, 244, 245, 246
+    213, 243, 244, 245, 246, 247
   ],
   "mergedIssues": [
     105, 106, 107, 108, 109, 110, 111, 112, 113, 123, 124, 125, 126, 127, 128, 129, 130, 133, 134,
     135, 136, 137, 138, 139, 140, 141, 142, 149, 150, 151, 152, 153, 154, 195, 196, 197, 198, 203,
-    204, 205, 209, 210, 213, 243, 244, 245, 246
+    204, 205, 209, 210, 213, 243, 244, 245, 246, 247
   ],
   "prUrls": {
     "195": "https://github.com/iamthamanic/visudev-app/pull/199",
@@ -43,7 +43,8 @@
     "243": "https://github.com/iamthamanic/visudev-app/pull/251",
     "244": "https://github.com/iamthamanic/visudev-app/pull/252",
     "245": "https://github.com/iamthamanic/visudev-app/pull/253",
-    "246": "https://github.com/iamthamanic/visudev-app/pull/254"
+    "246": "https://github.com/iamthamanic/visudev-app/pull/254",
+    "247": "https://github.com/iamthamanic/visudev-app/pull/255"
   },
   "retries": {
     "implement": 0,
@@ -61,8 +62,8 @@
   "lastError": null,
   "lastErrorCount": 0,
   "issuesProcessedInSession": 2,
-  "updatedAt": "2026-07-22T18:24:55.000Z",
-  "notes": "Shipping #247 projects public entry",
-  "currentIssue": 247,
-  "lastCompletedIssue": 246
+  "updatedAt": "2026-07-22T18:32:53.000Z",
+  "notes": "#247 merged; shipping #248 settings public import",
+  "currentIssue": 248,
+  "lastCompletedIssue": 247
 }
