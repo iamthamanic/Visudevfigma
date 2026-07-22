@@ -15,12 +15,12 @@ bash ~/.cursor/skills/memory-live-doc/scripts/github-pages-memory.sh enable [--w
 
 ## Status values
 
-| `status` | Meaning | Change Pages settings? |
-|----------|---------|------------------------|
-| `not_enabled` | No Pages site | **Yes** on `enable` → legacy `main` + `/docs` only |
-| `memory_viewer_active` | `/docs` Pages + local viewer present, or Pages root is the viewer folder | **No** — only push file updates |
-| `pages_compatible_docs` | Pages already `/docs` (viewer may not be pushed yet) | **No** — add `docs/memory-live-doc/**` only |
-| `pages_other` | Pages is `/`, other path, other branch, or Actions workflow | **Never** — exit 2 |
+| `status`                | Meaning                                                                  | Change Pages settings?                             |
+| ----------------------- | ------------------------------------------------------------------------ | -------------------------------------------------- |
+| `not_enabled`           | No Pages site                                                            | **Yes** on `enable` → legacy `main` + `/docs` only |
+| `memory_viewer_active`  | `/docs` Pages + local viewer present, or Pages root is the viewer folder | **No** — only push file updates                    |
+| `pages_compatible_docs` | Pages already `/docs` (viewer may not be pushed yet)                     | **No** — add `docs/memory-live-doc/**` only        |
+| `pages_other`           | Pages is `/`, other path, other branch, or Actions workflow              | **Never** — exit 2                                 |
 
 ## Hard rules
 

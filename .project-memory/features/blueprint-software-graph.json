@@ -9,22 +9,15 @@
     "en": "Neutral graph intermediate representation (nodes, edges, evidence) as source of truth for Blueprint projections."
   },
   "status": "active",
-  "packages": [
-    "shared",
-    "local-engine"
-  ],
+  "packages": ["shared", "local-engine"],
   "paths": [
     "shared/software-graph.types.ts",
     "local-engine/src/services/software-graph-builder.service.ts",
     ".qa/design/visudev-graph-ir.md"
   ],
   "user_impact": {
-    "de": [
-      "Ermöglicht konsistente Views unabhängig vom Analyse-Provider."
-    ],
-    "en": [
-      "Enables consistent views independent of the analysis provider."
-    ]
+    "de": ["Ermöglicht konsistente Views unabhängig vom Analyse-Provider."],
+    "en": ["Enables consistent views independent of the analysis provider."]
   },
   "related_changes": [
     "2026-07-19-bootstrap",

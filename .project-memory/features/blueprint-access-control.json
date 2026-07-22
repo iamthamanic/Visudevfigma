@@ -9,11 +9,7 @@
     "en": "Abstract controls (AuthN, AuthZ, Scope, Tenant, Ownership, Validation, Audit); mechanisms (RLS, views, query filters) only in inspector/adapters. Expectations without DB type; detection optionally stack-specific."
   },
   "status": "active",
-  "packages": [
-    "shared",
-    "local-engine",
-    "src"
-  ],
+  "packages": ["shared", "local-engine", "src"],
   "paths": [
     "shared/access-control.types.ts",
     "shared/access-control-matrix.ts",
@@ -31,10 +27,7 @@
       "MariaDB/MongoDB without native RLS are not falsely marked critical when scope is evidenced."
     ]
   },
-  "related_changes": [
-    "2026-07-19-bootstrap",
-    "2026-07-17-access-control-epic"
-  ],
+  "related_changes": ["2026-07-19-bootstrap", "2026-07-17-access-control-epic"],
   "review_status": "needs-review",
   "confidence": 0.75,
   "locked": false,

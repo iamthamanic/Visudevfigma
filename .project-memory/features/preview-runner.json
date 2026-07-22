@@ -9,20 +9,11 @@
     "en": "Builds and runs linked apps locally for live preview and crawls (port 4000)."
   },
   "status": "active",
-  "packages": [
-    "preview-runner"
-  ],
-  "paths": [
-    "preview-runner/**",
-    "docs/PREVIEW_RUNNER.md"
-  ],
+  "packages": ["preview-runner"],
+  "paths": ["preview-runner/**", "docs/PREVIEW_RUNNER.md"],
   "user_impact": {
-    "de": [
-      "Live-Iframes und Screenshots aus dem analysierten Repo."
-    ],
-    "en": [
-      "Live iframes and screenshots from the analyzed repo."
-    ]
+    "de": ["Live-Iframes und Screenshots aus dem analysierten Repo."],
+    "en": ["Live iframes and screenshots from the analyzed repo."]
   },
   "related_changes": [
     "2026-07-19-bootstrap",

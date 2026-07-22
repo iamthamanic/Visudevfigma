@@ -16,6 +16,7 @@ export default tseslint.config(
       "src/supabase/functions/**",
       "shared/**",
       "supabase/**", // Backup-Layout (Deno/Edge Functions)
+      "docs/memory-live-doc/**", // static GitHub Pages viewer (browser globals)
     ],
   },
   js.configs.recommended,

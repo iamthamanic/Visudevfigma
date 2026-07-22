@@ -1,0 +1,18 @@
+# Finite baseline of known slice-boundary violations (Vertical-Slice Strangler).
+# Format: <kind>\t<path>\t<import-specifier>
+# kind: deep = cross-product-slice deep import; reverse = platform/facade → module interna
+# New violations NOT listed here fail scripts/checks/boundary-imports.sh.
+# Remove a line only when the corresponding import is fixed (cleanup issues).
+
+deep	src/modules/settings/pages/SettingsPage.tsx	../../projects/services/githubAuth
+reverse	src/lib/visudev-api/supabase-client.ts	../../modules/projects/types
+reverse	src/utils/api.ts	../modules/appflow/types
+reverse	src/utils/api.ts	../modules/blueprint/types
+reverse	src/utils/api.ts	../modules/data/types
+reverse	src/utils/api.ts	../modules/logs/types
+reverse	src/utils/api.ts	../modules/projects/types
+reverse	src/utils/useVisuDev.ts	../modules/appflow/types
+reverse	src/utils/useVisuDev.ts	../modules/blueprint/types
+reverse	src/utils/useVisuDev.ts	../modules/data/types
+reverse	src/utils/useVisuDev.ts	../modules/logs/types
+reverse	src/utils/useVisuDev.ts	../modules/projects/types

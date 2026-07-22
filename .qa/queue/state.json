@@ -6,10 +6,10 @@
   "phase": "idle",
   "branch": "main",
   "prUrl": null,
-  "milestoneFilter": "blueprint-access-control",
+  "milestoneFilter": "vertical-slice-strangler",
   "paused": false,
   "runMode": "loop",
-  "queue": [],
+  "queue": [243],
   "completedIssues": [
     67, 68, 69, 70, 71, 72, 73, 74, 75, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 105, 106, 107, 108,
     109, 110, 111, 112, 113, 123, 124, 125, 126, 127, 128, 129, 130, 133, 134, 135, 136, 137, 138,
@@ -56,9 +56,9 @@
   },
   "lastError": null,
   "lastErrorCount": 0,
-  "issuesProcessedInSession": 6,
-  "updatedAt": "2026-07-17T13:49:15.000Z",
-  "notes": "milestone blueprint-access-control drained (#133–#142)",
+  "issuesProcessedInSession": 0,
+  "updatedAt": "2026-07-22T17:13:13.000Z",
+  "notes": "milestone vertical-slice-strangler — issues #243–#250",
   "currentIssue": null,
   "lastCompletedIssue": 141
 }

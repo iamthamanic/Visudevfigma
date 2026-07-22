@@ -21,12 +21,12 @@ Viewer tabs: Status, Features, Changes, Decisions, **Architecture** (Mermaid).
 
 ### Status meanings (short)
 
-| status | Meaning |
-|--------|---------|
-| `not_enabled` | Pages off → enable is allowed |
-| `memory_viewer_active` | `/docs` Pages + viewer present → push updates only |
+| status                  | Meaning                                                          |
+| ----------------------- | ---------------------------------------------------------------- |
+| `not_enabled`           | Pages off → enable is allowed                                    |
+| `memory_viewer_active`  | `/docs` Pages + viewer present → push updates only               |
 | `pages_compatible_docs` | Pages already `/docs` → add viewer files; do not change settings |
-| `pages_other` | Pages serves something else → **refused** (exit 2) |
+| `pages_other`           | Pages serves something else → **refused** (exit 2)               |
 
 ## Manual enable (same end state)
 
