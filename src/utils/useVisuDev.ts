@@ -19,7 +19,6 @@ import type {
   ERDUpdateInput,
   MigrationEntry,
 } from "../modules/data/types";
-import type { LogCreateInput, LogEntry } from "../modules/logs/types";
 import type { ProjectCreateInput, ProjectUpdateInput } from "../modules/projects/types";
 import { api } from "./api";
 import { getVisuDevClient, isLocalVisuDevMode } from "../lib/visudev-api";
@@ -361,57 +360,7 @@ export function useERD(projectId: string | null) {
   };
 }
 
-// ==================== LOGS ====================
-
-export function useLogs(projectId: string | null) {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchLogs = useCallback(async () => {
-    if (!projectId) return;
-    setLoading(true);
-    const result = await api.logs.getAll(projectId);
-    if (result.success) {
-      setLogs(result.data || []);
-      setError(null);
-    } else {
-      setError(result.error || "Failed to fetch logs");
-    }
-    setLoading(false);
-  }, [projectId]);
-
-  useEffect(() => {
-    void fetchLogs();
-  }, [fetchLogs]);
-
-  const createLog = async (data: LogCreateInput) => {
-    if (!projectId) return { success: false, error: "No project ID" };
-    const result = await api.logs.create(projectId, data);
-    if (result.success) {
-      await fetchLogs();
-    }
-    return result;
-  };
-
-  const deleteAllLogs = async () => {
-    if (!projectId) return { success: false, error: "No project ID" };
-    const result = await api.logs.deleteAll(projectId);
-    if (result.success) {
-      await fetchLogs();
-    }
-    return result;
-  };
-
-  return {
-    logs,
-    loading,
-    error,
-    refresh: fetchLogs,
-    createLog,
-    deleteAllLogs,
-  };
-}
+/** Logs hook lives in `src/modules/logs` — import from the slice public entry. */
 
 // ==================== INTEGRATIONS ====================
 
