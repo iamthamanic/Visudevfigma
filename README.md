@@ -67,4 +67,4 @@ Der Vite-Dev-Server und `npm run preview` laufen fest auf **Port 3005** (`vite.c
 
 ---
 
-Last updated: 2026-07-17 (auto on push).
+Last updated: 2026-07-22 (auto on push).
