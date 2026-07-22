@@ -9,7 +9,7 @@ import clsx from "clsx";
 import { useVisudev } from "../../../lib/visudev/store";
 import { getVisuDevClient, isLocalVisuDevMode } from "../../../lib/visudev-api";
 import { api } from "../../../utils/api";
-import { useERD } from "../../../utils/useVisuDev";
+import { useERD } from "../hooks/useERD";
 import type { ERDTableNode } from "../types";
 import styles from "../styles/DataPage.module.css";
 

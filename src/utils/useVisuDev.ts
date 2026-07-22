@@ -12,16 +12,8 @@ import type {
   AppFlowUpdateInput,
 } from "../modules/appflow/types";
 import type { BlueprintData, BlueprintUpdateInput } from "../modules/blueprint/types";
-import type {
-  DataSchema,
-  DataSchemaUpdateInput,
-  ERDData,
-  ERDUpdateInput,
-  MigrationEntry,
-} from "../modules/data/types";
 import type { ProjectCreateInput, ProjectUpdateInput } from "../modules/projects/types";
 import { api } from "./api";
-import { getVisuDevClient, isLocalVisuDevMode } from "../lib/visudev-api";
 
 // ==================== PROJECTS ====================
 
@@ -216,149 +208,7 @@ export function useBlueprint(projectId: string | null) {
   };
 }
 
-// ==================== DATA ====================
-
-export function useSchema(projectId: string | null) {
-  const [schema, setSchema] = useState<DataSchema | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchSchema = useCallback(async () => {
-    if (!projectId) return;
-    setLoading(true);
-    const result = await api.data.getSchema(projectId);
-    if (result.success && result.data) {
-      setSchema(result.data);
-      setError(null);
-    } else {
-      setSchema(null);
-      setError(result.error || "Failed to fetch schema");
-    }
-    setLoading(false);
-  }, [projectId]);
-
-  useEffect(() => {
-    void fetchSchema();
-  }, [fetchSchema]);
-
-  const updateSchema = async (data: DataSchemaUpdateInput) => {
-    if (!projectId) return { success: false, error: "No project ID" };
-    const result = await api.data.updateSchema(projectId, data);
-    if (result.success) {
-      await fetchSchema();
-    }
-    return result;
-  };
-
-  return {
-    schema,
-    loading,
-    error,
-    refresh: fetchSchema,
-    updateSchema,
-  };
-}
-
-export function useMigrations(projectId: string | null) {
-  const [migrations, setMigrations] = useState<MigrationEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchMigrations = useCallback(async () => {
-    if (!projectId) return;
-    setLoading(true);
-    const result = await api.data.getMigrations(projectId);
-    if (result.success) {
-      setMigrations(result.data || []);
-      setError(null);
-    } else {
-      setError(result.error || "Failed to fetch migrations");
-    }
-    setLoading(false);
-  }, [projectId]);
-
-  useEffect(() => {
-    void fetchMigrations();
-  }, [fetchMigrations]);
-
-  return {
-    migrations,
-    loading,
-    error,
-    refresh: fetchMigrations,
-  };
-}
-
-export function useERD(projectId: string | null) {
-  const [erd, setERD] = useState<ERDData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchERD = useCallback(async () => {
-    if (!projectId) return;
-    setLoading(true);
-    if (isLocalVisuDevMode()) {
-      try {
-        const latest = await getVisuDevClient().getDataLatest(projectId);
-        if (latest) {
-          setERD({
-            projectId,
-            updatedAt: latest.updatedAt,
-            nodes: latest.nodes as ERDData["nodes"],
-            tables: latest.tables as ERDData["tables"],
-            message: latest.message,
-          });
-          setError(null);
-        } else {
-          setERD({
-            projectId,
-            nodes: [],
-            tables: [],
-            message:
-              "Noch keine Tabellen. Schema analysieren oder DATABASE_URL in der Projekt-.env setzen.",
-          });
-          setError(null);
-        }
-      } catch (err) {
-        setERD(null);
-        setError(err instanceof Error ? err.message : "Failed to fetch ERD");
-      }
-      setLoading(false);
-      return;
-    }
-
-    const result = await api.data.getERD(projectId);
-    if (result.success && result.data) {
-      setERD(result.data);
-      setError(null);
-    } else {
-      setERD(null);
-      setError(result.error || "Failed to fetch ERD");
-    }
-    setLoading(false);
-  }, [projectId]);
-
-  useEffect(() => {
-    void fetchERD();
-  }, [fetchERD]);
-
-  const updateERD = async (data: ERDUpdateInput) => {
-    if (!projectId) return { success: false, error: "No project ID" };
-    const result = await api.data.updateERD(projectId, data);
-    if (result.success) {
-      await fetchERD();
-    }
-    return result;
-  };
-
-  return {
-    erd,
-    loading,
-    error,
-    refresh: fetchERD,
-    updateERD,
-  };
-}
+/** Data hooks live in `src/modules/data` — import from the slice public entry. */
 
 /** Logs hook lives in `src/modules/logs` — import from the slice public entry. */
 
