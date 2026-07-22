@@ -5,55 +5,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { IntegrationsState } from "../lib/visudev/integrations";
-import type { BlueprintData, BlueprintUpdateInput } from "../modules/blueprint";
 import { api } from "./api";
 
 /** Projects hooks live in `src/modules/projects` — import from the slice public entry. */
 
 /** Appflow hooks live in `src/modules/appflow` — import from the slice public entry. */
 
-// ==================== BLUEPRINT ====================
-
-export function useBlueprint(projectId: string | null) {
-  const [blueprint, setBlueprint] = useState<BlueprintData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchBlueprint = useCallback(async () => {
-    if (!projectId) return;
-    setLoading(true);
-    const result = await api.blueprint.get(projectId);
-    if (result.success && result.data) {
-      setBlueprint(result.data);
-      setError(null);
-    } else {
-      setBlueprint(null);
-      setError(result.error || "Failed to fetch blueprint");
-    }
-    setLoading(false);
-  }, [projectId]);
-
-  useEffect(() => {
-    void fetchBlueprint();
-  }, [fetchBlueprint]);
-
-  const updateBlueprint = async (data: BlueprintUpdateInput) => {
-    if (!projectId) return { success: false, error: "No project ID" };
-    const result = await api.blueprint.update(projectId, data);
-    if (result.success) {
-      await fetchBlueprint();
-    }
-    return result;
-  };
-
-  return {
-    blueprint,
-    loading,
-    error,
-    refresh: fetchBlueprint,
-    updateBlueprint,
-  };
-}
+/** Blueprint hooks live in `src/modules/blueprint` — import from the slice public entry. */
 
 /** Data hooks live in `src/modules/data` — import from the slice public entry. */
 
