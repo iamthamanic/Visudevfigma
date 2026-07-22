@@ -9,19 +9,11 @@
     "en": "Create/manage projects, connect GitHub repos or local paths, start analysis."
   },
   "status": "active",
-  "packages": [
-    "src"
-  ],
-  "paths": [
-    "src/modules/projects/**"
-  ],
+  "packages": ["src"],
+  "paths": ["src/modules/projects/**"],
   "user_impact": {
-    "de": [
-      "Projektliste und Auswahl steuern App Flow, Blueprint und Data."
-    ],
-    "en": [
-      "Project list and selection drive App Flow, Blueprint, and Data."
-    ]
+    "de": ["Projektliste und Auswahl steuern App Flow, Blueprint und Data."],
+    "en": ["Project list and selection drive App Flow, Blueprint, and Data."]
   },
   "related_changes": [
     "2026-07-19-bootstrap",

@@ -35,12 +35,8 @@
         ]
       },
       "operational_impact": {
-        "de": [
-          "GitHub Pages kann docs/memory-live-doc/viewer/ hosten (optional)."
-        ],
-        "en": [
-          "GitHub Pages can host docs/memory-live-doc/viewer/ (optional)."
-        ]
+        "de": ["GitHub Pages kann docs/memory-live-doc/viewer/ hosten (optional)."],
+        "en": ["GitHub Pages can host docs/memory-live-doc/viewer/ (optional)."]
       },
       "git": {
         "base": "527e2cb2d17cf6826b3d8fbd163b713cee5a1efc",
@@ -48,12 +44,7 @@
         "branch": "main",
         "pull_request": null
       },
-      "packages": [
-        "src",
-        "local-engine",
-        "preview-runner",
-        "shared"
-      ],
+      "packages": ["src", "local-engine", "preview-runner", "shared"],
       "affected_features": [
         "projects",
         "appflow",
@@ -189,24 +180,12 @@
         "en": "Avoids false alarms and surfaces real tenant/ownership gaps."
       },
       "user_impact": {
-        "de": [
-          "Neue Security-Matrix-Spalten",
-          "Inspector mit Mechanismen"
-        ],
-        "en": [
-          "New security matrix columns",
-          "Inspector with mechanisms"
-        ]
+        "de": ["Neue Security-Matrix-Spalten", "Inspector mit Mechanismen"],
+        "en": ["New security matrix columns", "Inspector with mechanisms"]
       },
       "developer_impact": {
-        "de": [
-          "shared/access-control*",
-          "local-engine access-control adapters"
-        ],
-        "en": [
-          "shared/access-control*",
-          "local-engine access-control adapters"
-        ]
+        "de": ["shared/access-control*", "local-engine access-control adapters"],
+        "en": ["shared/access-control*", "local-engine access-control adapters"]
       },
       "operational_impact": {
         "de": [],
@@ -218,14 +197,8 @@
         "branch": "main",
         "pull_request": null
       },
-      "packages": [
-        "shared",
-        "local-engine",
-        "src"
-      ],
-      "affected_features": [
-        "blueprint-access-control"
-      ],
+      "packages": ["shared", "local-engine", "src"],
+      "affected_features": ["blueprint-access-control"],
       "affected_components": [
         "shared/access-control.types.ts",
         "local-engine/src/services/access-control"
@@ -268,10 +241,7 @@
     {
       "schema_version": 1,
       "status": "recorded",
-      "packages": [
-        "src",
-        "local-engine"
-      ],
+      "packages": ["src", "local-engine"],
       "breaking_changes": [],
       "migration_required": false,
       "screenshots": [],
@@ -301,20 +271,12 @@
         "en": "Deploy and data questions need visible infra, not only routes."
       },
       "user_impact": {
-        "de": [
-          "Postgres/Redis-Knoten in Infrastructure"
-        ],
-        "en": [
-          "Postgres/Redis nodes in Infrastructure"
-        ]
+        "de": ["Postgres/Redis-Knoten in Infrastructure"],
+        "en": ["Postgres/Redis nodes in Infrastructure"]
       },
       "developer_impact": {
-        "de": [
-          "compose + Prisma infra extraction"
-        ],
-        "en": [
-          "compose + Prisma infra extraction"
-        ]
+        "de": ["compose + Prisma infra extraction"],
+        "en": ["compose + Prisma infra extraction"]
       },
       "security_relevant": false,
       "git": {
@@ -323,14 +285,8 @@
         "branch": "main",
         "pull_request": null
       },
-      "affected_features": [
-        "blueprint-views",
-        "local-engine"
-      ],
-      "affected_components": [
-        "local-engine",
-        "src/modules/blueprint"
-      ],
+      "affected_features": ["blueprint-views", "local-engine"],
+      "affected_components": ["local-engine", "src/modules/blueprint"],
       "evidence": [
         {
           "kind": "compare",
@@ -364,10 +320,7 @@
     {
       "schema_version": 1,
       "status": "recorded",
-      "packages": [
-        "src",
-        "local-engine"
-      ],
+      "packages": ["src", "local-engine"],
       "breaking_changes": [],
       "migration_required": false,
       "screenshots": [],
@@ -397,22 +350,12 @@
         "en": "Without stack extractors, Blueprint stays blind on non-HTTP apps."
       },
       "user_impact": {
-        "de": [
-          "Mehr sichtbare Methoden/Modelle bei Meteor-Apps"
-        ],
-        "en": [
-          "More visible methods/models on Meteor apps"
-        ]
+        "de": ["Mehr sichtbare Methoden/Modelle bei Meteor-Apps"],
+        "en": ["More visible methods/models on Meteor apps"]
       },
       "developer_impact": {
-        "de": [
-          "RC-W2 extractors",
-          "FILE_LIMIT seeding order"
-        ],
-        "en": [
-          "RC-W2 extractors",
-          "FILE_LIMIT seeding order"
-        ]
+        "de": ["RC-W2 extractors", "FILE_LIMIT seeding order"],
+        "en": ["RC-W2 extractors", "FILE_LIMIT seeding order"]
       },
       "security_relevant": false,
       "git": {
@@ -421,13 +364,8 @@
         "branch": "main",
         "pull_request": null
       },
-      "affected_features": [
-        "blueprint-software-graph",
-        "local-engine"
-      ],
-      "affected_components": [
-        "local-engine"
-      ],
+      "affected_features": ["blueprint-software-graph", "local-engine"],
+      "affected_components": ["local-engine"],
       "evidence": [
         {
           "kind": "compare",
@@ -456,10 +394,7 @@
     {
       "schema_version": 1,
       "status": "recorded",
-      "packages": [
-        "src",
-        "local-engine"
-      ],
+      "packages": ["src", "local-engine"],
       "breaking_changes": [],
       "migration_required": false,
       "screenshots": [],
@@ -493,20 +428,11 @@
           "Glaubwürdigere Architecture/Infra-Views",
           "Bessere Treffer bei Django/Prisma-Projekten"
         ],
-        "en": [
-          "More credible architecture/infra views",
-          "Better hits on Django/Prisma projects"
-        ]
+        "en": ["More credible architecture/infra views", "Better hits on Django/Prisma projects"]
       },
       "developer_impact": {
-        "de": [
-          "softort / soft-cap ranking",
-          "monorepo + Prisma coverage"
-        ],
-        "en": [
-          "softort / soft-cap ranking",
-          "monorepo + Prisma coverage"
-        ]
+        "de": ["softort / soft-cap ranking", "monorepo + Prisma coverage"],
+        "en": ["softort / soft-cap ranking", "monorepo + Prisma coverage"]
       },
       "security_relevant": false,
       "git": {
@@ -515,15 +441,8 @@
         "branch": "main",
         "pull_request": null
       },
-      "affected_features": [
-        "blueprint-software-graph",
-        "local-engine",
-        "blueprint-views"
-      ],
-      "affected_components": [
-        "local-engine",
-        "shared"
-      ],
+      "affected_features": ["blueprint-software-graph", "local-engine", "blueprint-views"],
+      "affected_components": ["local-engine", "shared"],
       "evidence": [
         {
           "kind": "compare",
@@ -557,10 +476,7 @@
     {
       "schema_version": 1,
       "status": "recorded",
-      "packages": [
-        "src",
-        "local-engine"
-      ],
+      "packages": ["src", "local-engine"],
       "breaking_changes": [],
       "migration_required": false,
       "screenshots": [],
@@ -590,26 +506,12 @@
         "en": "Raw diagnostic data becomes a usable interface."
       },
       "user_impact": {
-        "de": [
-          "Filterbare Findings",
-          "Execution-Timeline",
-          "Footer „Keine kritischen Probleme“"
-        ],
-        "en": [
-          "Filterable findings",
-          "Execution timeline",
-          "Footer “no critical issues”"
-        ]
+        "de": ["Filterbare Findings", "Execution-Timeline", "Footer „Keine kritischen Probleme“"],
+        "en": ["Filterable findings", "Execution timeline", "Footer “no critical issues”"]
       },
       "developer_impact": {
-        "de": [
-          "Wave 5 issues #166–#170",
-          "shell footer health"
-        ],
-        "en": [
-          "Wave 5 issues #166–#170",
-          "shell footer health"
-        ]
+        "de": ["Wave 5 issues #166–#170", "shell footer health"],
+        "en": ["Wave 5 issues #166–#170", "shell footer health"]
       },
       "security_relevant": false,
       "git": {
@@ -618,13 +520,8 @@
         "branch": "main",
         "pull_request": null
       },
-      "affected_features": [
-        "blueprint-views"
-      ],
-      "affected_components": [
-        "src/modules/blueprint",
-        "src/modules/shell"
-      ],
+      "affected_features": ["blueprint-views"],
+      "affected_components": ["src/modules/blueprint", "src/modules/shell"],
       "evidence": [
         {
           "kind": "compare",
@@ -690,24 +587,12 @@
         "en": "The UI feels finished and trustworthy, not like a prototype."
       },
       "user_impact": {
-        "de": [
-          "Vollere Blueprint-Views",
-          "Stabilere Darstellung"
-        ],
-        "en": [
-          "Richer Blueprint views",
-          "More stable rendering"
-        ]
+        "de": ["Vollere Blueprint-Views", "Stabilere Darstellung"],
+        "en": ["Richer Blueprint views", "More stable rendering"]
       },
       "developer_impact": {
-        "de": [
-          "Playwright Wave 2/3 gates",
-          "demo enrichment"
-        ],
-        "en": [
-          "Playwright Wave 2/3 gates",
-          "demo enrichment"
-        ]
+        "de": ["Playwright Wave 2/3 gates", "demo enrichment"],
+        "en": ["Playwright Wave 2/3 gates", "demo enrichment"]
       },
       "operational_impact": {
         "de": [],
@@ -719,17 +604,9 @@
         "branch": "main",
         "pull_request": null
       },
-      "packages": [
-        "src",
-        "tests"
-      ],
-      "affected_features": [
-        "blueprint-views"
-      ],
-      "affected_components": [
-        "src/modules/blueprint",
-        "tests/e2e"
-      ],
+      "packages": ["src", "tests"],
+      "affected_features": ["blueprint-views"],
+      "affected_components": ["src/modules/blueprint", "tests/e2e"],
       "breaking_changes": [],
       "migration_required": false,
       "security_relevant": false,
@@ -763,10 +640,7 @@
     {
       "schema_version": 1,
       "status": "recorded",
-      "packages": [
-        "src",
-        "local-engine"
-      ],
+      "packages": ["src", "local-engine"],
       "breaking_changes": [],
       "migration_required": false,
       "screenshots": [],
@@ -796,24 +670,12 @@
         "en": "Closes the gap between design targets and what you see in the product."
       },
       "user_impact": {
-        "de": [
-          "Stabilere View-Umschaltung",
-          "Reichere Execution/Atlas/Diagnostics"
-        ],
-        "en": [
-          "More stable view switching",
-          "Richer execution/atlas/diagnostics"
-        ]
+        "de": ["Stabilere View-Umschaltung", "Reichere Execution/Atlas/Diagnostics"],
+        "en": ["More stable view switching", "Richer execution/atlas/diagnostics"]
       },
       "developer_impact": {
-        "de": [
-          "Wave 3 viz parity",
-          "shell runner badge rules"
-        ],
-        "en": [
-          "Wave 3 viz parity",
-          "shell runner badge rules"
-        ]
+        "de": ["Wave 3 viz parity", "shell runner badge rules"],
+        "en": ["Wave 3 viz parity", "shell runner badge rules"]
       },
       "security_relevant": false,
       "git": {
@@ -822,13 +684,8 @@
         "branch": "main",
         "pull_request": "https://github.com/iamthamanic/visudev-app/pull/155"
       },
-      "affected_features": [
-        "blueprint-views"
-      ],
-      "affected_components": [
-        "src/modules/blueprint",
-        "src/modules/shell"
-      ],
+      "affected_features": ["blueprint-views"],
+      "affected_components": ["src/modules/blueprint", "src/modules/shell"],
       "evidence": [
         {
           "kind": "compare",
@@ -887,24 +744,12 @@
         "en": "Different questions (security vs deploy vs dependencies) get clear dedicated views."
       },
       "user_impact": {
-        "de": [
-          "View-Umschalter im Blueprint",
-          "Reichere Inspektoren"
-        ],
-        "en": [
-          "View switcher in Blueprint",
-          "Richer inspectors"
-        ]
+        "de": ["View-Umschalter im Blueprint", "Reichere Inspektoren"],
+        "en": ["View switcher in Blueprint", "Richer inspectors"]
       },
       "developer_impact": {
-        "de": [
-          "Phases 0–8",
-          "Cytoscape / view components"
-        ],
-        "en": [
-          "Phases 0–8",
-          "Cytoscape / view components"
-        ]
+        "de": ["Phases 0–8", "Cytoscape / view components"],
+        "en": ["Phases 0–8", "Cytoscape / view components"]
       },
       "operational_impact": {
         "de": [],
@@ -916,18 +761,9 @@
         "branch": "main",
         "pull_request": null
       },
-      "packages": [
-        "src",
-        "shared",
-        "local-engine"
-      ],
-      "affected_features": [
-        "blueprint-views",
-        "blueprint-software-graph"
-      ],
-      "affected_components": [
-        "src/modules/blueprint"
-      ],
+      "packages": ["src", "shared", "local-engine"],
+      "affected_features": ["blueprint-views", "blueprint-software-graph"],
+      "affected_components": ["src/modules/blueprint"],
       "breaking_changes": [],
       "migration_required": false,
       "security_relevant": false,
@@ -956,10 +792,7 @@
     {
       "schema_version": 1,
       "status": "recorded",
-      "packages": [
-        "src",
-        "local-engine"
-      ],
+      "packages": ["src", "local-engine"],
       "breaking_changes": [],
       "migration_required": false,
       "screenshots": [],
@@ -989,26 +822,12 @@
         "en": "Without this shell rebuild, the many Blueprint views feel like loose tabs instead of one product."
       },
       "user_impact": {
-        "de": [
-          "Sidebar-Navigation",
-          "Scan-Status im Header",
-          "deutsche View-Namen"
-        ],
-        "en": [
-          "Sidebar navigation",
-          "Scan status in header",
-          "German view names"
-        ]
+        "de": ["Sidebar-Navigation", "Scan-Status im Header", "deutsche View-Namen"],
+        "en": ["Sidebar navigation", "Scan status in header", "German view names"]
       },
       "developer_impact": {
-        "de": [
-          "Blueprint shell / sidebar layout",
-          "Figma-aligned architecture canvas"
-        ],
-        "en": [
-          "Blueprint shell / sidebar layout",
-          "Figma-aligned architecture canvas"
-        ]
+        "de": ["Blueprint shell / sidebar layout", "Figma-aligned architecture canvas"],
+        "en": ["Blueprint shell / sidebar layout", "Figma-aligned architecture canvas"]
       },
       "security_relevant": false,
       "git": {
@@ -1017,12 +836,8 @@
         "branch": "main",
         "pull_request": null
       },
-      "affected_features": [
-        "blueprint-views"
-      ],
-      "affected_components": [
-        "src/modules/blueprint"
-      ],
+      "affected_features": ["blueprint-views"],
+      "affected_components": ["src/modules/blueprint"],
       "evidence": [
         {
           "kind": "compare",
@@ -1077,30 +892,16 @@
         "en": "Foundation for many Blueprint views and stack-agnostic security."
       },
       "user_impact": {
-        "de": [
-          "Zuverlässigere lokale Scans"
-        ],
-        "en": [
-          "More reliable local scans"
-        ]
+        "de": ["Zuverlässigere lokale Scans"],
+        "en": ["More reliable local scans"]
       },
       "developer_impact": {
-        "de": [
-          "Software Graph builder",
-          "pluggable providers vorbereitet"
-        ],
-        "en": [
-          "Software Graph builder",
-          "pluggable providers prepared"
-        ]
+        "de": ["Software Graph builder", "pluggable providers vorbereitet"],
+        "en": ["Software Graph builder", "pluggable providers prepared"]
       },
       "operational_impact": {
-        "de": [
-          "Local Engine zentral"
-        ],
-        "en": [
-          "Local Engine central"
-        ]
+        "de": ["Local Engine zentral"],
+        "en": ["Local Engine central"]
       },
       "git": {
         "base": "",
@@ -1108,18 +909,9 @@
         "branch": "main",
         "pull_request": null
       },
-      "packages": [
-        "local-engine",
-        "shared"
-      ],
-      "affected_features": [
-        "blueprint-software-graph",
-        "local-engine"
-      ],
-      "affected_components": [
-        "shared/software-graph.types.ts",
-        "local-engine"
-      ],
+      "packages": ["local-engine", "shared"],
+      "affected_features": ["blueprint-software-graph", "local-engine"],
+      "affected_components": ["shared/software-graph.types.ts", "local-engine"],
       "breaking_changes": [],
       "migration_required": false,
       "security_relevant": false,
@@ -1168,32 +960,16 @@
         "en": "VisuDEV grows from a screen tool into an architecture/security X-ray."
       },
       "user_impact": {
-        "de": [
-          "Blueprint-Workspace",
-          "Lokale Projekte analysieren"
-        ],
-        "en": [
-          "Blueprint workspace",
-          "Analyze local projects"
-        ]
+        "de": ["Blueprint-Workspace", "Lokale Projekte analysieren"],
+        "en": ["Blueprint workspace", "Analyze local projects"]
       },
       "developer_impact": {
-        "de": [
-          "visudev-analyzer blueprint",
-          "local runner"
-        ],
-        "en": [
-          "visudev-analyzer blueprint",
-          "local runner"
-        ]
+        "de": ["visudev-analyzer blueprint", "local runner"],
+        "en": ["visudev-analyzer blueprint", "local runner"]
       },
       "operational_impact": {
-        "de": [
-          "npm run dev startet lokales Supabase + Runner"
-        ],
-        "en": [
-          "npm run dev starts local Supabase + runner"
-        ]
+        "de": ["npm run dev startet lokales Supabase + Runner"],
+        "en": ["npm run dev starts local Supabase + runner"]
       },
       "git": {
         "base": "",
@@ -1201,19 +977,9 @@
         "branch": "main",
         "pull_request": "https://github.com/iamthamanic/visudev-app/pull/8"
       },
-      "packages": [
-        "src",
-        "local-engine",
-        "shared"
-      ],
-      "affected_features": [
-        "blueprint-views",
-        "local-engine"
-      ],
-      "affected_components": [
-        "src/modules/blueprint",
-        "local-engine"
-      ],
+      "packages": ["src", "local-engine", "shared"],
+      "affected_features": ["blueprint-views", "local-engine"],
+      "affected_components": ["src/modules/blueprint", "local-engine"],
       "breaking_changes": [],
       "migration_required": false,
       "security_relevant": true,
@@ -1267,32 +1033,16 @@
         "en": "Fewer empty or stuck previews in daily use."
       },
       "user_impact": {
-        "de": [
-          "Stabilere Preview",
-          "Klarere Screen-Karten"
-        ],
-        "en": [
-          "More stable preview",
-          "Clearer screen cards"
-        ]
+        "de": ["Stabilere Preview", "Klarere Screen-Karten"],
+        "en": ["More stable preview", "Clearer screen cards"]
       },
       "developer_impact": {
-        "de": [
-          "preview-runner cleanup",
-          "analyzer heuristics"
-        ],
-        "en": [
-          "preview-runner cleanup",
-          "analyzer heuristics"
-        ]
+        "de": ["preview-runner cleanup", "analyzer heuristics"],
+        "en": ["preview-runner cleanup", "analyzer heuristics"]
       },
       "operational_impact": {
-        "de": [
-          "Pre-push Single-Commit-Regel"
-        ],
-        "en": [
-          "Pre-push single-commit rule"
-        ]
+        "de": ["Pre-push Single-Commit-Regel"],
+        "en": ["Pre-push single-commit rule"]
       },
       "git": {
         "base": "2026-03",
@@ -1300,18 +1050,9 @@
         "branch": "main",
         "pull_request": null
       },
-      "packages": [
-        "preview-runner",
-        "src"
-      ],
-      "affected_features": [
-        "preview-runner",
-        "appflow"
-      ],
-      "affected_components": [
-        "preview-runner",
-        "src/modules/appflow"
-      ],
+      "packages": ["preview-runner", "src"],
+      "affected_features": ["preview-runner", "appflow"],
+      "affected_components": ["preview-runner", "src/modules/appflow"],
       "breaking_changes": [],
       "migration_required": false,
       "security_relevant": false,
@@ -1365,30 +1106,16 @@
         "en": "Protects user data and enforces cleaner code before deploy."
       },
       "user_impact": {
-        "de": [
-          "Fremde Projekte sind nicht mehr zugreifbar (IDOR-Schutz)"
-        ],
-        "en": [
-          "Other users’ projects are no longer accessible (IDOR protection)"
-        ]
+        "de": ["Fremde Projekte sind nicht mehr zugreifbar (IDOR-Schutz)"],
+        "en": ["Other users’ projects are no longer accessible (IDOR protection)"]
       },
       "developer_impact": {
-        "de": [
-          "requireProjectOwner auf vielen Routes",
-          "npm run checks / AI review"
-        ],
-        "en": [
-          "requireProjectOwner on many routes",
-          "npm run checks / AI review"
-        ]
+        "de": ["requireProjectOwner auf vielen Routes", "npm run checks / AI review"],
+        "en": ["requireProjectOwner on many routes", "npm run checks / AI review"]
       },
       "operational_impact": {
-        "de": [
-          "Pre-Push-Hooks und Review-Scores"
-        ],
-        "en": [
-          "Pre-push hooks and review scores"
-        ]
+        "de": ["Pre-Push-Hooks und Review-Scores"],
+        "en": ["Pre-push hooks and review scores"]
       },
       "git": {
         "base": "856dd23c",
@@ -1396,18 +1123,9 @@
         "branch": "main",
         "pull_request": null
       },
-      "packages": [
-        "src",
-        "supabase/functions"
-      ],
-      "affected_features": [
-        "projects",
-        "settings-connections"
-      ],
-      "affected_components": [
-        "visudev-server",
-        "visudev-projects"
-      ],
+      "packages": ["src", "supabase/functions"],
+      "affected_features": ["projects", "settings-connections"],
+      "affected_components": ["visudev-server", "visudev-projects"],
       "breaking_changes": [],
       "migration_required": false,
       "security_relevant": true,
@@ -1466,34 +1184,16 @@
         "en": "A dead sitemap becomes real product understanding."
       },
       "user_impact": {
-        "de": [
-          "Live-Vorschau in App Flow",
-          "Sitemap und Flow Graph"
-        ],
-        "en": [
-          "Live preview in App Flow",
-          "Sitemap and flow graph"
-        ]
+        "de": ["Live-Vorschau in App Flow", "Sitemap und Flow Graph"],
+        "en": ["Live preview in App Flow", "Sitemap and flow graph"]
       },
       "developer_impact": {
-        "de": [
-          "preview-runner",
-          "visudev-preview Edge Function",
-          "LiveFlowCanvas"
-        ],
-        "en": [
-          "preview-runner",
-          "visudev-preview Edge Function",
-          "LiveFlowCanvas"
-        ]
+        "de": ["preview-runner", "visudev-preview Edge Function", "LiveFlowCanvas"],
+        "en": ["preview-runner", "visudev-preview Edge Function", "LiveFlowCanvas"]
       },
       "operational_impact": {
-        "de": [
-          "Lokaler Runner-Port (z. B. 4000)"
-        ],
-        "en": [
-          "Local runner port (e.g. 4000)"
-        ]
+        "de": ["Lokaler Runner-Port (z. B. 4000)"],
+        "en": ["Local runner port (e.g. 4000)"]
       },
       "git": {
         "base": "f2fff86a",
@@ -1501,18 +1201,9 @@
         "branch": "main",
         "pull_request": null
       },
-      "packages": [
-        "src",
-        "preview-runner"
-      ],
-      "affected_features": [
-        "appflow",
-        "preview-runner"
-      ],
-      "affected_components": [
-        "preview-runner",
-        "src/modules/appflow"
-      ],
+      "packages": ["src", "preview-runner"],
+      "affected_features": ["appflow", "preview-runner"],
+      "affected_components": ["preview-runner", "src/modules/appflow"],
       "breaking_changes": [],
       "migration_required": false,
       "security_relevant": false,
@@ -1571,30 +1262,16 @@
         "en": "Without login and GitHub there are no real project analyses."
       },
       "user_impact": {
-        "de": [
-          "Anmelden",
-          "GitHub in den Einstellungen verbinden"
-        ],
-        "en": [
-          "Sign in",
-          "Connect GitHub in settings"
-        ]
+        "de": ["Anmelden", "GitHub in den Einstellungen verbinden"],
+        "en": ["Sign in", "Connect GitHub in settings"]
       },
       "developer_impact": {
-        "de": [
-          "Auth-Modul, GitHub secrets docs"
-        ],
-        "en": [
-          "Auth module, GitHub secrets docs"
-        ]
+        "de": ["Auth-Modul, GitHub secrets docs"],
+        "en": ["Auth module, GitHub secrets docs"]
       },
       "operational_impact": {
-        "de": [
-          "Supabase Auth / Edge Secrets nötig"
-        ],
-        "en": [
-          "Supabase Auth / Edge secrets required"
-        ]
+        "de": ["Supabase Auth / Edge Secrets nötig"],
+        "en": ["Supabase Auth / Edge secrets required"]
       },
       "git": {
         "base": "6ae11c0a",
@@ -1602,18 +1279,9 @@
         "branch": "main",
         "pull_request": null
       },
-      "packages": [
-        "src",
-        "supabase/functions"
-      ],
-      "affected_features": [
-        "settings-connections",
-        "projects"
-      ],
-      "affected_components": [
-        "src/modules/settings",
-        "AuthGate"
-      ],
+      "packages": ["src", "supabase/functions"],
+      "affected_features": ["settings-connections", "projects"],
+      "affected_components": ["src/modules/settings", "AuthGate"],
       "breaking_changes": [],
       "migration_required": false,
       "security_relevant": true,
@@ -1667,28 +1335,16 @@
         "en": "This is project day one — everything later builds on it."
       },
       "user_impact": {
-        "de": [
-          "Erste klickbare Oberfläche existiert."
-        ],
-        "en": [
-          "A first clickable UI exists."
-        ]
+        "de": ["Erste klickbare Oberfläche existiert."],
+        "en": ["A first clickable UI exists."]
       },
       "developer_impact": {
-        "de": [
-          "Vite/React-Codebasis aus Figma-Export."
-        ],
-        "en": [
-          "Vite/React codebase from Figma export."
-        ]
+        "de": ["Vite/React-Codebasis aus Figma-Export."],
+        "en": ["Vite/React codebase from Figma export."]
       },
       "operational_impact": {
-        "de": [
-          "Repo auf GitHub angelegt."
-        ],
-        "en": [
-          "Repo created on GitHub."
-        ]
+        "de": ["Repo auf GitHub angelegt."],
+        "en": ["Repo created on GitHub."]
       },
       "git": {
         "base": "2b776765",
@@ -1696,17 +1352,9 @@
         "branch": "main",
         "pull_request": null
       },
-      "packages": [
-        "src"
-      ],
-      "affected_features": [
-        "projects",
-        "appflow",
-        "settings-connections"
-      ],
-      "affected_components": [
-        "src/"
-      ],
+      "packages": ["src"],
+      "affected_features": ["projects", "appflow", "settings-connections"],
+      "affected_components": ["src/"],
       "breaking_changes": [],
       "migration_required": false,
       "security_relevant": false,

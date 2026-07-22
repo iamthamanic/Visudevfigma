@@ -1,10 +1,7 @@
 {
   "schema_version": 1,
   "languages": {
-    "json": [
-      "de",
-      "en"
-    ],
+    "json": ["de", "en"],
     "markdown_primary": "de",
     "markdown_en_dir": "docs/en"
   },

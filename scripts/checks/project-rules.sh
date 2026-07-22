@@ -61,6 +61,13 @@ run_check "No 'any' type in frontend" \
   "\\bany\\b" \
   "src" "-g" "*.ts" "-g" "*.tsx" "-g" "!src/supabase/functions/**"
 
+# Slice boundary: no NEW deep cross-slice or reverse facade→module imports
+echo ""
+echo "[project-rules] slice boundary imports"
+if ! bash "$(dirname "${BASH_SOURCE[0]}")/boundary-imports.sh"; then
+  fail=1
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo "\nProject rules check failed." >&2
   exit 1

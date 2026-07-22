@@ -34,9 +34,14 @@ This repo enforces strict modular architecture and quality gates. Agents must fo
 ### Frontend (Vite + React)
 
 - Domain modules live in `src/modules/<domain>/...`.
-- No cross-module imports. Export only via each module's `index.ts`.
+- **Product slice:** each top-level folder under `src/modules/` except `shell` **is** a product slice (`module = product slice`). Physical root stays `src/modules/` (no parallel `src/slices/`).
+- No cross-module imports. Export only via each module's `index.ts` (public entry). Slice internals must not be imported from outside that slice.
+- `shell` is composition/navigation only: compose product slices via their `index.ts`, never deep paths.
+- Allowed data path: product slice → slice service/port → frontend adapter/dispatch (`src/lib/visudev-api/`) → Local Engine or Supabase API. Slices must not import `local-engine/` or Supabase clients directly.
+- `src/utils/api.ts` and `src/utils/useVisuDev.ts` are legacy compatibility facades: no new slice-specific business logic; reverse imports into module interna are migrations debt (baseline + cleanup issues).
 - `src/components/` is for shared UI only (no business logic).
 - `src/lib/` is for shared utilities, API client, and helpers.
+- Boundary check: `scripts/checks/boundary-imports.sh` (via `npm run rules:check`); finite known exceptions in `.qa/architecture/boundary-baseline.txt`. DoD + intake fields: `.qa/architecture/slice-dod.md`.
 
 Recommended module layout:
 

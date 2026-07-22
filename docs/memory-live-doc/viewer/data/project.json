@@ -9,13 +9,7 @@
     "de": "Entwickler-Tool zur Visualisierung deterministischer Flows von UI-Elementen über Code, API und Datenbank-/Sicherheitsmechanismen bis zu Backend-Systemen. Screen-zentriert; GitHub als Source of Truth; Supabase + Local Engine.",
     "en": "Developer tool that visualizes deterministic flows from UI elements through code, API, and database/security mechanisms to backend systems. Screen-centric; GitHub as source of truth; Supabase + Local Engine."
   },
-  "packages": [
-    "src",
-    "local-engine",
-    "preview-runner",
-    "shared",
-    "supabase/functions"
-  ],
+  "packages": ["src", "local-engine", "preview-runner", "shared", "supabase/functions"],
   "repository": {
     "url": "https://github.com/iamthamanic/visudev-app",
     "default_branch": "main"

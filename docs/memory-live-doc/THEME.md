@@ -6,12 +6,12 @@ GitHub Pages viewer matches the **product UI** when known; otherwise a **neutral
 
 ## Files
 
-| Path | Role |
-|------|------|
-| `assets/themes/default.json` | Fallback for repos without frontend styleguide |
-| `assets/themes/visudev.json` | VisuDEV (`#03ffa3`, black surfaces, Inter) |
-| `docs/memory-live-doc/viewer/data/theme.json` | Exported snapshot (Pages) |
-| `.project-memory/config.json` → `theme_id` | Optional pin (`"visudev"` / `"default"`) |
+| Path                                          | Role                                           |
+| --------------------------------------------- | ---------------------------------------------- |
+| `assets/themes/default.json`                  | Fallback for repos without frontend styleguide |
+| `assets/themes/visudev.json`                  | VisuDEV (`#03ffa3`, black surfaces, Inter)     |
+| `docs/memory-live-doc/viewer/data/theme.json` | Exported snapshot (Pages)                      |
+| `.project-memory/config.json` → `theme_id`    | Optional pin (`"visudev"` / `"default"`)       |
 
 ## Token schema
 
@@ -39,7 +39,7 @@ GitHub Pages viewer matches the **product UI** when known; otherwise a **neutral
     "bgGlow2": "#…"
   },
   "fonts": { "google": "https://fonts.googleapis.com/css2?…" },
-  "mermaid": { "theme": "dark", "themeVariables": { } }
+  "mermaid": { "theme": "dark", "themeVariables": {} }
 }
 ```
 

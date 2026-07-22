@@ -9,23 +9,13 @@
     "en": "Logs module for analysis/runtime events; scope still incompletely documented."
   },
   "status": "incomplete",
-  "packages": [
-    "src"
-  ],
-  "paths": [
-    "src/modules/logs/**"
-  ],
+  "packages": ["src"],
+  "paths": ["src/modules/logs/**"],
   "user_impact": {
-    "de": [
-      "Laufzeit- und Scan-Logs einsehen (Details needs-review)."
-    ],
-    "en": [
-      "View runtime and scan logs (details needs-review)."
-    ]
+    "de": ["Laufzeit- und Scan-Logs einsehen (Details needs-review)."],
+    "en": ["View runtime and scan logs (details needs-review)."]
   },
-  "related_changes": [
-    "2026-07-19-bootstrap"
-  ],
+  "related_changes": ["2026-07-19-bootstrap"],
   "review_status": "needs-review",
   "confidence": 0.4,
   "locked": false,
